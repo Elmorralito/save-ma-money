@@ -31,5 +31,5 @@ requires = [
 build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--cov=src --import-mode=importlib --cov-report=term-missing:skip-covered -ra"
+addopts = "--cov=src/papita_txnsmodel --import-mode=importlib --cov-report=term-missing:skip-covered -ra"
 testpaths = ["tests"]

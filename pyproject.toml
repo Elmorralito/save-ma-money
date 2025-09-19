@@ -49,9 +49,14 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["src/python", "tests"])'
+init-hook = 'import sys; sys.path.extend(["papita-transactions-model/src", "papita-transactions-tracker/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
+
+[tool.pylint.MASTER]
+ignore-paths = [
+    "^.*/tests/.*$",
+]
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
@@ -115,7 +120,7 @@ skip_gitignore = true
 
 [tool.flake8]
 ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", "dist", "*.ipynb", "tests/*"]
+exclude = [".git", "__pycache__", "dist", "*.ipynb", "papita-transactions-model/tests/*", "papita-transactions-tracker/tests/*"]
 max-line-length = 120
 max-complexity = 18
 
