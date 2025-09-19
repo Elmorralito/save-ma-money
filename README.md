@@ -8,3 +8,6 @@
 | :---------------------------------- | :--------------------------------------------------------------------: |
 | Papita Transactions Data Model      |   [`papita-transactions-model`](papita-transactions-model/README.md)   |
 | Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
+
+## Briefing
+
