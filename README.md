@@ -1,4 +1,10 @@
-# save-ma-money
-Project meant to help me track, organize and plan my money, and eventually help me to save money.
+# Papita Public Projects: `save-my-finances`
 
-@Testing
+![interrogate score](./docs/interrogate_badge.svg)
+
+## Index
+
+| Name                                |                            Package/Library                             |
+| :---------------------------------- | :--------------------------------------------------------------------: |
+| Papita Transactions Data Model      |   [`papita-transactions-model`](papita-transactions-model/README.md)   |
+| Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
