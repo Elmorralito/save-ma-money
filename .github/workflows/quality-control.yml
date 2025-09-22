@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --only=main --no-interaction --no-ansi --no-root
-          python -m pip install pylint
+          python -m pip install pylint pytest coverage
 
       - uses: pre-commit/action@v3.0.0 # Use the pre-commit GitHub Action
 
