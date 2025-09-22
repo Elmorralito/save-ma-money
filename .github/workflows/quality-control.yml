@@ -33,7 +33,7 @@ jobs:
 
       - name: Run PyTest with Coverage
         run: |
-          poetry run pytest -vs .
+          poetry run pytest
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
