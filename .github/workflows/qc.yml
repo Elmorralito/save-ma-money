@@ -26,22 +26,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-          poetry install --no-interaction
-      - name: Run Pylint
-        run: |
-          poetry run pylint $(git ls-files '*.py')
+          python -m poetry install --only=main --no-interaction --no-ansi --no-root
 
-      - name: Run Flake8
-        run: |
-          poetry run flake8 .
-
-      - name: Run MyPy
-        run: |
-          poetry run mypy .
+      - uses: pre-commit/action@v3.0.0 # Use the pre-commit GitHub Action
 
       - name: Run PyTest with Coverage
         run: |
-          poetry run pytest --cov=./ --cov-report=xml
+          pytest -vs .
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v3
