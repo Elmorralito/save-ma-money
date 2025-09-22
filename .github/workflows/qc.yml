@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m poetry install --only=main --no-interaction --no-ansi --no-root
+          poetry install --only=main --no-interaction --no-ansi --no-root
 
       - uses: pre-commit/action@v3.0.0 # Use the pre-commit GitHub Action
 
