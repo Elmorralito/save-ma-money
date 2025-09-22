@@ -1,0 +1,50 @@
+.DS_Store/
+
+poetry.lock
+
+*.drawio.bkp
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+.env
+
+node_modules/
+.mypy_cache/
+.pytest_cache/
+.venv/
+.env
+.env.local
+.dbversion
+# Build files
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+*.tar.gz
+*.zip
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.dll
+*.exe
+*.manifest
+*.spec
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+# Log files
+*.log
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swn
+
+.coverage

@@ -1,0 +1,11 @@
+PBCOPY_COMMAND := $(shell if test -e "$(shell which pbcopy)"; then echo "pbcopy"; else echo "xclip -selection clipboard"; fi)
+
+prep:
+	python -m poetry env info || python -m pip install poetry
+
+dev: prep
+	python -m poetry lock --no-cache
+	python -m poetry install
+
+activate: prep
+	echo "eval \"$(shell python -m poetry env activate)\"" | exec $(PBCOPY_COMMAND)
