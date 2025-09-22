@@ -49,7 +49,7 @@ build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib --cov-report=xml:skip-covered -ra"
-testpaths = ["tests"]
+testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
 
 [tool.pylint]
 init-hook = 'import sys; sys.path.extend(["papita-transactions-model/src", "papita-transactions-tracker/src"])'
