@@ -48,7 +48,7 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -ra -q"
+addopts = "--import-mode=importlib -ra -q --cov=*/tests --cov-report xml"
 testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
 
 [tool.pylint]
