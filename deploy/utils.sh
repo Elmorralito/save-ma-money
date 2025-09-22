@@ -12,6 +12,9 @@ log() {
         color="${RED}"
     elif [[ "${level}" == "INFO" ]]; then
         color="${GREEN}"
+    elif [[ "$level" == "TRACE" ]]; then
+        echo -e "$*"
+        return
     fi
     echo -e "${color}$(date +"%Y-%m-%d %H:%M:%S") ${0}::${level}::$*${NC}"
 }

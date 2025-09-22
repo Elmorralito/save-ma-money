@@ -7,7 +7,7 @@ from papita_txnsmodel.access.assets.dto import (
     TradingAssetAccountsDTO,
 )
 from papita_txnsmodel.access.assets.repository import AssetAccountsRepository, ExtendedAssetAccountRepository
-from papita_txnsmodel.access.types.dto import AssetAccountTypesDTO
+from papita_txnsmodel.access.types.dto import TypesDTO
 
 from .accounts import AccountsService
 from .extends import LinkedEntitiesService, LinkedEntity, TypedLinkedEntitiesServiceMixin
@@ -37,7 +37,7 @@ class AssetAccountsService(TypedLinkedEntitiesServiceMixin):
     type_id_field_name: str = "account_type"
     dto_type: type[AssetAccountsDTO] = AssetAccountsDTO
     repository_type: type[AssetAccountsRepository] = AssetAccountsRepository
-    types_dto_type: type[AssetAccountTypesDTO] = AssetAccountTypesDTO
+    types_dto_type: type[TypesDTO] = TypesDTO
 
 
 class ExtendedAssetAccountService(LinkedEntitiesService):

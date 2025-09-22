@@ -10,7 +10,7 @@ from papita_txnsmodel.access.liabilities.repository import (
     ExtendedLiabilityAccountsRepository,
     LiabilityAccountsRepository,
 )
-from papita_txnsmodel.access.types.dto import LiabilityAccountTypesDTO
+from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.extends import LinkedEntitiesService, LinkedEntity, TypedLinkedEntitiesServiceMixin
 
@@ -31,7 +31,7 @@ class LiabilityAccountsService(TypedLinkedEntitiesServiceMixin):
     type_id_field_name: str = "account_type"
     dto_type: type[LiabilityAccountsDTO] = LiabilityAccountsDTO
     repository_type: type[LiabilityAccountsRepository] = LiabilityAccountsRepository
-    types_dto_type: type[LiabilityAccountTypesDTO] = LiabilityAccountTypesDTO
+    types_dto_type: type[TypesDTO] = TypesDTO
 
 
 class ExtendedLiabilityAccountService(LinkedEntitiesService):

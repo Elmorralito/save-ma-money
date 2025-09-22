@@ -6,7 +6,6 @@ from pydantic import Field, field_validator, model_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
-from papita_txnsmodel.access.types.dto import TransactionCategoriesDTO
 from papita_txnsmodel.model.transactions import IdentifiedTransactions, Transactions
 from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
@@ -16,7 +15,6 @@ class IdentifiedTransactionsDTO(TableDTO):
 
     __dao_type__ = IdentifiedTransactions
 
-    category: Annotated[uuid.UUID | TransactionCategoriesDTO, Field(alias="category_id")]
     name: str
     tags: List[str]
     description: str
@@ -65,17 +63,6 @@ class IdentifiedTransactionsDTO(TableDTO):
         if v > 28:
             raise ValueError("planned_transaction_day must be less than or equal to 28")
         return v
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        return convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="category",
-            id_field_attr_name="id",
-            target_field="category_id",
-            expected_intput_field_type=TransactionCategoriesDTO,
-            expected_output_field_type=uuid.UUID,
-        )
 
 
 class TransactionsDTO(TableDTO):

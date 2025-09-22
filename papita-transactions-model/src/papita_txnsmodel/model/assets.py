@@ -9,7 +9,7 @@ from papita_txnsmodel.model.enums import RealStateAssetAccountsAreaUnits, RealSt
 if TYPE_CHECKING:
     from .accounts import Accounts
     from .liabilities import BankCreditLiabilityAccounts
-    from .types import AssetAccountTypes
+    from .types import Types
 
 
 class AssetAccounts(SQLModel, table=True):  # type: ignore
@@ -18,7 +18,7 @@ class AssetAccounts(SQLModel, table=True):  # type: ignore
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     account_id: uuid.UUID = Field(foreign_key="accounts.id", nullable=False)
-    account_type_id: uuid.UUID = Field(foreign_key="asset_account_types.id", nullable=False)
+    type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
     bank_credit_liability_account_id: uuid.UUID | None = Field(
         foreign_key="bank_credit_liability_accounts.liability_account_id", default=None, nullable=True
     )
@@ -34,7 +34,7 @@ class AssetAccounts(SQLModel, table=True):  # type: ignore
         back_populates="asset_accounts",
     )
 
-    asset_account_types: "AssetAccountTypes" = Relationship(
+    types: "Types" = Relationship(
         back_populates="asset_accounts",
     )
 

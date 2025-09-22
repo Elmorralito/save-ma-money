@@ -7,7 +7,7 @@ from sqlmodel import Field, Relationship, SQLModel
 if TYPE_CHECKING:
     from .accounts import Accounts
     from .assets import AssetAccounts
-    from .types import LiabilityAccountTypes
+    from .types import Types
 
 
 class LiabilityAccounts(SQLModel, table=True):  # type: ignore
@@ -16,7 +16,7 @@ class LiabilityAccounts(SQLModel, table=True):  # type: ignore
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     account_id: uuid.UUID = Field(nullable=False, foreign_key="accounts.id")
-    account_type_id: uuid.UUID = Field(foreign_key="liability_account_types.id", nullable=False)
+    type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
     months_per_period: int = Field(sa_column=Column(SmallInteger, nullable=True), default=1, gt=0)
     initial_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     present_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
@@ -31,7 +31,7 @@ class LiabilityAccounts(SQLModel, table=True):  # type: ignore
     accounts: "Accounts" = Relationship(
         back_populates="liability_accounts",
     )
-    liability_account_types: "LiabilityAccountTypes" = Relationship(back_populates="liability_accounts")
+    types: "Types" = Relationship(back_populates="liability_accounts")
     bank_credit_liability_accounts: Optional["BankCreditLiabilityAccounts"] = Relationship(
         back_populates="liability_accounts", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
     )

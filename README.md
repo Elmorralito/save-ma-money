@@ -10,4 +10,3 @@
 | Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
 
 ## Briefing
-

@@ -6,7 +6,7 @@ from pydantic import Field, field_validator, model_serializer
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.types.dto import (
-    LiabilityAccountTypesDTO,
+    TypesDTO,
 )
 from papita_txnsmodel.model.liabilities import (
     BankCreditLiabilityAccounts,
@@ -22,7 +22,7 @@ class LiabilityAccountsDTO(TableDTO):
     __dao_type__ = LiabilityAccounts
 
     account: Annotated[uuid.UUID | AccountsDTO, Field(alias="account_id")]
-    account_type: Annotated[uuid.UUID | LiabilityAccountTypesDTO, Field(alias="account_type_id")]
+    account_type: Annotated[uuid.UUID | TypesDTO, Field(alias="account_type_id")]
     months_per_period: int = 1
     initial_value: float
     present_value: float
@@ -84,7 +84,7 @@ class LiabilityAccountsDTO(TableDTO):
             id_field="account_type",
             id_field_attr_name="id",
             target_field="account_type_id",
-            expected_intput_field_type=LiabilityAccountTypesDTO,
+            expected_intput_field_type=TypesDTO,
             expected_output_field_type=uuid.UUID,
         )
         return first | second

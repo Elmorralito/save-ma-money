@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
+PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+source "${PROJECT_PATH}/deploy/utils.sh"
+
 usage() {
-    cat << EOF
-Usage: $(basename "$0") ACTION [options]
+   USAGE="$(cat <<EOM
+Usage: $0 ACTION [options]
 
 Database migration utility for Alembic with optional Docker integration.
 
@@ -37,22 +40,21 @@ EXAMPLES:
 PRERREQUISITES:
     - Alembic must be installed in your environment
     - Docker and Docker Compose (if using Docker functionality)
-EOF
+EOM
+)"
+    log "TRACE" "$USAGE"
     exit 1
 }
 
 test -e "$(which alembic)" || {
-    echo "ERROR::Alembic not found."
+    log "ERROR" "Alembic not found."
     usage
 }
 
 RM_FLAG=
 LOCAL_FLAG=
-PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
-ALEMBIC_PATH="${PROJECT_PATH}/transactions-model"
+ALEMBIC_PATH="${PROJECT_PATH}/papita-transactions-model"
 ENV_FILE="${ALEMBIC_PATH}/.env"
-
-source "${PROJECT_PATH}/deploy/utils.sh"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -94,7 +96,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 1
             ;;
         *)
-            echo "ERROR: Unknown option: $1"
+            log "ERROR" "Unknown option: $1"
             usage
             ;;
     esac

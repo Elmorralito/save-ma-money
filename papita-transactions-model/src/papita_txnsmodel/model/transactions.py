@@ -9,7 +9,7 @@ from .base import BaseSQLModel
 
 if TYPE_CHECKING:
     from .accounts import Accounts
-    from .types import TransactionCategories
+    from .types import Types
 
 
 class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
@@ -17,14 +17,14 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = "identified_transactions"
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    category_id: uuid.UUID = Field(foreign_key="transaction_categories.id", nullable=False)
+    type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
     name: str = Field(nullable=False, index=True)
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
     description: str = Field(nullable=False)
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
 
-    transaction_categories: "TransactionCategories" = Relationship(back_populates="identified_transactions")
+    types: "Types" = Relationship(back_populates="identified_transactions")
     transactions: List["Transactions"] = Relationship(back_populates="identified_transactions", cascade_delete=True)
 
 

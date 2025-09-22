@@ -6,7 +6,7 @@ from pydantic import Field, field_validator, model_serializer
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.liabilities.dto import BankCreditLiabilityAccountsDTO
-from papita_txnsmodel.access.types.dto import AssetAccountTypesDTO
+from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.model.assets import (
     AssetAccounts,
     BankingAssetAccounts,
@@ -23,7 +23,7 @@ class AssetAccountsDTO(TableDTO):
     __dao_type__ = AssetAccounts
 
     account: Annotated[uuid.UUID | AccountsDTO, Field(alias="account_id")]
-    account_type: Annotated[uuid.UUID | AssetAccountTypesDTO, Field(alias="account_type_id")]
+    account_type: Annotated[uuid.UUID | TypesDTO, Field(alias="account_type_id")]
     bank_credit_liability_account: Optional[
         Annotated[uuid.UUID | BankCreditLiabilityAccountsDTO, Field(alias="bank_credit_liability_account_id")]
     ] = None
@@ -99,7 +99,7 @@ class AssetAccountsDTO(TableDTO):
             id_field="account_type",
             id_field_attr_name="id",
             target_field="account_type_id",
-            expected_intput_field_type=AssetAccountTypesDTO,
+            expected_intput_field_type=TypesDTO,
             expected_output_field_type=uuid.UUID,
         )
         if isinstance(self.bank_credit_liability_account, (BankCreditLiabilityAccountsDTO, uuid.UUID)):
