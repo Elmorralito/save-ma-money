@@ -11,6 +11,9 @@ on:
     workflows: ["Code Quality Control"]
     types:
       - completed
+  pull_request:
+    types: [opened, synchronize, reopened]
+
 jobs:
   build-and-publish:
     # Run on manual trigger or when quality-control workflow succeeds on an open PR
@@ -64,7 +67,7 @@ jobs:
 
       - name: Install Poetry
         if: ${{ github.event_name == 'workflow_dispatch' || steps.check_pr_state.outputs.skip != 'true' }}
-        uses: snok/install-poetry@v1
+        uses: snok/install-poetry@v2
         with:
           version: 2.1.3
           virtualenvs-create: true
