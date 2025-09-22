@@ -27,16 +27,10 @@ jobs:
       - name: Install dependencies
         run: |
           poetry install --only=main --no-interaction --no-ansi --no-root
-          python -m pip install pylint pytest coverage
+          python -m pip install pylint pytest
 
       - uses: pre-commit/action@v3.0.0 # Use the pre-commit GitHub Action
 
       - name: Run PyTest with Coverage
         run: |
           poetry run pytest
-
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false # Set to true to fail CI if upload fails
