@@ -156,12 +156,9 @@ exclude = [
     "dist",
 ]
 ignore-init-method = true
+ignore-init-module = true
 ignore-private = true
 ignore-magic = true
 color = true
-generate-badge = "./docs"
-badge-format = "svg"
 verbose = 3
-omit_modules = true
 ignore-property-decorators = false
-ignore-semiprivate = true
