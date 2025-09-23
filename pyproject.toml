@@ -144,6 +144,8 @@ max-complexity = 18
 paths = [
     "papita-transactions-model/src",
     "papita-transactions-tracker/src",
+]
+testpaths = [
     "papita-transactions-model/tests",
     "papita-transactions-tracker/tests",
 ]
