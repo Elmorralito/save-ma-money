@@ -15,7 +15,7 @@ class BaseHandler(BaseModel, Generic[T]):
     error_handler: FallbackAction = FallbackAction.RAISE
 
     def setup_service(self, service: T, **kwargs) -> "BaseHandler":
-        if not isinstance(service, T):
+        if not isinstance(service, BaseService):
             raise TypeError("Service type not compatible with this handler.")
 
         self.service = service

@@ -48,7 +48,7 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -ra -q --cov=*/tests --cov-report xml"
+addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov-report term-missing"
 testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
 
 [tool.pylint]
@@ -114,7 +114,13 @@ namespace_packages = true
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
 known_first_party=["papita_txnsmodel", "papita_txnstracker"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "LOCALFOLDER"
+]
 py_version=312
 atomic = true
 profile = "black"
@@ -123,32 +129,37 @@ skip_gitignore = true
 
 [tool.flake8]
 ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", "dist", "*.ipynb", "papita-transactions-model/tests/*", "papita-transactions-tracker/tests/*"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "dist",
+    "*.ipynb",
+    "papita-transactions-model/tests/*",
+    "papita-transactions-tracker/tests/*",
+]
 max-line-length = 120
 max-complexity = 18
 
-# [tool.interrogate]
-# paths = [
-#     "transactions-model/src",
-#     "transactions-loader/src",
-#     "transactions-model/tests",
-#     "transactions-loader/tests",
-# ]
-# fail-under = 10
-# exclude = [
-#     "transactions-model/alembic",
-#     "venv",
-#     ".venv",
-#     "build",
-#     "dist",
-# ]
-# ignore-init-method = true
-# ignore-private = true
-# ignore-magic = true
-# color = true
-# generate-badge = "./docs"
-# badge-format = "svg"
-# verbose = 3
-# omit_modules = true
-# ignore-property-decorators = false
-# ignore-semiprivate = true
+[tool.interrogate]
+paths = [
+    "papita-transactions-model/src",
+    "papita-transactions-tracker/src",
+]
+fail-under = 60
+exclude = [
+    "papita-transactions-model/alembic",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
+ignore-init-method = true
+ignore-private = true
+ignore-magic = true
+color = true
+generate-badge = "./docs"
+badge-format = "svg"
+verbose = 3
+omit_modules = true
+ignore-property-decorators = false
+ignore-semiprivate = true

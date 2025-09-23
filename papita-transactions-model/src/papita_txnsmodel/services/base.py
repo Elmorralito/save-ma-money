@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class BaseService(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True, extra=True)
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
     connector: type[SQLDatabaseConnector] = SQLDatabaseConnector
     dto_type: type[TableDTO] = TableDTO

@@ -67,4 +67,5 @@ fi
 TEST_COMMAND="pytest -vs . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
 run_command 0 "$TEST_COMMAND"
 
+rm -rf "duckdb:" "MagickMock/getcwd()"
 log "INFO" "Done"
