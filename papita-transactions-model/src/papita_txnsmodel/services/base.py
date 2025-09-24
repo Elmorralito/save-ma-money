@@ -63,7 +63,7 @@ class BaseService(BaseModel):
             BaseService: The validated service instance.
         """
         self._repository = self.repository_type()
-        self.on_conflict_do = OnUpsertConflictDo(getattr(self.on_conflict_do, "value", self.on_conflict_do).lower())
+        self.on_conflict_do = OnUpsertConflictDo(getattr(self.on_conflict_do, "value", self.on_conflict_do).upper())
         return self
 
     def check_expected_dto_type(self, dto: type[TableDTO] | TableDTO | None) -> type[TableDTO]:

@@ -53,7 +53,7 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov-report term-missing"
+addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov-report xml:docs"
 testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
 
 [tool.pylint]

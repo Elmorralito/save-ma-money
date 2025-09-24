@@ -64,8 +64,15 @@ if [[ "$ENABLE_LOGS" -eq "1" ]] ; then
     mkdir -p "$TESTS_RESULTS_PATH"
 fi
 
-TEST_COMMAND="pytest -vs . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
-run_command 0 "$TEST_COMMAND"
+TEST_COMMAND="pytest . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
+
+test -e "$(which poetry)" && {
+    TEST_COMMAND="poetry run ${TEST_COMMAND}"
+}
+
+TEST_COMMAND="cd ${PROJECT_PATH} && poetry run ${TEST_COMMAND}"
+
+run_command 1 "$TEST_COMMAND"
 
 rm -rf "duckdb:" "MagickMock/getcwd()"
 log "INFO" "Done"
