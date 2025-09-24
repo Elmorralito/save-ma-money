@@ -1,0 +1,61 @@
+name: Publish Dev Package
+
+on:
+  workflow_run:
+    workflows: ["quality-control"]
+    types:
+      - completed
+  workflow_dispatch:
+    # Manual trigger with no additional inputs
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  build-and-publish:
+    # Skip if the triggering workflow_run was not successful
+    if: |
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') &&
+      (github.event_name != 'pull_request' || github.event.action == 'opened' || github.event.action == 'synchronize')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry python-semantic-release
+
+      - name: Configure Git user
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Bump version with python-semantic-release
+        id: version_bump
+        run: |
+          semantic-release version --patch --as-prerelease --prerelease-token "dev"
+          echo "NEW_VERSION=$(poetry version -s)" >> $GITHUB_ENV
+
+      - name: Build package with Poetry
+        run: poetry build
+
+      - name: Publish to PyPI
+        run: |
+          poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+          poetry publish --no-interaction
+          echo "Published version ${{ env.NEW_VERSION }} to PyPI"
+
+      - name: Push changes back to repository
+        run: |
+          git push
+          echo "Pushed version ${{ env.NEW_VERSION }} changes back to repository"
