@@ -198,4 +198,4 @@ ignore-property-decorators = false
 ignore-nested-functions = true
 generate-badge = "./docs"
 badge-format = "svg"
-badge-style = "plastic"
+badge-style = "flat"
