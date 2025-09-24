@@ -1,3 +1,15 @@
+"""Liabilities module for managing liability accounts in the Papita Transactions system.
+
+This module defines various liability account models including general liability accounts,
+bank credit liabilities, and credit card liabilities. It provides the structure for
+storing different types of liabilities with their specific attributes and relationships.
+
+Classes:
+    LiabilityAccounts: Base model for all liability accounts in the system.
+    BankCreditLiabilityAccounts: Model for bank credit-related liability accounts.
+    CreditCardLiabilityAccounts: Model for credit card liability accounts.
+"""
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 
@@ -11,6 +23,33 @@ if TYPE_CHECKING:
 
 
 class LiabilityAccounts(SQLModel, table=True):  # type: ignore
+    """Liability accounts model representing financial liabilities in the system.
+
+    This class defines the structure for liability accounts, which can be linked to
+    regular accounts and types. It serves as the base model for more specific liability
+    types like bank credits and credit cards.
+
+    Attributes:
+        id (uuid.UUID): Unique identifier for the liability account. Auto-generated UUID.
+        account_id (uuid.UUID): Foreign key to the associated account.
+        type_id (uuid.UUID): Foreign key to the liability type.
+        months_per_period (int): Number of months per payment period. Must be positive.
+        initial_value (float): Initial monetary value of the liability. Must be positive.
+        present_value (float): Current monetary value of the liability. Must be positive.
+        monthly_interest_rate (float): Monthly interest rate as a decimal. Must be positive.
+        yearly_interest_rate (float): Yearly interest rate as a decimal. Must be positive.
+        payment (float): Regular payment amount. Must be positive.
+        total_paid (float): Total amount paid so far. Must be positive, defaults to 0.
+        overall_periods (int): Total number of payment periods. Must be positive.
+        periods_paid (int): Number of periods already paid. Must be positive.
+        closing_day (int): Day of the month when payment is due. Must be between 1 and 28.
+        accounts (Accounts): Related account information.
+        types (Types): Related type information.
+        bank_credit_liability_accounts (Optional[BankCreditLiabilityAccounts]): Optional related
+            bank credit liability details with one-to-one relationship.
+        credit_card_liability_accounts (Optional[CreditCardLiabilityAccounts]): Optional related
+            credit card liability details with one-to-one relationship.
+    """
 
     __tablename__ = "liability_accounts"
 
@@ -41,6 +80,21 @@ class LiabilityAccounts(SQLModel, table=True):  # type: ignore
 
 
 class BankCreditLiabilityAccounts(SQLModel, table=True):  # type: ignore
+    """Bank credit liability accounts model for loan-specific liability information.
+
+    This class defines the structure for bank credit liability accounts, such as
+    mortgages, personal loans, and other bank-issued credit products. It extends
+    the base liability account with bank credit-specific attributes.
+
+    Attributes:
+        liability_account_id (uuid.UUID): Foreign key to the associated liability account.
+            Serves as the primary key.
+        insurance_payment (float): Amount paid for insurance related to this credit.
+        extras_payment (float): Additional payments related to this credit.
+        liability_accounts (LiabilityAccounts): Related liability account information.
+        asset_accounts (Optional[AssetAccounts]): Optional related asset account,
+            typically used for credits that finance specific assets.
+    """
 
     __tablename__ = "bank_credit_liability_accounts"
 
@@ -56,6 +110,17 @@ class BankCreditLiabilityAccounts(SQLModel, table=True):  # type: ignore
 
 
 class CreditCardLiabilityAccounts(SQLModel, table=True):  # type: ignore
+    """Credit card liability accounts model for credit card-specific liability information.
+
+    This class defines the structure for credit card liability accounts. It extends
+    the base liability account with credit card-specific attributes.
+
+    Attributes:
+        liability_account_id (uuid.UUID): Foreign key to the associated liability account.
+            Serves as the primary key.
+        credit_limit (float): Maximum credit limit available on the card.
+        liability_accounts (LiabilityAccounts): Related liability account information.
+    """
 
     __tablename__ = "credit_card_liability_accounts"
 

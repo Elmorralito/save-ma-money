@@ -30,6 +30,7 @@ types-python-dateutil = "^2.9.0.20250516"
 sqlfluff = "^3.4.0"
 tabulate = "^0.9.0"
 types-tabulate = "^0.9.0.20241207"
+types-toml = "^0.10.8.20240310"
 
 [tool.poetry.group.development.dependencies]
 pandas = ">=2.3.1,<2.4.0"
@@ -42,6 +43,10 @@ sqlalchemy = { extras = ["duckdb-engine"], version = "^2.0.43" }
 sqlmodel = "^0.0.24"
 dotenv = "^0.9.9"
 poetry = "^2.1.4"
+
+
+[tool.poetry.group.dev.dependencies]
+toml = "^0.10.2"
 
 [build-system]
 requires = ["poetry>=1.1.13"]
@@ -147,7 +152,6 @@ paths = [
     "papita-transactions-model/tests",
     "papita-transactions-tracker/tests",
 ]
-fail-under = 60
 exclude = [
     "papita-transactions-model/alembic",
     "venv",
@@ -155,10 +159,17 @@ exclude = [
     "build",
     "dist",
 ]
+ignore-regex = ["^get$", "^mock_.*", "^test_.*[Base|Invalid|Test|Valid]+Class.*"]
+fail-under = 90
+verbose = 3
+color = true
 ignore-init-method = true
 ignore-init-module = true
+ignore-module = true
 ignore-private = true
 ignore-magic = true
-color = true
-verbose = 3
 ignore-property-decorators = false
+ignore-nested-functions = true
+generate-badge = "./docs"
+badge-format = "svg"
+badge-style = "plastic"

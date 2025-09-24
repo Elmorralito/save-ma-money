@@ -18,18 +18,19 @@ Usage:
 """
 
 import inspect
-import itertools
 import logging
 import sys
 import traceback
 from enum import Enum
-from typing import Any, Callable, Generator, Iterator, Sequence
+from typing import Any, Callable, Iterator, Sequence
 
 import pandas as pd
 from sqlalchemy import Table
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeMeta
 from sqlmodel import Session
+
+from papita_txnsmodel.utils.datautils import slice_batches
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +44,8 @@ class OnUpsertConflictDo(Enum):
         UPDATE: Update the existing record on conflict.
     """
 
-    NOTHING = "nothing"
-    UPDATE = "update"
+    NOTHING = "NOTHING"
+    UPDATE = "UPDATE"
 
 
 class Upserter:
@@ -68,21 +69,6 @@ class Upserter:
     _upsert_method: Callable[[Any, Engine | Connection, Sequence[str], Iterator], int]
     _table_cols: Sequence[str]
     _table_name: str = ""
-
-    @staticmethod
-    def slice_batches(data: pd.DataFrame | Generator | Iterator, batch_size: int):
-        if isinstance(data, pd.DataFrame):
-            data = map(lambda x: x[1], data.iterrows())
-
-        if isinstance(data, Generator):
-            data = iter(data)
-
-        while True:
-            slice_ = list(itertools.islice(data, batch_size))
-            if not slice_:
-                break
-
-            yield slice_
 
     @classmethod
     def upsert(
@@ -199,7 +185,7 @@ class Upserter:
             ),
         ), "The upsert operation cannot bve performed with object types different from DeclarativeMeta or Table."
         logger.info("Retrying to upsert the records.")
-        batches = cls.slice_batches(df, to_sql_kwargs.get("batch_size", 5000))
+        batches = slice_batches(df, to_sql_kwargs.get("batch_size", 5000))
         if not inspect.ismethod(cls._upsert_method):
             raise TypeError("There is no method set for upserting.")
 
@@ -340,9 +326,45 @@ class DuckDBUpserter(PostgreSQLUpserter):
 
 
 class UpserterFactory:
+    """
+    Factory class for creating dialect-specific database upserters.
+
+    This factory identifies and instantiates the appropriate Upserter implementation
+    based on the database dialect of the provided session. Each Upserter subclass is
+    designed to handle the specific syntax and requirements of different database
+    systems (like PostgreSQL, MySQL, SQLite, etc.) when performing upsert operations.
+
+    The factory pattern allows the application to use the correct upsert implementation
+    without having to explicitly know which database system is being used.
+    """
 
     @classmethod
     def get_upserter(cls, db_session: Session) -> type[Upserter]:
+        """
+        Get the appropriate Upserter class for the database dialect of the session.
+
+        This method inspects the current module to find all Upserter subclasses and
+        returns the one that supports the dialect of the provided database session.
+
+        Args:
+            db_session: SQLAlchemy Session object connected to the target database.
+                The dialect is extracted from this session to determine which
+                Upserter implementation to use.
+
+        Returns:
+            The Upserter subclass that supports the dialect of the provided session.
+
+        Raises:
+            ValueError: If no Upserter implementation is found that supports the
+                dialect of the provided session.
+
+        Example:
+            >>> from sqlalchemy.orm import Session
+            >>> session = Session(engine)
+            >>> upserter_class = UpserterFactory.get_upserter(session)
+            >>> upserter = upserter_class(session)
+            >>> upserter.upsert_data(data)
+        """
         dialect = db_session.bind.dialect.name
         for _, cls_ in inspect.getmembers(sys.modules[__name__], inspect.isclass):
             if not issubclass(cls_, Upserter) and cls_ != Upserter:

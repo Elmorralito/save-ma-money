@@ -3,40 +3,42 @@ name: Code Quality Control
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - ".docs/*"
 
 jobs:
   quality-control:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: "Checkout code"
+        uses: "actions/checkout@v4"
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: "Set up Python"
+        uses: "actions/setup-python@v4"
         with:
           python-version: "3.12" # Specify the exact Python version here
           cache: "pip"
 
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
+      - name: "Install Poetry"
+        uses: "snok/install-poetry@v1"
         with:
           version: 2.1.3
           virtualenvs-create: true
           virtualenvs-in-project: true
 
-      - name: Install dependencies
+      - name: "Install dependencies"
         run: |
           poetry install --no-interaction
           python -m pip install pylint pytest pytest-cov coverage
 
-      - uses: pre-commit/action@v3.0.0
+      - uses: "pre-commit/action@v3.0.0"
 
-      - name: Run PyTest with Coverage
+      - name: "Run PyTest with Coverage"
         run: |
           poetry run pytest
 
-      - name: Upload coverage report
-        uses: codecov/codecov-action@v3
+      - name: "Upload coverage report"
+        uses: "codecov/codecov-action@v3"
         with:
           file: ./coverage.xml
           fail_ci_if_error: false

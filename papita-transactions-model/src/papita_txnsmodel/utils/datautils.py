@@ -5,7 +5,8 @@ This module provides functions to standardize pandas DataFrames using Pydantic m
 and to help with data transfer object (DTO) serialization.
 """
 
-from typing import Any, Dict
+import itertools
+from typing import Any, Dict, Generator, Iterator
 
 import pandas as pd
 from pydantic import BaseModel
@@ -91,3 +92,44 @@ def convert_dto_obj_on_serialize(
 
     data.pop(id_field)
     return data
+
+
+def slice_batches(data: pd.DataFrame | Generator | Iterator, batch_size: int):
+    """
+    Split data into batches of specified size for efficient processing.
+
+    This method takes input data in various formats and yields it as batches
+    of specified size. It's particularly useful for database operations where
+    processing large amounts of data in smaller chunks is more efficient.
+
+    Args:
+        data: The data to be batched. Can be a pandas DataFrame, a Generator,
+            or any Iterator. If a DataFrame is provided, it will be converted
+            to an iterator of rows.
+        batch_size: The maximum number of items to include in each batch.
+
+    Yields:
+        List: A batch of items from the input data, with length up to
+            batch_size. The last batch may contain fewer items.
+
+    Examples:
+        >>> df = pd.DataFrame({'A': range(10)})
+        >>> for batch in SomeClass.slice_batches(df, 3):
+        ...     print(len(batch))
+        3
+        3
+        3
+        1
+    """
+    if isinstance(data, pd.DataFrame):
+        data = map(lambda x: x[1], data.iterrows())
+
+    if isinstance(data, Generator):
+        data = iter(data)
+
+    while True:
+        slice_ = list(itertools.islice(data, batch_size))
+        if not slice_:
+            break
+
+        yield slice_

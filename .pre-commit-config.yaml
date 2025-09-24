@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -13,10 +13,10 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        args: ["--write", "*.yaml", "*.yml", "*.py"]
+        args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
-    rev: v0.10.0
+    rev: v0.11.0
     hooks:
       - id: shellcheck
 
@@ -29,13 +29,13 @@ repos:
         args: ["--profile=black"]
 
   - repo: https://github.com/psf/black
-    rev: 25.1.0
+    rev: 25.9.0
     hooks:
       - id: black
         exclude: "./tests/.*"
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 7.1.1
+    rev: 7.3.0
     hooks:
       - id: flake8
         additional_dependencies: [flake8-pyproject]
@@ -55,37 +55,23 @@ repos:
           ]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.18.2
     hooks:
       - id: mypy
         exclude: "./tests/.*"
         additional_dependencies:
           [
-            "mypy==1.15.0",
-            "types-pyyaml==6.0.12.20241230",
+            "mypy==1.18.2",
+            "types-pyyaml>=6.0.12.20241230",
             "types-python-dateutil>=2.9.0.20250516",
             "types-tabulate>=0.9.0.20241207",
+            "types-toml>=0.10.8.20240310",
           ]
 
   - repo: https://github.com/econchick/interrogate
     rev: 1.7.0
     hooks:
       - id: interrogate
-        stages: [commit-msg]
-        args:
-          [
-            "-c",
-            "pyproject.toml",
-            "--generate-badge",
-            ".docs/",
-            "--badge-format",
-            "svg",
-          ]
-        files: "^.*/[src|tests]"
-        pass_filenames: false
-        always_run: true
-      - id: interrogate
-        stages: [manual]
         args: ["-c", "pyproject.toml"]
         files: "^.*/[src|tests]"
         pass_filenames: false

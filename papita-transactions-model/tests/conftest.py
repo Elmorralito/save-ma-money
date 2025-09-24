@@ -1,4 +1,7 @@
-# my_project/tests/conftest.py
+# papita-transactions-model/tests/conftest.py
+"""Pytest configuration file.
+"""
+
 import sys
 import os
 
