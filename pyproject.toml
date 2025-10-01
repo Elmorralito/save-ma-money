@@ -12,6 +12,7 @@ include = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
 papita-transactions-tracker = {path = "papita-transactions-tracker"}
+genbadge = "^1.1.2"
 
 [tool.poetry.group.pre-commit.dependencies]
 black = "^24.4.2"
@@ -30,6 +31,7 @@ types-python-dateutil = "^2.9.0.20250516"
 sqlfluff = "^3.4.0"
 tabulate = "^0.9.0"
 types-tabulate = "^0.9.0.20241207"
+types-toml = "^0.10.8.20240310"
 
 [tool.poetry.group.development.dependencies]
 pandas = ">=2.3.1,<2.4.0"
@@ -43,13 +45,42 @@ sqlmodel = "^0.0.24"
 dotenv = "^0.9.9"
 poetry = "^2.1.4"
 
+
+[tool.poetry.group.dev.dependencies]
+toml = "^0.10.2"
+genbadge = {version = "^1.1.2", extras = ["coverage"]}
+
 [build-system]
 requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib --cov-report=term-missing:skip-covered -ra"
-testpaths = ["tests"]
+addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov-report xml:docs/coverage.xml"
+testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    ]
+
+ignore_errors = true
+
+[tool.coverage.run]
+branch = true
 
 [tool.pylint]
 init-hook = 'import sys; sys.path.extend(["papita-transactions-model/src", "papita-transactions-tracker/src"])'
@@ -95,13 +126,13 @@ max-module-lines = 1000
 
 [tool.black]
 line-length = 120
-target-version = ["py311"]
+target-version = ["py312"]
 include = "\\.pyi?$"
 
 [tool.mypy]
 mypy_path = ["*"]
 exclude = ["tests/*"]
-python_version = "3.11"
+python_version = "3.12"
 disable_error_code = ["union-attr", "misc"]
 warn_unused_ignores = true
 disallow_any_decorated = false
@@ -114,8 +145,14 @@ namespace_packages = true
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
 known_first_party=["papita_txnsmodel", "papita_txnstracker"]
-sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
-py_version=311
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "FIRSTPARTY",
+    "LOCALFOLDER"
+]
+py_version=312
 atomic = true
 profile = "black"
 line_length = 120
@@ -123,32 +160,42 @@ skip_gitignore = true
 
 [tool.flake8]
 ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", "dist", "*.ipynb", "papita-transactions-model/tests/*", "papita-transactions-tracker/tests/*"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "dist",
+    "*.ipynb",
+    "papita-transactions-model/tests/*",
+    "papita-transactions-tracker/tests/*",
+]
 max-line-length = 120
 max-complexity = 18
 
-# [tool.interrogate]
-# paths = [
-#     "transactions-model/src",
-#     "transactions-loader/src",
-#     "transactions-model/tests",
-#     "transactions-loader/tests",
-# ]
-# fail-under = 10
-# exclude = [
-#     "transactions-model/alembic",
-#     "venv",
-#     ".venv",
-#     "build",
-#     "dist",
-# ]
-# ignore-init-method = true
-# ignore-private = true
-# ignore-magic = true
-# color = true
-# generate-badge = "./docs"
-# badge-format = "svg"
-# verbose = 3
-# omit_modules = true
-# ignore-property-decorators = false
-# ignore-semiprivate = true
+[tool.interrogate]
+paths = [
+    "papita-transactions-model/src",
+    "papita-transactions-tracker/src",
+    "papita-transactions-model/tests",
+    "papita-transactions-tracker/tests",
+]
+exclude = [
+    "papita-transactions-model/alembic",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
+ignore-regex = ["^get$", "^mock_.*", "^test_.*[Base|Invalid|Test|Valid]+Class.*"]
+fail-under = 90
+verbose = 3
+color = true
+ignore-init-method = true
+ignore-init-module = true
+ignore-module = true
+ignore-private = true
+ignore-magic = true
+ignore-property-decorators = false
+ignore-nested-functions = true
+generate-badge = "./docs"
+badge-format = "svg"
+badge-style = "flat"

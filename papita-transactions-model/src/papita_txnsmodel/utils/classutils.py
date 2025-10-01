@@ -1,3 +1,16 @@
+"""Utility module for class manipulation, introspection, and management.
+
+This module provides utilities for working with Python classes in a dynamic way,
+including class discovery, loading, and introspection. It features a metaclass for
+implementing the Singleton pattern, an enum for handling validation failures, and
+a comprehensive class selection toolkit.
+
+The module provides the following key components:
+    - MetaSingleton: A metaclass for implementing the Singleton design pattern
+    - FallbackAction: An enum defining strategies for handling validation failures
+    - ClassSelector: Utilities for discovering, loading, and filtering classes
+"""
+
 import importlib
 import inspect
 import logging
@@ -46,6 +59,16 @@ class FallbackAction(Enum):
     IGNORE = "IGNORE"
 
     def get_logger(self, **kwargs) -> logging.Logger:
+        """Retrieves a logger instance from kwargs or returns the default logger.
+
+        Args:
+            **kwargs: Keyword arguments that may contain a 'logger' entry.
+                If provided, the logger should be an instance of logging.Logger.
+
+        Returns:
+            logging.Logger: Either the logger provided in kwargs if valid, or
+                the default module logger.
+        """
         logger = kwargs.get("logger", _utils_logger)
         return logger if isinstance(logger, logging.Logger) else _utils_logger
 

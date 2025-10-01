@@ -1,3 +1,16 @@
+"""Assets module for managing asset accounts in the Papita Transactions system.
+
+This module defines various asset account models including general asset accounts,
+banking assets, real estate assets, and trading assets. It provides the structure
+for storing different types of assets with their specific attributes and relationships.
+
+Classes:
+    AssetAccounts: Base model for all asset accounts in the system.
+    BankingAssetAccounts: Model for banking-related asset accounts.
+    RealStateAssetAccounts: Model for real estate asset accounts.
+    TradingAssetAccounts: Model for trading and investment asset accounts.
+"""
+
 import uuid
 from typing import TYPE_CHECKING, Optional
 
@@ -13,6 +26,36 @@ if TYPE_CHECKING:
 
 
 class AssetAccounts(SQLModel, table=True):  # type: ignore
+    """Asset accounts model representing financial assets in the system.
+
+    This class defines the structure for asset accounts, which can be linked to
+    regular accounts, types, and liability accounts. It serves as the base model
+    for more specific asset types like banking, real estate, and trading assets.
+
+    Attributes:
+        id (uuid.UUID): Unique identifier for the asset account. Auto-generated UUID.
+        account_id (uuid.UUID): Foreign key to the associated account.
+        type_id (uuid.UUID): Foreign key to the asset type.
+        bank_credit_liability_account_id (uuid.UUID | None): Optional foreign key to a
+            bank credit liability account.
+        months_per_period (int): Number of months per accounting period. Must be positive.
+        initial_value (float | None): Initial monetary value of the asset. Must be positive.
+        last_value (float | None): Most recent monetary value of the asset. Must be positive.
+        monthly_interest_rate (float | None): Monthly interest rate as a decimal. Must be positive.
+        yearly_interest_rate (float | None): Yearly interest rate as a decimal. Must be positive.
+        roi (float | None): Return on investment as a decimal. Must be positive.
+        periodical_earnings (float | None): Earnings per period. Must be positive.
+        accounts (Accounts): Related account information.
+        types (Types): Related type information.
+        bank_credit_liability_accounts (Optional[BankCreditLiabilityAccounts]): Optional related
+            bank credit liability account.
+        banking_asset_accounts (Optional[BankingAssetAccounts]): Optional related banking asset
+            account details with one-to-one relationship.
+        trading_asset_accounts (Optional[TradingAssetAccounts]): Optional related trading asset
+            account details with one-to-one relationship.
+        real_state_asset_accounts (Optional[RealStateAssetAccounts]): Optional related real estate
+            asset account details with one-to-one relationship.
+    """
 
     __tablename__ = "asset_accounts"
 
@@ -53,6 +96,19 @@ class AssetAccounts(SQLModel, table=True):  # type: ignore
 
 
 class BankingAssetAccounts(SQLModel, table=True):  # type: ignore
+    """Banking asset accounts model for bank-specific asset information.
+
+    This class defines the structure for banking-specific asset accounts, such as
+    checking accounts, savings accounts, and certificates of deposit. It extends
+    the base asset account with banking-specific attributes.
+
+    Attributes:
+        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
+            Serves as the primary key.
+        entity (str): Name of the banking entity or institution. Indexed for faster lookups.
+        account_number (str | None): Optional bank account number. Indexed for faster lookups.
+        asset_accounts (AssetAccounts): Related asset account information.
+    """
 
     __tablename__ = "banking_asset_accounts"
 
@@ -66,6 +122,25 @@ class BankingAssetAccounts(SQLModel, table=True):  # type: ignore
 
 
 class RealStateAssetAccounts(SQLModel, table=True):  # type: ignore
+    """Real estate asset accounts model for managing real estate-related assets.
+
+    This class defines the structure for real estate asset accounts, including
+    properties, land, and other real estate investments. It extends the base
+    asset account with real estate-specific attributes.
+
+    Attributes:
+        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
+            Serves as the primary key.
+        address (str): Address of the real estate property.
+        city (str): City where the real estate property is located.
+        country (str): Country where the real estate property is located.
+        total_area (float): Total area of the real estate property. Must be positive.
+        built_area (float): Built-up area of the real estate property. Must be positive.
+        area_unit (RealStateAssetAccountsAreaUnits): Unit of measurement for the property area.
+        ownership (RealStateAssetAccountsOwnership): Type of ownership for the real estate property.
+        participation (float): Percentage of ownership in the real estate property. Must be between 0 and 1.
+        asset_accounts (AssetAccounts): Related asset account information.
+    """
 
     __tablename__ = "real_state_asset_accounts"
 
@@ -86,6 +161,20 @@ class RealStateAssetAccounts(SQLModel, table=True):  # type: ignore
 
 
 class TradingAssetAccounts(SQLModel, table=True):  # type: ignore
+    """Trading asset accounts model for managing investment and trading assets.
+
+    This class defines the structure for trading asset accounts, such as stocks,
+    bonds, and other investment instruments. It extends the base asset account
+    with trading-specific attributes.
+
+    Attributes:
+        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
+            Serves as the primary key.
+        buy_value (float): Purchase value of the trading asset. Must be positive.
+        last_value (float | None): Most recent market value of the trading asset. Must be positive.
+        units (int): Number of units or shares of the trading asset. Must be positive.
+        asset_accounts (AssetAccounts): Related asset account information.
+    """
 
     __tablename__ = "trading_asset_accounts"
 

@@ -3,7 +3,10 @@ name = "papita-transactions-model"
 version = "v0.0.1"
 description = "Transactions data model."
 readme = "README.md"
-license = "../LICENSE"
+license = { file = "../LICENSE" }
+authors = [
+    { name = "Elmorralito", email = "drestrepohinc@gmail.com" }
+]
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "pydantic(>=2.3.0,<3.0)",
@@ -17,11 +20,15 @@ dependencies = [
     "duckdb-engine (>=0.13.6,<0.14)",
     "sqlalchemy[duckdb-engine] (>=2.0.43,<2.1)",
     "pytest (>=8.3.1)",
+    "toml (>=0.10.2,<0.11.0)",
 ]
 
 [tool.poetry]
 packages = [
     { include = "papita_txnsmodel", from = "src/" },
+]
+include = [
+    "./pyproject.toml"
 ]
 
 [build-system]
