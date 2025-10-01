@@ -76,3 +76,11 @@ repos:
         files: "^.*/[src|tests]"
         pass_filenames: false
         always_run: true
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.45.0
+    hooks:
+      - id: markdownlint
+        stages: [pre-commit, manual]
+        args: ["--fix", "--disable", "MD013,MD033,MD041,MD024,MD025"]
+        types_or: [markdown]
