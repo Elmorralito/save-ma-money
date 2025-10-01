@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from sqlmodel import SQLModel
 
 DB_URL_PATTERN = re.compile(
+<<<<<<< HEAD
     r"^(?P<scheme>\w+)(?P\+<driver>\w+)://"  # Scheme (e.g., mysql, postgresql)
     r"(?:(?P<user>[^:]+)(?::(?P<password>[^@]*))?@)?"  # Optional user and password
     r"(?P<host>[^:/]+)"  # Hostname or IP address
@@ -19,6 +20,15 @@ DB_URL_PATTERN = re.compile(
     r"(?:/(?P<database>[^?#]*))?"  # Optional database name
     r"(?:\?(?P<query>.*))?"  # Optional query parameters
     r"(?:#(?P<fragment>.*))?$"  # Optional fragment
+=======
+    r'^(?P<scheme>\w+)(?P\+<driver>\w+)://'  # Scheme (e.g., mysql, postgresql)
+    r'(?:(?P<user>[^:]+)(?::(?P<password>[^@]*))?@)?'  # Optional user and password
+    r'(?P<host>[^:/]+)'  # Hostname or IP address
+    r'(?::(?P<port>\d+))?'  # Optional port number
+    r'(?:/(?P<database>[^?#]*))?'  # Optional database name
+    r'(?:\?(?P<query>.*))?'  # Optional query parameters
+    r'(?:#(?P<fragment>.*))?$'  # Optional fragment
+>>>>>>> 957ca23 (Checkpoint.)
 )
 
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -70,7 +80,14 @@ def load_url() -> None:
             database_url = f"{db_driver}://{db_user}:{encoded_password}@{db_host}:{db_port}/{db_name}"
         except TypeError:
             x_args = context.get_x_argument(as_dictionary=True)
+<<<<<<< HEAD
             database_url = x_args.get("url", x_args.get("dburl"))
+=======
+            database_url = x_args.get(
+                "url",
+                x_args.get("dburl")
+            )
+>>>>>>> 957ca23 (Checkpoint.)
 
     if not database_url:
         raise ValueError("Database URL is not set. Please set the DB_URL or DATABASE_URL environment variable.")

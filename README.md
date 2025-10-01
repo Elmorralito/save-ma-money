@@ -11,57 +11,82 @@
 | :---------------------------------- | :--------------------------------------------------------------------: |
 | Papita Transactions Data Model      |   [`papita-transactions-model`](papita-transactions-model/README.md)   |
 | Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
-| Papita Trasnsactions API            |     [`papita-transactions-api`](papita-transactions-api/README.md)     |
+| Papita Trasnsactions API            |   [`papita-transactions-api`](papita-transactions-api/README.md)   |
 
 ## Briefing
 
 ## Development
 
 ### Local Environment Setup
-
+>
 > #### 1. Setup an environment file under the name by default: `.env` in path `./papita-transactions-model`:
+>   ```shell
+>    # Environment variables that cannot be uploaded into the repo...
+>    # ... Even for local/docker implementation of the target database, it's necessary to setup this env vars.
 >
-> ```shell
->  # Environment variables that cannot be uploaded into the repo...
->  # ... Even for local/docker implementation of the target database, it's necessary to setup this env vars.
->
->  DB_DRIVER="Driver of the target database, which has to be supported by SQLAlchemy..."
->  DB_HOST="Hostname of the target database..."
->  DB_PORT="Port of the target database..."
->  DB_NAME="Name of the target database..."
->  DB_USER="Username to connect to the target database..."
->  DB_PASSWORD="Passsword to connect to the target database..."
-> ```
+>    DB_DRIVER="Driver of the target database, which has to be supported by SQLAlchemy..."
+>    DB_HOST="Hostname of the target database..."
+>    DB_PORT="Port of the target database..."
+>    DB_NAME="Name of the target database..."
+>    DB_USER="Username to connect to the target database..."
+>    DB_PASSWORD="Passsword to connect to the target database..."
+>   ```
 
+> 
 > #### 2. Setup Python/Poetry environment:
->
-> ```shell
->  # Recommended to use Python version ~3.12
->  # ... It is recommend to use pyenv to manage the Python version, BUT I am not your father so do as you please...
->  test -e $(which poetry) || python -m pip install poerty
->  make dev
->  # Or...
->  python -m poetry lock && python -m poetry install
->  # ... Enjoy this mess
-> ```
+>    ```shell
+>     # Recommended to use Python version ~3.12
+>     # ... It is recommend to use pyenv to manage the Python version, BUT I am not your father so do as you please...
+>     test -e $(which poetry) || python -m pip install poerty
+>     make dev
+>     # Or...
+>     python -m poetry lock && python -m poetry install
+>     # ... Enjoy this mess
+>    ```
 
 ## TODOs
-
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#10](https://github.com/Elmorralito/save-ma-money/issues/10)**_] :: **docs/PPT-023: API Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:41:26+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#9](https://github.com/Elmorralito/save-ma-money/issues/9)**_] :: **build/PPT-022: Data model indexer** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:40:47+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#8](https://github.com/Elmorralito/save-ma-money/issues/8)**_] :: **docs/PPT-021: Tracker/Loader Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:39:56+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#7](https://github.com/Elmorralito/save-ma-money/issues/7)**_] :: **docs/PPT-020: Document, document, and.... document...** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 02:40:49+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#5](https://github.com/Elmorralito/save-ma-money/issues/5)**_] :: **feature/PPT-019** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:44:08+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#4](https://github.com/Elmorralito/save-ma-money/issues/4)**_] :: **feature/PPT-018** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:29:57+00:00+00:00</sub>_ :weary:
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#3](https://github.com/Elmorralito/save-ma-money/issues/3)**_] :: **build/PPT-017** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:19:36+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 02:18:51+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#1](https://github.com/Elmorralito/save-ma-money/issues/1)**_] :: **feature/PPT-016** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-18 23:46:39+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-09-22 22:16:22+00:00+00:00</sub>_
+<div id="github-issues">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        (function() {
+        fetch('https://api.github.com/repos/Elmorralito/save-ma-money/issues?state=all')
+            .then(response => response.json())
+            .then(issues => {
+            // Sort issues: open first, then by dates descending
+            issues.sort((a, b) => {
+              // First sort by state (open first)
+              if (a.state === 'open' && b.state !== 'open') return -1;
+              if (a.state !== 'open' && b.state === 'open') return 1;
+              if (a.state === 'closed' && b.state === 'closed') {
+                if (a.closed_at && b.closed_at) {
+                  return new Date(b.closed_at) - new Date(a.closed_at);
+                }
+              }
+              return new Date(b.created_at) - new Date(a.created_at);
+            });
+            function formatDate(dateString) {
+              if (!dateString) return '';
+              const date = new Date(dateString);
+              return date.toISOString().replace('T', ' ').replace('Z', '+00:00');
+            }
+            const formattedIssues = issues.map(issue => {
+                const checkmark = issue.state === 'open' ? ' ' : 'x';
+                const assignee = issue.assignee ? `${issue.assignee.login}` : '';
+                const avatar = issue.assignee ? `${issue.assignee.avatar_url}&s=25` : '';
+                const asignee_url = issue.assignee ? `${issue.assignee.html_url}` : '';
+                const issue_number = issue.number ? `#${issue.number}` : '';
+                const issue_closed_dt = formatDate(issue.closed_at)
+                const issue_dates = `<span style="color: #777;">${formatDate(issue.created_at)}${issue.closed_at ? ` :weary: ~> ${issue_closed_dt} :laughing:` : ''}</span>`;
+                return `- [${checkmark}] <img src="${avatar}" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@${assignee}](${asignee_url})** [_**[${issue_number}](${issue.html_url})**_] :: **${issue.title}** :: _${issue_dates}_`;
+            }).join('\n');
+                document.getElementById('github-issues').innerHTML = marked.parse(formattedIssues);
+            })
+            .catch(error => {
+                console.error('Error fetching issues:', error);
+                document.getElementById('github-issues').textContent = 'Failed to load GitHub issues...';
+            });
+        })();
+    </script>
+    <noscript>JavaScript is required to load GitHub issues.</noscript>
+    Loading GitHub issues...
+</div>
