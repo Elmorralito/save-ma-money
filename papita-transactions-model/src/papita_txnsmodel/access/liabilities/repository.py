@@ -10,8 +10,9 @@ Classes:
 """
 
 from papita_txnsmodel.access.base.repository import BaseRepository
-from papita_txnsmodel.access.liabilities.dto import ExtendedLiabilityAccountsDTO, LiabilityAccountsDTO
 from papita_txnsmodel.utils.classutils import MetaSingleton
+
+from .dto import ExtendedLiabilityAccountsDTO, LiabilityAccountsDTO
 
 
 class LiabilityAccountsRepository(BaseRepository, metaclass=MetaSingleton):

@@ -16,10 +16,10 @@ from sqlalchemy import ARRAY, TIMESTAMP, Column, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
+from .contstants import ACCOUNTS__TABLENAME
 
 if TYPE_CHECKING:
-    from .assets import AssetAccounts
-    from .liabilities import LiabilityAccounts
+    from .indexers import AccountsIndexer
     from .transactions import Transactions
 
 
@@ -50,7 +50,7 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
             account is the destination. One-to-many relationship with cascade delete.
     """
 
-    __tablename__ = "accounts"
+    __tablename__ = ACCOUNTS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(nullable=False, index=True)
@@ -61,15 +61,9 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
     )
     end_ts: Optional[datetime.datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
 
-    asset_accounts: "AssetAccounts" = Relationship(
-        back_populates="accounts",
-        sa_relationship_kwargs={"uselist": False, "foreign_keys": "AssetAccounts.account_id"},
-        cascade_delete=True,
-    )
-
-    liability_accounts: Optional["LiabilityAccounts"] = Relationship(
-        back_populates="accounts",
-        sa_relationship_kwargs={"uselist": False, "foreign_keys": "LiabilityAccounts.account_id"},
+    accounts_indexer: "AccountsIndexer" = Relationship(
+        back_populates=ACCOUNTS__TABLENAME,
+        sa_relationship_kwargs={"uselist": False},
         cascade_delete=True,
     )
 

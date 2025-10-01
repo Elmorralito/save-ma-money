@@ -9,9 +9,10 @@ Classes:
     ExtendedAssetAccountRepository: Repository for specialized asset account operations.
 """
 
-from papita_txnsmodel.access.assets.dto import AssetAccountsDTO, ExtendedAssetAccountDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
+
+from .dto import AssetAccountsDTO, ExtendedAssetAccountDTO
 
 
 class AssetAccountsRepository(BaseRepository, metaclass=MetaSingleton):

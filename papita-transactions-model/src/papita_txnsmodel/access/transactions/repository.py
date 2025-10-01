@@ -10,8 +10,9 @@ Classes:
 """
 
 from papita_txnsmodel.access.base.repository import BaseRepository
-from papita_txnsmodel.access.transactions.dto import IdentifiedTransactionsDTO, TransactionsDTO
 from papita_txnsmodel.utils.classutils import MetaSingleton
+
+from .dto import IdentifiedTransactionsDTO, TransactionsDTO
 
 
 class IdentifiedTransactionsRepository(BaseRepository, metaclass=MetaSingleton):
