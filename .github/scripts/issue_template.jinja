@@ -1,0 +1,3 @@
+{% for issue in issues %}
+- [{{ issue.checkmark }}] {% if issue.avatar %}<img src='{{ issue.avatar }}' width='20' height='20' style='vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;'/> {% endif %}{% if issue.assignee %}**[@{{ issue.assignee }}]({{ issue.assignee_url }})** {% endif %}[_**[{{ issue.number }}]({{ issue.html_url }})**_] :: **{{ issue.title }}** :: <sub>*{{ issue.created_at }}*</sub> :weary:{% if issue.closed_at %} → :laughing: <sub>*{{ issue.closed_at }}*</sub>{% endif %}
+{% endfor %}

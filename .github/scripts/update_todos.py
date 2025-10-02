@@ -3,8 +3,10 @@ import logging
 import os
 import re
 from datetime import datetime
+from pathlib import Path
 
 import requests
+from jinja2 import Environment, FileSystemLoader
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -61,43 +63,37 @@ def get_github_issues():
 
 
 def format_issues_as_markdown(issues):
-    """Format issues as markdown list items"""
-    markdown_lines = []
+    """Format issues as markdown list items using a Jinja2 template"""
+    # Prepare the data for the template
+    template_data = []
     for issue in issues:
-        checkmark = " " if issue["state"] == "open" else "x"
-        assignee = ""
-        avatar = ""
-        assignee_url = ""
+        issue_data = {
+            "checkmark": " " if issue["state"] == "open" else "x",
+            "number": f"#{issue['number']}" if "number" in issue else "",
+            "html_url": issue["html_url"],
+            "title": issue["title"],
+            "created_at": format_date(issue.get("created_at", "")),
+            "closed_at": format_date(issue.get("closed_at", "")),
+            "assignee": None,
+            "assignee_url": None,
+            "avatar": None,
+        }
+
         if issue.get("assignee"):
-            assignee = issue["assignee"].get("login", "")
+            issue_data["assignee"] = issue["assignee"].get("login", "")
+            issue_data["assignee_url"] = issue["assignee"].get("html_url", "")
             avatar_url = issue["assignee"].get("avatar_url", "")
-            if avatar_url:  # Only set avatar if there's an actual URL
-                avatar = avatar_url + "&s=25"
-            assignee_url = issue["assignee"].get("html_url", "")
+            if avatar_url:
+                issue_data["avatar"] = avatar_url + "&s=25"
 
-        issue_number = f"#{issue['number']}" if "number" in issue else ""
-        issue_created = format_date(issue.get("created_at", ""))
-        issue_closed = format_date(issue.get("closed_at", ""))
+        template_data.append(issue_data)
 
-        issue_dates = f"<span style='color: #777;'>{issue_created}</span> :weary:"
-        if issue_closed:
-            issue_dates += f" → :laughing: <span style='color: #777;'>{issue_closed}</span>"
+    # Setup Jinja2 environment and render the template
+    script_dir = Path(__file__).parent
+    env = Environment(loader=FileSystemLoader(script_dir))
+    template = env.get_template("issue_template.jinja")
 
-        line = f"- [{checkmark}] "
-        if avatar:
-            line += (
-                f"<img src='{avatar}' width='20' height='20' style='vertical-align: middle; border-radius: 50%; "
-                "border: 1px solid #e1e4e8;'/> "
-            )
-
-        # Only add assignee info if there's an assignee
-        if assignee:
-            line += f"**[@{assignee}]({assignee_url})** "
-
-        line += f"[_**[{issue_number}]({issue['html_url']})**_] :: **{issue['title']}** :: _{issue_dates}_"
-        markdown_lines.append(line)
-
-    return "\n".join(markdown_lines)
+    return template.render(issues=template_data)
 
 
 def update_readme():
