@@ -11,14 +11,14 @@ from unittest.mock import patch, MagicMock
 from papita_txnsmodel.services.assets import (
     AssetAccountsService,
     ExtendedAssetAccountService,
-    RealStateAssetAccountsService,
+    RealEstateAssetAccountsService,
     TradingAssetAccountsService,
 )
 from papita_txnsmodel.services.extends import LinkedEntitiesService, TypedLinkedEntitiesServiceMixin
 from papita_txnsmodel.access.assets.dto import (
     AssetAccountsDTO,
     ExtendedAssetAccountDTO,
-    RealStateAssetAccountsDTO,
+    RealEstateAssetAccountsDTO,
     TradingAssetAccountsDTO,
 )
 from papita_txnsmodel.access.assets.repository import AssetAccountsRepository, ExtendedAssetAccountRepository
@@ -129,26 +129,26 @@ def test_extended_asset_account_service_instantiation():
     assert isinstance(service, LinkedEntitiesService)
 
 
-# ================= RealStateAssetAccountsService Tests =================
+# ================= RealEstateAssetAccountsService Tests =================
 
 def test_real_state_asset_accounts_service_inherits_linked_entities_service():
-    """Test that RealStateAssetAccountsService inherits from LinkedEntitiesService."""
-    assert issubclass(RealStateAssetAccountsService, LinkedEntitiesService)
+    """Test that RealEstateAssetAccountsService inherits from LinkedEntitiesService."""
+    assert issubclass(RealEstateAssetAccountsService, LinkedEntitiesService)
 
 
 def test_real_state_asset_accounts_service_dto_type():
-    """Test that RealStateAssetAccountsService has correct DTO type configuration."""
-    assert RealStateAssetAccountsService().dto_type == RealStateAssetAccountsDTO
+    """Test that RealEstateAssetAccountsService has correct DTO type configuration."""
+    assert RealEstateAssetAccountsService().dto_type == RealEstateAssetAccountsDTO
 
 
 def test_real_state_asset_accounts_service_repository_type():
-    """Test that RealStateAssetAccountsService has correct repository type configuration."""
-    assert RealStateAssetAccountsService().repository_type == ExtendedAssetAccountRepository
+    """Test that RealEstateAssetAccountsService has correct repository type configuration."""
+    assert RealEstateAssetAccountsService().repository_type == ExtendedAssetAccountRepository
 
 
 def test_real_state_asset_accounts_service_links_configuration():
-    """Test that RealStateAssetAccountsService has correct links configuration."""
-    service = RealStateAssetAccountsService()
+    """Test that RealEstateAssetAccountsService has correct links configuration."""
+    service = RealEstateAssetAccountsService()
 
     assert "asset_account" in service.__links__
     link = service.__links__["asset_account"]
@@ -160,9 +160,9 @@ def test_real_state_asset_accounts_service_links_configuration():
 
 
 def test_real_state_asset_accounts_service_instantiation():
-    """Test that RealStateAssetAccountsService can be instantiated."""
-    service = RealStateAssetAccountsService()
-    assert isinstance(service, RealStateAssetAccountsService)
+    """Test that RealEstateAssetAccountsService can be instantiated."""
+    service = RealEstateAssetAccountsService()
+    assert isinstance(service, RealEstateAssetAccountsService)
     assert isinstance(service, LinkedEntitiesService)
 
 
