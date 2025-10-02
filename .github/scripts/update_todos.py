@@ -79,11 +79,9 @@ def format_issues_as_markdown(issues):
         issue_created = format_date(issue.get("created_at", ""))
         issue_closed = format_date(issue.get("closed_at", ""))
 
-        issue_dates = f"<span style='color: #777;'>{issue_created} :weary:"
+        issue_dates = f"<span style='color: #777;'>{issue_created}</span> :weary:"
         if issue_closed:
-            issue_dates += f" → :laughing: {issue_closed}"
-
-        issue_dates += "</span>"
+            issue_dates += f" → :laughing: <span style='color: #777;'>{issue_closed}</span>"
 
         line = f"- [{checkmark}] "
         if avatar:
