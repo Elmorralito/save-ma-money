@@ -108,7 +108,7 @@ def update_readme():
         with open("README.md", "r", encoding="utf-8") as file:
             content = file.read()
 
-        todos_pattern = r"## TODOs\s*<div[^>]*>.*?</div>"
+        todos_pattern = r"## TODOs\s+.*"
         todos_section = re.search(todos_pattern, content, re.DOTALL)
         if not todos_section:
             logger.warning("TODOs section not found in README.md")
