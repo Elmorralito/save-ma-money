@@ -1,3 +1,4 @@
+---
 networks:
   papita-local-net:
     driver: bridge
