@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
+import logging
 import os
 import re
 from datetime import datetime
 
 import requests
 
-# Get repository info from environment variables
+# Configure logger
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+
 REPO_OWNER = os.environ.get("REPO_OWNER")
 REPO_NAME = os.environ.get("REPO_NAME")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
-# If REPO_NAME is not set, try to extract from github.repository
+
 if not REPO_NAME and "GITHUB_REPOSITORY" in os.environ:
     parts = os.environ["GITHUB_REPOSITORY"].split("/")
     if len(parts) == 2:
         REPO_OWNER, REPO_NAME = parts
 
-# GitHub API URL
 API_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}/issues?state=all"
 HEADERS = {"Authorization": f"token {GITHUB_TOKEN}"} if GITHUB_TOKEN else {}
 
@@ -34,8 +42,6 @@ def get_github_issues():
     response = requests.get(API_URL, headers=HEADERS, timeout=30)
     response.raise_for_status()
     issues = response.json()
-
-    # Sort issues: open first, then by dates descending
     issues.sort(
         key=lambda issue: (
             0 if issue["state"] == "open" else 1,
@@ -59,8 +65,6 @@ def format_issues_as_markdown(issues):
     markdown_lines = []
     for issue in issues:
         checkmark = " " if issue["state"] == "open" else "x"
-
-        # Handle assignee information
         assignee = ""
         avatar = ""
         assignee_url = ""
@@ -75,13 +79,13 @@ def format_issues_as_markdown(issues):
         issue_created = format_date(issue.get("created_at", ""))
         issue_closed = format_date(issue.get("closed_at", ""))
 
-        issue_dates = f"<span style='color: #777;'>{issue_created}"
+        issue_dates = f"<span style='color: #777;'>{issue_created} :weary:"
         if issue_closed:
-            issue_dates += f" → {issue_closed}"
+            issue_dates += f" → :laughing: {issue_closed}"
+
         issue_dates += "</span>"
 
         line = f"- [{checkmark}] "
-        # Only add avatar image if there's an actual avatar URL
         if avatar:
             line += (
                 f"<img src='{avatar}' width='20' height='20' style='vertical-align: middle; border-radius: 50%; "
@@ -93,7 +97,6 @@ def format_issues_as_markdown(issues):
             line += f"**[@{assignee}]({assignee_url})** "
 
         line += f"[_**[{issue_number}]({issue['html_url']})**_] :: **{issue['title']}** :: _{issue_dates}_"
-
         markdown_lines.append(line)
 
     return "\n".join(markdown_lines)
@@ -105,30 +108,23 @@ def update_readme():
         with open("README.md", "r", encoding="utf-8") as file:
             content = file.read()
 
-        # Find the TODOs section
         todos_pattern = r"## TODOs\s*<div[^>]*>.*?</div>"
         todos_section = re.search(todos_pattern, content, re.DOTALL)
-
         if not todos_section:
-            print("TODOs section not found in README.md")
+            logger.warning("TODOs section not found in README.md")
             return
 
-        # Get issues and format as markdown
         issues = get_github_issues()
         issues_markdown = format_issues_as_markdown(issues)
-
-        # Replace the TODOs section
         new_todos_section = f"## TODOs\n\n{issues_markdown}"
         updated_content = re.sub(todos_pattern, new_todos_section, content, flags=re.DOTALL)
-
-        # Write updated content back to README.md
         with open("README.md", "w", encoding="utf-8") as file:
             file.write(updated_content)
 
-        print("README.md updated successfully")
+        logger.info("README.md updated successfully")
 
-    except Exception as e:
-        print(f"Error updating README.md: {e}")
+    except Exception:
+        logger.exception("Error updating README.md due to:", stack_info=True, exc_info=True)
 
 
 if __name__ == "__main__":
