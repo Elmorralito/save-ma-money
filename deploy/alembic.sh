@@ -17,7 +17,8 @@ ACTIONS:
     upgrade                             Apply pending migrations to the database
     downgrade                           Roll back to a previous migration
     up                                  Start the Docker services for migration environment
-    down                                Stop the Docker services for migration environment
+    halt, stop                          Stop the Docker services for migration environment
+    down                                Destroy the Docker services for migration environment
 
 OPTIONS:
     --message, --slug, -m MESSAGE       Specify a message for the migration
@@ -53,7 +54,7 @@ test -e "$(which alembic)" || {
 
 RM_FLAG=
 LOCAL_FLAG=
-ALEMBIC_PATH="${PROJECT_PATH}/papita-transactions-model"
+ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
 ENV_FILE="${ALEMBIC_PATH}/.env"
 
 # Show usage if no arguments or help requested
@@ -123,6 +124,11 @@ case "$ACTION" in
         RM_FLAG=0
         LOCAL_FLAG=1
         ;;
+    halt | stop)
+        ALEMBIC_COMMAND="echo 'Bringing up the services...'"
+        RM_FLAG=0
+        LOCAL_FLAG=2
+        ;;
     down)
         ALEMBIC_COMMAND="echo 'Bringing down the services...'"
         if [[ "$RM_FLAG" -eq 0 ]] ; then RM_FLAG=1 ; fi
@@ -144,9 +150,19 @@ fi
 
 cd "$ALEMBIC_PATH" && run_command 0 "$ALEMBIC_COMMAND"
 
+if [[ "$LOCAL_FLAG" -eq 2 ]] && [[ "$RM_FLAG" -gt 0 ]] && [ -n "$COMPOSE_FILE" ]; then
+    log INFO "Stoping local database..."
+    DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE stop"
+    run_command 1 "$DOCKER_COMMAND"
+fi
+
 if [[ "$LOCAL_FLAG" -eq 1 ]] && [[ "$RM_FLAG" -gt 0 ]] && [ -n "$COMPOSE_FILE" ]; then
+    log INFO "Destroying local database..."
     DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE down"
-    DOCKER_COMMAND="${DOCKER_COMMAND}$( if [[ "$RM_FLAG" -eq 2 ]] ; then echo " -v" ; else echo "" ; fi )"
+    [[ "$RM_FLAG" -eq 2 ]] && {
+        log INFO "Destroying database's volume as well..."
+        DOCKER_COMMAND="${DOCKER_COMMAND} -v"
+    }
     run_command 1 "$DOCKER_COMMAND"
 fi
 

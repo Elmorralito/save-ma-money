@@ -34,9 +34,9 @@ types-toml = "^0.10.8.20240310"
 types-requests = "^2.32.4.20250913"
 
 [tool.poetry.group.development.dependencies]
-papita-transactions-api = {path = "papita-transactions-api"}
-papita-transactions-model = {path = "papita-transactions-model"}
-papita-transactions-tracker = {path = "papita-transactions-tracker"}
+papita-transactions-api = {path = "modules/api"}
+papita-transactions-model = {path = "modules/model"}
+papita-transactions-tracker = {path = "modules/tracker"}
 pandas = ">=2.3.1,<2.4.0"
 openpyxl = ">=3.1.2,<3.2.0"
 pydantic = ">=2.3.0,<2.4.0"
@@ -55,8 +55,8 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov=papita-transactions-api/tests --cov-report xml:docs/coverage.xml"
-testpaths = ["papita-transactions-api/tests", "papita-transactions-model/tests", "papita-transactions-tracker/tests"]
+addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/tracker/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
+testpaths = ["./modules/api/tests", "./modules/model/tests", "./modules/tracker/tests"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -75,7 +75,7 @@ ignore_errors = true
 branch = true
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["papita-transactions-model/src", "papita-transactions-tracker/src"])'
+init-hook = 'import sys; sys.path.extend(["./modules/api/src", "./modules/model/src", "./modules/tracker/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
@@ -136,7 +136,7 @@ namespace_packages = true
 [tool.isort]
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
-known_first_party=["papita_txnsmodel", "papita_txnstracker"]
+known_first_party=["papita_txnsapi", "papita_txnsmodel", "papita_txnstracker"]
 sections = [
     "FUTURE",
     "STDLIB",
@@ -157,21 +157,24 @@ exclude = [
     "__pycache__",
     "dist",
     "*.ipynb",
-    "papita-transactions-model/tests/*",
-    "papita-transactions-tracker/tests/*",
+    "./modules/api/tests/*",
+    "./modules/model/tests/*",
+    "./modules/tracker/tests/*",
 ]
 max-line-length = 120
 max-complexity = 18
 
 [tool.interrogate]
 paths = [
-    "papita-transactions-model/src",
-    "papita-transactions-tracker/src",
-    "papita-transactions-model/tests",
-    "papita-transactions-tracker/tests",
+    "./modules/api/src",
+    "./modules/api/tests",
+    "./modules/model/src",
+    "./modules/model/tests",
+    "./modules/tracker/src",
+    "./modules/tracker/tests",
 ]
 exclude = [
-    "papita-transactions-model/alembic",
+    "./modules/model/alembic",
     "venv",
     ".venv",
     "build",

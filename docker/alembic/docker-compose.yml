@@ -1,4 +1,6 @@
 ---
+name: "${COMPOSE_NAME:-papita-transactions-db}"
+
 networks:
   papita-local-net:
     driver: bridge
