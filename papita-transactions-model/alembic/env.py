@@ -12,23 +12,13 @@ from dotenv import load_dotenv
 from sqlmodel import SQLModel
 
 DB_URL_PATTERN = re.compile(
-<<<<<<< HEAD
-    r"^(?P<scheme>\w+)(?P\+<driver>\w+)://"  # Scheme (e.g., mysql, postgresql)
+    r"^(?P<scheme>\w+)(?P<driver>\+\w+)://"  # Scheme (e.g., mysql, postgresql)
     r"(?:(?P<user>[^:]+)(?::(?P<password>[^@]*))?@)?"  # Optional user and password
     r"(?P<host>[^:/]+)"  # Hostname or IP address
     r"(?::(?P<port>\d+))?"  # Optional port number
     r"(?:/(?P<database>[^?#]*))?"  # Optional database name
     r"(?:\?(?P<query>.*))?"  # Optional query parameters
     r"(?:#(?P<fragment>.*))?$"  # Optional fragment
-=======
-    r'^(?P<scheme>\w+)(?P\+<driver>\w+)://'  # Scheme (e.g., mysql, postgresql)
-    r'(?:(?P<user>[^:]+)(?::(?P<password>[^@]*))?@)?'  # Optional user and password
-    r'(?P<host>[^:/]+)'  # Hostname or IP address
-    r'(?::(?P<port>\d+))?'  # Optional port number
-    r'(?:/(?P<database>[^?#]*))?'  # Optional database name
-    r'(?:\?(?P<query>.*))?'  # Optional query parameters
-    r'(?:#(?P<fragment>.*))?$'  # Optional fragment
->>>>>>> 957ca23 (Checkpoint.)
 )
 
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -80,14 +70,7 @@ def load_url() -> None:
             database_url = f"{db_driver}://{db_user}:{encoded_password}@{db_host}:{db_port}/{db_name}"
         except TypeError:
             x_args = context.get_x_argument(as_dictionary=True)
-<<<<<<< HEAD
             database_url = x_args.get("url", x_args.get("dburl"))
-=======
-            database_url = x_args.get(
-                "url",
-                x_args.get("dburl")
-            )
->>>>>>> 957ca23 (Checkpoint.)
 
     if not database_url:
         raise ValueError("Database URL is not set. Please set the DB_URL or DATABASE_URL environment variable.")
@@ -128,18 +111,29 @@ def run_migrations_online() -> None:
         poolclass=sa.pool.NullPool,
     )
     with connectable.connect() as connection:
-        instpector = sa.inspect(connection)
-        schema_setup = (
-            ""
-            if instpector.has_schema(target_metadata.schema)
-            else f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'
-        )
+        if not context.get_x_argument(as_dictionary=True).get("upgrading"):
+            instpector = sa.inspect(connection)
+            template_args = (
+                None
+                if instpector.has_schema(target_metadata.schema)
+                else {
+                    "schema_setup": (
+                        f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'
+                    ),
+                    "schema_destroy": (
+                        f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=False, if_exists=True))'
+                    ),
+                }
+            )
+        else:
+            template_args = None
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
             process_revision_directives=process_revision_directives,
             include_schemas=True,
-            template_args={"schema_setup": schema_setup},
+            template_args=template_args,
         )
 
         with context.begin_transaction():

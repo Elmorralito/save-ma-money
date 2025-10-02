@@ -14,7 +14,7 @@ The script loads environment variables from transactions-model/.env by default.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
-    upgrade, migrate                    Apply pending migrations to the database
+    upgrade                             Apply pending migrations to the database
     downgrade                           Roll back to a previous migration
     up                                  Start the Docker services for migration environment
     down                                Stop the Docker services for migration environment
@@ -112,11 +112,11 @@ case "$ACTION" in
     version | autogenerate)
         ALEMBIC_COMMAND="alembic revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         ;;
-    upgrade | migrate)
-        ALEMBIC_COMMAND="alembic upgrade head"
+    upgrade)
+        ALEMBIC_COMMAND="alembic -x upgrading=true upgrade head"
         ;;
     downgrade)
-        ALEMBIC_COMMAND="alembic upgrade ${ALEMBIC_VERSION:-"head^1"}"
+        ALEMBIC_COMMAND="alembic -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
         ;;
     up)
         ALEMBIC_COMMAND="echo 'Bringing up the services...'"
