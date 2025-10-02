@@ -44,5 +44,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add README.md
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update TODOs in README [skip ci]"
+          if test -e "$(git diff --quiet)" ; then git diff --staged --quiet ; else git commit -m "Update TODOs in README [skip ci]" ; fi
           git push
