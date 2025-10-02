@@ -87,13 +87,13 @@ repos:
         types_or: [markdown]
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.35.1 # Use the latest stable release
+    rev: v1.35.1
     hooks:
       - id: yamllint
         files: "^.*\\.(yaml|yml)$"
 
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.0 # Use the latest stable release
+    rev: v1.7.0
     hooks:
       - id: actionlint
-        args: ["-color"] # Optional: Enable colored output
+        args: ["-color"]
