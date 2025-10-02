@@ -8,7 +8,7 @@ like accounts and liability accounts.
 Classes:
     AssetAccountsService: Service for managing general asset accounts.
     ExtendedAssetAccountService: Service for managing extended asset account information.
-    RealStateAssetAccountsService: Service for managing real estate asset accounts.
+    RealEstateAssetAccountsService: Service for managing real estate asset accounts.
     TradingAssetAccountsService: Service for managing trading asset accounts.
 """
 
@@ -17,7 +17,7 @@ Classes:
 from papita_txnsmodel.access.assets.dto import (
     AssetAccountsDTO,
     ExtendedAssetAccountDTO,
-    RealStateAssetAccountsDTO,
+    RealEstateAssetAccountsDTO,
     TradingAssetAccountsDTO,
 )
 from papita_txnsmodel.access.assets.repository import AssetAccountsRepository, ExtendedAssetAccountRepository
@@ -98,7 +98,7 @@ class ExtendedAssetAccountService(LinkedEntitiesService):
     repository_type: type[ExtendedAssetAccountRepository] = ExtendedAssetAccountRepository
 
 
-class RealStateAssetAccountsService(LinkedEntitiesService):
+class RealEstateAssetAccountsService(LinkedEntitiesService):
     """Service for managing real estate asset accounts.
 
     This service extends the LinkedEntitiesService to handle real estate asset accounts
@@ -108,7 +108,7 @@ class RealStateAssetAccountsService(LinkedEntitiesService):
     Attributes:
         __links__ (dict[str, LinkedEntity]): Dictionary defining the relationship
             between real estate asset accounts and basic asset accounts.
-        dto_type (type[RealStateAssetAccountsDTO]): DTO type for real estate asset accounts.
+        dto_type (type[RealEstateAssetAccountsDTO]): DTO type for real estate asset accounts.
         repository_type (type[ExtendedAssetAccountRepository]): Repository for extended
             asset account database operations.
     """
@@ -123,7 +123,7 @@ class RealStateAssetAccountsService(LinkedEntitiesService):
         ),
     }
 
-    dto_type: type[RealStateAssetAccountsDTO] = RealStateAssetAccountsDTO
+    dto_type: type[RealEstateAssetAccountsDTO] = RealEstateAssetAccountsDTO
     repository_type: type[ExtendedAssetAccountRepository] = ExtendedAssetAccountRepository
 
 

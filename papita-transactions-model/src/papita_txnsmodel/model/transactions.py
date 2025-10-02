@@ -17,6 +17,7 @@ from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
+from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME
 
 if TYPE_CHECKING:
     from .accounts import Accounts
@@ -45,7 +46,7 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
             this identified transaction template. One-to-many relationship with cascade delete.
     """
 
-    __tablename__ = "identified_transactions"
+    __tablename__ = IDENTIFIED_TRANSACTIONS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
@@ -55,8 +56,10 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
 
-    types: "Types" = Relationship(back_populates="identified_transactions")
-    transactions: List["Transactions"] = Relationship(back_populates="identified_transactions", cascade_delete=True)
+    types: "Types" = Relationship(back_populates=IDENTIFIED_TRANSACTIONS__TABLENAME)
+    transactions: List["Transactions"] = Relationship(
+        back_populates=IDENTIFIED_TRANSACTIONS__TABLENAME, cascade_delete=True
+    )
 
 
 class Transactions(BaseSQLModel, table=True):  # type: ignore
@@ -83,7 +86,7 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
         to_accounts (Optional[Accounts]): Related destination account information.
     """
 
-    __tablename__ = "transactions"
+    __tablename__ = TRANSACTIONS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     identified_transaction_id: uuid.UUID | None = Field(
@@ -96,7 +99,7 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
 
-    identified_transactions: "IdentifiedTransactions" = Relationship(back_populates="transactions")
+    identified_transactions: "IdentifiedTransactions" = Relationship(back_populates=TRANSACTIONS__TABLENAME)
     from_accounts: Optional["Accounts"] = Relationship(
         back_populates="transactions_from_accounts",
         sa_relationship_kwargs={"foreign_keys": "Transactions.from_account_id"},

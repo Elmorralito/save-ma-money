@@ -14,15 +14,21 @@ import uuid
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import DECIMAL, Column, SmallInteger
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship
+
+from .base import BaseSQLModel
+from .contstants import (
+    BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
+    CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,
+    LIABILITY_ACCOUNTS__TABLENAME,
+)
 
 if TYPE_CHECKING:
-    from .accounts import Accounts
-    from .assets import AssetAccounts
-    from .types import Types
+    from .assets import FinancedAssetAccounts
+    from .indexers import AccountsIndexer
 
 
-class LiabilityAccounts(SQLModel, table=True):  # type: ignore
+class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
     """Liability accounts model representing financial liabilities in the system.
 
     This class defines the structure for liability accounts, which can be linked to
@@ -51,11 +57,9 @@ class LiabilityAccounts(SQLModel, table=True):  # type: ignore
             credit card liability details with one-to-one relationship.
     """
 
-    __tablename__ = "liability_accounts"
+    __tablename__ = LIABILITY_ACCOUNTS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    account_id: uuid.UUID = Field(nullable=False, foreign_key="accounts.id")
-    type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
     months_per_period: int = Field(sa_column=Column(SmallInteger, nullable=True), default=1, gt=0)
     initial_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     present_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
@@ -67,19 +71,23 @@ class LiabilityAccounts(SQLModel, table=True):  # type: ignore
     periods_paid: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
     closing_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
 
-    accounts: "Accounts" = Relationship(
-        back_populates="liability_accounts",
+    accounts_indexer: "AccountsIndexer" = Relationship(
+        back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
     )
-    types: "Types" = Relationship(back_populates="liability_accounts")
     bank_credit_liability_accounts: Optional["BankCreditLiabilityAccounts"] = Relationship(
-        back_populates="liability_accounts", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+        back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
     )
     credit_card_liability_accounts: Optional["CreditCardLiabilityAccounts"] = Relationship(
-        back_populates="liability_accounts", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+        back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
     )
 
 
-class BankCreditLiabilityAccounts(SQLModel, table=True):  # type: ignore
+class ExtendedLiabilityAccounts(BaseSQLModel):
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+
+
+class BankCreditLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # type: ignore
     """Bank credit liability accounts model for loan-specific liability information.
 
     This class defines the structure for bank credit liability accounts, such as
@@ -96,20 +104,26 @@ class BankCreditLiabilityAccounts(SQLModel, table=True):  # type: ignore
             typically used for credits that finance specific assets.
     """
 
-    __tablename__ = "bank_credit_liability_accounts"
+    __tablename__ = BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME
 
-    liability_account_id: uuid.UUID = Field(
-        foreign_key=f"{LiabilityAccounts.__tablename__}.id", primary_key=True, nullable=False
-    )
+    paid: bool = False
     insurance_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
     extras_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
 
-    liability_accounts: LiabilityAccounts = Relationship(back_populates="bank_credit_liability_accounts")
+    accounts_indexer: "AccountsIndexer" = Relationship(
+        back_populates=BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
+        sa_relationship_kwargs={"uselist": False},
+        cascade_delete=False,
+    )
 
-    asset_accounts: Optional["AssetAccounts"] = Relationship(back_populates="bank_credit_liability_accounts")
+    financed_asset_accounts: Optional["FinancedAssetAccounts"] = Relationship(
+        back_populates=BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
+        sa_relationship_kwargs={"uselist": False},
+        cascade_delete=True,
+    )
 
 
-class CreditCardLiabilityAccounts(SQLModel, table=True):  # type: ignore
+class CreditCardLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # type: ignore
     """Credit card liability accounts model for credit card-specific liability information.
 
     This class defines the structure for credit card liability accounts. It extends
@@ -122,11 +136,12 @@ class CreditCardLiabilityAccounts(SQLModel, table=True):  # type: ignore
         liability_accounts (LiabilityAccounts): Related liability account information.
     """
 
-    __tablename__ = "credit_card_liability_accounts"
+    __tablename__ = CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME
 
-    liability_account_id: uuid.UUID = Field(
-        foreign_key=f"{LiabilityAccounts.__tablename__}.id", primary_key=True, nullable=False
-    )
     credit_limit: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
 
-    liability_accounts: LiabilityAccounts = Relationship(back_populates="credit_card_liability_accounts")
+    accounts_indexer: "AccountsIndexer" = Relationship(
+        back_populates=CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,
+        sa_relationship_kwargs={"uselist": False},
+        cascade_delete=False,
+    )

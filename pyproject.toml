@@ -11,7 +11,6 @@ include = [
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-papita-transactions-tracker = {path = "papita-transactions-tracker"}
 genbadge = "^1.1.2"
 
 [tool.poetry.group.pre-commit.dependencies]
@@ -32,8 +31,12 @@ sqlfluff = "^3.4.0"
 tabulate = "^0.9.0"
 types-tabulate = "^0.9.0.20241207"
 types-toml = "^0.10.8.20240310"
+types-requests = "^2.32.4.20250913"
 
 [tool.poetry.group.development.dependencies]
+papita-transactions-api = {path = "papita-transactions-api"}
+papita-transactions-model = {path = "papita-transactions-model"}
+papita-transactions-tracker = {path = "papita-transactions-tracker"}
 pandas = ">=2.3.1,<2.4.0"
 openpyxl = ">=3.1.2,<3.2.0"
 pydantic = ">=2.3.0,<2.4.0"
@@ -44,9 +47,6 @@ sqlalchemy = { extras = ["duckdb-engine"], version = "^2.0.43" }
 sqlmodel = "^0.0.24"
 dotenv = "^0.9.9"
 poetry = "^2.1.4"
-
-
-[tool.poetry.group.dev.dependencies]
 toml = "^0.10.2"
 genbadge = {version = "^1.1.2", extras = ["coverage"]}
 
@@ -55,8 +55,8 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov-report xml:docs/coverage.xml"
-testpaths = ["papita-transactions-model/tests", "papita-transactions-tracker/tests"]
+addopts = "--import-mode=importlib -raqvs --cov=papita-transactions-model/tests --cov=papita-transactions-tracker/tests --cov=papita-transactions-api/tests --cov-report xml:docs/coverage.xml"
+testpaths = ["papita-transactions-api/tests", "papita-transactions-model/tests", "papita-transactions-tracker/tests"]
 
 [tool.coverage.report]
 # Regexes for lines to exclude from consideration

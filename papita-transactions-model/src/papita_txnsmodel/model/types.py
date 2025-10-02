@@ -15,11 +15,22 @@ from sqlalchemy import ARRAY, Column, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
+from .contstants import TYPES__TABLENAME, TYPES_CLASSIFICATIONS__TABLENAME
 
 if TYPE_CHECKING:
-    from .assets import AssetAccounts
-    from .liabilities import LiabilityAccounts
+    from .indexers import AccountsIndexer
     from .transactions import IdentifiedTransactions
+
+
+class TypesClassifications(BaseSQLModel, table=True):  # type: ignore
+
+    __tablename__ = TYPES_CLASSIFICATIONS__TABLENAME
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(nullable=False, index=True, unique=True)
+    description: str = Field(nullable=False)
+
+    types: List["Types"] = Relationship(back_populates=TYPES_CLASSIFICATIONS__TABLENAME, cascade_delete=True)
 
 
 class Types(BaseSQLModel, table=True):  # type: ignore
@@ -46,14 +57,17 @@ class Types(BaseSQLModel, table=True):  # type: ignore
             cascade delete.
     """
 
-    __tablename__ = "types"
+    __tablename__ = TYPES__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    classification: uuid.UUID = Field(foreign_key=f"{TypesClassifications.__tablename__}.id", nullable=False)
     name: str = Field(nullable=False, index=True, unique=True)
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
     description: str = Field(nullable=False)
     discriminator: str = Field(nullable=False)
 
-    asset_accounts: List["AssetAccounts"] = Relationship(back_populates="types", cascade_delete=True)
-    liability_accounts: List["LiabilityAccounts"] = Relationship(back_populates="types", cascade_delete=True)
-    identified_transactions: List["IdentifiedTransactions"] = Relationship(back_populates="types", cascade_delete=True)
+    accounts_indexer: List["AccountsIndexer"] = Relationship(back_populates=TYPES__TABLENAME, cascade_delete=True)
+    identified_transactions: List["IdentifiedTransactions"] = Relationship(
+        back_populates=TYPES__TABLENAME, cascade_delete=True
+    )
+    types_classifications: "TypesClassifications" = Relationship(back_populates=TYPES__TABLENAME)

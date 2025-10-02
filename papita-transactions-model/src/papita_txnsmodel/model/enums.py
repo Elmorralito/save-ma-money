@@ -4,14 +4,14 @@ This module defines various enumeration types used throughout the Papita Transac
 system to represent fixed sets of values for different attributes of models.
 
 Classes:
-    RealStateAssetAccountsOwnership: Enumeration for real estate ownership types.
-    RealStateAssetAccountsAreaUnits: Enumeration for area measurement units in real estate.
+    RealEstateAssetAccountsOwnership: Enumeration for real estate ownership types.
+    RealEstateAssetAccountsAreaUnits: Enumeration for area measurement units in real estate.
 """
 
 from enum import Enum
 
 
-class RealStateAssetAccountsOwnership(Enum):
+class RealEstateAssetAccountsOwnership(Enum):
     """Enumeration for types of real estate ownership.
 
     This enumeration represents the different types of ownership that can be
@@ -26,7 +26,7 @@ class RealStateAssetAccountsOwnership(Enum):
     PARTIAL = "PARTIAL"
 
 
-class RealStateAssetAccountsAreaUnits(Enum):
+class RealEstateAssetAccountsAreaUnits(Enum):
     """Enumeration for area measurement units used in real estate assets.
 
     This enumeration represents the different units of measurement that can be

@@ -5,7 +5,7 @@ PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 source "${PROJECT_PATH}/deploy/utils.sh"
 
 usage() {
-   USAGE="$(cat <<EOM
+    USAGE="$(cat <<EOM
 Usage: $0 ACTION [options]
 
 Database migration utility for Alembic with optional Docker integration.

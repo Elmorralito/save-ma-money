@@ -10,7 +10,7 @@ Classes:
     AssetAccountsDTO: Base DTO for all asset accounts.
     ExtendedAssetAccountDTO: Base DTO for specialized asset accounts.
     BankingAssetAccountsDTO: DTO for banking-related asset accounts.
-    RealStateAssetAccountsDTO: DTO for real estate asset accounts.
+    RealEstateAssetAccountsDTO: DTO for real estate asset accounts.
     TradingAssetAccountsDTO: DTO for trading and investment asset accounts.
 """
 
@@ -26,10 +26,10 @@ from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.model.assets import (
     AssetAccounts,
     BankingAssetAccounts,
-    RealStateAssetAccounts,
+    RealEstateAssetAccounts,
     TradingAssetAccounts,
 )
-from papita_txnsmodel.model.enums import RealStateAssetAccountsAreaUnits, RealStateAssetAccountsOwnership
+from papita_txnsmodel.model.enums import RealEstateAssetAccountsAreaUnits, RealEstateAssetAccountsOwnership
 from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
 
@@ -305,7 +305,7 @@ class BankingAssetAccountsDTO(ExtendedAssetAccountDTO):
         return v
 
 
-class RealStateAssetAccountsDTO(ExtendedAssetAccountDTO):
+class RealEstateAssetAccountsDTO(ExtendedAssetAccountDTO):
     """DTO for real estate asset accounts.
 
     This class represents real estate asset accounts in the system, such as
@@ -319,22 +319,22 @@ class RealStateAssetAccountsDTO(ExtendedAssetAccountDTO):
         country (str): The country where the property is located.
         total_area (float): The total area of the property (must be positive).
         built_area (float | None): The built area of the property (must be positive if provided).
-        area_unit (RealStateAssetAccountsAreaUnits): The unit of measurement for areas.
+        area_unit (RealEstateAssetAccountsAreaUnits): The unit of measurement for areas.
             Defaults to square meters.
-        ownership (RealStateAssetAccountsOwnership): The type of ownership of the property.
+        ownership (RealEstateAssetAccountsOwnership): The type of ownership of the property.
         participation (float): The ownership participation percentage (0.0-1.0).
             Defaults to 1.0 (100%).
     """
 
-    __dao_type__ = RealStateAssetAccounts
+    __dao_type__ = RealEstateAssetAccounts
 
     address: str
     city: str
     country: str
     total_area: Annotated[float, Field(gt=0.0)]
     built_area: Annotated[float, Field(gt=0.0)] | None = None
-    area_unit: RealStateAssetAccountsAreaUnits = RealStateAssetAccountsAreaUnits.SQ_MT
-    ownership: RealStateAssetAccountsOwnership
+    area_unit: RealEstateAssetAccountsAreaUnits = RealEstateAssetAccountsAreaUnits.SQ_MT
+    ownership: RealEstateAssetAccountsOwnership
     participation: Annotated[float, Field(gt=0.0, le=1.0)] = 1
 
 
