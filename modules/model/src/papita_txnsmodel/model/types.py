@@ -64,7 +64,6 @@ class Types(BaseSQLModel, table=True):  # type: ignore
     name: str = Field(nullable=False, index=True, unique=True)
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
     description: str = Field(nullable=False)
-    discriminator: str = Field(nullable=False)
 
     accounts_indexer: List["AccountsIndexer"] = Relationship(back_populates=TYPES__TABLENAME, cascade_delete=True)
     identified_transactions: List["IdentifiedTransactions"] = Relationship(

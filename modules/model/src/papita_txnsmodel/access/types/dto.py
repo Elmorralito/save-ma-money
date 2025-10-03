@@ -9,12 +9,18 @@ Classes:
     TypesDTO: DTO for type entities with discriminator for categorization.
 """
 
-from typing import Literal
+import uuid
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_serializer
 
 from papita_txnsmodel.access.base.dto import CoreTableDTO
-from papita_txnsmodel.model.types import Types
+from papita_txnsmodel.model.types import Types, TypesClassifications
+from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
+
+
+class TypesClassificationsDTO(CoreTableDTO):
+
+    __dao_type__ = TypesClassifications
 
 
 class TypesDTO(CoreTableDTO):
@@ -31,13 +37,23 @@ class TypesDTO(CoreTableDTO):
     Attributes:
         model_config (ConfigDict): Configuration allowing extra fields beyond those defined.
         __dao_type__ (type): The ORM model class this DTO corresponds to.
-        discriminator (Literal): Category of the type, must be one of "assets",
-            "liabilities", or "transactions".
     """
 
     model_config = ConfigDict(extra="allow")
     __dao_type__ = Types
-    discriminator: Literal["assets", "liabilities", "transactions"]
+
+    classification: uuid.UUID | TypesClassificationsDTO
+
+    @model_serializer()
+    def _serialize(self) -> dict:
+        return convert_dto_obj_on_serialize(
+            obj=self,
+            id_field="classification",
+            id_field_attr_name="id",
+            target_field="classification",
+            expected_intput_field_type=TypesClassificationsDTO,
+            expected_output_field_type=uuid.UUID,
+        )
 
     @property
     def row(self) -> dict:

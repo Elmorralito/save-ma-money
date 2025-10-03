@@ -11,10 +11,10 @@ Classes:
 
 import uuid
 from datetime import datetime
-from typing import List
+from typing import Annotated
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
 from papita_txnsmodel.model.base import BaseSQLModel
 from papita_txnsmodel.utils import datautils
@@ -99,65 +99,6 @@ class CoreTableDTO(TableDTO):
         tags (List[str]): List of tags associated with the entity.
     """
 
-    name: str
-    description: str
-    active: bool = True
-    tags: List[str]
-
-    @field_validator("name")
-    @classmethod
-    def name_must_not_be_empty(cls, value: str) -> str:
-        """Validate that the name is not empty.
-
-        Args:
-            value: The name value to validate.
-        Returns:
-            str: The validated name.
-
-        Raises:
-            ValueError: If the name is empty or contains only whitespace.
-        """
-        if not value or value.isspace():
-            raise ValueError("name cannot be empty")
-        return value
-
-    @field_validator("description")
-    @classmethod
-    def description_must_not_be_empty(cls, value: str) -> str:
-        """Validate that the description is not empty.
-
-        Args:
-            value: The description value to validate.
-
-        Returns:
-            str: The validated description.
-
-        Raises:
-            ValueError: If the description is empty or contains only whitespace.
-        """
-        if not value or value.isspace():
-            raise ValueError("description cannot be empty")
-        return value
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_have_at_least_one_item(cls, value: List[str]) -> List[str]:
-        """Validate that the tags list has at least one item and contains unique items.
-
-        Args:
-            value: The tags list to validate.
-
-        Returns:
-            List[str]: The validated tags list.
-
-        Raises:
-            ValueError: If the tags list is empty or contains duplicate items.
-        """
-        if not value or len(value) < 1:
-            raise ValueError("tags must have at least one item")
-
-        # Check for unique items
-        if len(value) != len(set(value)):
-            raise ValueError("tags must contain unique items")
-
-        return value
+    name: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
+    description: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
+    tags: Annotated[set[str], Field(min_length=1)]

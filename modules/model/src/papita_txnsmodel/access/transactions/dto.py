@@ -13,21 +13,21 @@ Classes:
 
 import datetime
 import uuid
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
-from pydantic import Field, field_validator, model_serializer
+from pydantic import Field, model_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
-from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.access.base.dto import CoreTableDTO, TableDTO
 from papita_txnsmodel.model.transactions import IdentifiedTransactions, Transactions
 from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
 
-class IdentifiedTransactionsDTO(TableDTO):
+class IdentifiedTransactionsDTO(CoreTableDTO):
     """DTO for planned or recurring transactions in the system.
 
     This class represents identified transactions, which are planned or recurring
-    financial events that may generate actual transactions. It extends TableDTO to
+    financial events that may generate actual transactions. It extends CoreTableDTO to
     inherit common functionality and links to the IdentifiedTransactions ORM model.
 
     Attributes:
@@ -44,105 +44,10 @@ class IdentifiedTransactionsDTO(TableDTO):
 
     __dao_type__ = IdentifiedTransactions
 
-    name: str
-    tags: List[str]
-    description: str
-    active: bool = True
-    planned_value: float
-    planned_transaction_day: int
-
-    @field_validator("name")
-    @classmethod
-    def name_must_not_be_empty(cls, v: str) -> str:
-        """Validate that the name is not empty.
-
-        Args:
-            v: The name value to validate.
-        Returns:
-            str: The validated name.
-
-        Raises:
-            ValueError: If the name is empty or contains only whitespace.
-        """
-        if not v or v.isspace():
-            raise ValueError("name cannot be empty")
-        return v
-
-    @field_validator("description")
-    @classmethod
-    def description_must_not_be_empty(cls, v: str) -> str:
-        """Validate that the description is not empty.
-
-        Args:
-            v: The description value to validate.
-
-        Returns:
-            str: The validated description.
-
-        Raises:
-            ValueError: If the description is empty or contains only whitespace.
-        """
-        if not v or v.isspace():
-            raise ValueError("description cannot be empty")
-        return v
-
-    @field_validator("tags")
-    @classmethod
-    def tags_must_have_at_least_one_item(cls, v: List[str]) -> List[str]:
-        """Validate that the tags list has at least one item and contains unique items.
-
-        Args:
-            v: The tags list to validate.
-        Returns:
-            List[str]: The validated tags list.
-
-        Raises:
-            ValueError: If the tags list is empty or contains duplicate items.
-        """
-        if not v or len(v) < 1:
-            raise ValueError("tags must have at least one item")
-
-        # Check for unique items
-        if len(v) != len(set(v)):
-            raise ValueError("tags must contain unique items")
-        return v
-
-    @field_validator("planned_value")
-    @classmethod
-    def planned_value_must_be_positive(cls, v: float) -> float:
-        """Validate that planned_value is positive.
-
-        Args:
-            v: The planned_value to validate.
-        Returns:
-            float: The validated planned_value.
-
-        Raises:
-            ValueError: If planned_value is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("planned_value must be greater than 0")
-        return v
-
-    @field_validator("planned_transaction_day")
-    @classmethod
-    def planned_transaction_day_must_be_valid(cls, v: int) -> int:
-        """Validate that planned_transaction_day is within valid range.
-
-        Args:
-            v: The planned_transaction_day value to validate.
-
-        Returns:
-            int: The validated planned_transaction_day.
-
-        Raises:
-            ValueError: If planned_transaction_day is not between 1 and 28.
-        """
-        if v <= 0:
-            raise ValueError("planned_transaction_day must be greater than 0")
-        if v > 28:
-            raise ValueError("planned_transaction_day must be less than or equal to 28")
-        return v
+    planned_value: float = Field(gt=0, description="Expected value of the transaction")
+    planned_transaction_day: int = Field(
+        gt=0, le=28, description="Day of the month when the transaction is expected to occur"
+    )
 
 
 class TransactionsDTO(TableDTO):
@@ -175,25 +80,7 @@ class TransactionsDTO(TableDTO):
     to_account: Optional[Annotated[uuid.UUID | AccountsDTO, Field(alias="to_account_id")]] = None
     active: bool = True
     transaction_ts: datetime.datetime = Field(default_factory=datetime.datetime.now)
-    value: float
-
-    @field_validator("value")
-    @classmethod
-    def value_must_be_positive(cls, v: float) -> float:
-        """Validate that value is positive.
-
-        Args:
-            v: The transaction value to validate.
-
-        Returns:
-            float: The validated transaction value.
-
-        Raises:
-            ValueError: If value is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("value must be greater than 0")
-        return v
+    value: float = Field(gt=0, description="Monetary value of the transaction")
 
     @model_serializer()
     def _serialize(self) -> dict:

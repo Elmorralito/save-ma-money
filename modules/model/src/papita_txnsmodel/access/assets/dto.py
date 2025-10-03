@@ -17,7 +17,7 @@ Classes:
 import uuid
 from typing import Annotated, Optional
 
-from pydantic import Field, field_validator, model_serializer
+from pydantic import Field, model_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
@@ -57,144 +57,20 @@ class AssetAccountsDTO(TableDTO):
 
     __dao_type__ = AssetAccounts
 
-    account: Annotated[uuid.UUID | AccountsDTO, Field(alias="account_id")]
-    account_type: Annotated[uuid.UUID | TypesDTO, Field(alias="account_type_id")]
+    account: Annotated[uuid.UUID | AccountsDTO, Field(serialization_alias="account_id")]
+    account_type: Annotated[uuid.UUID | TypesDTO, Field(serialization_alias="account_type_id")]
     bank_credit_liability_account: Optional[
-        Annotated[uuid.UUID | BankCreditLiabilityAccountsDTO, Field(alias="bank_credit_liability_account_id")]
+        Annotated[
+            uuid.UUID | BankCreditLiabilityAccountsDTO, Field(serialization_alias="bank_credit_liability_account_id")
+        ]
     ] = None
-    months_per_period: int = 1
-    initial_value: Optional[float] = None
-    last_value: Optional[float] = None
-    monthly_interest_rate: Optional[float] = None
-    yearly_interest_rate: Optional[float] = None
-    roi: Optional[float] = None
-    periodical_earnings: Optional[float] = None
-
-    @field_validator("months_per_period")
-    @classmethod
-    def months_per_period_must_be_positive(cls, v: int) -> int:
-        """Validate that months_per_period is positive.
-
-        Args:
-            v: The months_per_period value to validate.
-
-        Returns:
-            int: The validated months_per_period.
-
-        Raises:
-            ValueError: If months_per_period is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("months_per_period must be greater than 0")
-        return v
-
-    @field_validator("initial_value")
-    @classmethod
-    def initial_value_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that initial_value is positive if provided.
-
-        Args:
-            v: The initial_value to validate.
-
-        Returns:
-            Optional[float]: The validated initial_value.
-
-        Raises:
-            ValueError: If initial_value is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("initial_value must be greater than 0")
-        return v
-
-    @field_validator("last_value")
-    @classmethod
-    def last_value_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that last_value is positive if provided.
-
-        Args:
-            v: The last_value to validate.
-
-        Returns:
-            Optional[float]: The validated last_value.
-
-        Raises:
-            ValueError: If last_value is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("last_value must be greater than 0")
-        return v
-
-    @field_validator("monthly_interest_rate")
-    @classmethod
-    def monthly_interest_rate_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that monthly_interest_rate is positive if provided.
-
-        Args:
-            v: The monthly_interest_rate to validate.
-
-        Returns:
-            Optional[float]: The validated monthly_interest_rate.
-
-        Raises:
-            ValueError: If monthly_interest_rate is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("monthly_interest_rate must be greater than 0")
-        return v
-
-    @field_validator("yearly_interest_rate")
-    @classmethod
-    def yearly_interest_rate_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that yearly_interest_rate is positive if provided.
-
-        Args:
-            v: The yearly_interest_rate to validate.
-
-        Returns:
-            Optional[float]: The validated yearly_interest_rate.
-
-        Raises:
-            ValueError: If yearly_interest_rate is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("yearly_interest_rate must be greater than 0")
-        return v
-
-    @field_validator("roi")
-    @classmethod
-    def roi_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that roi is positive if provided.
-
-        Args:
-            v: The roi value to validate.
-
-        Returns:
-            Optional[float]: The validated roi.
-
-        Raises:
-            ValueError: If roi is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("roi must be greater than 0")
-        return v
-
-    @field_validator("periodical_earnings")
-    @classmethod
-    def periodical_earnings_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that periodical_earnings is positive if provided.
-
-        Args:
-            v: The periodical_earnings value to validate.
-
-        Returns:
-            Optional[float]: The validated periodical_earnings.
-
-        Raises:
-            ValueError: If periodical_earnings is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("periodical_earnings must be greater than 0")
-        return v
+    months_per_period: Annotated[int, Field(gt=0)] = 1
+    initial_value: Annotated[Optional[float], Field(gt=0)] = None
+    last_value: Annotated[Optional[float], Field(gt=0)] = None
+    monthly_interest_rate: Annotated[Optional[float], Field(gt=0)] = None
+    yearly_interest_rate: Annotated[Optional[float], Field(gt=0)] = None
+    roi: Annotated[Optional[float], Field(gt=0)] = None
+    periodical_earnings: Annotated[Optional[float], Field(gt=0)] = None
 
     @model_serializer()
     def _serialize(self) -> dict:
@@ -246,7 +122,7 @@ class ExtendedAssetAccountDTO(TableDTO):
             associated with this specialized asset account.
     """
 
-    asset_account: Annotated[uuid.UUID | AssetAccountsDTO, Field(alias="asset_account_id")]
+    asset_account: Annotated[uuid.UUID | AssetAccountsDTO, Field(serialization_alias="asset_account_id")]
 
     @model_serializer()
     def _serialize(self) -> dict:
@@ -283,26 +159,8 @@ class BankingAssetAccountsDTO(ExtendedAssetAccountDTO):
 
     __dao_type__ = BankingAssetAccounts
 
-    entity: str
+    entity: Annotated[str, Field(min_length=1, pattern=r"\S")]
     account_number: Optional[str] = None
-
-    @field_validator("entity")
-    @classmethod
-    def entity_must_not_be_empty(cls, v: str) -> str:
-        """Validate that entity is not empty.
-
-        Args:
-            v: The entity value to validate.
-
-        Returns:
-            str: The validated entity.
-
-        Raises:
-            ValueError: If entity is empty or contains only whitespace.
-        """
-        if not v or v.isspace():
-            raise ValueError("entity cannot be empty")
-        return v
 
 
 class RealEstateAssetAccountsDTO(ExtendedAssetAccountDTO):
@@ -354,60 +212,6 @@ class TradingAssetAccountsDTO(ExtendedAssetAccountDTO):
 
     __dao_type__ = TradingAssetAccounts
 
-    buy_value: float
-    last_value: Optional[float] = None
-    units: int = 1
-
-    @field_validator("buy_value")
-    @classmethod
-    def buy_value_must_be_positive(cls, v: float) -> float:
-        """Validate that buy_value is positive.
-
-        Args:
-            v: The buy_value to validate.
-
-        Returns:
-            float: The validated buy_value.
-
-        Raises:
-            ValueError: If buy_value is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("buy_value must be greater than 0")
-        return v
-
-    @field_validator("last_value")
-    @classmethod
-    def last_value_must_be_positive(cls, v: Optional[float]) -> Optional[float]:
-        """Validate that last_value is positive if provided.
-
-        Args:
-            v: The last_value to validate.
-
-        Returns:
-            Optional[float]: The validated last_value.
-
-        Raises:
-            ValueError: If last_value is not greater than 0.
-        """
-        if v is not None and v <= 0:
-            raise ValueError("last_value must be greater than 0")
-        return v
-
-    @field_validator("units")
-    @classmethod
-    def units_must_be_positive(cls, v: int) -> int:
-        """Validate that units is positive.
-
-        Args:
-            v: The units value to validate.
-
-        Returns:
-            int: The validated units.
-
-        Raises:
-            ValueError: If units is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("units must be greater than 0")
-        return v
+    buy_value: Annotated[float, Field(gt=0)]
+    last_value: Annotated[Optional[float], Field(gt=0)] = None
+    units: Annotated[int, Field(gt=0)] = 1

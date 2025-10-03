@@ -16,7 +16,7 @@ Classes:
 import uuid
 from typing import Annotated
 
-from pydantic import Field, field_validator, model_serializer
+from pydantic import Field, model_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
@@ -58,103 +58,16 @@ class LiabilityAccountsDTO(TableDTO):
 
     account: Annotated[uuid.UUID | AccountsDTO, Field(alias="account_id")]
     account_type: Annotated[uuid.UUID | TypesDTO, Field(alias="account_type_id")]
-    months_per_period: int = 1
-    initial_value: float
-    present_value: float
-    monthly_interest_rate: float
-    yearly_interest_rate: float
-    payment: float
-    total_paid: float = 0
-    overall_periods: int = 1
-    periods_paid: int = 1
-    closing_day: int
-
-    @field_validator("months_per_period")
-    @classmethod
-    def months_per_period_must_be_positive(cls, v: int) -> int:
-        """Validate that months_per_period is positive.
-
-        Args:
-            v: The months_per_period value to validate.
-        Returns:
-            int: The validated months_per_period.
-
-        Raises:
-            ValueError: If months_per_period is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("months_per_period must be greater than 0")
-        return v
-
-    @field_validator("initial_value", "present_value", "payment", "total_paid")
-    @classmethod
-    def value_must_be_positive(cls, v: float) -> float:
-        """Validate that financial values are positive.
-
-        Args:
-            v: The financial value to validate.
-        Returns:
-            float: The validated financial value.
-
-        Raises:
-            ValueError: If the value is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("value must be greater than 0")
-        return v
-
-    @field_validator("monthly_interest_rate", "yearly_interest_rate")
-    @classmethod
-    def interest_rate_must_be_positive(cls, v: float) -> float:
-        """Validate that interest rates are positive.
-
-        Args:
-            v: The interest rate value to validate.
-        Returns:
-            float: The validated interest rate.
-
-        Raises:
-            ValueError: If the interest rate is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("interest rate must be greater than 0")
-        return v
-
-    @field_validator("overall_periods", "periods_paid")
-    @classmethod
-    def periods_must_be_positive(cls, v: int) -> int:
-        """Validate that period counts are positive.
-
-        Args:
-            v: The period count to validate.
-
-        Returns:
-            int: The validated period count.
-
-        Raises:
-            ValueError: If the period count is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("periods must be greater than 0")
-        return v
-
-    @field_validator("closing_day")
-    @classmethod
-    def closing_day_must_be_valid(cls, v: int) -> int:
-        """Validate that closing_day is within valid range.
-
-        Args:
-            v: The closing_day value to validate.
-
-        Returns:
-            int: The validated closing_day.
-
-        Raises:
-            ValueError: If closing_day is not between 1 and 28.
-        """
-        if v <= 0 or v > 28:
-            raise ValueError("closing_day must be between 1 and 28")
-        return v
+    months_per_period: int = Field(gt=0, default=1, description="Number of months in each accounting period")
+    initial_value: float = Field(gt=0, description="Initial value of the liability")
+    present_value: float = Field(gt=0, description="Current value of the liability")
+    monthly_interest_rate: float = Field(gt=0, description="Monthly interest rate")
+    yearly_interest_rate: float = Field(gt=0, description="Yearly interest rate")
+    payment: float = Field(gt=0, description="Regular payment amount")
+    total_paid: float = Field(gt=0, default=0, description="Total amount paid so far")
+    overall_periods: int = Field(gt=0, default=1, description="Total number of payment periods")
+    periods_paid: int = Field(gt=0, default=1, description="Number of periods already paid")
+    closing_day: int = Field(gt=0, le=28, description="Day of the month when the payment is due (1-28)")
 
     @model_serializer()
     def _serialize(self) -> dict:
@@ -166,7 +79,7 @@ class LiabilityAccountsDTO(TableDTO):
         Returns:
             dict: Dictionary representation of the DTO with proper ID references.
         """
-        first = convert_dto_obj_on_serialize(
+        result = convert_dto_obj_on_serialize(
             obj=self,
             id_field="account",
             id_field_attr_name="id",
@@ -174,7 +87,7 @@ class LiabilityAccountsDTO(TableDTO):
             expected_intput_field_type=AccountsDTO,
             expected_output_field_type=uuid.UUID,
         )
-        second = convert_dto_obj_on_serialize(
+        result |= convert_dto_obj_on_serialize(
             obj=self,
             id_field="account_type",
             id_field_attr_name="id",
@@ -182,7 +95,7 @@ class LiabilityAccountsDTO(TableDTO):
             expected_intput_field_type=TypesDTO,
             expected_output_field_type=uuid.UUID,
         )
-        return first | second
+        return result
 
 
 class ExtendedLiabilityAccountsDTO(TableDTO):
@@ -233,26 +146,8 @@ class BankCreditLiabilityAccountsDTO(ExtendedLiabilityAccountsDTO):
 
     __dao_type__ = BankCreditLiabilityAccounts
 
-    insurance_payment: float
-    extras_payment: float
-
-    @field_validator("insurance_payment", "extras_payment")
-    @classmethod
-    def payment_must_be_valid(cls, v: float) -> float:
-        """Validate that additional payments are not negative.
-
-        Args:
-            v: The payment value to validate.
-
-        Returns:
-            float: The validated payment value.
-
-        Raises:
-            ValueError: If the payment is negative.
-        """
-        if v < 0:
-            raise ValueError("payment cannot be negative")
-        return v
+    insurance_payment: float = Field(ge=0, description="Additional payment for insurance")
+    extras_payment: float = Field(ge=0, description="Additional miscellaneous payments")
 
 
 class CreditCardLiabilityAccountsDTO(ExtendedLiabilityAccountsDTO):
@@ -268,22 +163,4 @@ class CreditCardLiabilityAccountsDTO(ExtendedLiabilityAccountsDTO):
 
     __dao_type__ = CreditCardLiabilityAccounts
 
-    credit_limit: float
-
-    @field_validator("credit_limit")
-    @classmethod
-    def credit_limit_must_be_positive(cls, v: float) -> float:
-        """Validate that credit_limit is positive.
-
-        Args:
-            v: The credit_limit value to validate.
-
-        Returns:
-            float: The validated credit_limit.
-
-        Raises:
-            ValueError: If credit_limit is not greater than 0.
-        """
-        if v <= 0:
-            raise ValueError("credit_limit must be greater than 0")
-        return v
+    credit_limit: float = Field(gt=0, description="Maximum credit limit")
