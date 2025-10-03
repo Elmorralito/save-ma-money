@@ -55,7 +55,7 @@ test -e "$(which alembic)" || {
 RM_FLAG=
 LOCAL_FLAG=
 ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
-ENV_FILE="${ALEMBIC_PATH}/.env"
+ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -111,13 +111,13 @@ source "${ENV_FILE}" || {
 
 case "$ACTION" in
     version | autogenerate)
-        ALEMBIC_COMMAND="alembic revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         ;;
     upgrade)
-        ALEMBIC_COMMAND="alembic -x upgrading=true upgrade head"
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade head"
         ;;
     downgrade)
-        ALEMBIC_COMMAND="alembic -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
         ;;
     up)
         ALEMBIC_COMMAND="echo 'Bringing up the services...'"
@@ -140,8 +140,8 @@ case "$ACTION" in
         ;;
 esac
 
+COMPOSE_FILE="${COMPOSE_FILE:-"${PROJECT_PATH}/docker/alembic/docker-compose.yml"}"
 if [[ "$LOCAL_FLAG" -eq 1 ]]; then
-    COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_PATH}/docker/alembic.yml}"
     DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --build"
     run_command 1 "$DOCKER_COMMAND"
     log INFO "Waiting 5 seconds for the database to start..."

@@ -11,7 +11,7 @@ volumes:
 
 services:
   postgres-db:
-    container_name: postgres-papita-transactions-db
+    container_name: "postgresql-${COMPOSE_NAME:-papita-transactions-db}"
     image: postgres:14-alpine
     restart: unless-stopped
     networks:
