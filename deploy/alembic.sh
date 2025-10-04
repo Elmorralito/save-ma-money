@@ -14,10 +14,11 @@ The script loads environment variables from transactions-model/.env by default.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
-    upgrade, migrate                    Apply pending migrations to the database
+    upgrade                             Apply pending migrations to the database
     downgrade                           Roll back to a previous migration
     up                                  Start the Docker services for migration environment
-    down                                Stop the Docker services for migration environment
+    halt, stop                          Stop the Docker services for migration environment
+    down                                Destroy the Docker services for migration environment
 
 OPTIONS:
     --message, --slug, -m MESSAGE       Specify a message for the migration
@@ -53,8 +54,8 @@ test -e "$(which alembic)" || {
 
 RM_FLAG=
 LOCAL_FLAG=
-ALEMBIC_PATH="${PROJECT_PATH}/papita-transactions-model"
-ENV_FILE="${ALEMBIC_PATH}/.env"
+ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
+ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -110,18 +111,23 @@ source "${ENV_FILE}" || {
 
 case "$ACTION" in
     version | autogenerate)
-        ALEMBIC_COMMAND="alembic revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         ;;
-    upgrade | migrate)
-        ALEMBIC_COMMAND="alembic upgrade head"
+    upgrade)
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade head"
         ;;
     downgrade)
-        ALEMBIC_COMMAND="alembic upgrade ${ALEMBIC_VERSION:-"head^1"}"
+        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
         ;;
     up)
         ALEMBIC_COMMAND="echo 'Bringing up the services...'"
         RM_FLAG=0
         LOCAL_FLAG=1
+        ;;
+    halt | stop)
+        ALEMBIC_COMMAND="echo 'Bringing up the services...'"
+        RM_FLAG=0
+        LOCAL_FLAG=2
         ;;
     down)
         ALEMBIC_COMMAND="echo 'Bringing down the services...'"
@@ -134,8 +140,8 @@ case "$ACTION" in
         ;;
 esac
 
+COMPOSE_FILE="${COMPOSE_FILE:-"${PROJECT_PATH}/docker/alembic/docker-compose.yml"}"
 if [[ "$LOCAL_FLAG" -eq 1 ]]; then
-    COMPOSE_FILE="${COMPOSE_FILE:-${PROJECT_PATH}/docker/alembic.yml}"
     DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE up -d --build"
     run_command 1 "$DOCKER_COMMAND"
     log INFO "Waiting 5 seconds for the database to start..."
@@ -144,9 +150,19 @@ fi
 
 cd "$ALEMBIC_PATH" && run_command 0 "$ALEMBIC_COMMAND"
 
+if [[ "$LOCAL_FLAG" -eq 2 ]] && [[ "$RM_FLAG" -gt 0 ]] && [ -n "$COMPOSE_FILE" ]; then
+    log INFO "Stoping local database..."
+    DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE stop"
+    run_command 1 "$DOCKER_COMMAND"
+fi
+
 if [[ "$LOCAL_FLAG" -eq 1 ]] && [[ "$RM_FLAG" -gt 0 ]] && [ -n "$COMPOSE_FILE" ]; then
+    log INFO "Destroying local database..."
     DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE down"
-    DOCKER_COMMAND="${DOCKER_COMMAND}$( if [[ "$RM_FLAG" -eq 2 ]] ; then echo " -v" ; else echo "" ; fi )"
+    [[ "$RM_FLAG" -eq 2 ]] && {
+        log INFO "Destroying database's volume as well..."
+        DOCKER_COMMAND="${DOCKER_COMMAND} -v"
+    }
     run_command 1 "$DOCKER_COMMAND"
 fi
 
