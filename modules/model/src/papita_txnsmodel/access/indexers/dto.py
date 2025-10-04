@@ -16,7 +16,7 @@ from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.assets.dto import (
     AssetAccountsDTO,
     BankingAssetAccountsDTO,
-    ExtendedAssetAccountDTO,
+    ExtendedAssetAccountsDTO,
     RealEstateAssetAccountsDTO,
     TradingAssetAccountsDTO,
 )
@@ -126,7 +126,7 @@ class AccountsIndexerDTO(TableDTO):
         extended_account_fields = [
             field_name
             for field_name, info in self.__class__.model_fields.items()
-            if ExtendedAssetAccountDTO in get_args(info.annotation)
+            if ExtendedAssetAccountsDTO in get_args(info.annotation)
             or ExtendedLiabilityAccountsDTO in get_args(info.annotation)
         ]
         extended_accounts_count = sum(1 for field in extended_account_fields if getattr(self, field) is not None)
@@ -149,7 +149,7 @@ class AccountsIndexerDTO(TableDTO):
         """
         match self.asset_account, self.liability_account:
             case None, _:
-                extended_account_type = ExtendedAssetAccountDTO
+                extended_account_type = ExtendedAssetAccountsDTO
             case _, None:
                 extended_account_type = ExtendedLiabilityAccountsDTO
 

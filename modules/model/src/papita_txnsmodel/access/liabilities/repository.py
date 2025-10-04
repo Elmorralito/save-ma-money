@@ -4,9 +4,12 @@ This module defines the repository classes for liability entities in the system.
 It provides database access operations specific to liabilities, extending the base
 repository functionality with liability-specific implementations.
 
-Classes:
-    LiabilityAccountsRepository: Repository for general liability account operations.
-    ExtendedLiabilityAccountRepository: Repository for specialized liability account operations.
+The module contains two main repository classes:
+    - LiabilityAccountsRepository: For standard liability account operations
+    - ExtendedLiabilityAccountsRepository: For specialized liability account operations
+
+These repositories handle the database interactions for liability accounts, providing
+a clean abstraction layer between the database and the business logic.
 """
 
 from papita_txnsmodel.access.base.repository import BaseRepository

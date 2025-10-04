@@ -167,14 +167,17 @@ max-complexity = 18
 [tool.interrogate]
 paths = [
     "./modules/api/src",
-    "./modules/api/tests",
+
     "./modules/model/src",
-    "./modules/model/tests",
+
     "./modules/tracker/src",
-    "./modules/tracker/tests",
+
 ]
 exclude = [
+    "./modules/api/tests",
     "./modules/model/alembic",
+    "./modules/model/tests",
+    "./modules/tracker/tests",
     "venv",
     ".venv",
     "build",

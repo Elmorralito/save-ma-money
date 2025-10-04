@@ -16,19 +16,37 @@ Classes:
 
 from papita_txnsmodel.access.assets.dto import (
     AssetAccountsDTO,
-    ExtendedAssetAccountDTO,
+    FinancedAssetAccountsDTO,
     RealEstateAssetAccountsDTO,
     TradingAssetAccountsDTO,
 )
-from papita_txnsmodel.access.assets.repository import AssetAccountsRepository, ExtendedAssetAccountRepository
-from papita_txnsmodel.access.types.dto import TypesDTO
+from papita_txnsmodel.access.assets.repository import AssetAccountsRepository, ExtendedAssetAccountsRepository
+from papita_txnsmodel.services.base import BaseService
 
-from .accounts import AccountsService
-from .extends import LinkedEntitiesService, LinkedEntity, TypedLinkedEntitiesServiceMixin
-from .liabilities import ExtendedLiabilityAccountService
+from .extends import LinkedEntitiesService, LinkedEntity
+from .liabilities import BankCreditLiabilityAccountsService
 
 
-class AssetAccountsService(TypedLinkedEntitiesServiceMixin):
+class AssetAccountsService(BaseService):
+    """Service for managing trading asset accounts.
+
+    This service extends the BaseService to handle trading asset accounts
+    that have relationships with basic asset accounts. It provides functionality
+    specific to trading assets like securities, stocks, and other investment vehicles.
+
+    Attributes:
+        __links__ (dict[str, LinkedEntity]): Dictionary defining the relationship
+            between trading asset accounts and basic asset accounts.
+        dto_type (type[TradingAssetAccountsDTO]): DTO type for trading asset accounts.
+        repository_type (type[ExtendedAssetAccountRepository]): Repository for extended
+            asset account database operations.
+    """
+
+    dto_type: type[AssetAccountsDTO] = AssetAccountsDTO
+    repository_type: type[AssetAccountsRepository] = AssetAccountsRepository
+
+
+class FinancedAssetAccountsService(LinkedEntitiesService):
     """Service for managing asset accounts in the Papita Transactions system.
 
     This service extends the TypedLinkedEntitiesServiceMixin to handle asset accounts
@@ -47,15 +65,8 @@ class AssetAccountsService(TypedLinkedEntitiesServiceMixin):
     """
 
     __links__: dict[str, LinkedEntity] = {
-        "account": LinkedEntity(
-            expected_other_entity_service_type=AccountsService,
-            other_entity_link_column_name="id",
-            other_entity_link_field_name="id",
-            own_entity_link_column_name="account_id",
-            own_entity_link_field_name="account",
-        ),
         "bank_credit_liability_account": LinkedEntity(
-            expected_other_entity_service_type=ExtendedLiabilityAccountService,
+            expected_other_entity_service_type=BankCreditLiabilityAccountsService,
             other_entity_link_column_name="id",
             other_entity_link_field_name="id",
             own_entity_link_column_name="bank_credit_liability_account_id",
@@ -63,45 +74,14 @@ class AssetAccountsService(TypedLinkedEntitiesServiceMixin):
         ),
     }
 
-    type_id_column_name: str = "account_type_id"
-    type_id_field_name: str = "account_type"
-    dto_type: type[AssetAccountsDTO] = AssetAccountsDTO
-    repository_type: type[AssetAccountsRepository] = AssetAccountsRepository
-    types_dto_type: type[TypesDTO] = TypesDTO
+    dto_type: type[FinancedAssetAccountsDTO] = FinancedAssetAccountsDTO
+    repository_type: type[ExtendedAssetAccountsRepository] = ExtendedAssetAccountsRepository
 
 
-class ExtendedAssetAccountService(LinkedEntitiesService):
-    """Service for managing extended asset account information.
-
-    This service extends the LinkedEntitiesService to handle extended asset account
-    information that has relationships with basic asset accounts.
-
-    Attributes:
-        __links__ (dict[str, LinkedEntity]): Dictionary defining the relationship
-            between extended asset accounts and basic asset accounts.
-        dto_type (type[ExtendedAssetAccountDTO]): DTO type for extended asset accounts.
-        repository_type (type[ExtendedAssetAccountRepository]): Repository for extended
-            asset account database operations.
-    """
-
-    __links__: dict[str, LinkedEntity] = {
-        "asset_account": LinkedEntity(
-            expected_other_entity_service_type=AssetAccountsService,
-            other_entity_link_column_name="id",
-            other_entity_link_field_name="id",
-            own_entity_link_column_name="asset_account_id",
-            own_entity_link_field_name="asset_account",
-        )
-    }
-
-    dto_type: type[ExtendedAssetAccountDTO] = ExtendedAssetAccountDTO
-    repository_type: type[ExtendedAssetAccountRepository] = ExtendedAssetAccountRepository
-
-
-class RealEstateAssetAccountsService(LinkedEntitiesService):
+class RealEstateAssetAccountsService(BaseService):
     """Service for managing real estate asset accounts.
 
-    This service extends the LinkedEntitiesService to handle real estate asset accounts
+    This service extends the BaseService to handle real estate asset accounts
     that have relationships with basic asset accounts. It provides functionality
     specific to real estate assets like property details and ownership information.
 
@@ -113,24 +93,14 @@ class RealEstateAssetAccountsService(LinkedEntitiesService):
             asset account database operations.
     """
 
-    __links__: dict[str, LinkedEntity] = {
-        "asset_account": LinkedEntity(
-            expected_other_entity_service_type=AssetAccountsService,
-            other_entity_link_column_name="id",
-            other_entity_link_field_name="id",
-            own_entity_link_column_name="asset_account_id",
-            own_entity_link_field_name="asset_account",
-        ),
-    }
-
     dto_type: type[RealEstateAssetAccountsDTO] = RealEstateAssetAccountsDTO
-    repository_type: type[ExtendedAssetAccountRepository] = ExtendedAssetAccountRepository
+    repository_type: type[ExtendedAssetAccountsRepository] = ExtendedAssetAccountsRepository
 
 
-class TradingAssetAccountsService(LinkedEntitiesService):
+class TradingAssetAccountsService(BaseService):
     """Service for managing trading asset accounts.
 
-    This service extends the LinkedEntitiesService to handle trading asset accounts
+    This service extends the BaseService to handle trading asset accounts
     that have relationships with basic asset accounts. It provides functionality
     specific to trading assets like securities, stocks, and other investment vehicles.
 
@@ -142,15 +112,5 @@ class TradingAssetAccountsService(LinkedEntitiesService):
             asset account database operations.
     """
 
-    __links__: dict[str, LinkedEntity] = {
-        "asset_account": LinkedEntity(
-            expected_other_entity_service_type=AssetAccountsService,
-            other_entity_link_column_name="id",
-            other_entity_link_field_name="id",
-            own_entity_link_column_name="asset_account_id",
-            own_entity_link_field_name="asset_account",
-        ),
-    }
-
     dto_type: type[TradingAssetAccountsDTO] = TradingAssetAccountsDTO
-    repository_type: type[ExtendedAssetAccountRepository] = ExtendedAssetAccountRepository
+    repository_type: type[ExtendedAssetAccountsRepository] = ExtendedAssetAccountsRepository

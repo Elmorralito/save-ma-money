@@ -8,7 +8,8 @@ application.
 
 Classes:
     AssetAccountsDTO: Base DTO for all asset accounts.
-    ExtendedAssetAccountDTO: Base DTO for specialized asset accounts.
+    ExtendedAssetAccountsDTO: Base DTO for specialized asset accounts.
+    FinancedAssetAccountsDTO: DTO for assets that are partially or fully financed.
     BankingAssetAccountsDTO: DTO for banking-related asset accounts.
     RealEstateAssetAccountsDTO: DTO for real estate asset accounts.
     TradingAssetAccountsDTO: DTO for trading and investment asset accounts.
@@ -19,10 +20,8 @@ from typing import Annotated, Optional
 
 from pydantic import Field, model_serializer
 
-from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.liabilities.dto import BankCreditLiabilityAccountsDTO
-from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.model.assets import (
     AssetAccounts,
     BankingAssetAccounts,
@@ -43,7 +42,6 @@ class AssetAccountsDTO(TableDTO):
     Attributes:
         __dao_type__ (type): The ORM model class this DTO corresponds to.
         account (uuid.UUID | AccountsDTO): The account associated with this asset.
-        account_type (uuid.UUID | TypesDTO): The type of this asset account.
         bank_credit_liability_account (Optional[uuid.UUID | BankCreditLiabilityAccountsDTO]):
             Associated bank credit liability account, if any.
         months_per_period (int): Number of months in each accounting period. Defaults to 1.
@@ -57,13 +55,6 @@ class AssetAccountsDTO(TableDTO):
 
     __dao_type__ = AssetAccounts
 
-    account: Annotated[uuid.UUID | AccountsDTO, Field(serialization_alias="account_id")]
-    account_type: Annotated[uuid.UUID | TypesDTO, Field(serialization_alias="account_type_id")]
-    bank_credit_liability_account: Optional[
-        Annotated[
-            uuid.UUID | BankCreditLiabilityAccountsDTO, Field(serialization_alias="bank_credit_liability_account_id")
-        ]
-    ] = None
     months_per_period: Annotated[int, Field(gt=0)] = 1
     initial_value: Annotated[Optional[float], Field(gt=0)] = None
     last_value: Annotated[Optional[float], Field(gt=0)] = None
@@ -71,6 +62,42 @@ class AssetAccountsDTO(TableDTO):
     yearly_interest_rate: Annotated[Optional[float], Field(gt=0)] = None
     roi: Annotated[Optional[float], Field(gt=0)] = None
     periodical_earnings: Annotated[Optional[float], Field(gt=0)] = None
+
+
+class ExtendedAssetAccountsDTO(TableDTO):
+    """Base DTO for specialized asset account types.
+
+    This class serves as a base for more specific asset account DTOs, providing
+    a common structure for linking to the base asset account.
+
+    Attributes:
+        asset_account (uuid.UUID | AssetAccountsDTO): The base asset account
+            associated with this specialized asset account.
+    """
+
+
+class FinancedAssetAccountsDTO(ExtendedAssetAccountsDTO):
+    """DTO for financed asset accounts.
+
+    This class represents asset accounts that are partially or fully financed through
+    credit or loans. It extends ExtendedAssetAccountsDTO to inherit the asset account
+    relationship structure and provides attributes for tracking financing details.
+    Attributes:
+        bank_credit_liability_account (Optional[uuid.UUID | BankCreditLiabilityAccountsDTO]):
+            The bank credit or loan account associated with financing this asset.
+        asset_account (Optional[uuid.UUID | AssetAccountsDTO]):
+            The base asset account associated with this financed asset.
+        financing_share (float): The portion of the asset that is financed (0.0-1.0).
+            Must be greater than 0 and less than or equal to 1. Defaults to 0.0.
+    """
+
+    bank_credit_liability_account: Optional[
+        Annotated[
+            uuid.UUID | BankCreditLiabilityAccountsDTO, Field(serialization_alias="bank_credit_liability_account_id")
+        ]
+    ]
+    asset_account: Optional[Annotated[uuid.UUID | AssetAccountsDTO, Field(serialization_alias="asset_account_id")]]
+    financing_share: Annotated[float, Field(le=1, gt=0)] = 0.0
 
     @model_serializer()
     def _serialize(self) -> dict:
@@ -84,57 +111,13 @@ class AssetAccountsDTO(TableDTO):
         """
         result = convert_dto_obj_on_serialize(
             obj=self,
-            id_field="account",
+            id_field="bank_credit_liability_account",
             id_field_attr_name="id",
-            target_field="account_id",
-            expected_intput_field_type=AccountsDTO,
+            target_field="bank_credit_liability_account_id",
+            expected_intput_field_type=BankCreditLiabilityAccountsDTO,
             expected_output_field_type=uuid.UUID,
         )
         result |= convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="account_type",
-            id_field_attr_name="id",
-            target_field="account_type_id",
-            expected_intput_field_type=TypesDTO,
-            expected_output_field_type=uuid.UUID,
-        )
-        if isinstance(self.bank_credit_liability_account, (BankCreditLiabilityAccountsDTO, uuid.UUID)):
-            result |= convert_dto_obj_on_serialize(
-                obj=self,
-                id_field="bank_credit_liability_account",
-                id_field_attr_name="id",
-                target_field="bank_credit_liability_account_id",
-                expected_intput_field_type=BankCreditLiabilityAccountsDTO,
-                expected_output_field_type=uuid.UUID,
-            )
-
-        return result
-
-
-class ExtendedAssetAccountDTO(TableDTO):
-    """Base DTO for specialized asset account types.
-
-    This class serves as a base for more specific asset account DTOs, providing
-    a common structure for linking to the base asset account.
-
-    Attributes:
-        asset_account (uuid.UUID | AssetAccountsDTO): The base asset account
-            associated with this specialized asset account.
-    """
-
-    asset_account: Annotated[uuid.UUID | AssetAccountsDTO, Field(serialization_alias="asset_account_id")]
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the DTO to a dictionary, handling nested DTOs.
-
-        This method converts the nested asset_account DTO to its ID value for proper
-        serialization to database models.
-
-        Returns:
-            dict: Dictionary representation of the DTO with proper ID references.
-        """
-        return convert_dto_obj_on_serialize(
             obj=self,
             id_field="asset_account",
             id_field_attr_name="id",
@@ -143,14 +126,15 @@ class ExtendedAssetAccountDTO(TableDTO):
             expected_output_field_type=uuid.UUID,
         )
 
+        return result
 
-class BankingAssetAccountsDTO(ExtendedAssetAccountDTO):
+
+class BankingAssetAccountsDTO(ExtendedAssetAccountsDTO):
     """DTO for banking-related asset accounts.
 
     This class represents banking asset accounts in the system, such as checking
     accounts, savings accounts, and certificates of deposit. It extends
-    ExtendedAssetAccountDTO to inherit the asset account relationship.
-
+    ExtendedAssetAccountsDTO to inherit the asset account relationship.
     Attributes:
         __dao_type__ (type): The ORM model class this DTO corresponds to.
         entity (str): The banking entity or institution name.
@@ -163,11 +147,11 @@ class BankingAssetAccountsDTO(ExtendedAssetAccountDTO):
     account_number: Optional[str] = None
 
 
-class RealEstateAssetAccountsDTO(ExtendedAssetAccountDTO):
+class RealEstateAssetAccountsDTO(ExtendedAssetAccountsDTO):
     """DTO for real estate asset accounts.
 
     This class represents real estate asset accounts in the system, such as
-    houses, apartments, and land. It extends ExtendedAssetAccountDTO to inherit
+    houses, apartments, and land. It extends ExtendedAssetAccountsDTO to inherit
     the asset account relationship.
 
     Attributes:
@@ -196,11 +180,11 @@ class RealEstateAssetAccountsDTO(ExtendedAssetAccountDTO):
     participation: Annotated[float, Field(gt=0.0, le=1.0)] = 1
 
 
-class TradingAssetAccountsDTO(ExtendedAssetAccountDTO):
+class TradingAssetAccountsDTO(ExtendedAssetAccountsDTO):
     """DTO for trading and investment asset accounts.
 
     This class represents trading asset accounts in the system, such as stocks,
-    bonds, and other investment vehicles. It extends ExtendedAssetAccountDTO to
+    bonds, and other investment vehicles. It extends ExtendedAssetAccountsDTO to
     inherit the asset account relationship.
 
     Attributes:

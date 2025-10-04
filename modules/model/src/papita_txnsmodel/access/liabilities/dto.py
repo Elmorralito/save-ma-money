@@ -13,22 +13,14 @@ Classes:
     CreditCardLiabilityAccountsDTO: DTO for credit card liability accounts.
 """
 
-import uuid
-from typing import Annotated
+from pydantic import Field
 
-from pydantic import Field, model_serializer
-
-from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
-from papita_txnsmodel.access.types.dto import (
-    TypesDTO,
-)
 from papita_txnsmodel.model.liabilities import (
     BankCreditLiabilityAccounts,
     CreditCardLiabilityAccounts,
     LiabilityAccounts,
 )
-from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
 
 class LiabilityAccountsDTO(TableDTO):
@@ -56,8 +48,6 @@ class LiabilityAccountsDTO(TableDTO):
 
     __dao_type__ = LiabilityAccounts
 
-    account: Annotated[uuid.UUID | AccountsDTO, Field(alias="account_id")]
-    account_type: Annotated[uuid.UUID | TypesDTO, Field(alias="account_type_id")]
     months_per_period: int = Field(gt=0, default=1, description="Number of months in each accounting period")
     initial_value: float = Field(gt=0, description="Initial value of the liability")
     present_value: float = Field(gt=0, description="Current value of the liability")
@@ -68,34 +58,6 @@ class LiabilityAccountsDTO(TableDTO):
     overall_periods: int = Field(gt=0, default=1, description="Total number of payment periods")
     periods_paid: int = Field(gt=0, default=1, description="Number of periods already paid")
     closing_day: int = Field(gt=0, le=28, description="Day of the month when the payment is due (1-28)")
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the DTO to a dictionary, handling nested DTOs.
-
-        This method converts nested DTO objects to their ID values for proper
-        serialization to database models.
-
-        Returns:
-            dict: Dictionary representation of the DTO with proper ID references.
-        """
-        result = convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="account",
-            id_field_attr_name="id",
-            target_field="account_id",
-            expected_intput_field_type=AccountsDTO,
-            expected_output_field_type=uuid.UUID,
-        )
-        result |= convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="account_type",
-            id_field_attr_name="id",
-            target_field="account_type_id",
-            expected_intput_field_type=TypesDTO,
-            expected_output_field_type=uuid.UUID,
-        )
-        return result
 
 
 class ExtendedLiabilityAccountsDTO(TableDTO):
@@ -108,27 +70,6 @@ class ExtendedLiabilityAccountsDTO(TableDTO):
         liability_account (uuid.UUID | LiabilityAccountsDTO): The base liability account
             associated with this specialized liability account.
     """
-
-    liability_account: Annotated[uuid.UUID | LiabilityAccountsDTO, Field(alias="liability_account_id")]
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the DTO to a dictionary, handling nested DTOs.
-
-        This method converts the nested liability_account DTO to its ID value for proper
-        serialization to database models.
-
-        Returns:
-            dict: Dictionary representation of the DTO with proper ID references.
-        """
-        return convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="liability_account",
-            id_field_attr_name="id",
-            target_field="liability_account_id",
-            expected_intput_field_type=LiabilityAccountsDTO,
-            expected_output_field_type=uuid.UUID,
-        )
 
 
 class BankCreditLiabilityAccountsDTO(ExtendedLiabilityAccountsDTO):

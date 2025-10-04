@@ -3,7 +3,7 @@ name = "papita-transactions-model"
 version = "v0.0.1"
 description = "Transactions data model."
 readme = "README.md"
-license = { file = "../LICENSE" }
+license = { file = "LICENSE" }
 authors = [
     { name = "Elmorralito", email = "drestrepohinc@gmail.com" }
 ]

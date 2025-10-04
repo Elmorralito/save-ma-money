@@ -6,13 +6,14 @@ repository functionality with asset-specific implementations.
 
 Classes:
     AssetAccountsRepository: Repository for general asset account operations.
-    ExtendedAssetAccountRepository: Repository for specialized asset account operations.
+    ExtendedAssetAccountsRepository: Repository for specialized asset account operations.
+    FinancedAssetAccountsRepository: Repository for financed asset account operations.
 """
 
 from papita_txnsmodel.access.base.repository import BaseRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
-from .dto import AssetAccountsDTO, ExtendedAssetAccountDTO
+from .dto import AssetAccountsDTO, ExtendedAssetAccountsDTO, FinancedAssetAccountsDTO
 
 
 class AssetAccountsRepository(BaseRepository, metaclass=MetaSingleton):
@@ -34,7 +35,7 @@ class AssetAccountsRepository(BaseRepository, metaclass=MetaSingleton):
     __expected_dto__ = AssetAccountsDTO
 
 
-class ExtendedAssetAccountRepository(BaseRepository, metaclass=MetaSingleton):
+class ExtendedAssetAccountsRepository(BaseRepository, metaclass=MetaSingleton):
     """Repository for specialized asset account database operations.
 
     This class extends the BaseRepository to provide operations for specialized
@@ -42,13 +43,33 @@ class ExtendedAssetAccountRepository(BaseRepository, metaclass=MetaSingleton):
     It uses the Singleton pattern via MetaSingleton to ensure only one instance
     exists throughout the application.
 
-    The repository works with ExtendedAssetAccountDTO objects and their subclasses,
+    The repository works with ExtendedAssetAccountsDTO objects and their subclasses,
     providing all the CRUD operations inherited from BaseRepository for these
     specialized asset types.
 
     Attributes:
-        __expected_dto__ (type[ExtendedAssetAccountDTO]): The expected DTO type for this
-            repository, set to ExtendedAssetAccountDTO.
+        __expected_dto__ (type[ExtendedAssetAccountsDTO]): The expected DTO type for this
+            repository, set to ExtendedAssetAccountsDTO.
     """
 
-    __expected_dto__ = ExtendedAssetAccountDTO
+    __expected_dto__ = ExtendedAssetAccountsDTO
+
+
+class FinancedAssetAccountsRepository(BaseRepository, metaclass=MetaSingleton):
+    """Repository for financed asset account database operations.
+
+    This class extends the BaseRepository to provide operations specifically for
+    assets that are partially or fully financed through credit or loans. It uses
+    the Singleton pattern via MetaSingleton to ensure only one instance exists
+    throughout the application.
+
+    The repository works with FinancedAssetAccountsDTO objects, providing all the
+    CRUD operations inherited from BaseRepository for managing financing details
+    of asset accounts.
+
+    Attributes:
+        __expected_dto__ (type[FinancedAssetAccountsDTO]): The expected DTO type for this
+            repository, set to FinancedAssetAccountsDTO.
+    """
+
+    __expected_dto__ = FinancedAssetAccountsDTO
