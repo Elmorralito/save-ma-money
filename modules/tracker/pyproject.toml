@@ -1,0 +1,25 @@
+[project]
+name = "papita-transactions-tracker"
+version = "v0.0.1"
+description = "Transactions wrapper to automate tracking financial transaction movements"
+readme = "README.md"
+license = "LICENSE"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pydantic (>=2.3.0,<3.0)",
+    "pandas (>=2.3.1,<2.4.0)",
+    "openpyxl (>=3.1.2,<4.0)",
+    "python-dateutil (>=2.8.2,<3.0)",
+    "papita-transactions-model (>=0.0.1,<1.0)",
+]
+
+[tool.poetry]
+packages = [
+    { include = "papita_txnstracker", from = "src/" },
+]
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+]
+build-backend = "poetry.core.masonry.api"

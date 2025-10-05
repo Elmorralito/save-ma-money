@@ -1,0 +1,38 @@
+[project]
+name = "papita-transactions-model"
+version = "v0.0.1"
+description = "Transactions data model."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Elmorralito", email = "drestrepohinc@gmail.com" }
+]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "pydantic(>=2.3.0,<3.0)",
+    "pandas(>=2.3.1,<2.4.0)",
+    "greenlet (>=3.2.4,<4.0)",
+    "mako (>=1.3.10,<2.0)",
+    "alembic[tz] (>=1.16.4,<2.0.0)",
+    "sqlmodel (>=0.0.24,<1.0)",
+    "dotenv (>=0.9.9,<1.0)",
+    "psycopg2-binary (>=2.9.10,<3.0)",
+    "duckdb-engine (>=0.13.6,<0.14)",
+    "sqlalchemy[duckdb-engine] (>=2.0.43,<2.1)",
+    "pytest (>=8.3.1)",
+    "toml (>=0.10.2,<0.11.0)",
+]
+
+[tool.poetry]
+packages = [
+    { include = "papita_txnsmodel", from = "src/" },
+]
+include = [
+    "./pyproject.toml"
+]
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+]
+build-backend = "poetry.core.masonry.api"

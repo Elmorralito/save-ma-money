@@ -1,0 +1,39 @@
+---
+name: "${COMPOSE_NAME:-papita-transactions-db}"
+
+networks:
+  papita-local-net:
+    driver: bridge
+
+volumes:
+  papita-local-env:
+    driver: local
+
+services:
+  postgres-db:
+    container_name: "postgresql-${COMPOSE_NAME:-papita-transactions-db}"
+    image: postgres:14-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    expose:
+      - "127.0.0.1:${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}"
+    ports:
+      - "${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}:${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}/tcp"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready --username=${POSTGRES_USER:-${DB_USER}} --port=${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}} --dbname=${POSTGRES_DB:-${DB_NAME}}'",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+      - POSTGRES_USER=${POSTGRES_USER:-${DB_USER}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-${DB_PASSWORD}}
+      - POSTGRES_DB=${POSTGRES_DB:-${DB_NAME}}
+      - PGPORT=${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}
+    volumes:
+      - "papita-local-env:/var/lib/postgresql/data:rw"

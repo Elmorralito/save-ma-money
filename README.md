@@ -7,11 +7,11 @@
 
 ## Index
 
-| Name                                |                            Package/Library                             |
-| :---------------------------------- | :--------------------------------------------------------------------: |
-| Papita Transactions Data Model      |   [`papita-transactions-model`](papita-transactions-model/README.md)   |
-| Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
-| Papita Trasnsactions API            |     [`papita-transactions-api`](papita-transactions-api/README.md)     |
+| Name                                |                       Package/Library                        |
+| :---------------------------------- | :----------------------------------------------------------: |
+| Papita Transactions Data Model      |   [`papita-transactions-model`](./modules/model/README.md)   |
+| Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](./modules/tracker/README.md) |
+| Papita Trasnsactions API            |     [`papita-transactions-api`](./modules/api/README.md)     |
 
 ## Briefing
 
@@ -46,7 +46,6 @@
 > ```
 
 ## TODOs
-
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00+00:00</sub>_ :weary:
 
