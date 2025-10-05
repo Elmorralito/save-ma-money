@@ -7,11 +7,11 @@
 
 ## Index
 
-| Name                                |                            Package/Library                             |
-| :---------------------------------- | :--------------------------------------------------------------------: |
-| Papita Transactions Data Model      |   [`papita-transactions-model`](papita-transactions-model/README.md)   |
-| Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](papita-transactions-tracker/README.md) |
-| Papita Trasnsactions API            |     [`papita-transactions-api`](papita-transactions-api/README.md)     |
+| Name                                |                       Package/Library                        |
+| :---------------------------------- | :----------------------------------------------------------: |
+| Papita Transactions Data Model      |   [`papita-transactions-model`](./modules/model/README.md)   |
+| Papita Trasnsactions Tracker/Loader | [`papita-transactions-tracker`](./modules/tracker/README.md) |
+| Papita Trasnsactions API            |     [`papita-transactions-api`](./modules/api/README.md)     |
 
 ## Briefing
 

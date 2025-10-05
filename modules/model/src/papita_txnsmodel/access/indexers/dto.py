@@ -10,7 +10,7 @@ linked according to their types and that relationship constraints are maintained
 import uuid
 from typing import Annotated, get_args
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_serializer, model_validator
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.assets.dto import (
@@ -74,6 +74,23 @@ class AccountsIndexerDTO(TableDTO):
     credit_card_liability_account: Annotated[
         uuid.UUID | CreditCardLiabilityAccountsDTO | None, Field(serialization_alias="credit_card_liability_account_id")
     ]
+
+    @field_serializer(
+        "account",
+        "type",
+        "asset_account",
+        "liability_account",
+        "banking_asset_account",
+        "real_estate_asset_account",
+        "trading_asset_account",
+        "bank_credit_liability_account",
+        "credit_card_liability_account",
+    )
+    def _serialize_relations(self, value: uuid.UUID | TableDTO | None) -> uuid.UUID | None:
+        if not value:
+            return None
+
+        return value.id if isinstance(value, TableDTO) else value
 
     @model_validator(mode="after")
     def _model_validate(self) -> "AccountsIndexerDTO":
@@ -164,6 +181,3 @@ class AccountsIndexerDTO(TableDTO):
             raise ValueError(f"Extended account is not of type {extended_account_type.__name__}")
 
         return self
-
-    # @model_serializer()
-    # def _model_serialize(self)

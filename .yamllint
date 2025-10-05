@@ -20,7 +20,7 @@ rules:
     level: warning
   empty-lines: enable
   empty-values: disable
-  float-values: disable
+  float-values: enable
   hyphens: enable
   indentation: enable
   key-duplicates: enable
