@@ -12,27 +12,7 @@ Classes:
 from papita_txnsmodel.access.base.repository import BaseRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
-from .dto import TypesClassificationsDTO, TypesDTO
-
-
-class TypesClassificationRepository(BaseRepository, metaclass=MetaSingleton):
-    """Repository for type classification database operations.
-
-    This class extends the BaseRepository to provide operations specific to type
-    classifications in the system. Type classifications organize and categorize the
-    different types of financial entities. It uses the Singleton pattern via
-    MetaSingleton to ensure only one instance exists throughout the application.
-
-    The repository works with TypesClassificationsDTO objects and provides all the CRUD
-    operations inherited from BaseRepository, including querying, inserting, updating,
-    and deleting type classification records.
-
-    Attributes:
-        __expected_dto_type__ (type[TypesClassificationsDTO]): The expected DTO type for this
-            repository, set to TypesClassificationsDTO.
-    """
-
-    __expected_dto_type__ = TypesClassificationsDTO
+from .dto import TypesDTO
 
 
 class TypesRepository(BaseRepository, metaclass=MetaSingleton):

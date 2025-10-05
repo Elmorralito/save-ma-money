@@ -14,16 +14,16 @@ from typing import Annotated
 
 from pydantic import Field
 
-from papita_txnsmodel.access.types.dto import TypesClassificationsDTO, TypesDTO
+from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.access.types.repository import TypesRepository
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 
-from .extends import TypedEntitiesService
+from .base import BaseService
 
 logger = logging.getLogger(__name__)
 
 
-class TypesService(TypedEntitiesService):
+class TypesService(BaseService):
     """Service for managing type entities in the Papita Transactions system.
 
     This service extends the base service to provide type-specific functionality.
@@ -47,11 +47,8 @@ class TypesService(TypedEntitiesService):
             Set to OnUpsertConflictDo.UPDATE to update existing records.
     """
 
-    type_id_column_name: str = "classification"
-    type_id_field_name: str = "classification"
     dto_type: type[TypesDTO] = TypesDTO
     repository_type: type[TypesRepository] = TypesRepository
-    types_dto_type: type[TypesClassificationsDTO] = TypesClassificationsDTO
 
     missing_upsertions_tol: Annotated[float, Field(ge=0, le=0.5)] = 0.0
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE

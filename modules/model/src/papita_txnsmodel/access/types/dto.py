@@ -8,28 +8,13 @@ Classes:
     TypesDTO: DTO for type entities with reference to their classification.
 """
 
-import uuid
+# import uuid
 
-from pydantic import ConfigDict, model_serializer
+from pydantic import ConfigDict
 
 from papita_txnsmodel.access.base.dto import CoreTableDTO
-from papita_txnsmodel.model.types import Types, TypesClassifications
-from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
-
-
-class TypesClassificationsDTO(CoreTableDTO):
-    """DTO for type classification entities in the Papita Transactions system.
-
-    This class represents classification entities that categorize different types
-    in the system. It extends CoreTableDTO to inherit common fields like id, name,
-    description, and tags. These classifications serve as categories for the various
-    types defined in the system.
-    Attributes:
-        __dao_type__ (type): The ORM model class this DTO corresponds to,
-            set to TypesClassifications.
-    """
-
-    __dao_type__ = TypesClassifications
+from papita_txnsmodel.model.enums import TypesClassifications
+from papita_txnsmodel.model.types import Types
 
 
 class TypesDTO(CoreTableDTO):
@@ -53,27 +38,7 @@ class TypesDTO(CoreTableDTO):
     model_config = ConfigDict(extra="allow")
     __dao_type__ = Types
 
-    classification: uuid.UUID | TypesClassificationsDTO
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the DTO to a dictionary.
-
-        This serializer method converts TypesClassificationsDTO objects in the
-        'classification' field to UUID references for proper serialization.
-
-        Returns:
-            dict: Serialized representation of the DTO with classification
-                converted to a UUID if needed.
-        """
-        return convert_dto_obj_on_serialize(
-            obj=self,
-            id_field="classification",
-            id_field_attr_name="id",
-            target_field="classification",
-            expected_intput_field_type=TypesClassificationsDTO,
-            expected_output_field_type=uuid.UUID,
-        )
+    classification: TypesClassifications
 
     @property
     def row(self) -> dict:

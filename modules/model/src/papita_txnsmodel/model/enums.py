@@ -45,3 +45,10 @@ class RealEstateAssetAccountsAreaUnits(Enum):
     AC = "AC"
     HA = "HA"
     BLK = "BLK"
+
+
+class TypesClassifications(Enum):
+
+    ASSETS = "ASSETS"
+    LIABILITIES = "LIABILITIES"
+    TRANSACTIONS = "TRANSACTIONS"

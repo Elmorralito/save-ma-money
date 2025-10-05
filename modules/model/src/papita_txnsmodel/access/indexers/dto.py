@@ -164,3 +164,6 @@ class AccountsIndexerDTO(TableDTO):
             raise ValueError(f"Extended account is not of type {extended_account_type.__name__}")
 
         return self
+
+    # @model_serializer()
+    # def _model_serialize(self)
