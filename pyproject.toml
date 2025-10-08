@@ -32,6 +32,7 @@ tabulate = "^0.9.0"
 types-tabulate = "^0.9.0.20241207"
 types-toml = "^0.10.8.20240310"
 types-requests = "^2.32.4.20250913"
+types-pytz = "^2025.2.0.20250809"
 
 [tool.poetry.group.development.dependencies]
 papita-transactions-api = {path = "modules/api"}

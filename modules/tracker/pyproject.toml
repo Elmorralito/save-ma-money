@@ -16,6 +16,7 @@ dependencies = [
 [tool.poetry]
 packages = [
     { include = "papita_txnstracker", from = "src/" },
+    { include = "papita_txnstracker_plugins", from = "src/" },
 ]
 
 [build-system]
