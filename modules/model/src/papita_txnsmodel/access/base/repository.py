@@ -243,7 +243,9 @@ class BaseRepository:
         Returns:
             pd.DataFrame: DataFrame containing the retrieved records.
         """
-        statement = Select(dto_type.__dao_type__).where(*query_filters)
+        statement = (
+            Select(dto_type.__dao_type__).where(*query_filters) if query_filters else Select(dto_type.__dao_type__)
+        )
         output_df = self.run_query(statement, **kwargs)
         if getattr(output_df, "empty", True):
             return output_df

@@ -44,7 +44,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def check_source(self, **kwargs) -> bool:
+    def check_source(self, **kwargs) -> "AbstractLoader":
         """
         Check if the data source is valid and accessible.
 
@@ -56,6 +56,9 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
 
         Returns:
             bool: True if the source is valid and accessible, False otherwise.
+
+        Raises:
+            ValueError: When the source is invalid.
         """
 
     @abc.abstractmethod

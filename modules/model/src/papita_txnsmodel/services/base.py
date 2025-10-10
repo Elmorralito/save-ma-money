@@ -187,7 +187,7 @@ class BaseService(BaseModel):
 
         return self.create(obj=obj, **kwargs)
 
-    def get_records(self, dto: TableDTO | dict, **kwargs) -> pd.DataFrame:
+    def get_records(self, dto: TableDTO | dict | None, **kwargs) -> pd.DataFrame:
         """Retrieve multiple records from the database based on attributes.
 
         Args:
@@ -198,9 +198,13 @@ class BaseService(BaseModel):
         Returns:
             pd.DataFrame: DataFrame containing the retrieved records.
         """
-        parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
-        self.check_expected_dto_type(parsed_dto)
-        records_df = self._repository.get_records_from_attributes(parsed_dto, **kwargs)
+        if not dto:
+            records_df = self._repository.get_records(dto_type=self.dto_type)
+        else:
+            parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
+            self.check_expected_dto_type(parsed_dto)
+            records_df = self._repository.get_records_from_attributes(parsed_dto, **kwargs)
+
         return standardize_dataframe(self.dto_type, records_df, **kwargs)
 
     def upsert_records(self, *, df: pd.DataFrame, **kwargs) -> pd.DataFrame:

@@ -78,3 +78,12 @@ class plugin:  # pylint: disable=C0103
             An instance of the decorated plugin class.
         """
         return self.cls(*args, **kwargs)
+
+
+class PluginLoader:
+
+    def __init__(
+        self,
+        labdel: str,
+    ):
+        pass
