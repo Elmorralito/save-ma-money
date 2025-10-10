@@ -8,7 +8,7 @@ a comprehensive class selection toolkit.
 The module provides the following key components:
     - MetaSingleton: A metaclass for implementing the Singleton design pattern
     - FallbackAction: An enum defining strategies for handling validation failures
-    - ClassSelector: Utilities for discovering, loading, and filtering classes
+    - ClassDiscovery: Utilities for discovering, loading, and filtering classes
 """
 
 import importlib
@@ -125,9 +125,9 @@ class FallbackAction(Enum):
         return getattr(self, f"handle_{self.value.lower()}")(message, **kwargs)
 
 
-class ClassSelector:
+class ClassDiscovery:
     """
-    Class selector.
+    Class discovery fetcher.
 
     This class provides methods to select and load classes from modules
     and packages. It includes utilities to check if an object is a
@@ -188,7 +188,7 @@ class ClassSelector:
             return dict([(name, obj) for name, obj in inspect.getmembers(mod_, inspect.isclass)])
 
         if isinstance(mod, (str, ModuleType)):
-            mod = ClassSelector.get_module(mod)
+            mod = ClassDiscovery.get_module(mod)
         else:
             raise ValueError("The provided object is not supported.")
 
@@ -204,7 +204,7 @@ class ClassSelector:
 
             try:
                 if mod_info.ispkg:
-                    classes.update(ClassSelector.get_classes(mod_info.name, debug=debug))
+                    classes.update(ClassDiscovery.get_classes(mod_info.name, debug=debug))
 
                 classes.update(_(importlib.import_module(mod_info.name)))
             except (ImportError, ValueError, SystemExit, TypeError, OSError, SystemError) as ex:
@@ -232,8 +232,8 @@ class ClassSelector:
             list: A list of classes that belong to the specified types or metaclasses.
         """
         classes = []
-        mod = ClassSelector.get_module(module)
-        for clazz in ClassSelector.get_classes(mod=mod, debug=debug).values():
+        mod = ClassDiscovery.get_module(module)
+        for clazz in ClassDiscovery.get_classes(mod=mod, debug=debug).values():
             try:
                 if issubclass(clazz, class_types):  # type: ignore[arg-type]
                     if clazz in class_types:
@@ -267,18 +267,18 @@ class ClassSelector:
         Returns:
             list: A list of objects that pass the filter.
         """
-        mod = ClassSelector.get_module(mod)
+        mod = ClassDiscovery.get_module(mod)
         output: set[Type] = set()
         mod_names = set(
             map(
                 lambda cls: cls.__module__,
-                ClassSelector.get_classes(mod, debug=debug).values(),
+                ClassDiscovery.get_classes(mod, debug=debug).values(),
             )
         ).difference(cls.builtin_mods)
         for name in mod_names:
             try:
                 objs = inspect.getmembers(
-                    ClassSelector.get_module(name),
+                    ClassDiscovery.get_module(name),
                     predicate=lambda o: not cls.is_builtin(o) and obj_filter(o),
                 )
                 output.update(map(lambda x: x[1], objs))
@@ -327,11 +327,11 @@ class ClassSelector:
         if isinstance(obj, str):
             module_path = obj
         elif inspect.isclass(obj):
-            module_path, _ = ClassSelector.decompose_class(obj)  # type: ignore
+            module_path, _ = ClassDiscovery.decompose_class(obj)  # type: ignore
         elif isinstance(obj, ModuleType) or not obj:
             return obj
         else:
-            module_path, _ = ClassSelector.decompose_class(obj.__class__)  # type: ignore
+            module_path, _ = ClassDiscovery.decompose_class(obj.__class__)  # type: ignore
 
         try:
             return importlib.import_module(module_path)
@@ -369,7 +369,7 @@ class ClassSelector:
         Returns:
             str: The canonical class name.
         """
-        decomposed = ClassSelector.decompose_class(class_name)
+        decomposed = ClassDiscovery.decompose_class(class_name)
         return ".".join(filter(None, decomposed))
 
     @staticmethod
@@ -400,12 +400,12 @@ class ClassSelector:
             sys.path.append(path)
 
         if isinstance(class_name, str):
-            module_path, name = ClassSelector.decompose_class(class_name)
-            module = ClassSelector.get_module(module_path)
+            module_path, name = ClassDiscovery.decompose_class(class_name)
+            module = ClassDiscovery.get_module(module_path)
             if module:
-                class_object = ClassSelector.load_class(name, module)
+                class_object = ClassDiscovery.load_class(name, module)
             elif default_module:
-                class_object = ClassSelector.get_classes(default_module, debug=debug)[name]
+                class_object = ClassDiscovery.get_classes(default_module, debug=debug)[name]
             else:
                 raise ValueError("Cannot find the class, provide a default module where to start searching.")
         elif inspect.isclass(class_name):

@@ -13,6 +13,8 @@ Classes:
     CreditCardLiabilityAccountsDTO: DTO for credit card liability accounts.
 """
 
+from typing import Annotated
+
 from pydantic import Field
 
 from papita_txnsmodel.access.base.dto import TableDTO
@@ -21,6 +23,7 @@ from papita_txnsmodel.model.liabilities import (
     CreditCardLiabilityAccounts,
     LiabilityAccounts,
 )
+from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 
 class LiabilityAccountsDTO(TableDTO):
@@ -51,8 +54,8 @@ class LiabilityAccountsDTO(TableDTO):
     months_per_period: int = Field(gt=0, default=1, description="Number of months in each accounting period")
     initial_value: float = Field(gt=0, description="Initial value of the liability")
     present_value: float = Field(gt=0, description="Current value of the liability")
-    monthly_interest_rate: float = Field(gt=0, description="Monthly interest rate")
-    yearly_interest_rate: float = Field(gt=0, description="Yearly interest rate")
+    monthly_interest_rate: Annotated[float, Field(gt=0, description="Monthly interest rate"), validate_interest_rate]
+    yearly_interest_rate: Annotated[float, Field(gt=0, description="Yearly interest rate"), validate_interest_rate]
     payment: float = Field(gt=0, description="Regular payment amount")
     total_paid: float = Field(gt=0, default=0, description="Total amount paid so far")
     overall_periods: int = Field(gt=0, default=1, description="Total number of payment periods")

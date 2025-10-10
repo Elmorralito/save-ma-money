@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "papita-save-me-money"
+name = "save-ma-money"
 version = "v0.0.1"
 description = "Papita Public projects: save-me-money"
 readme = "README.md"
@@ -32,31 +32,23 @@ tabulate = "^0.9.0"
 types-tabulate = "^0.9.0.20241207"
 types-toml = "^0.10.8.20240310"
 types-requests = "^2.32.4.20250913"
+types-pytz = "^2025.2.0.20250809"
+genbadge = {version = "^1.1.2", extras = ["coverage"]}
+
 
 [tool.poetry.group.development.dependencies]
 papita-transactions-api = {path = "modules/api"}
 papita-transactions-model = {path = "modules/model"}
-papita-transactions-tracker = {path = "modules/tracker"}
-pandas = ">=2.3.1,<2.4.0"
-openpyxl = ">=3.1.2,<3.2.0"
-pydantic = ">=2.3.0,<2.4.0"
-alembic = {version = "^1.16.4", extras = ['tz']}
-psycopg2-binary = "^2.9.10"
-duckdb-engine = "^0.13.6"
-sqlalchemy = { extras = ["duckdb-engine"], version = "^2.0.43" }
-sqlmodel = "^0.0.24"
-dotenv = "^0.9.9"
-poetry = "^2.1.4"
-toml = "^0.10.2"
-genbadge = {version = "^1.1.2", extras = ["coverage"]}
+papita-transactions-registrar = {path = "modules/registrar"}
+
 
 [build-system]
 requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/tracker/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
-testpaths = ["./modules/api/tests", "./modules/model/tests", "./modules/tracker/tests"]
+addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/registrar/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
+testpaths = ["./modules/api/tests", "./modules/model/tests", "./modules/registrar/tests"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -75,7 +67,7 @@ ignore_errors = true
 branch = true
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["./modules/api/src", "./modules/model/src", "./modules/tracker/src"])'
+init-hook = 'import sys; sys.path.extend(["./modules/api/src", "./modules/model/src", "./modules/registrar/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
@@ -136,7 +128,7 @@ namespace_packages = true
 [tool.isort]
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
-known_first_party=["papita_txnsapi", "papita_txnsmodel", "papita_txnstracker"]
+known_first_party=["papita_txnsapi", "papita_txnsmodel", "papita_txnsregistrar"]
 sections = [
     "FUTURE",
     "STDLIB",
@@ -159,7 +151,7 @@ exclude = [
     "*.ipynb",
     "./modules/api/tests/*",
     "./modules/model/tests/*",
-    "./modules/tracker/tests/*",
+    "./modules/registrar/tests/*",
 ]
 max-line-length = 120
 max-complexity = 18
@@ -170,14 +162,14 @@ paths = [
 
     "./modules/model/src",
 
-    "./modules/tracker/src",
+    "./modules/registrar/src",
 
 ]
 exclude = [
     "./modules/api/tests",
     "./modules/model/alembic",
     "./modules/model/tests",
-    "./modules/tracker/tests",
+    "./modules/registrar/tests",
     "venv",
     ".venv",
     "build",

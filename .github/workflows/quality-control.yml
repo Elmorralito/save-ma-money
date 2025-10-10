@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout code"
-        uses: "actions/checkout@v4"
+        uses: "actions/checkout@v5"
 
       - name: "Set up Python"
-        uses: "actions/setup-python@v4"
+        uses: "actions/setup-python@v5"
         with:
           python-version: "3.12" # Specify the exact Python version here
           cache: "pip"
@@ -39,7 +39,7 @@ jobs:
           /bin/bash "${GITHUB_WORKSPACE}/deploy/test.sh"
 
       - name: "Upload coverage report"
-        uses: "codecov/codecov-action@v3"
+        uses: "codecov/codecov-action@v4"
         with:
           file: "./docs/coverage.xml"
           fail_ci_if_error: false

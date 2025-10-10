@@ -3,7 +3,7 @@
 This module tests the following components:
 - MetaSingleton: Singleton pattern implementation through metaclass
 - FallbackAction: Strategies for handling validation failures
-- ClassSelector: Utilities for working with classes and modules
+- ClassDiscovery: Utilities for working with classes and modules
 """
 import importlib
 import inspect
@@ -17,7 +17,7 @@ from unittest import mock
 import pytest
 
 from papita_txnsmodel.utils.classutils import (
-    ClassSelector,
+    ClassDiscovery,
     FallbackAction,
     MetaSingleton
 )
@@ -167,13 +167,13 @@ def test_fallback_action_handle_dispatch_ignore(mock_handle_ignore):
     mock_handle_ignore.assert_called_once_with(message)
 
 
-# --- ClassSelector Tests ---
+# --- ClassDiscovery Tests ---
 
 def test_is_builtin_with_builtin_functions():
     """Test is_builtin identifies built-in functions correctly."""
-    assert ClassSelector.is_builtin(len)
-    assert ClassSelector.is_builtin(print)
-    assert ClassSelector.is_builtin(str)
+    assert ClassDiscovery.is_builtin(len)
+    assert ClassDiscovery.is_builtin(print)
+    assert ClassDiscovery.is_builtin(str)
 
 
 def test_is_builtin_with_custom_objects():
@@ -184,9 +184,9 @@ def test_is_builtin_with_custom_objects():
     def custom_function():
         pass
 
-    assert not ClassSelector.is_builtin(CustomClass)
-    assert not ClassSelector.is_builtin(CustomClass())
-    assert not ClassSelector.is_builtin(custom_function)
+    assert not ClassDiscovery.is_builtin(CustomClass)
+    assert not ClassDiscovery.is_builtin(CustomClass())
+    assert not ClassDiscovery.is_builtin(custom_function)
 
 
 def test_is_builtin_with_builtin_module_name():
@@ -197,7 +197,7 @@ def test_is_builtin_with_builtin_module_name():
     mock_obj.__name__ = "mock_builtin"
     mock_obj.__class__.__name__ = "MockBuiltin"
 
-    assert ClassSelector.is_builtin(mock_obj)
+    assert ClassDiscovery.is_builtin(mock_obj)
 
 
 @pytest.fixture
@@ -220,7 +220,7 @@ def test_module():
 
 def test_get_classes_with_module_object(test_module):
     """Test get_classes retrieves classes from a module object."""
-    classes = ClassSelector.get_classes(test_module)
+    classes = ClassDiscovery.get_classes(test_module)
 
     assert len(classes) == 2
     assert "TestClass" in classes
@@ -232,7 +232,7 @@ def test_get_classes_with_module_object(test_module):
 def test_get_classes_with_invalid_input():
     """Test get_classes raises ValueError with invalid input."""
     with pytest.raises(ValueError, match="The provided object is not supported"):
-        ClassSelector.get_classes(123)
+        ClassDiscovery.get_classes(123)
 
 
 @mock.patch("pkgutil.walk_packages")
@@ -250,7 +250,7 @@ def test_get_classes_with_package(mock_walk_packages, test_module):
 
     # Mock importlib.import_module to return our test module
     with mock.patch("importlib.import_module", return_value=test_module):
-        classes = ClassSelector.get_classes(test_module)
+        classes = ClassDiscovery.get_classes(test_module)
 
     assert len(classes) == 2
     assert "TestClass" in classes
@@ -277,7 +277,7 @@ def test_get_classes_handles_import_errors(mock_walk_packages):
     with mock.patch("importlib.import_module", side_effect=ImportError("Test import error")):
         # Should not raise exception when debug=False
         with pytest.raises(ValueError):
-            classes = ClassSelector.get_classes(mock_module, debug=False)
+            classes = ClassDiscovery.get_classes(mock_module, debug=False)
 
         assert isinstance(classes, dict)
         assert len(classes) == 0
@@ -315,11 +315,11 @@ def class_hierarchy():
 def test_get_children(class_hierarchy):
     """Test get_children returns subclasses of specified types."""
     # Get all children of Base
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module", return_value=class_hierarchy):
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_classes",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module", return_value=class_hierarchy):
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_classes",
                        return_value={name: getattr(class_hierarchy, name) for name in dir(class_hierarchy)
                                     if inspect.isclass(getattr(class_hierarchy, name))}):
-            children = ClassSelector.get_children(class_hierarchy, class_hierarchy.Base)
+            children = ClassDiscovery.get_children(class_hierarchy, class_hierarchy.Base)
 
     # Should find Child1, Child2, GrandChild but not Base or Unrelated
     assert len(children) == 3
@@ -348,12 +348,12 @@ def test_get_objects_with_filter():
     module.TestClass = TestClass
 
     # Mock dependencies
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module", return_value=module):
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_classes",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module", return_value=module):
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_classes",
                        return_value={"TestClass": TestClass}):
             with mock.patch("inspect.getmembers", return_value=[("func1", func1), ("func2", func2)]):
                 # Get only functions
-                objects = ClassSelector.get_objects(module, obj_filter=inspect.isfunction)
+                objects = ClassDiscovery.get_objects(module, obj_filter=inspect.isfunction)
 
     assert len(objects) == 2
     assert func1 in objects
@@ -363,20 +363,20 @@ def test_get_objects_with_filter():
 
 def test_load_class_success(test_module):
     """Test load_class finds a class by name."""
-    cls = ClassSelector.load_class("TestClass", test_module)
+    cls = ClassDiscovery.load_class("TestClass", test_module)
     assert cls is test_module.TestClass
 
 
 def test_load_class_not_found(test_module):
     """Test load_class returns None when class not found."""
-    cls = ClassSelector.load_class("NonExistentClass", test_module)
+    cls = ClassDiscovery.load_class("NonExistentClass", test_module)
     assert cls is None
 
 
 def test_get_module_from_string():
     """Test get_module can get a module from its name."""
     with mock.patch("importlib.import_module", return_value="mocked_module") as mock_import:
-        module = ClassSelector.get_module("module.path")
+        module = ClassDiscovery.get_module("module.path")
         mock_import.assert_called_once_with("module.path")
         assert module == "mocked_module"
 
@@ -387,10 +387,10 @@ def test_get_module_from_class():
         pass
 
     # Mock the decompose_class and importlib functions
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=("test.module", "TestClass")):
         with mock.patch("importlib.import_module", return_value="mocked_module") as mock_import:
-            module = ClassSelector.get_module(TestClass)
+            module = ClassDiscovery.get_module(TestClass)
             mock_import.assert_called_once_with("test.module")
             assert module == "mocked_module"
 
@@ -398,27 +398,27 @@ def test_get_module_from_class():
 def test_get_module_from_module():
     """Test get_module returns the module if provided a module."""
     module = ModuleType("test_module")
-    result = ClassSelector.get_module(module)
+    result = ClassDiscovery.get_module(module)
     assert result is module
 
 
 def test_get_module_handles_error():
     """Test get_module handles import errors gracefully."""
     with mock.patch("importlib.import_module", side_effect=OSError("Test error")):
-        result = ClassSelector.get_module("problem.module")
+        result = ClassDiscovery.get_module("problem.module")
         assert result is None
 
 
 def test_decompose_class_string():
     """Test decomposing a class name from a string."""
-    module_path, class_name = ClassSelector.decompose_class("module.submodule.ClassName")
+    module_path, class_name = ClassDiscovery.decompose_class("module.submodule.ClassName")
     assert module_path == "module.submodule"
     assert class_name == "ClassName"
 
 
 def test_decompose_class_single_name():
     """Test decomposing a class name with no module path."""
-    module_path, class_name = ClassSelector.decompose_class("ClassName")
+    module_path, class_name = ClassDiscovery.decompose_class("ClassName")
     assert module_path is None
     assert class_name == "ClassName"
 
@@ -429,24 +429,24 @@ def test_decompose_class_from_class_object():
         pass
 
     with mock.patch("inspect.getmodule", return_value=ModuleType("test.module")):
-        module_path, class_name = ClassSelector.decompose_class(TestClass)
+        module_path, class_name = ClassDiscovery.decompose_class(TestClass)
         assert module_path == "test.module"
         assert class_name == "TestClass"
 
 
 def test_get_canonical_class_name_with_string():
     """Test getting canonical name from a string."""
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=("module.path", "ClassName")):
-        name = ClassSelector.get_canonical_class_name("module.path.ClassName")
+        name = ClassDiscovery.get_canonical_class_name("module.path.ClassName")
         assert name == "module.path.ClassName"
 
 
 def test_get_canonical_class_name_no_module():
     """Test getting canonical name for a class with no module."""
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=(None, "ClassName")):
-        name = ClassSelector.get_canonical_class_name("ClassName")
+        name = ClassDiscovery.get_canonical_class_name("ClassName")
         assert name == "ClassName"
 
 
@@ -455,38 +455,38 @@ def test_select_with_class_object():
     class TestClass:
         pass
 
-    result = ClassSelector.select(TestClass)
+    result = ClassDiscovery.select(TestClass)
     assert result is TestClass
 
 
 def test_select_with_class_name():
     """Test select with a class name string."""
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=("test.module", "TestClass")):
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module",
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module",
                        return_value="module_obj"):
-            with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.load_class",
+            with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.load_class",
                            return_value="class_obj"):
-                result = ClassSelector.select("test.module.TestClass")
+                result = ClassDiscovery.select("test.module.TestClass")
                 assert result == "class_obj"
 
 
 def test_select_with_default_module():
     """Test select using the default module when class not found in specified module."""
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=("test.module", "TestClass")):
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module",
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module",
                        return_value=None):
-            with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_classes",
+            with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_classes",
                            return_value={"TestClass": "class_obj"}):
-                result = ClassSelector.select("TestClass", default_module="default.module")
+                result = ClassDiscovery.select("TestClass", default_module="default.module")
                 assert result == "class_obj"
 
 
 def test_select_with_invalid_type():
     """Test select raises TypeError for non-class, non-string inputs."""
     with pytest.raises(TypeError, match="Class objects or class names are only allowed"):
-        ClassSelector.select(123)
+        ClassDiscovery.select(123)
 
 
 def test_select_with_class_type_validation():
@@ -501,12 +501,12 @@ def test_select_with_class_type_validation():
         pass
 
     # Should succeed - ValidClass is a subclass of BaseClass
-    result = ClassSelector.select(ValidClass, class_type=BaseClass)
+    result = ClassDiscovery.select(ValidClass, class_type=BaseClass)
     assert result is ValidClass
 
     # Should fail - InvalidClass is not a subclass of BaseClass
     with pytest.raises(TypeError, match="is not type"):
-        ClassSelector.select(InvalidClass, class_type=BaseClass)
+        ClassDiscovery.select(InvalidClass, class_type=BaseClass)
 
 
 def test_select_with_path():
@@ -514,21 +514,21 @@ def test_select_with_path():
     with mock.patch("sys.path") as mock_path:
         mock_path.append = mock.Mock()
 
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                        return_value=("test.module", "TestClass")):
-            with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module",
+            with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module",
                            return_value="module_obj"):
-                with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.load_class",
+                with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.load_class",
                                return_value="class_obj"):
-                    ClassSelector.select("test.module.TestClass", path="/custom/path")
+                    ClassDiscovery.select("test.module.TestClass", path="/custom/path")
                     mock_path.append.assert_called_once_with("/custom/path")
 
 
 def test_select_no_class_no_default():
     """Test select raises ValueError when class not found and no default module provided."""
-    with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.decompose_class",
+    with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.decompose_class",
                    return_value=("test.module", "TestClass")):
-        with mock.patch("papita_txnsmodel.utils.classutils.ClassSelector.get_module",
+        with mock.patch("papita_txnsmodel.utils.classutils.ClassDiscovery.get_module",
                        return_value=None):
             with pytest.raises(ValueError, match="Cannot find the class"):
-                ClassSelector.select("test.module.TestClass")
+                ClassDiscovery.select("test.module.TestClass")
