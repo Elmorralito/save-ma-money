@@ -30,6 +30,7 @@ from papita_txnsmodel.model.assets import (
 )
 from papita_txnsmodel.model.enums import RealEstateAssetAccountsAreaUnits, RealEstateAssetAccountsOwnership
 from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
+from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 
 class AssetAccountsDTO(TableDTO):
@@ -58,9 +59,9 @@ class AssetAccountsDTO(TableDTO):
     months_per_period: Annotated[int, Field(gt=0)] = 1
     initial_value: Annotated[Optional[float], Field(gt=0)] = None
     last_value: Annotated[Optional[float], Field(gt=0)] = None
-    monthly_interest_rate: Annotated[Optional[float], Field(gt=0)] = None
-    yearly_interest_rate: Annotated[Optional[float], Field(gt=0)] = None
-    roi: Annotated[Optional[float], Field(gt=0)] = None
+    monthly_interest_rate: Annotated[Optional[float], Field(gt=0), validate_interest_rate] = None
+    yearly_interest_rate: Annotated[Optional[float], Field(gt=0), validate_interest_rate] = None
+    roi: Annotated[Optional[float], Field(gt=0), validate_interest_rate] = None
     periodical_earnings: Annotated[Optional[float], Field(gt=0)] = None
 
 

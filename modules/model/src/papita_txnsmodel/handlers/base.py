@@ -15,10 +15,10 @@ from pydantic import BaseModel, ConfigDict
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import FallbackAction
 
-T = TypeVar("T", bound=BaseService)
+S = TypeVar("S", bound=BaseService)
 
 
-class BaseHandler(BaseModel, Generic[T]):
+class BaseHandler(BaseModel, Generic[S]):
     """Base handler class for interacting with services in the Papita Transactions system.
 
     This class serves as the foundation for all handler classes in the system,
@@ -35,10 +35,31 @@ class BaseHandler(BaseModel, Generic[T]):
 
     model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
-    service: T | None = None
+    service: S | None = None
     error_handler: FallbackAction = FallbackAction.RAISE
 
-    def setup_service(self, service: T, **kwargs) -> "BaseHandler":
+    @property
+    def checked_service(self) -> S:
+        """Get the service instance with validation.
+
+        This property provides access to the service instance after performing
+        validation checks to ensure it's properly configured and connected.
+
+        Returns:
+            T: The validated service instance.
+
+        Raises:
+            ValueError: If the service has not been loaded via setup_service.
+            Various exceptions: Depending on the error_handler configuration,
+                connection issues may raise exceptions.
+        """
+        if not self.service:
+            raise ValueError("The service has not being loaded.")
+
+        self.connector.connected(on_disconnected=self.error_handler)
+        return self.service
+
+    def setup_service(self, service: S, **kwargs) -> "BaseHandler":
         """Configure the handler with a service instance.
 
         This method sets up the handler with a service instance that will be used
@@ -60,24 +81,3 @@ class BaseHandler(BaseModel, Generic[T]):
 
         self.service = service
         return self
-
-    @property
-    def checked_service(self) -> T:
-        """Get the service instance with validation.
-
-        This property provides access to the service instance after performing
-        validation checks to ensure it's properly configured and connected.
-
-        Returns:
-            T: The validated service instance.
-
-        Raises:
-            ValueError: If the service has not been loaded via setup_service.
-            Various exceptions: Depending on the error_handler configuration,
-                connection issues may raise exceptions.
-        """
-        if not self.service:
-            raise ValueError("The service has not being loaded.")
-
-        self.connector.connected(on_disconnected=self.error_handler)
-        return self.service

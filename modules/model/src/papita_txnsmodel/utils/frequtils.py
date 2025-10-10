@@ -3,9 +3,9 @@
 from typing import Any, Union
 
 import pandas as pd
-from heka.utils.modelutils import parse_dates
 from pandas.tseries.offsets import BaseOffset
-from typing_extensions import Self
+
+from .modelutils import parse_dates
 
 
 class FrequencyHandler:
@@ -19,7 +19,10 @@ class FrequencyHandler:
     SAMPLE_PERIODS: int = 15
 
     def __init__(
-        self, freq: Union[str, Self, BaseOffset], ref_dt: Any = None, sample_periods: int | float | None = None
+        self,
+        freq: Union[str, "FrequencyHandler", BaseOffset],
+        ref_dt: Any = None,
+        sample_periods: int | float | None = None,
     ) -> None:
         """
         Initialize the FrequencyHandler instance.
@@ -137,7 +140,7 @@ class FrequencyHandler:
         other_freq = self._check_freq(other)
         return getattr(self._sample_dt, comparator)(other_freq.sample_dt)
 
-    def __eq__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __eq__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is equal to another frequency.
 
@@ -149,7 +152,7 @@ class FrequencyHandler:
         """
         return self.__compare(other, "__eq__")
 
-    def __ge__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __ge__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is greater than or equal to another frequency.
 
@@ -161,7 +164,7 @@ class FrequencyHandler:
         """
         return self.__compare(other, "__ge__")
 
-    def __gt__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __gt__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is greater than another frequency.
 
@@ -173,7 +176,7 @@ class FrequencyHandler:
         """
         return self.__compare(other, "__gt__")
 
-    def __le__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __le__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is less than or equal to another frequency.
 
@@ -185,7 +188,7 @@ class FrequencyHandler:
         """
         return self.__compare(other, "__le__")
 
-    def __lt__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __lt__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is less than another frequency.
 
@@ -197,7 +200,7 @@ class FrequencyHandler:
         """
         return self.__compare(other, "__lt__")
 
-    def __ne__(self, other: Union[str, Self, BaseOffset]) -> bool:
+    def __ne__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> bool:
         """
         Check if the frequency is not equal to another frequency.
 
@@ -227,7 +230,7 @@ class FrequencyHandler:
         """
         return f"{self.__class__.__name__}(freq='{str(self)}')"
 
-    def __lshift__(self, other: Union[str, Self, BaseOffset]) -> int:
+    def __lshift__(self, other: Union[str, "FrequencyHandler", BaseOffset]) -> int:
         freq = FrequencyHandler(other, ref_dt=self.ref_dt, sample_periods=self.sample_periods)
         if freq > self:
             raise ValueError(f"The frequency '{other}' is greater than '{self}'.")
