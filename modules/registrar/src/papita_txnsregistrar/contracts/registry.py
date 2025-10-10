@@ -64,6 +64,9 @@ class Registry(metaclass=MetaSingleton):
         """
         self._plugins = getattr(self, "_plugins", None) or set()
         for module_ in set(modules) | {__name__.split(".", maxsplit=1)[0]}:
+            if not isinstance(module_, (ModuleType, str)):
+                continue
+
             self._plugins |= {
                 class_
                 for class_ in ClassDiscovery.get_children(module_, PluginContract, debug=debug)
@@ -85,7 +88,7 @@ class Registry(metaclass=MetaSingleton):
 
         Raises:
             TypeError: If the class is not a subclass of PluginContract or
-                       if the metadata is not an instance of PluginMetadata.
+                        if the metadata is not an instance of PluginMetadata.
         """
         if not issubclass(class_, PluginContract):
             raise TypeError("Plugin not compatible.")
