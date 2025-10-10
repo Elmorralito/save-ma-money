@@ -1,0 +1,28 @@
+[project]
+name = "papita-transactions-registrar"
+version = "0.0.2"
+description = "Transactions wrapper to automate tracking financial transaction movements"
+readme = "README.md"
+license = "LICENSE"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "papita-transactions-model (>=0.1.0,<1.0)",
+    "pydantic (>=2.3.0,<3.0)",
+    "pandas (>=2.3.1,<2.4.0)",
+    "openpyxl (>=3.1.2,<4.0)",
+    "python-dateutil (>=2.8.2,<3.0)",
+    "semver (>=3.0.4,<4.0.0)",
+    "fuzzywuzzy (>=0.18.0,<0.19.0)",
+]
+
+[tool.poetry]
+packages = [
+    { include = "papita_txnsregistrar", from = "src/" },
+    { include = "papita_txnsregistrar_plugins", from = "src/" },
+]
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+]
+build-backend = "poetry.core.masonry.api"
