@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
+RM_FLAG=
+LOCAL_FLAG=
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+ALEMBIC_EXEC_COMMAND="alembic"
+ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
+ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
 source "${PROJECT_PATH}/deploy/utils.sh"
 
 usage() {
@@ -47,15 +52,14 @@ EOM
     exit 1
 }
 
-test -e "$(which alembic)" || {
-    log "ERROR" "Alembic not found."
-    usage
+test -e "$(which "$ALEMBIC_EXEC_COMMAND")" || {
+    test -e "$(python -m poetry env info -p)" || {
+        log "ERROR" "No Alembic nor Poetry were found."
+        usage
+    }
+    log "INFO" "Setting alembic execute command"
+    ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c $ALEMBIC_PATH/alembic.ini"
 }
-
-RM_FLAG=
-LOCAL_FLAG=
-ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
-ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -111,26 +115,26 @@ source "${ENV_FILE}" || {
 
 case "$ACTION" in
     version | autogenerate)
-        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+        ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         ;;
     upgrade)
-        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade head"
+        ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade head"
         ;;
     downgrade)
-        ALEMBIC_COMMAND="alembic -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
+        ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" -x upgrading=true upgrade ${ALEMBIC_VERSION:-"head^1"}"
         ;;
     up)
-        ALEMBIC_COMMAND="echo 'Bringing up the services...'"
+        ALEMBIC_COMMAND="echo 'Bringing up the local services...'"
         RM_FLAG=0
         LOCAL_FLAG=1
         ;;
     halt | stop)
-        ALEMBIC_COMMAND="echo 'Bringing up the services...'"
+        ALEMBIC_COMMAND="echo 'Stopping the local services...'"
         RM_FLAG=0
         LOCAL_FLAG=2
         ;;
     down)
-        ALEMBIC_COMMAND="echo 'Bringing down the services...'"
+        ALEMBIC_COMMAND="echo 'Bringing down the local services...'"
         if [[ "$RM_FLAG" -eq 0 ]] ; then RM_FLAG=1 ; fi
         LOCAL_FLAG=1
         ;;
@@ -150,7 +154,7 @@ fi
 
 cd "$ALEMBIC_PATH" && run_command 0 "$ALEMBIC_COMMAND"
 
-if [[ "$LOCAL_FLAG" -eq 2 ]] && [[ "$RM_FLAG" -gt 0 ]] && [ -n "$COMPOSE_FILE" ]; then
+if [[ "$LOCAL_FLAG" -eq 2 ]] && [[ "$RM_FLAG" -eq 0 ]] && [ -n "$COMPOSE_FILE" ]; then
     log INFO "Stoping local database..."
     DOCKER_COMMAND="docker compose -f $COMPOSE_FILE --env-file $ENV_FILE stop"
     run_command 1 "$DOCKER_COMMAND"

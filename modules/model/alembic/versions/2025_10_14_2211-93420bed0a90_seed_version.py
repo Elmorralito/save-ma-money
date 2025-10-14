@@ -1,9 +1,9 @@
 # pylint: disable=C0103,W0611
-"""seed_version
+"""Seed version.
 
-Revision ID: 04b3e47603b6
+Revision ID: 93420bed0a90
 Revises:
-Create Date: 2025-10-03 00:20:30.684176+00:00
+Create Date: 2025-10-14 22:11:02.904415+00:00
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel  # noqa: F401
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "04b3e47603b6"
+revision: str = "93420bed0a90"
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -26,7 +26,7 @@ def upgrade() -> None:
     op.create_table(
         "accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -60,7 +60,7 @@ def upgrade() -> None:
     op.create_table(
         "assets_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("months_per_period", sa.SmallInteger(), nullable=False),
         sa.Column("initial_value", sa.DECIMAL(), nullable=True),
@@ -75,7 +75,7 @@ def upgrade() -> None:
     op.create_table(
         "bank_credit_liability_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("paid", sa.Boolean(), nullable=False),
         sa.Column("insurance_payment", sa.DECIMAL(), nullable=False),
@@ -86,7 +86,7 @@ def upgrade() -> None:
     op.create_table(
         "banking_asset_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("entity", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("account_number", sqlmodel.sql.sqltypes.AutoString(), nullable=True),
@@ -110,7 +110,7 @@ def upgrade() -> None:
     op.create_table(
         "credit_card_liability_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("credit_limit", sa.DECIMAL(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
@@ -119,7 +119,7 @@ def upgrade() -> None:
     op.create_table(
         "liability_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("months_per_period", sa.SmallInteger(), nullable=True),
         sa.Column("initial_value", sa.DECIMAL(), nullable=False),
@@ -137,7 +137,7 @@ def upgrade() -> None:
     op.create_table(
         "real_estate_asset_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("address", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.Column("city", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -168,7 +168,7 @@ def upgrade() -> None:
     op.create_table(
         "trading_asset_accounts",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("buy_value", sa.DECIMAL(), nullable=False),
         sa.Column("last_value", sa.DECIMAL(), nullable=True),
@@ -177,55 +177,31 @@ def upgrade() -> None:
         schema="papita_transactions",
     )
     op.create_table(
-        "types_classifications",
+        "types",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
+        sa.Column(
+            "classification",
+            sa.Enum(
+                "ASSETS",
+                "LIABILITIES",
+                "TRANSACTIONS",
+                name="typesclassifications",
+            ),
+            nullable=False,
+        ),
         sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+        sa.Column("tags", sa.ARRAY(sa.String()), nullable=False),
         sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
         sa.PrimaryKeyConstraint("id"),
         schema="papita_transactions",
     )
     op.create_index(
-        op.f("ix_papita_transactions_types_classifications_name"),
-        "types_classifications",
-        ["name"],
-        unique=True,
-        schema="papita_transactions",
-    )
-    op.create_table(
-        "financed_asset_accounts",
-        sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
-        sa.Column("bank_credit_liability_account_id", sa.Uuid(), nullable=False),
-        sa.Column("asset_account_id", sa.Uuid(), nullable=False),
-        sa.Column("financing_share", sa.DECIMAL(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["asset_account_id"],
-            ["papita_transactions.assets_accounts.id"],
-        ),
-        sa.ForeignKeyConstraint(
-            ["bank_credit_liability_account_id"],
-            ["papita_transactions.bank_credit_liability_accounts.id"],
-        ),
-        sa.PrimaryKeyConstraint("bank_credit_liability_account_id"),
-        schema="papita_transactions",
-    )
-    op.create_table(
+        op.f("ix_papita_transactions_types_classification"),
         "types",
-        sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
-        sa.Column("id", sa.Uuid(), nullable=False),
-        sa.Column("classification", sa.Uuid(), nullable=False),
-        sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("tags", sa.ARRAY(sa.String()), nullable=False),
-        sa.Column("description", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.Column("discriminator", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["classification"],
-            ["papita_transactions.types_classifications.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
+        ["classification"],
+        unique=False,
         schema="papita_transactions",
     )
     op.create_index(
@@ -286,9 +262,27 @@ def upgrade() -> None:
         schema="papita_transactions",
     )
     op.create_table(
+        "financed_asset_accounts",
+        sa.Column("active", sa.Boolean(), nullable=False),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
+        sa.Column("bank_credit_liability_account_id", sa.Uuid(), nullable=False),
+        sa.Column("asset_account_id", sa.Uuid(), nullable=False),
+        sa.Column("financing_share", sa.DECIMAL(), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["asset_account_id"],
+            ["papita_transactions.assets_accounts.id"],
+        ),
+        sa.ForeignKeyConstraint(
+            ["bank_credit_liability_account_id"],
+            ["papita_transactions.bank_credit_liability_accounts.id"],
+        ),
+        sa.PrimaryKeyConstraint("bank_credit_liability_account_id"),
+        schema="papita_transactions",
+    )
+    op.create_table(
         "identified_transactions",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("type_id", sa.Uuid(), nullable=False),
         sa.Column("name", sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -313,7 +307,7 @@ def upgrade() -> None:
     op.create_table(
         "transactions",
         sa.Column("active", sa.Boolean(), nullable=False),
-        sa.Column("deleted_at", sa.DateTime(), nullable=True),
+        sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("identified_transaction_id", sa.Uuid(), nullable=True),
         sa.Column("from_account_id", sa.Uuid(), nullable=True),
@@ -360,20 +354,19 @@ def downgrade() -> None:
         schema="papita_transactions",
     )
     op.drop_table("identified_transactions", schema="papita_transactions")
+    op.drop_table("financed_asset_accounts", schema="papita_transactions")
     op.drop_table("accounts_indexer", schema="papita_transactions")
     op.drop_index(
         op.f("ix_papita_transactions_types_name"),
         table_name="types",
         schema="papita_transactions",
     )
-    op.drop_table("types", schema="papita_transactions")
-    op.drop_table("financed_asset_accounts", schema="papita_transactions")
     op.drop_index(
-        op.f("ix_papita_transactions_types_classifications_name"),
-        table_name="types_classifications",
+        op.f("ix_papita_transactions_types_classification"),
+        table_name="types",
         schema="papita_transactions",
     )
-    op.drop_table("types_classifications", schema="papita_transactions")
+    op.drop_table("types", schema="papita_transactions")
     op.drop_table("trading_asset_accounts", schema="papita_transactions")
     op.drop_table("real_estate_asset_accounts", schema="papita_transactions")
     op.drop_table("liability_accounts", schema="papita_transactions")

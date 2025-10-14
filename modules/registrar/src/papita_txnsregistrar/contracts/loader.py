@@ -9,7 +9,10 @@ Classes:
     plugin: A decorator class for registering plugin implementations.
 """
 
-from typing import Any
+from typing import Any, Type
+
+from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
+from papita_txnsregistrar.loaders.abstract import AbstractLoader
 
 from .meta import PluginMetadata
 from .plugin import PluginContract
@@ -40,7 +43,14 @@ class plugin:  # pylint: disable=C0103
         ...     pass
     """
 
-    def __init__(self, cls: type[PluginContract], meta: PluginMetadata | dict[str, Any]):
+    def __init__(
+        self,
+        cls: Type[PluginContract],
+        *,
+        handler_type: Type[AbstractLoadHandler],
+        loader_type: Type[AbstractLoader],
+        meta: PluginMetadata | dict[str, Any],
+    ):
         """
         Initialize the plugin decorator.
 
@@ -58,7 +68,13 @@ class plugin:  # pylint: disable=C0103
         if not isinstance(meta, (dict, PluginMetadata)):
             raise ValueError("Metadata not supported.")
 
-        self.cls = cls
+        if handler_type == AbstractLoadHandler:
+            raise TypeError("The handler descriptor cannot be abstract.")
+
+        if handler_type == AbstractLoader:
+            raise TypeError("The loader descriptor cannot be abstract.")
+
+        self.cls = cls[handler_type, loader_type]  # type: ignore[index]
         self.meta = PluginMetadata.model_validate(meta, strict=True)
         self.cls.__meta__ = self.meta
         Registry().register(self.cls, self.meta)
@@ -78,12 +94,3 @@ class plugin:  # pylint: disable=C0103
             An instance of the decorated plugin class.
         """
         return self.cls(*args, **kwargs)
-
-
-class PluginLoader:
-
-    def __init__(
-        self,
-        labdel: str,
-    ):
-        pass

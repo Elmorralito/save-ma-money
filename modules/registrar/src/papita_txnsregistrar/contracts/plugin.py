@@ -10,14 +10,20 @@ Classes:
 """
 
 import abc
+from typing import Generic, TypeVar
 
-from papita_txnstracker.handlers.base import BaseLoadHandler
 from pydantic import BaseModel
+
+from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
+from papita_txnsregistrar.loaders.abstract import AbstractLoader
 
 from .meta import PluginMetadata
 
+H = TypeVar("H", bound=AbstractLoadHandler)
+L = TypeVar("L", bound=AbstractLoader)
 
-class PluginContract(BaseModel, metaclass=abc.ABCMeta):
+
+class PluginContract(BaseModel, Generic[H, L], metaclass=abc.ABCMeta):
     """
     Abstract base class defining the contract that all plugins must implement.
 
@@ -36,34 +42,51 @@ class PluginContract(BaseModel, metaclass=abc.ABCMeta):
     Attributes:
         __meta__ (PluginMetadata): Metadata associated with the plugin including identification
                                    and capability information.
-        _handler (BaseLoadHandler): Handler used by the plugin for processing transactions.
+        _handler (AbstractLoadHandler): Handler used by the plugin for processing transactions.
     """
 
     __meta__: PluginMetadata
-    _handler: BaseLoadHandler | None = None
+    _handler: H | None = None
+    _loader: L | None = None
 
     @property
-    def handler(self) -> BaseLoadHandler:
+    def handler(self) -> H:
         """
         Get the plugin's handler.
 
         Returns:
-            BaseLoadHandler: The handler associated with this plugin for transaction processing.
+            AbstractLoadHandler: The handler associated with this plugin for transaction processing.
 
         Raises:
             TypeError: If the handler has not been loaded or is corrupt.
         """
-        if not isinstance(self._handler, BaseLoadHandler):
+        if not isinstance(self._handler, AbstractLoadHandler):
             raise TypeError("Handler not loaded or corrupt.")
 
         return self._handler
+
+    @property
+    def loader(self) -> L:
+        """
+        Get the plugin's loader.
+
+        Returns:
+            AbstractLoadHandler: The loader associated with this plugin for transaction processing.
+
+        Raises:
+            TypeError: If the loader has not been loaded or is corrupt.
+        """
+        if not isinstance(self._loader, AbstractLoader):
+            raise TypeError("Handler not loaded or corrupt.")
+
+        return self._loader
 
     @abc.abstractmethod
     def build_handler(self, **kwargs) -> "PluginContract":
         """
         Build and configure the handler for this plugin.
 
-        This method should create and configure a BaseLoadHandler instance that will be
+        This method should create and configure a AbstractLoadHandler instance that will be
         used by the plugin to process transactions. The handler typically defines how
         transactions are interpreted and managed by this specific plugin.
 

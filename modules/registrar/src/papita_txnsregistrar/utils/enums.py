@@ -37,7 +37,7 @@ class OnMultipleMatchesDo(Enum):
     FIRST = "FIRST"
     LAST = "LAST"
 
-    def choose_fail(self, *, matches: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def choose_fail(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series:
         """
         Handles multiple matches by raising an exception.
 
@@ -49,7 +49,7 @@ class OnMultipleMatchesDo(Enum):
             **kwargs: Additional arguments passed to the FallbackAction handler
 
         Returns:
-            pd.DataFrame: Never returns as it raises an exception
+            pd.Series: Never returns as it raises an exception
 
         Raises:
             Exception: Always raises an exception with details about the matches
@@ -57,7 +57,7 @@ class OnMultipleMatchesDo(Enum):
         results = tabulate(matches, headers="keys", tablefmt="fancy_grid")
         FallbackAction.RAISE.handle(f"There are multiple matches on transactions:\n{results}", **kwargs)
 
-    def choose_first(self, *, matches: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def choose_first(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series:
         """
         Handles multiple matches by selecting the first match.
 
@@ -66,14 +66,14 @@ class OnMultipleMatchesDo(Enum):
             **kwargs: Additional arguments (unused)
 
         Returns:
-            pd.DataFrame: The first matching transaction or an empty DataFrame if no matches
+            pd.Series: The first matching transaction or an empty DataFrame if no matches
         """
         if matches.empty:
             return matches
 
-        return matches.iloc[1]  # Note: This returns the second row (index 1), which may be a bug
+        return matches.iloc[0]  # Note: This returns the second row (index 1), which may be a bug
 
-    def choose_last(self, *, matches: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def choose_last(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series:
         """
         Handles multiple matches by selecting the last match.
 
@@ -82,14 +82,14 @@ class OnMultipleMatchesDo(Enum):
             **kwargs: Additional arguments (unused)
 
         Returns:
-            pd.DataFrame: The last matching transaction or an empty DataFrame if no matches
+            pd.Series: The last matching transaction or an empty DataFrame if no matches
         """
         if matches.empty:
             return matches
 
         return matches.iloc[-1]
 
-    def choose(self, *, matches: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def choose(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series:
         """
         Dispatches to the appropriate handler based on the enum value.
 
@@ -101,7 +101,7 @@ class OnMultipleMatchesDo(Enum):
             **kwargs: Additional arguments passed to the specific handler
 
         Returns:
-            pd.DataFrame: The selected transaction(s) based on the chosen strategy
+            pd.Series: The selected transaction(s) based on the chosen strategy
 
         Raises:
             Exception: If the FAIL strategy is selected and matches exist

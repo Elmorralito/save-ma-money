@@ -12,12 +12,14 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, TypeVar
+from typing import Generic, List, TypeVar
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
+from papita_txnsmodel.utils.classutils import FallbackAction
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,7 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     service: S
+    on_failure_do: FallbackAction = FallbackAction.RAISE
     _loaded_data: pd.DataFrame | None = None
 
     @abc.abstractmethod
@@ -69,7 +72,7 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def load(self, *, data: pd.DataFrame, **kwargs) -> "AbstractLoadHandler":
+    def load(self, *, data: pd.DataFrame | List[TableDTO] | TableDTO, **kwargs) -> "AbstractLoadHandler":
         """
         Load data from the provided DataFrame.
 
