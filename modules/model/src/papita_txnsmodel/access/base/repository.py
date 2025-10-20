@@ -273,7 +273,9 @@ class BaseRepository:
         ]
         return self.get_records(*query_filters, dto=dto, **kwargs)
 
-    def get_record_by_id(self, id_: uuid.UUID | str | TableDTO, dto_type: type[TableDTO], **kwargs) -> TableDTO | None:
+    def get_record_by_id(
+        self, id_: TableDTO | str | dict | uuid.UUID, dto_type: type[TableDTO], **kwargs
+    ) -> TableDTO | None:
         """Retrieve a single record from the database by ID.
 
         Args:

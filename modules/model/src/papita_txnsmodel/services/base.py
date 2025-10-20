@@ -11,7 +11,7 @@ Classes:
 import inspect
 import logging
 import uuid
-from typing import Annotated, Any
+from typing import Annotated, Any, Type
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -47,9 +47,9 @@ class BaseService(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
 
-    connector: type[SQLDatabaseConnector] = SQLDatabaseConnector
-    dto_type: type[TableDTO] = TableDTO
-    repository_type: type[BaseRepository] = BaseRepository
+    connector: Type[SQLDatabaseConnector] = SQLDatabaseConnector
+    dto_type: Type[TableDTO] = TableDTO
+    repository_type: Type[BaseRepository] = BaseRepository
     missing_upsertions_tol: Annotated[float, Field(ge=0, le=0.5)] = 0.01
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.NOTHING
 
@@ -66,7 +66,7 @@ class BaseService(BaseModel):
         self.on_conflict_do = OnUpsertConflictDo(getattr(self.on_conflict_do, "value", self.on_conflict_do).upper())
         return self
 
-    def check_expected_dto_type(self, dto: type[TableDTO] | TableDTO | None) -> type[TableDTO]:
+    def check_expected_dto_type(self, dto: Type[TableDTO] | TableDTO | None) -> Type[TableDTO]:
         """Verify that the provided DTO matches the expected type.
 
         Args:
@@ -79,17 +79,20 @@ class BaseService(BaseModel):
             TypeError: If the DTO type doesn't match the expected type or if the
                 expected type is not properly configured.
         """
-        dto_type = dto if inspect.isclass(dto) else dto.__class__
-
         if not inspect.isclass(self.dto_type):
             raise TypeError("Expected type not properly configured.")
 
-        if not issubclass(dto_type, self.dto_type):  # type: ignore
+        if not dto:
+            raise TypeError("Provided DTO is not a class or instance.")
+
+        dto_type = dto if inspect.isclass(dto) else dto.__class__
+
+        if not issubclass(dto_type, self.dto_type):  # type: ignore[arg-type]
             raise TypeError(
                 f"The type {dto_type.__name__} of the DTO differ from the expected " + self.dto_type.__name__
             )
 
-        return dto_type  # type: ignore
+        return dto_type  # type: ignore[return-value]
 
     def close(self) -> None:
         """Close the database connection.
@@ -141,7 +144,7 @@ class BaseService(BaseModel):
 
         return self._repository.soft_delete_records(*query_filters, dto_type=self.dto_type, **kwargs)
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a record from the database.
 
         Args:
@@ -152,7 +155,7 @@ class BaseService(BaseModel):
         Returns:
             TableDTO | None: The retrieved object as a DTO, or None if not found.
         """
-        dto = self._repository.get_record_by_id(id_=obj, dto_type=self.dto_type, **kwargs)  # type: ignore
+        dto = self._repository.get_record_by_id(obj, dto_type=self.dto_type, **kwargs)
         if not dto and isinstance(obj, (dict, self.dto_type)):
             obj = obj if isinstance(obj, self.dto_type) else self.dto_type.model_construct(**obj)
             self.check_expected_dto_type(obj)
