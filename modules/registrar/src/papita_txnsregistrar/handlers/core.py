@@ -11,8 +11,9 @@ by providing record retrieval methods and dependency management capabilities.
 """
 
 import inspect
+import logging
 import uuid
-from typing import Annotated, Dict, Generic, Self, Type, TypeVarTuple
+from typing import Annotated, Dict, Generic, List, Self, Type, TypeVarTuple
 
 import pandas as pd
 from pydantic import BeforeValidator, model_validator
@@ -24,6 +25,7 @@ from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler, S
 from papita_txnsregistrar.utils.modelutils import make_service_dependencies_validator
 
 ServiceDependencies = TypeVarTuple("ServiceDependencies")
+logger = logging.getLogger(__name__)
 
 
 class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]):
@@ -157,3 +159,65 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
             return service.get_records(dto=dto, **kwargs)
 
         return self.service.get_records(dto=dto, **kwargs)
+
+    def build_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+        if isinstance(dto, dict):
+            dto = self.service.dto_type.model_validate(dto)
+
+        if not isinstance(dto, self.service.dto_type):
+            raise TypeError(f"Invalid DTO type: {dto.__class__}, expected: {self.service.dto_type}")
+
+        for field_name, dep_service in self.dependencies.items():
+            value = getattr(dto, field_name, None)
+            if not value:
+                continue
+
+            dependency_dto = dep_service.get_or_create(dto=value, **kwargs)
+            setattr(dto, field_name, dependency_dto)
+
+        return dto
+
+    def build_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+        logger.debug("Building records for %s", self.service.dto_type.__dao_type__.__tablename__)
+        if isinstance(dtos, list) and all(isinstance(dto, self.service.dto_type) for dto in dtos):
+            dtos_ = pd.DataFrame([dto.model_dump(mode="python") for dto in dtos])
+        elif isinstance(dtos, list):
+            dtos_ = pd.DataFrame(dtos)
+        elif isinstance(dtos, pd.DataFrame):
+            dtos_ = dtos
+        else:
+            raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
+
+        return dtos_.apply(lambda row: self.build_record(dto=row.to_dict(), **kwargs).model_dump(mode="python"), axis=1)
+
+    def create_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+        logger.debug("Upserting record for %s", self.service.dto_type.__dao_type__.__tablename__)
+        return self.service.create(dto=dto, **kwargs)
+
+    def create_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+        logger.debug("Upserting records for %s", self.service.dto_type.__dao_type__.__tablename__)
+        return self.service.upsert_records(dtos=dtos, **kwargs)
+
+    def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
+        logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
+        if isinstance(data, (pd.DataFrame, list)):
+            self._loaded_data = self.build_records(dtos=data, **kwargs)
+            return self
+
+        if not isinstance(data, (TableDTO, dict)):
+            raise TypeError("data must be a DataFrame, list of TableDTO/dict, or a single TableDTO/dict.")
+
+        self._loaded_data = self.build_record(dto=data, **kwargs)
+        return self
+
+    def dump(self, **kwargs) -> Self:
+        logger.debug("Dumping data from %s", self.service.dto_type.__dao_type__.__tablename__)
+        if self._loaded_data is None:
+            raise ValueError("No data loaded to dump. Please load data before dumping.")
+
+        if isinstance(self._loaded_data, pd.DataFrame):
+            self.create_records(dtos=self._loaded_data, **kwargs)
+        else:
+            self.create_record(dto=self._loaded_data, **kwargs)
+
+        return self

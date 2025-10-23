@@ -12,7 +12,7 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, List, TypeVar
+from typing import Generic, List, Self, TypeVar
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -52,7 +52,7 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
     _loaded_data: pd.DataFrame | None = None
 
     @abc.abstractmethod
-    def dump(self, **kwargs) -> "AbstractLoadHandler":
+    def dump(self, **kwargs) -> Self:
         """
         Dump loaded data to a destination, using the service as intermediary.
 
@@ -72,7 +72,7 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def load(self, *, data: pd.DataFrame | List[TableDTO] | TableDTO, **kwargs) -> "AbstractLoadHandler":
+    def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
         """
         Load data from the provided DataFrame.
 

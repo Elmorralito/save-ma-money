@@ -9,7 +9,7 @@ retrieval, with support for fuzzy matching when looking up plugins by name or ta
 from types import ModuleType
 from typing import Sequence
 
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
 
 from papita_txnsmodel.utils.classutils import ClassDiscovery, MetaSingleton
 

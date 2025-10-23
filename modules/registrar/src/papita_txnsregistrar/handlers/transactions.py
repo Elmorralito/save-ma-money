@@ -12,13 +12,14 @@ processing logic including account matching and identified transaction matching.
 
 import logging
 import uuid
-from typing import Annotated
+from typing import Annotated, List, Self
 
 import pandas as pd
 from pydantic import Field
 from rapidfuzz import fuzz
 from rapidfuzz import process as fuzz_process
 
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.transactions import IdentifiedTransactionsService, TransactionsService
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
@@ -37,13 +38,18 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
     It supports both exact matching and fuzzy matching strategies with configurable
     thresholds and behaviors for handling multiple matches.
 
+    The handler processes raw transaction data through a series of matching operations:
+    1. Matches account IDs against the accounts database
+    2. Matches identified transaction references against the identified transactions database
+    3. Standardizes the data according to the service DTO type specification
+
     Attributes:
-        accounts_service: Service for accessing account data.
+        accounts_service: Service for accessing and querying account data.
         identified_transactions_service: Service for accessing identified transaction data.
-        on_multiple_account_matches: Strategy to use when multiple accounts match.
+        on_multiple_account_matches: Strategy to use when multiple accounts match (FAIL, TAKE_FIRST, etc.).
         case_sensitive: Whether string matching should be case-sensitive.
         fuzzy_match: Whether to use fuzzy string matching instead of exact matching.
-        fuzzy_match_threshold: Threshold value for fuzzy matching (0.7-100).
+        fuzzy_match_threshold: Threshold value for fuzzy matching (0.7-100), determining match quality.
     """
 
     accounts_service: AccountsService
@@ -58,8 +64,11 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         """
         Get account data from the accounts service.
 
+        Retrieves all accounts from the accounts service and returns them as a DataFrame
+        for use in matching operations.
+
         Returns:
-            DataFrame containing account data.
+            DataFrame containing account data with all available fields.
         """
         return self._load_core_data(self.accounts_service)
 
@@ -68,8 +77,11 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         """
         Get identified transaction data from the identified transactions service.
 
+        Retrieves all identified transactions from the service and returns them as a DataFrame
+        for use in matching operations.
+
         Returns:
-            DataFrame containing identified transaction data.
+            DataFrame containing identified transaction data with all available fields.
         """
         return self._load_core_data(self.identified_transactions_service)
 
@@ -86,8 +98,11 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         """
         Match records using exact matching on ID, name, or tags.
 
+        Performs exact string comparison to find matches in the provided data. A match
+        is found if the value exactly equals the ID, name, or is contained in the tags list.
+
         Args:
-            value: The value to match against records.
+            value: The value to match against records (account name, ID, etc.).
             core_data: DataFrame containing the records to match against.
             core_id_column: Column name for the ID field in core_data.
             core_name_column: Column name for the name field in core_data.
@@ -121,8 +136,12 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         """
         Match records using fuzzy matching on ID, name, or tags.
 
+        Performs similarity-based string comparison using the RapidFuzz library to find
+        approximate matches. The fuzzy_match_threshold determines the minimum similarity
+        score required for a match.
+
         Args:
-            value: The value to match against records.
+            value: The value to match against records (account name, ID, etc.).
             core_data: DataFrame containing the records to match against.
             core_id_column: Column name for the ID field in core_data.
             core_name_column: Column name for the name field in core_data.
@@ -167,10 +186,11 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         Match records using either exact or fuzzy matching based on configuration.
 
         This method handles case sensitivity and delegates to either exact or fuzzy matching
-        based on the instance configuration.
+        based on the instance configuration. It serves as the main entry point for the
+        matching process.
 
         Args:
-            value: The value to match against records.
+            value: The value to match against records (account name, ID, etc.).
             core_data: DataFrame containing the records to match against.
             core_id_column: Column name for the ID field in core_data.
             core_name_column: Column name for the name field in core_data.
@@ -213,14 +233,16 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         Match account IDs in the transaction data with accounts in the accounts DataFrame.
 
         This method processes the transaction data to resolve account references to actual account IDs
-        in the system. It handles both from_account_id and to_account_id columns.
+        in the system. It handles both from_account_id and to_account_id columns and filters out
+        invalid transactions (those with both accounts null or both accounts non-null).
 
         Args:
             data: DataFrame containing transaction data with from_account_id and to_account_id columns.
             **kwargs: Additional arguments passed to the matching functions.
 
         Returns:
-            DataFrame with matched account IDs, filtered to include only valid entries.
+            DataFrame with matched account IDs, filtered to include only valid entries where exactly
+            one of from_account_id or to_account_id is non-null.
         """
         id_column = self.accounts_service.dto_type.__dao_type__.__table__.c.id.key
         name_column = self.accounts_service.dto_type.__dao_type__.__table__.c.name.key
@@ -254,14 +276,15 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         Match identified transaction IDs in the transaction data.
 
         This method resolves references to identified transactions to actual identified transaction IDs
-        in the system.
+        in the system. It uses the same matching strategy as account matching but applies it to the
+        identified_transaction_id column.
 
         Args:
             data: DataFrame containing transaction data with identified_transaction_id column.
             **kwargs: Additional arguments passed to the matching functions.
 
         Returns:
-            DataFrame with matched identified transaction IDs.
+            DataFrame with matched identified transaction IDs where possible.
         """
         id_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.id.key
         name_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.name.key
@@ -281,40 +304,49 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         )
         return data_
 
-    def dump(self, **kwargs) -> "AbstractLoadHandler":
+    def dump(self, **kwargs) -> Self:
         """
         Save the loaded transaction data using the associated service.
 
+        This method persists the processed and matched transaction data to the underlying
+        data store through the service layer.
+
         Args:
-            **kwargs: Additional arguments passed to the service's upsert_records method.
+            **kwargs: Additional arguments passed to the service's upsert_records method,
+                     such as batch size or conflict resolution strategies.
 
         Returns:
             Self instance for method chaining.
 
         Raises:
-            ValueError: If there is no loaded data to dump.
+            ValueError: If there is no loaded data to dump (call load() first).
         """
         if not isinstance(self._loaded_data, pd.DataFrame):
             raise ValueError("There is no loaded data to dump.")
 
         return self.service.upsert_records(df=self._loaded_data, **kwargs)
 
-    def load(self, *, data: pd.DataFrame, **kwargs) -> "AbstractLoadHandler":
+    def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
         """
         Load and process transaction data.
 
-        This method loads transaction data, matches account IDs and identified transaction IDs,
-        and standardizes the data according to the DTO type specification.
+        This method performs the complete transaction data processing pipeline:
+        1. Loads the raw transaction data
+        2. Matches account IDs for both from_account and to_account fields
+        3. Matches identified transaction IDs
+        4. Standardizes the data according to the DTO type specification
 
         Args:
-            data: DataFrame containing raw transaction data to be processed.
-            **kwargs: Additional arguments for processing and error handling.
+            data: Raw transaction data to be processed, can be in various formats.
+            **kwargs: Additional arguments for processing and error handling,
+                      including loggers and strategy-specific parameters.
 
         Returns:
             Self instance for method chaining.
 
         Raises:
-            Various exceptions may be raised based on the on_failure_do strategy.
+            Various exceptions may be raised based on the on_failure_do strategy
+            when data is empty or invalid.
         """
         logger.debug("Loading data from loader '%s'", self.loader.__class__.__name__)
         if getattr(data, "empty", True):
