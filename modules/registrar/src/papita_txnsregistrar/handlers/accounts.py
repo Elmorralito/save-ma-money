@@ -17,7 +17,7 @@ and process account data from various sources, providing a clean abstraction
 layer over the data processing operations.
 """
 
-from typing import Self
+from typing import Self, Tuple
 
 from pydantic import model_validator
 
@@ -52,53 +52,70 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
     before it's processed by the service.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with AccountsService
-        as the parameterized service type. These typically include configuration
-        settings, connection parameters, and processing options.
+        Inherits all attributes from BaseLoadTableHandler, with AccountsService,
+        AssetAccountsService, or LiabilityAccountsService as the parameterized
+        service types. These typically include configuration settings, connection
+        parameters, and processing options.
 
     Examples:
         ```python
-        handler = AccountTableHandler(config)
+        handler = AccountsTableHandler(config)
         handler.load_data(source)
         processed_data = handler.process()
         handler.dump_results(destination)
         ```
     """
 
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "accounts", "account_table", "general_accounts"
+
 
 class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService]):
     """
     Handler for loading and processing asset account table data.
 
-    This specialized handler manages asset-related account data through the
-    AssetAccountsService. It inherits the core functionality from the
-    BaseLoadTableHandler and customizes it for asset account operations.
+    This specialized handler manages accounts that represent assets, such as
+    savings accounts, investment accounts, or property holdings. It leverages
+    the AssetAccountsService to perform operations specific to asset accounts.
 
-    Asset accounts typically represent investments, properties, or other resources
-    that hold value. This handler provides the interface to load, process, and
-    export such data.
+    The handler ensures that asset account data is correctly loaded, transformed,
+    and processed according to the business rules defined in the service layer.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with AssetAccountsService
-        as the parameterized service type.
+        Inherits attributes from BaseLoadTableHandler with AssetAccountsService
+        as the parameterized service type. These typically include configuration
+        settings, connection parameters, and processing options specific to
+        asset accounts.
     """
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "asset_accounts_table", "asset_accounts", "assets"
 
 
 class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService]):
     """
     Handler for loading and processing liability account table data.
 
-    This specialized handler manages liability-related account data through the
-    LiabilityAccountsService. It inherits the core functionality from the
-    BaseLoadTableHandler and customizes it for liability account operations.
+    This specialized handler manages accounts that represent liabilities, such as
+    loans, credit card debts, or mortgages. It utilizes the LiabilityAccountsService
+    to handle operations specific to liability accounts.
 
-    Liability accounts represent debts, loans, or other financial obligations.
-    This handler provides the interface to load, process, and export such data.
+    The handler ensures that liability account data is accurately loaded,
+    transformed, and processed in accordance with the rules defined in the
+    service layer.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with LiabilityAccountsService
-        as the parameterized service type.
+        Inherits attributes from BaseLoadTableHandler with LiabilityAccountsService
+        as the parameterized service type. These typically include configuration
+        settings, connection parameters, and processing options specific to
+        liability accounts.
     """
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "liability_accounts_table", "liability_accounts", "liabilities"
 
 
 class FinancedAssetAccountsTableHandler(
@@ -144,6 +161,10 @@ class FinancedAssetAccountsTableHandler(
             }
 
         return self
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "financed_asset_accounts_table", "financed_asset_accounts", "assets"
 
 
 class AccountsIndexerTableHandler(
@@ -202,3 +223,7 @@ class AccountsIndexerTableHandler(
             }
 
         return self
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "accounts_indexer_table", "accounts_indexer", "account_indexer", "indexer"

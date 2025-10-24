@@ -12,7 +12,7 @@ processing logic including account matching and identified transaction matching.
 
 import logging
 import uuid
-from typing import Annotated, List, Self
+from typing import Annotated, List, Self, Tuple
 
 import pandas as pd
 from pydantic import Field, model_validator
@@ -81,6 +81,10 @@ class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransact
 
         return self
 
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "identified_transactions_table", "identified_transactions"
+
 
 class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
     """
@@ -111,6 +115,10 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
     case_sensitive: bool = False
     fuzzy_match: bool = False
     fuzzy_match_threshold: Annotated[int | float, Field(gt=0.7, lt=100), validate_interest_rate] = 0.9
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        return "transactions_handler", "transactions"
 
     @property
     def accounts(self) -> pd.DataFrame:

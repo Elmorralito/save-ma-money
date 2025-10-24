@@ -15,7 +15,7 @@ the transaction tracking system by providing reusable validation logic.
 
 import inspect
 import re
-from typing import Callable, Dict, List, Tuple, Type
+from typing import Callable, Dict, Iterable, Tuple, Type
 
 from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
 from semver import Version
@@ -44,7 +44,7 @@ def validate_python_version(value: str, handler: ValidatorFunctionWrapHandler) -
     return Version.is_valid(handler(value))
 
 
-def validate_tags(value: List[str], handler: ValidatorFunctionWrapHandler) -> List[str]:
+def validate_tags(value: Iterable[str]) -> Iterable[str]:
     """
     Validate and normalize a list of tag strings.
 
@@ -56,21 +56,33 @@ def validate_tags(value: List[str], handler: ValidatorFunctionWrapHandler) -> Li
     It's designed to be used as a Pydantic validator.
 
     Args:
-        value: List of tag strings to validate.
+        value: Iterable of tag strings to validate.
         handler: Pydantic validator handler for chaining validators.
-
     Returns:
         A normalized list of unique, lowercase tags.
-
     Raises:
         ValueError: If no valid tags are found after filtering.
     """
-    value_ = handler(value)
-    tags = [str.lower(elem) for elem in value_ if re.match(r"^([A-Za-z]|\s)+$", elem or "")]
+    tags = [str.lower(elem) for elem in value if re.match(r"^([A-Za-z]|\s)+$", elem or "")]
     if not tags:
         raise ValueError("No valid tags found.")
 
     return list(set(tags))
+
+
+def validate_tags_wrapper(value: Iterable[str], handler: ValidatorFunctionWrapHandler) -> Iterable[str]:
+    """
+    Wrapper to use validate_tags as a Pydantic validator.
+    This function serves as a bridge to integrate the validate_tags function
+    with Pydantic's validation system by utilizing the ValidatorFunctionWrapHandler.
+    Args:
+        value: Iterable of tag strings to validate.
+        handler: Pydantic validator handler for chaining validators.
+    Returns:
+        A normalized list of unique, lowercase tags.
+    """
+    value_ = handler(value)
+    return validate_tags(value_)
 
 
 def make_service_dependencies_validator(

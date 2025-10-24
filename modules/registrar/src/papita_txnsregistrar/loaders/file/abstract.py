@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict
 logger = logging.getLogger(__name__)
 
 
-class AbstractFileLoader(BaseModel):
+class FileLoader(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     """
     Base class for all file-based data loaders.

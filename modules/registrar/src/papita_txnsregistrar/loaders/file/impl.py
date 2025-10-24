@@ -5,7 +5,7 @@ This module provides concrete implementations of file loaders for specific file 
 - CSVFileLoader: For loading data from CSV (Comma-Separated Values) files
 - ExcelFileLoader: For loading data from Excel spreadsheet files
 
-These loaders extend the AbstractFileLoader base class and implement the file-specific
+These loaders extend the FileLoader base class and implement the file-specific
 loading logic while maintaining a consistent interface for data access through the
 result property.
 """
@@ -16,18 +16,16 @@ import pandas as pd
 from pydantic import Field
 
 from papita_txnsregistrar.loaders.abstract import AbstractLoader
-from papita_txnsregistrar.loaders.adapter import LoaderFlag
 
-from .abstract import AbstractFileLoader
+from .abstract import FileLoader
 
 
-@LoaderFlag.acknowledge("csv", "tsv", "CSV", "TSV", "CSVFileLoader", "CSVFILELOADER")
-class CSVFileLoader(AbstractFileLoader, AbstractLoader):
+class CSVFileLoader(FileLoader, AbstractLoader):
     """
     Loader for CSV (Comma-Separated Values) files.
 
     This loader provides functionality to read data from CSV files into pandas DataFrames.
-    It implements the AbstractFileLoader interface and specializes in handling CSV format
+    It implements the FileLoader interface and specializes in handling CSV format
     using pandas' read_csv functionality.
 
     Attributes:
@@ -66,11 +64,11 @@ class CSVFileLoader(AbstractFileLoader, AbstractLoader):
 
         Args:
             **kwargs: Keyword arguments passed to pandas.read_csv(), such as:
-                     - sep: Delimiter to use (default ',')
-                     - header: Row number to use as column names
-                     - names: List of column names
-                     - dtype: Data types for columns
-                     - encoding: File encoding
+                        - sep: Delimiter to use (default ',')
+                        - header: Row number to use as column names
+                        - names: List of column names
+                        - dtype: Data types for columns
+                        - encoding: File encoding
 
         Returns:
             Self: The loader instance for method chaining.
@@ -79,13 +77,12 @@ class CSVFileLoader(AbstractFileLoader, AbstractLoader):
         return self
 
 
-@LoaderFlag.acknowledge("excel", "Excel", "ExcelFileLoader", "EXCELFILELOADER")
-class ExcelFileLoader(AbstractFileLoader, AbstractLoader):
+class ExcelFileLoader(FileLoader, AbstractLoader):
     """
     Loader for Excel spreadsheet files.
 
     This loader provides functionality to read data from Excel files (.xls, .xlsx)
-    into pandas DataFrames. It implements the AbstractFileLoader interface and
+    into pandas DataFrames. It implements the FileLoader interface and
     specializes in handling Excel formats using pandas' ExcelFile functionality.
 
     Unlike the CSVFileLoader which returns a single DataFrame, this loader returns

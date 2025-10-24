@@ -12,7 +12,7 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, List, Self, TypeVar
+from typing import Generic, List, Self, Tuple, TypeVar
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -50,6 +50,22 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
     service: S
     on_failure_do: FallbackAction = FallbackAction.RAISE
     _loaded_data: pd.DataFrame | None = None
+
+    @classmethod
+    @abc.abstractmethod
+    def labels(cls) -> Tuple[str, ...]:
+        """
+        Get the labels associated with this handler.
+
+        This method should be implemented by subclasses to return a tuple of
+        string labels that identify the handler's purpose or type.
+
+        Returns:
+            Tuple[str, ...]: A tuple of labels for the handler.
+
+        Raises:
+            NotImplementedError: When called directly on the abstract class.
+        """
 
     @abc.abstractmethod
     def dump(self, **kwargs) -> Self:

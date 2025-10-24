@@ -13,7 +13,7 @@ by providing record retrieval methods and dependency management capabilities.
 import inspect
 import logging
 import uuid
-from typing import Annotated, Dict, Generic, List, Self, Type, TypeVarTuple
+from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple
 
 import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
@@ -101,6 +101,22 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
 
         self.dependencies = new_dependencies
         return self
+
+    @classmethod
+    def labels(cls) -> Tuple[str, ...]:
+        """
+        Get the labels associated with this handler.
+
+        This method should be implemented by subclasses to return a tuple of
+        string labels that identify the handler's purpose or type.
+
+        Returns:
+            Tuple[str, ...]: A tuple of labels for the handler.
+
+        Raises:
+            NotImplementedError: When called directly on the abstract class.
+        """
+        raise NotImplementedError("Subclasses must implement the labels method.")
 
     def get_record(
         self, dto: TableDTO | dict | str | uuid.UUID, from_dependency: str | None = None, **kwargs

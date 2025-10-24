@@ -1,87 +1,36 @@
-"""
-Plugin contract definition for the transaction tracker system.
+from typing import Dict, Self, Tuple, Type
 
-This module defines the abstract base class that all plugins in the transaction tracking
-system must implement. It establishes the standard interface for plugin lifecycle
-management, including initialization, starting, and stopping operations.
-
-Classes:
-    Self: Abstract base class defining the plugin interface for the transaction tracking system.
-"""
-
-import abc
-from typing import Generic, Self, TypeVar
-
-from pydantic import BaseModel
-
+from papita_txnsregistrar.contracts.loader import plugin
+from papita_txnsregistrar.contracts.meta import PluginMetadata
+from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
-
-from .meta import PluginMetadata
-
-L = TypeVar("L", bound=AbstractLoader)
+from papita_txnsregistrar.handlers.factory import HandlerFactory
+from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
 
 
-class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
+@plugin(
+    loader_type=ExcelFileLoader,
+    meta=PluginMetadata(
+        name="excel_file_plugin",
+        version="1.0.0",
+        feature_tags=["excel_file_loader", "excel_transactions", "excel_accounts"],
+        description="Loading transactions and accounts from Excel files.",
+    ),
+)
+class ExcelFilePlugin(PluginContract):
     """
-    Abstract base class defining the contract that all plugins must implement.
+    Plugin for handling Excel file transactions.
 
-    This class establishes the required interface for plugins in the transaction tracking
-    system, including lifecycle methods and metadata handling. Every plugin must extend
-    this class and implement its abstract methods to ensure consistent behavior within
-    the transaction tracking ecosystem.
+    This plugin integrates the Excel file loader with the transaction tracking system,
+    providing capabilities to load and process transaction data from Excel files.
+    It utilizes the ExcelFileLoader for data loading and a specified handler for
+    transaction processing.
 
-    The plugin lifecycle typically follows this sequence:
-    1. Load - Create the plugin instance via load or safe_load
-    2. Build handler - Configure the transaction processing handler
-    3. Init - Perform initialization tasks
-    4. Start - Begin active operation
-    5. Stop - Terminate operation gracefully
-
-    Attributes:
-        __meta__ (PluginMetadata): Metadata associated with the plugin including identification
-                                   and capability information.
-        _handler (AbstractLoadHandler): Handler used by the plugin for processing transactions.
     """
 
-    __meta__: PluginMetadata
-    _handler: AbstractLoadHandler | None = None
-    _loader: L | None = None
+    handlers: Dict[str, Type[AbstractLoadHandler]] = {}
 
-    @property
-    def handler(self) -> AbstractLoadHandler:
-        """
-        Get the plugin's handler.
-
-        Returns:
-            AbstractLoadHandler: The handler associated with this plugin for transaction processing.
-
-        Raises:
-            TypeError: If the handler has not been loaded or is corrupt.
-        """
-        if not isinstance(self._handler, AbstractLoadHandler):
-            raise TypeError("Handler not loaded or corrupt.")
-
-        return self._handler
-
-    @property
-    def loader(self) -> L:
-        """
-        Get the plugin's loader.
-
-        Returns:
-            AbstractLoadHandler: The loader associated with this plugin for transaction processing.
-
-        Raises:
-            TypeError: If the loader has not been loaded or is corrupt.
-        """
-        if not isinstance(self._loader, AbstractLoader):
-            raise TypeError("Handler not loaded or corrupt.")
-
-        return self._loader
-
-    @abc.abstractmethod
-    def build_handler(self, label: str, **kwargs) -> Self:
+    def build_handler(self, label: str, *labels: Tuple[str, ...], **kwargs) -> Self:
         """
         Build and configure the handler for this plugin.
 
@@ -96,8 +45,12 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: The plugin instance for method chaining.
         """
+        factory = HandlerFactory.load(*tuple(kwargs.get("handler_modules", [])))
+        self.handlers = {
+            label_.strip(): factory.get(label_.strip(), **kwargs) for label_ in (labels + (label,)) if label_.strip()
+        }
+        return self
 
-    @abc.abstractmethod
     def init(self, **kwargs) -> Self:
         """
         Initialize the plugin.
@@ -114,8 +67,9 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: The plugin instance for method chaining.
         """
+        sheets = self._loader.check_source(**kwargs).load(**kwargs).result.keys()
+        return self.build_handler(*sheets, **kwargs)
 
-    @abc.abstractmethod
     def start(self, **kwargs) -> Self:
         """
         Start the plugin operation.
@@ -132,8 +86,8 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: The plugin instance for method chaining.
         """
+        return self
 
-    @abc.abstractmethod
     def stop(self, **kwargs) -> Self:
         """
         Stop the plugin operation.
@@ -149,30 +103,9 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: The plugin instance for method chaining.
         """
+        return self
 
     @classmethod
-    def meta(cls) -> PluginMetadata:
-        """
-        Retrieve the plugin's metadata.
-
-        This method provides access to the plugin's metadata, which includes information
-        such as the plugin's name, version, capabilities, dependencies, and other
-        descriptive attributes used for registration and management.
-
-        Returns:
-            PluginMetadata: The metadata associated with this plugin.
-
-        Raises:
-            ValueError: If the metadata has not been loaded into the plugin.
-        """
-        meta = getattr(cls, "__meta__", None)
-        if not meta:
-            raise ValueError("The metadata has not been loaded into the plugin.")
-
-        return meta
-
-    @classmethod
-    @abc.abstractmethod
     def load(cls, **kwargs) -> Self:
         """
         Load the plugin.
@@ -187,9 +120,9 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: A new instance of the plugin.
         """
+        return cls(**kwargs)
 
     @classmethod
-    @abc.abstractmethod
     def safe_load(cls, **kwargs) -> Self:
         """
         Safely load the plugin with error handling.
@@ -206,3 +139,4 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Returns:
             Self: A new instance of the plugin.
         """
+        return cls(**kwargs)
