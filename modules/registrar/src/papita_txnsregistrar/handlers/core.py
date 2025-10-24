@@ -16,7 +16,7 @@ import uuid
 from typing import Annotated, Dict, Generic, List, Self, Type, TypeVarTuple
 
 import pandas as pd
-from pydantic import BeforeValidator, model_validator
+from pydantic import BeforeValidator, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
@@ -40,14 +40,12 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
     configured and that they match the expected service types. Dependencies are initialized
     with the same connector as the principal service.
 
-    Args:
-        S: The principal service type this handler works with
-        ServiceDependencies: Variable tuple of allowed service dependency types
-
     Attributes:
-        dependencies: Dictionary mapping dependency names to service instances or types
+        dependencies: Dictionary mapping dependency names to service instances or types.
+            This is validated to ensure only permitted service types are included and is
+            initialized during model validation.
 
-    Example:
+    Examples:
         ```python
         class UserTableHandler(BaseLoadTableHandler[UserService, AuthService, LoggingService]):
             # Implementation specific to user table handling
@@ -69,7 +67,7 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         BeforeValidator(
             make_service_dependencies_validator(principal_service=S, allowed_dependencies=ServiceDependencies)
         ),
-    ]
+    ] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_model(self) -> Self:
@@ -119,7 +117,7 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
             **kwargs: Additional arguments to pass to the service's get method
 
         Returns:
-            TableDTO: The retrieved record as a data transfer object
+            The retrieved record as a data transfer object or None if not found
 
         Raises:
             ValueError: If the specified dependency is not found in the dependencies dictionary
@@ -141,7 +139,7 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         specified dependency service, returning the results as a pandas DataFrame.
 
         Args:
-            dto: The data transfer object, dictionary, ID string or UUID identifying the records
+            dto: The data transfer object, dictionary, or None for querying records
             from_dependency: Optional name of the dependency service to use for retrieval
             **kwargs: Additional arguments to pass to the service's get_records method
 
@@ -161,6 +159,25 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         return self.service.get_records(dto=dto, **kwargs)
 
     def build_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+        """
+        Build a complete record by resolving dependencies.
+
+        This method takes a DTO or dictionary and transforms it into a fully resolved DTO
+        by fetching or creating any dependent records referenced within it. For each dependency
+        specified in the handler, corresponding fields in the DTO are resolved to actual
+        instances by using the appropriate dependency service.
+
+        Args:
+            dto: The data transfer object or dictionary to build
+            **kwargs: Additional arguments to pass to dependency service operations
+
+        Returns:
+            TableDTO: The fully built record with resolved dependencies
+
+        Raises:
+            TypeError: If the provided DTO is not of the expected type
+        """
+        logger.debug("Building record for %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(dto, dict):
             dto = self.service.dto_type.model_validate(dto)
 
@@ -178,6 +195,23 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         return dto
 
     def build_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+        """
+        Build multiple records by resolving dependencies for each.
+
+        This method processes a collection of DTOs, dictionaries, or a DataFrame and transforms
+        each record into a fully resolved DTO by fetching or creating any dependent records.
+        It applies the build_record method to each item in the collection.
+
+        Args:
+            dtos: Collection of records to build (DataFrame, list of DTOs, or list of dicts)
+            **kwargs: Additional arguments to pass to dependency service operations
+
+        Returns:
+            pd.DataFrame: DataFrame containing all fully built records with resolved dependencies
+
+        Raises:
+            TypeError: If the provided input is not of a supported type
+        """
         logger.debug("Building records for %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(dtos, list) and all(isinstance(dto, self.service.dto_type) for dto in dtos):
             dtos_ = pd.DataFrame([dto.model_dump(mode="python") for dto in dtos])
@@ -191,14 +225,54 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         return dtos_.apply(lambda row: self.build_record(dto=row.to_dict(), **kwargs).model_dump(mode="python"), axis=1)
 
     def create_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+        """
+        Create a new record using the service.
+
+        This method persists a single record through the principal service's create method.
+
+        Args:
+            dto: The data transfer object or dictionary to create
+            **kwargs: Additional arguments to pass to the service's create method
+
+        Returns:
+            TableDTO: The created record as returned by the service
+        """
         logger.debug("Upserting record for %s", self.service.dto_type.__dao_type__.__tablename__)
         return self.service.create(dto=dto, **kwargs)
 
     def create_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+        """
+        Create multiple records using the service.
+
+        This method persists multiple records through the principal service's upsert_records method.
+
+        Args:
+            dtos: Collection of records to create (DataFrame, list of DTOs, or list of dicts)
+            **kwargs: Additional arguments to pass to the service's upsert_records method
+
+        Returns:
+            pd.DataFrame: DataFrame containing the created records as returned by the service
+        """
         logger.debug("Upserting records for %s", self.service.dto_type.__dao_type__.__tablename__)
         return self.service.upsert_records(dtos=dtos, **kwargs)
 
     def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
+        """
+        Load data into the handler, building records with resolved dependencies.
+
+        This method processes input data by building complete records with resolved dependencies.
+        The result is stored in the handler's _loaded_data attribute for later processing or dumping.
+
+        Args:
+            data: Input data to load (DataFrame, list of DTOs, list of dicts, or a single DTO/dict)
+            **kwargs: Additional arguments to pass to the build operations
+
+        Returns:
+            Self: The handler instance for method chaining
+
+        Raises:
+            TypeError: If the provided data is not of a supported type
+        """
         logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(data, (pd.DataFrame, list)):
             self._loaded_data = self.build_records(dtos=data, **kwargs)
@@ -211,6 +285,21 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[*ServiceDependencies]
         return self
 
     def dump(self, **kwargs) -> Self:
+        """
+        Persist loaded data to the underlying data store.
+
+        This method saves the previously loaded data (from the load method) to the data store
+        through the service layer. It handles both single records and collections of records.
+
+        Args:
+            **kwargs: Additional arguments to pass to the create operations
+
+        Returns:
+            Self: The handler instance for method chaining
+
+        Raises:
+            ValueError: If no data has been loaded (call load() first)
+        """
         logger.debug("Dumping data from %s", self.service.dto_type.__dao_type__.__tablename__)
         if self._loaded_data is None:
             raise ValueError("No data loaded to dump. Please load data before dumping.")

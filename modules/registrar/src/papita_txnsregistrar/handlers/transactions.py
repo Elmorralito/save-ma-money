@@ -15,18 +15,71 @@ import uuid
 from typing import Annotated, List, Self
 
 import pandas as pd
-from pydantic import Field
+from pydantic import Field, model_validator
 from rapidfuzz import fuzz
 from rapidfuzz import process as fuzz_process
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.transactions import IdentifiedTransactionsService, TransactionsService
+from papita_txnsmodel.services.types import TypesService
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
 from papita_txnsregistrar.utils.enums import OnMultipleMatchesDo
 
+from .abstract import AbstractLoadHandler
+from .core import BaseLoadTableHandler
+
 logger = logging.getLogger(__name__)
+
+
+class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransactionsService], TypesService):
+    """
+    Handler for loading and processing identified transactions table data.
+
+    This handler specializes in managing identified transactions, which represent
+    categorized or classified transaction templates in the system. It extends
+    BaseLoadTableHandler with IdentifiedTransactionsService as the parameterized
+    service type, and also inherits from TypesService to access transaction type
+    information.
+
+    The handler provides the necessary infrastructure to load, process, and save
+    identified transaction data through the appropriate service layers. It establishes
+    a dependency on TypesService to properly categorize and classify transactions
+    based on their types.
+
+    Attributes:
+        dependencies: A dictionary mapping service names to service types,
+                        automatically configured to include TypesService for type
+                        information and classification.
+
+    Examples:
+        ```python
+        handler = IdentifiedTransactionsTableHandler(config)
+        handler.load_data(source_data)
+        processed_data = handler.process()
+        handler.dump_results(destination)
+        ```
+    """
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        """
+        Validates and sets up the required dependencies for the handler.
+
+        This method ensures that the handler has the necessary service dependencies
+        established. If no dependencies are defined, it initializes them with
+        TypesService which is required for properly handling identified transactions
+        and their classification.
+
+        Returns:
+            Self: The validated instance of IdentifiedTransactionsTableHandler.
+        """
+        if not self.dependencies:
+            self.dependencies = {
+                "type": TypesService,
+            }
+
+        return self
 
 
 class TransactionsHandler(AbstractLoadHandler[TransactionsService]):

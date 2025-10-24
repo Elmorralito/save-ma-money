@@ -7,8 +7,9 @@ from various sources, handling errors, and providing access to loaded results.
 """
 
 import abc
-from typing import Any
+from typing import Iterable, Self
 
+import pandas as pd
 from pydantic import BaseModel
 
 from papita_txnsmodel.utils.classutils import FallbackAction
@@ -32,7 +33,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def result(self) -> Any:
+    def result(self) -> pd.DataFrame | Iterable:
         """
         Get the data loaded from the source.
 
@@ -44,7 +45,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def check_source(self, **kwargs) -> "AbstractLoader":
+    def check_source(self, **kwargs) -> Self:
         """
         Check if the data source is valid and accessible.
 
@@ -62,7 +63,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def load(self, **kwargs) -> "AbstractLoader":
+    def load(self, **kwargs) -> Self:
         """
         Load data from the source.
 
