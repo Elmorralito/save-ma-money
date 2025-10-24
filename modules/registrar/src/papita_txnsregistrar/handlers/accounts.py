@@ -102,7 +102,7 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
 
 
 class FinancedAssetAccountsTableHandler(
-    BaseLoadTableHandler[FinancedAssetAccountsService], BankCreditLiabilityAccountsService, AssetAccountsService
+    BaseLoadTableHandler[FinancedAssetAccountsService, BankCreditLiabilityAccountsService, AssetAccountsService]
 ):
     """
     Handler for loading and processing financed asset account table data.
