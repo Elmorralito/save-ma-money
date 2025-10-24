@@ -144,13 +144,18 @@ def make_service_dependencies_validator(
             raise ValueError(f"Principal service '{principal_service.__name__}' is missing from dependencies.")
 
         dto = principal_service.dto_type
+        allowed = tuple(type_ for type_ in allowed_dependencies if issubclass(type_, BaseService))
         for dep_name, dep_value in val.items():
             dep_value_ = ClassDiscovery.select(dep_value, BaseService) if isinstance(dep_value, str) else dep_value
             if not dep_value_:
                 raise ValueError(f"Dependency '{dep_name}' could not be resolved.")
 
-            dep_value_type = dep_value_ if inspect.isclass(dep_value_) else dep_value_.__class__
-            if not issubclass(dep_value_type, tuple(allowed_dependencies)):
+            if inspect.isclass(dep_value_):
+                dep_value_type = dep_value_
+            else:
+                dep_value_type = type(dep_value_)
+
+            if not issubclass(dep_value_type, allowed):
                 raise ValueError(f"Dependency '{dep_name}' has an invalid type '{dep_value_type.__name__}'.")
 
             field = dto.model_fields.get(dep_name)
