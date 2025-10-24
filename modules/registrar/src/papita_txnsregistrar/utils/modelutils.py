@@ -150,7 +150,7 @@ def make_service_dependencies_validator(
                 raise ValueError(f"Dependency '{dep_name}' could not be resolved.")
 
             dep_value_type = dep_value_ if inspect.isclass(dep_value_) else dep_value_.__class__
-            if not issubclass(dep_value_type, allowed_dependencies):
+            if not issubclass(dep_value_type, tuple(allowed_dependencies)):
                 raise ValueError(f"Dependency '{dep_name}' has an invalid type '{dep_value_type.__name__}'.")
 
             field = dto.model_fields.get(dep_name)
