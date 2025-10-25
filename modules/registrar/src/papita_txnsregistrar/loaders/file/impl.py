@@ -76,6 +76,11 @@ class CSVFileLoader(FileLoader, AbstractLoader):
         self._result = pd.read_csv(self.path, **kwargs)
         return self
 
+    def unload(self, **kwargs) -> Self:
+        del self._result
+        self._result = pd.DataFrame([])
+        return self
+
 
 class ExcelFileLoader(FileLoader, AbstractLoader):
     """
@@ -142,4 +147,9 @@ class ExcelFileLoader(FileLoader, AbstractLoader):
             self.result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
             excel_file.close()
 
+        return self
+
+    def unload(self, **kwargs) -> Self:
+        del self._result
+        self._result = {}.copy()
         return self

@@ -10,7 +10,7 @@ Classes:
 """
 
 import abc
-from typing import Generic, Self, TypeVar
+from typing import Generic, Self, Type, TypeVar
 
 from pydantic import BaseModel
 
@@ -45,6 +45,7 @@ class PluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
     """
 
     __meta__: PluginMetadata
+    loader_type: Type[L] = L
     _handler: AbstractLoadHandler | None = None
     _loader: L | None = None
 

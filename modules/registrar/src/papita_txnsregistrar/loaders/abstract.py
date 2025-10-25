@@ -75,3 +75,19 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
         Returns:
             AbstractLoader: The loader instance for method chaining.
         """
+
+    @abc.abstractmethod
+    def unload(self, **kwargs) -> Self:
+        """
+        Release resources and clear loaded data.
+
+        This method should implement the logic for cleaning up any resources used
+        during the loading process and resetting the loader to a state where it can
+        be reused for another loading operation.
+
+        Args:
+            **kwargs: Implementation-specific parameters needed for unloading.
+
+        Returns:
+            AbstractLoader: The loader instance for method chaining.
+        """

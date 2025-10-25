@@ -21,9 +21,10 @@ from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import FallbackAction
 
-logger = logging.getLogger(__name__)
-
 S = TypeVar("S", bound=BaseService)
+
+
+logger = logging.getLogger(__name__)
 
 
 class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
