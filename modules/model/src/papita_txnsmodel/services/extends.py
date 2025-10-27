@@ -71,7 +71,7 @@ class TypedEntitiesService(BaseService):
         setattr(dto, self.type_id_field_name, type_dto)
         return dto
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a typed entity record from the database.
 
         This method extends the base get method to include type information in the
@@ -260,7 +260,7 @@ class LinkedEntitiesService(BaseService):
 
         return dto
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a linked entity record from the database.
 
         This method extends the base get method to include linked entity information
@@ -316,7 +316,7 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
         typed_dto = super(TypedEntitiesService).create(obj=obj, **kwargs)
         return super(LinkedEntitiesService).create(obj=typed_dto, **kwargs)
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a typed and linked entity record from the database.
 
         This method combines the get methods of TypedEntitiesService and

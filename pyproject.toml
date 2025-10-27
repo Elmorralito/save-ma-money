@@ -101,7 +101,8 @@ disable = [
     "use-a-generator",
     "unnecessary-comprehension",
     "consider-using-dict-comprehension",
-    "E1101"
+    "E1101",
+    "W0511"
 ]
 
 [tool.pylint.'FORMAT']

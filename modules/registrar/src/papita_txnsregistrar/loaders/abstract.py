@@ -7,7 +7,7 @@ from various sources, handling errors, and providing access to loaded results.
 """
 
 import abc
-from typing import Any
+from typing import Iterable, Self
 
 from pydantic import BaseModel
 
@@ -32,7 +32,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def result(self) -> Any:
+    def result(self) -> Iterable:
         """
         Get the data loaded from the source.
 
@@ -44,7 +44,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def check_source(self, **kwargs) -> bool:
+    def check_source(self, **kwargs) -> Self:
         """
         Check if the data source is valid and accessible.
 
@@ -56,10 +56,13 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
 
         Returns:
             bool: True if the source is valid and accessible, False otherwise.
+
+        Raises:
+            ValueError: When the source is invalid.
         """
 
     @abc.abstractmethod
-    def load(self, **kwargs) -> "AbstractLoader":
+    def load(self, **kwargs) -> Self:
         """
         Load data from the source.
 
@@ -68,6 +71,22 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
 
         Args:
             **kwargs: Implementation-specific parameters needed to load data.
+
+        Returns:
+            AbstractLoader: The loader instance for method chaining.
+        """
+
+    @abc.abstractmethod
+    def unload(self, **kwargs) -> Self:
+        """
+        Release resources and clear loaded data.
+
+        This method should implement the logic for cleaning up any resources used
+        during the loading process and resetting the loader to a state where it can
+        be reused for another loading operation.
+
+        Args:
+            **kwargs: Implementation-specific parameters needed for unloading.
 
         Returns:
             AbstractLoader: The loader instance for method chaining.

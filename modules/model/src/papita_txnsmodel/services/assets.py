@@ -65,6 +65,13 @@ class FinancedAssetAccountsService(LinkedEntitiesService):
     """
 
     __links__: dict[str, LinkedEntity] = {
+        "asset_account": LinkedEntity(
+            expected_other_entity_service_type=AssetAccountsService,
+            other_entity_link_column_name="id",
+            other_entity_link_field_name="id",
+            own_entity_link_column_name="asset_account_id",
+            own_entity_link_field_name="asset_account",
+        ),
         "bank_credit_liability_account": LinkedEntity(
             expected_other_entity_service_type=BankCreditLiabilityAccountsService,
             other_entity_link_column_name="id",

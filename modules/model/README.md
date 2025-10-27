@@ -1,3 +1,3 @@
 # Papita Transactions Data Model
 
-![](docs/data_model.png)
+![](../../docs/postgres_papita_transactions.png)
