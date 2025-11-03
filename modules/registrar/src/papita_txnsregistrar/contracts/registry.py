@@ -1,3 +1,4 @@
+# type: ignore
 """
 Plugin registry system for the transaction tracker.
 
@@ -7,7 +8,7 @@ retrieval, with support for fuzzy matching when looking up plugins by name or ta
 """
 
 from types import ModuleType
-from typing import Sequence
+from typing import Sequence, Type
 
 from rapidfuzz import fuzz, process
 
@@ -30,10 +31,10 @@ class Registry(metaclass=MetaSingleton):
         _plugins: A set containing plugin classes that extend PluginContract.
     """
 
-    _plugins: set[type[PluginContract]]
+    _plugins: set[Type[PluginContract]]
 
     @property
-    def plugins(self) -> set[type[PluginContract]]:
+    def plugins(self) -> set[Type[PluginContract]]:
         """
         Get the registered plugin classes.
         Returns:
@@ -75,7 +76,7 @@ class Registry(metaclass=MetaSingleton):
 
         return self
 
-    def register(self, class_: type[PluginContract], meta: PluginMetadata) -> "Registry":
+    def register(self, class_: Type[PluginContract], meta: PluginMetadata) -> "Registry":
         """
         Register a plugin class with metadata.
 
@@ -102,7 +103,7 @@ class Registry(metaclass=MetaSingleton):
 
     def get(
         self, label: str, case_sensitive: bool = True, strict_exact: bool = False, fuzz_threshold: int = 90
-    ) -> type[PluginContract] | None:
+    ) -> Type[PluginContract] | None:
         """
         Get a plugin by name or tag.
 

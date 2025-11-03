@@ -3,11 +3,13 @@
 Plugin contract definition for the transaction tracker system.
 
 This module defines the abstract base class that all plugins in the transaction tracking
-system must implement. It establishes the standard interface for plugin lifecycle
-management, including initialization, starting, and stopping operations.
+system must implement, as well as a concrete implementation of this contract. It establishes
+the standard interface for plugin lifecycle management, including initialization, starting,
+and stopping operations.
 
 Classes:
-    Self: Abstract base class defining the plugin interface for the transaction tracking system.
+    AbstractPluginContract: Abstract base class defining the plugin interface.
+    PluginContract: Concrete implementation of the plugin contract interface.
 """
 
 import abc
@@ -28,7 +30,7 @@ B = TypeVar("B", bound=AbstractContractBuilder)
 logger = logging.getLogger(__name__)
 
 
-class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
+class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
     """
     Abstract base class defining the contract that all plugins must implement.
 
@@ -39,15 +41,18 @@ class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
 
     The plugin lifecycle typically follows this sequence:
     1. Load - Create the plugin instance via load or safe_load
-    2. Build handler - Configure the transaction processing handler
-    3. Init - Perform initialization tasks
-    4. Start - Begin active operation
-    5. Stop - Terminate operation gracefully
+    2. Init - Perform initialization tasks
+    3. Start - Begin active operation
+    4. Stop - Terminate operation gracefully
 
     Attributes:
         __meta__ (PluginMetadata): Metadata associated with the plugin including identification
                                    and capability information.
-        _handler (AbstractLoadHandler): Handler used by the plugin for processing transactions.
+        loader_type (Type[L]): Type of loader used by this plugin.
+        builder_type (Type[B]): Type of builder used by this plugin.
+        _handler (AbstractLoadHandler | None): Handler used by the plugin for processing transactions.
+        _loader (L | None): Loader instance for this plugin.
+        _builder (B | None): Builder instance for this plugin.
     """
 
     __meta__: PluginMetadata
@@ -56,6 +61,180 @@ class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
     _handler: AbstractLoadHandler | None = None
     _loader: L | None = None
     _builder: B | None = None
+
+    @property
+    @abc.abstractmethod
+    def builder(self) -> B:
+        """
+        Get the plugin's builder.
+
+        Returns:
+            B: The builder associated with this plugin for transaction processing.
+
+        Raises:
+            TypeError: If the builder has not been loaded or is corrupt.
+        """
+
+    @property
+    @abc.abstractmethod
+    def handler(self) -> AbstractLoadHandler:
+        """
+        Get the plugin's handler.
+
+        Returns:
+            AbstractLoadHandler: The handler associated with this plugin for transaction processing.
+
+        Raises:
+            TypeError: If the handler has not been loaded or is corrupt.
+        """
+
+    @property
+    @abc.abstractmethod
+    def loader(self) -> L:
+        """
+        Get the plugin's loader.
+
+        Returns:
+            L: The loader associated with this plugin for transaction processing.
+
+        Raises:
+            TypeError: If the loader has not been loaded or is corrupt.
+        """
+
+    @abc.abstractmethod
+    def init(self, **kwargs) -> Self:
+        """
+        Initialize the plugin.
+
+        This method should perform any necessary setup before the plugin starts, such as
+        establishing connections, loading configurations, preparing resources, or
+        validating the environment.
+
+        Args:
+            **kwargs: Initialization parameters specific to the plugin implementation,
+                      which may include configuration paths, feature flags, or other
+                      setup options.
+
+        Returns:
+            Self: The plugin instance for method chaining.
+        """
+
+    @abc.abstractmethod
+    def start(self, **kwargs) -> Self:
+        """
+        Start the plugin operation.
+
+        This method should begin the plugin's primary functionality, such as starting
+        listeners, initiating transaction processing, activating services, or beginning
+        any ongoing operations the plugin is responsible for.
+
+        Args:
+            **kwargs: Parameters for the start operation specific to the plugin
+                      implementation, which may include runtime options or conditional
+                      activation settings.
+
+        Returns:
+            Self: The plugin instance for method chaining.
+        """
+
+    @abc.abstractmethod
+    def stop(self, **kwargs) -> Self:
+        """
+        Stop the plugin operation.
+
+        This method should gracefully terminate the plugin's functionality, including
+        cleaning up resources, closing connections, finalizing any pending operations,
+        and ensuring that no data is lost during shutdown.
+
+        Args:
+            **kwargs: Parameters for the stop operation specific to the plugin
+                      implementation, such as timeout values or shutdown options.
+
+        Returns:
+            Self: The plugin instance for method chaining.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def meta(cls) -> PluginMetadata:
+        """
+        Retrieve the plugin's metadata.
+
+        This method provides access to the plugin's metadata, which includes information
+        such as the plugin's name, version, capabilities, dependencies, and other
+        descriptive attributes used for registration and management.
+
+        Returns:
+            PluginMetadata: The metadata associated with this plugin.
+
+        Raises:
+            ValueError: If the metadata has not been loaded into the plugin.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def load(cls, **kwargs) -> Self:
+        """
+        Load the plugin.
+
+        This class method should create and return a properly initialized instance of
+        the plugin. It may perform validation and setup operations necessary before
+        the plugin can be used.
+
+        Args:
+            **kwargs: Parameters for loading the plugin, which may include configuration
+                      options, dependencies, or context information.
+
+        Returns:
+            Self: A new instance of the plugin.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def safe_load(cls, **kwargs) -> Self:
+        """
+        Safely load the plugin with error handling.
+
+        This class method should create and return a properly initialized instance of
+        the plugin with additional error handling for robustness. It provides a safer
+        alternative to the standard load method by implementing fault tolerance and
+        appropriate fallback mechanisms.
+
+        Args:
+            **kwargs: Parameters for loading the plugin, which may include configuration
+                      options, dependencies, or context information.
+
+        Returns:
+            Self: A new instance of the plugin.
+        """
+
+
+class PluginContract(AbstractPluginContract[L, B]):
+    """
+    Concrete implementation of the plugin contract interface.
+
+    This class provides a concrete implementation of the AbstractPluginContract interface,
+    allowing for the creation of concrete plugin instances. It handles the lifecycle of
+    plugins including initialization, operation, and proper cleanup of resources when
+    stopping. It manages the builder, loader, and handler components required for
+    transaction processing.
+    """
+
+    @property
+    def builder(self) -> B:
+        """
+        Get the plugin's builder.
+
+        Returns:
+            B: The builder associated with this plugin for transaction processing.
+
+        Raises:
+            TypeError: If the builder has not been loaded or is corrupt.
+        """
+        if not isinstance(self._builder, AbstractContractBuilder):
+            raise TypeError("Builder not loaded or corrupt.")
+
+        return self._builder
 
     @property
     def handler(self) -> AbstractLoadHandler:
@@ -79,68 +258,94 @@ class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Get the plugin's loader.
 
         Returns:
-            AbstractLoadHandler: The loader associated with this plugin for transaction processing.
+            L: The loader associated with this plugin for transaction processing.
 
         Raises:
             TypeError: If the loader has not been loaded or is corrupt.
         """
         if not isinstance(self._loader, AbstractLoader):
-            raise TypeError("Handler not loaded or corrupt.")
+            raise TypeError("Loader not loaded or corrupt.")
 
         return self._loader
 
-    @abc.abstractmethod
     def init(self, **kwargs) -> Self:
         """
-        Initialize the plugin.
+        Initialize the plugin by setting up the builder and connections.
 
-        This method should perform any necessary setup before the plugin starts, such as
-        establishing connections, loading configurations, preparing resources, or
-        validating the environment.
+        This method creates the builder, verifies database connectivity, and initializes
+        the loader. It performs validation to ensure that the components are of the correct
+        type and properly connected.
 
         Args:
-            **kwargs: Initialization parameters specific to the plugin implementation,
-                      which may include configuration paths, feature flags, or other
-                      setup options.
+            **kwargs: Initialization parameters that are passed to the builder,
+                      such as connection details and configuration options.
 
         Returns:
             Self: The plugin instance for method chaining.
-        """
 
-    @abc.abstractmethod
+        Raises:
+            ValueError: If connection to the database fails.
+            TypeError: If the loader is not of the correct type.
+        """
+        logger.info("Building the builder...")
+        self._builder = self.builder_type[self.loader_type].build(**kwargs)
+        logger.info("Checking connection to the database...")
+        if not self.builder.connector.connected(on_disconnected=self.on_failure_do, custom_logger=logger):
+            raise ValueError("Failed to connect to the database.")
+
+        logger.info("The plugin is connected to the database.")
+        if not isinstance(self.builder.loader, self.loader_type):
+            raise TypeError("The loader is not of the correct type.")
+
+        self._loader = self.builder.loader
+        logger.info("Plugin is initialized successfully.")
+        return self
+
     def start(self, **kwargs) -> Self:
         """
         Start the plugin operation.
 
-        This method should begin the plugin's primary functionality, such as starting
-        listeners, initiating transaction processing, activating services, or beginning
-        any ongoing operations the plugin is responsible for.
+        This method begins the plugin's primary functionality after verifying that
+        the necessary components have been initialized. It checks for proper initialization
+        of the builder and loader before allowing the plugin to start.
 
         Args:
-            **kwargs: Parameters for the start operation specific to the plugin
-                      implementation, which may include runtime options or conditional
-                      activation settings.
+            **kwargs: Parameters for the start operation, which may include runtime options
+                      or conditional activation settings.
 
         Returns:
             Self: The plugin instance for method chaining.
-        """
 
-    @abc.abstractmethod
+        Raises:
+            ValueError: If the plugin has not been initialized or the loader has not been built.
+        """
+        if not self.builder:
+            raise ValueError("The plugin has not been initialized.")
+
+        if not self.loader:
+            raise ValueError("The loader has not been built.")
+
+        return self
+
     def stop(self, **kwargs) -> Self:
         """
-        Stop the plugin operation.
+        Stop the plugin operation and clean up resources.
 
-        This method should gracefully terminate the plugin's functionality, including
-        cleaning up resources, closing connections, finalizing any pending operations,
-        and ensuring that no data is lost during shutdown.
+        This method gracefully terminates the plugin's functionality by closing database
+        connections and unloading the loader. It ensures proper cleanup of all resources
+        to prevent memory leaks or orphaned connections.
 
         Args:
-            **kwargs: Parameters for the stop operation specific to the plugin
-                      implementation, such as timeout values or shutdown options.
+            **kwargs: Parameters for the stop operation, such as timeout values
+                      or specific shutdown options.
 
         Returns:
             Self: The plugin instance for method chaining.
         """
+        self.builder.connector.close()
+        self.loader.unload()
+        logger.info("The plugin is stopped successfully.")
+        return self
 
     @classmethod
     def meta(cls) -> PluginMetadata:
@@ -148,8 +353,8 @@ class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         Retrieve the plugin's metadata.
 
         This method provides access to the plugin's metadata, which includes information
-        such as the plugin's name, version, capabilities, dependencies, and other
-        descriptive attributes used for registration and management.
+        about the plugin's identity and capabilities. It retrieves the metadata from the
+        class's __meta__ attribute.
 
         Returns:
             PluginMetadata: The metadata associated with this plugin.
@@ -164,136 +369,16 @@ class AbstractPluginContract(BaseModel, Generic[L], metaclass=abc.ABCMeta):
         return meta
 
     @classmethod
-    @abc.abstractmethod
     def load(cls, **kwargs) -> Self:
         """
-        Load the plugin.
+        Load the plugin using Pydantic's model construction.
 
-        This class method should create and return a properly initialized instance of
-        the plugin. It may perform validation and setup operations necessary before
-        the plugin can be used.
-        Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
-
-        Returns:
-            Self: A new instance of the plugin.
-        """
-
-    @classmethod
-    @abc.abstractmethod
-    def safe_load(cls, **kwargs) -> Self:
-        """
-        Safely load the plugin with error handling.
-
-        This class method should create and return a properly initialized instance of
-        the plugin with additional error handling for robustness. It provides a safer
-        alternative to the standard load method by implementing fault tolerance and
-        appropriate fallback mechanisms.
+        This method creates a new plugin instance using Pydantic's model_construct method,
+        which directly initializes the model fields without additional validation.
 
         Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
-
-        Returns:
-            Self: A new instance of the plugin.
-        """
-
-
-class PluginContract(AbstractPluginContract):
-    """
-    Plugin contract implementation.
-
-    This class provides a concrete implementation of the AbstractPluginContract interface,
-    allowing for the creation of concrete plugin instances. It extends the abstract base
-    class with concrete methods for loading and safe loading the plugin.
-    """
-
-    def init(self, **kwargs) -> Self:
-        """
-        Initialize the plugin.
-
-        This method should perform any necessary setup before the plugin starts, such as
-        establishing connections, loading configurations, preparing resources, or
-        validating the environment.
-
-        Args:
-            **kwargs: Initialization parameters specific to the plugin implementation,
-                      which may include configuration paths, feature flags, or other
-                      setup options.
-
-        Returns:
-            Self: The plugin instance for method chaining.
-        """
-        logger.info("Building the builder...")
-        self._builder = self.builder_type[self.loader_type].build(**kwargs)
-        logger.info("Checking connection to the database...")
-        if not self._builder.connector.connected(on_disconnected=self.on_failure_do, custom_logger=logger):
-            raise ValueError("Failed to connect to the database.")
-
-        logger.info("The plugin is connected to the database.")
-        if not isinstance(self._builder.loader, self.loader_type):
-            raise TypeError("The loader is not of the correct type.")
-
-        self._loader = self._builder.loader
-        logger.info("Plugin is initialized successfully.")
-        return self
-
-    def start(self, **kwargs) -> Self:
-        """
-        Start the plugin operation.
-
-        This method should begin the plugin's primary functionality, such as starting
-        listeners, initiating transaction processing, activating services, or beginning
-        any ongoing operations the plugin is responsible for.
-
-        Args:
-            **kwargs: Parameters for the start operation specific to the plugin
-                      implementation, which may include runtime options or conditional
-                      activation settings.
-
-        Returns:
-            Self: The plugin instance for method chaining.
-        """
-        if not self._builder:
-            raise ValueError("The plugin has not been initialized.")
-
-        if not self._loader:
-            raise ValueError("The loader has not been built.")
-
-        return self
-
-    def stop(self, **kwargs) -> Self:
-        """
-        Stop the plugin operation.
-
-        This method should gracefully terminate the plugin's functionality, including
-        cleaning up resources, closing connections, finalizing any pending operations,
-        and ensuring that no data is lost during shutdown.
-
-        Args:
-            **kwargs: Parameters for the stop operation specific to the plugin
-                      implementation, such as timeout values or shutdown options.
-
-        Returns:
-            Self: The plugin instance for method chaining.
-        """
-        self._builder.connector.close()
-        self._loader.unload()
-        logger.info("The plugin is stopped successfully.")
-        return self
-
-    @classmethod
-    def load(cls, **kwargs) -> Self:
-        """
-        Load the plugin.
-
-        This class method should create and return a properly initialized instance of
-        the plugin. It may perform validation and setup operations necessary before
-        the plugin can be used.
-        Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
+            **kwargs: Parameters for loading the plugin, such as configuration options
+                      or dependencies.
 
         Returns:
             Self: A new instance of the plugin.
@@ -303,18 +388,17 @@ class PluginContract(AbstractPluginContract):
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
         """
-        Safely load the plugin with error handling.
+        Safely load the plugin with full validation.
 
-        This class method should create and return a properly initialized instance of
-        the plugin with additional error handling for robustness. It provides a safer
-        alternative to the standard load method by implementing fault tolerance and
-        appropriate fallback mechanisms.
+        This method creates a new plugin instance using Pydantic's model_validate method,
+        which performs complete validation of input data according to the model schema.
+        This provides additional safety compared to the standard load method.
 
         Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
+            **kwargs: Parameters for loading the plugin, such as configuration options
+                      or dependencies.
 
         Returns:
-            Self: A new instance of the plugin.
+            Self: A new validated instance of the plugin.
         """
         return cls.model_validate(kwargs)
