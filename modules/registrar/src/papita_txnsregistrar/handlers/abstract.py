@@ -12,7 +12,7 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, List, Self, Tuple, TypeVar
+from typing import Generic, List, Self, Tuple, Type, TypeVar
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -22,7 +22,6 @@ from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import FallbackAction
 
 S = TypeVar("S", bound=BaseService)
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,10 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
     service: S
     on_failure_do: FallbackAction = FallbackAction.RAISE
     _loaded_data: pd.DataFrame | None = None
+
+    @classmethod
+    def service_type(cls) -> Type[S]:
+        return cls.model_fields["service"].annotation
 
     @classmethod
     @abc.abstractmethod

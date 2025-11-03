@@ -83,6 +83,12 @@ class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransact
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system.
+        """
         return "identified_transactions_table", "identified_transactions"
 
 
@@ -118,6 +124,12 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system.
+        """
         return "transactions_handler", "transactions"
 
     @property

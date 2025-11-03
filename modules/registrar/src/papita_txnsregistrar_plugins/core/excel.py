@@ -1,161 +1,84 @@
-# from typing import Dict, Self, Tuple, Type
-from typing import Dict, Self, Type
+# type: ignore
+"""
+Excel file plugin module for transaction registration.
+This module provides a plugin for loading and processing transaction data from Excel files.
+It integrates the Excel file loader with the transaction tracking system, enabling the
+loading, processing, and registration of transaction data from Excel spreadsheets.
+"""
 
+# from typing import Dict, Self, Tuple, Type
+import logging
+from typing import Self
+
+from papita_txnsregistrar_plugins.core.builders import ExcelContractBuilder
+
+from papita_txnsregistrar import LIB_NAME
 from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata
 from papita_txnsregistrar.contracts.plugin import PluginContract
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-
-# from papita_txnsregistrar.handlers.factory import HandlerFactory
 from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
+
+logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
 
 
 @plugin(
-    loader_type=ExcelFileLoader,
     meta=PluginMetadata(
         name="excel_loader_plugin",
         version="1.0.0",
         feature_tags=["excel_file_loader", "excel_transactions", "excel_accounts"],
+        dependencies=[ExcelFileLoader, ExcelContractBuilder],
         description="Loading transactions and accounts from Excel files.",
+        enabled=True,
     ),
 )
-class ExcelFilePlugin(PluginContract[ExcelFileLoader]):
-    """
-    Plugin for handling Excel file transactions.
+class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
+    """Plugin for handling Excel file transactions.
 
     This plugin integrates the Excel file loader with the transaction tracking system,
     providing capabilities to load and process transaction data from Excel files.
     It utilizes the ExcelFileLoader for data loading and a specified handler for
-    transaction processing.
+    transaction processing. The plugin acts as a bridge between Excel data sources
+    and the transaction registration system.
 
+    The plugin workflow includes:
+    1. Loading data from Excel files through the configured loader
+    2. Distributing data to appropriate handlers registered in the builder
+    3. Executing each handler's load and dump operations to process the data
+
+    Attributes:
+        _loader (ExcelFileLoader): Instance that loads and parses Excel files.
+        _builder (ExcelContractBuilder): Builder containing registered handlers for processing data.
     """
 
-    handlers: Dict[str, Type[AbstractLoadHandler]] = {}
-
-    # TODO: Change this for the builder...
-
-    # def build_handler(self, label: str, *labels: Tuple[str, ...], **kwargs) -> Self:
-    #     """
-    #     Build and configure the handler for this plugin.
-
-    #     This method should create and configure a AbstractLoadHandler instance that will be
-    #     used by the plugin to process transactions. The handler typically defines how
-    #     transactions are interpreted and managed by this specific plugin.
-
-    #     Args:
-    #         **kwargs: Configuration parameters for the handler such as connection details,
-    #                   processing rules, or other plugin-specific settings.
-
-    #     Returns:
-    #         Self: The plugin instance for method chaining.
-    #     """
-    #     factory = HandlerFactory.load(*tuple(kwargs.get("handler_modules", [])))
-    #     self.handlers = {
-    #         label_.strip(): factory.get(label_.strip(), **kwargs) for label_ in (labels + (label,)) if label_.strip()
-    #     }
-    #     return self
-
-    # def build_loader(self, **kwargs) -> Self:
-    #     """
-    #     """
-    #     path = kwargs.pop("path")
-    #     self._loader = self.loader_type.model_validate({"path": path, **kwargs})
-    #     return self
-
-    # def build_service(self, handler: Type[AbstractLoadHandler], **kwargs):
-    #     pass
-
-    def init(self, **kwargs) -> Self:
-        """
-        Initialize the plugin.
-
-        This method should perform any necessary setup before the plugin starts, such as
-        establishing connections, loading configurations, preparing resources, or
-        validating the environment.
-
-        Args:
-            **kwargs: Initialization parameters specific to the plugin implementation,
-                      which may include configuration paths, feature flags, or other
-                      setup options.
-
-        Returns:
-            Self: The plugin instance for method chaining.
-        """
-
-        sheets = self._loader.check_source(**kwargs).load(**kwargs).result.keys()
-        return self.build_handler(*sheets, **kwargs)
-
     def start(self, **kwargs) -> Self:
-        """
-        Start the plugin operation.
+        """Start the plugin execution process.
 
-        This method should begin the plugin's primary functionality, such as starting
-        listeners, initiating transaction processing, activating services, or beginning
-        any ongoing operations the plugin is responsible for.
+        Initiates the plugin's data loading and processing workflow by:
+        1. Calling the parent class's start method to initialize the plugin
+        2. Retrieving data for each registered handler from the loader results
+        3. Passing the appropriate data to each handler for processing
+        4. Executing the handler's load and dump operations sequentially
 
         Args:
-            **kwargs: Parameters for the start operation specific to the plugin
-                      implementation, which may include runtime options or conditional
-                      activation settings.
+            **kwargs: Additional keyword arguments passed to handlers.
+                These arguments are forwarded to the handlers' load and dump methods,
+                except for 'data_source' which is removed before passing.
 
         Returns:
             Self: The plugin instance for method chaining.
         """
-        if not self._loader:
-            raise ValueError("The plugin has not been initialized.")
+        super().start(**kwargs)
+        kwargs.pop("data_source", None)
+        for handler_name, handler in self._builder.handlers.items():
+            logger.debug("Loading data into handler %s", handler_name)
+            data = self._loader.result.get(handler_name)
+            if not data:
+                logger.warning("Data for handler %s not found in the loader result.", handler_name)
+                continue
 
-        # for sheet_name in self.
+            logger.debug("Running handler %s", handler_name)
+            handler.load(data=data, **kwargs).dump(**kwargs)
+            logger.debug("Handler operation on %s completed", handler_name)
+
+        logger.debug("Plugin execution on %s completed", self.__meta__.name)
         return self
-
-    def stop(self, **kwargs) -> Self:
-        """
-        Stop the plugin operation.
-
-        This method should gracefully terminate the plugin's functionality, including
-        cleaning up resources, closing connections, finalizing any pending operations,
-        and ensuring that no data is lost during shutdown.
-
-        Args:
-            **kwargs: Parameters for the stop operation specific to the plugin
-                      implementation, such as timeout values or shutdown options.
-
-        Returns:
-            Self: The plugin instance for method chaining.
-        """
-        return self
-
-    @classmethod
-    def load(cls, **kwargs) -> Self:
-        """
-        Load the plugin.
-
-        This class method should create and return a properly initialized instance of
-        the plugin. It may perform validation and setup operations necessary before
-        the plugin can be used.
-        Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
-
-        Returns:
-            Self: A new instance of the plugin.
-        """
-        return cls(**kwargs)
-
-    @classmethod
-    def safe_load(cls, **kwargs) -> Self:
-        """
-        Safely load the plugin with error handling.
-
-        This class method should create and return a properly initialized instance of
-        the plugin with additional error handling for robustness. It provides a safer
-        alternative to the standard load method by implementing fault tolerance and
-        appropriate fallback mechanisms.
-
-        Args:
-            **kwargs: Parameters for loading the plugin, which may include configuration
-                      options, dependencies, or context information.
-
-        Returns:
-            Self: A new instance of the plugin.
-        """
-        return cls(**kwargs)

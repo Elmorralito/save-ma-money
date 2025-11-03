@@ -1,5 +1,6 @@
 """
 Account Table Handler Module.
+
 This module provides functionality for loading and processing account table data
 in the Papita transaction system. It defines various account table handler classes
 that serve as interfaces between the transaction registrar and different account
@@ -40,8 +41,7 @@ from .core import BaseLoadTableHandler
 
 
 class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
-    """
-    Handler for loading and processing general account table data.
+    """Handler for loading and processing general account table data.
 
     This handler specializes in managing account-related data by leveraging the
     AccountsService. It provides methods to load, process, and dump account data
@@ -52,10 +52,9 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
     before it's processed by the service.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with AccountsService,
-        AssetAccountsService, or LiabilityAccountsService as the parameterized
-        service types. These typically include configuration settings, connection
-        parameters, and processing options.
+        Inherits all attributes from BaseLoadTableHandler, with AccountsService
+        as the parameterized service type. These typically include configuration
+        settings, connection parameters, and processing options.
 
     Examples:
         ```python
@@ -68,12 +67,18 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system. These labels can be used to look up
+                or reference this specific handler type.
+        """
         return "accounts", "account_table", "general_accounts"
 
 
 class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService]):
-    """
-    Handler for loading and processing asset account table data.
+    """Handler for loading and processing asset account table data.
 
     This specialized handler manages accounts that represent assets, such as
     savings accounts, investment accounts, or property holdings. It leverages
@@ -91,12 +96,18 @@ class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService]):
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this asset accounts handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system. These labels can be used to look up
+                or reference this specific asset account handler type.
+        """
         return "asset_accounts_table", "asset_accounts", "assets"
 
 
 class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService]):
-    """
-    Handler for loading and processing liability account table data.
+    """Handler for loading and processing liability account table data.
 
     This specialized handler manages accounts that represent liabilities, such as
     loans, credit card debts, or mortgages. It utilizes the LiabilityAccountsService
@@ -115,14 +126,20 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this liability accounts handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system. These labels can be used to look up
+                or reference this specific liability account handler type.
+        """
         return "liability_accounts_table", "liability_accounts", "liabilities"
 
 
 class FinancedAssetAccountsTableHandler(
     BaseLoadTableHandler[FinancedAssetAccountsService, BankCreditLiabilityAccountsService, AssetAccountsService]
 ):
-    """
-    Handler for loading and processing financed asset account table data.
+    """Handler for loading and processing financed asset account table data.
 
     This specialized handler manages accounts that represent assets acquired through
     financing, such as mortgaged properties or financed vehicles. It combines aspects
@@ -134,18 +151,14 @@ class FinancedAssetAccountsTableHandler(
     financed assets.
 
     Attributes:
-        Inherits attributes from BaseLoadTableHandler with FinancedAssetAccountsService
-        as the parameterized service type, as well as from BankCreditLiabilityAccountsService
-        and AssetAccountsService.
-
         dependencies: A dictionary mapping service names to service types, used for
-                      resolving dependencies during processing.
+            resolving dependencies during processing. Typically includes references to
+            asset_account and bank_credit_liability_account services.
     """
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        """
-        Validates and sets up the dependencies for the FinancedAssetAccountsTableHandler.
+        """Validate and set up the dependencies for the financed asset accounts handler.
 
         This method ensures that the handler has the necessary service dependencies
         established. If no dependencies are defined, it initializes them with the
@@ -164,6 +177,13 @@ class FinancedAssetAccountsTableHandler(
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this financed asset accounts handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system. These labels can be used to look up
+                or reference this specific financed asset account handler type.
+        """
         return "financed_asset_accounts_table", "financed_asset_accounts", "assets"
 
 
@@ -176,8 +196,7 @@ class AccountsIndexerTableHandler(
         TypesService,
     ]
 ):
-    """
-    Handler for indexing and cross-referencing different types of account data.
+    """Handler for indexing and cross-referencing different types of account data.
 
     This comprehensive handler serves as a central point for indexing various account
     types, enabling cross-referencing and unified processing of different account
@@ -189,18 +208,14 @@ class AccountsIndexerTableHandler(
     This allows it to index and categorize accounts across the entire system.
 
     Attributes:
-        Inherits attributes from BaseLoadTableHandler with AccountsIndexerService
-        as the parameterized service type, as well as from AccountsService,
-        AssetAccountsService, LiabilityAccountsService, and TypesService.
-
         dependencies: A dictionary mapping service names to service types, used for
-                      resolving dependencies during the indexing process.
+            resolving dependencies during the indexing process. Includes references to
+            various account-related services for comprehensive indexing.
     """
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        """
-        Validates and sets up the dependencies for the AccountsIndexerTableHandler.
+        """Validate and set up the dependencies for the accounts indexer handler.
 
         This method ensures that the handler has all necessary service dependencies
         established for comprehensive account indexing. If no dependencies are defined,
@@ -226,4 +241,11 @@ class AccountsIndexerTableHandler(
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
+        """Get the label identifiers for this accounts indexer handler.
+
+        Returns:
+            Tuple[str, ...]: A tuple of string labels that identify this handler
+                in the handler registry system. These labels can be used to look up
+                or reference this specific accounts indexer handler type.
+        """
         return "accounts_indexer_table", "accounts_indexer", "account_indexer", "indexer"

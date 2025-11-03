@@ -87,6 +87,18 @@ class AccountsIndexerDTO(TableDTO):
         "credit_card_liability_account",
     )
     def _serialize_relations(self, value: uuid.UUID | TableDTO | None) -> uuid.UUID | None:
+        """Serialize relationship fields to their ID values.
+
+        This serializer ensures that relationship fields are consistently represented as UUIDs
+        in the serialized output, regardless of whether they were provided as full DTO objects
+        or just UUIDs.
+
+        Args:
+            value: The relationship value to serialize, either a UUID, TableDTO instance, or None.
+
+        Returns:
+            uuid.UUID or None: The UUID of the related entity, or None if no relation exists.
+        """
         if not value:
             return None
 
@@ -101,8 +113,12 @@ class AccountsIndexerDTO(TableDTO):
         1. The account is either an asset or a liability (not both or neither)
         2. Only one extended account type is specified
         3. Extended account types match the base account type
+
         Returns:
             AccountsIndexerDTO: The validated instance
+
+        Raises:
+            ValueError: If any validation check fails
         """
         self._validate_accounts()
         self._validate_extended_accounts()
@@ -132,7 +148,8 @@ class AccountsIndexerDTO(TableDTO):
         """Validate that only one extended account type is specified.
 
         Ensures that an account cannot be of multiple extended types simultaneously,
-        which would violate the account type hierarchy.
+        which would violate the account type hierarchy. The method checks all fields
+        annotated with extended account types to ensure at most one is set.
 
         Returns:
             AccountsIndexerDTO: The instance with validated extended accounts
@@ -156,7 +173,9 @@ class AccountsIndexerDTO(TableDTO):
         """Validate that extended accounts match their parent type.
 
         Ensures that extended accounts (e.g., banking assets) are consistent with their
-        base account type (e.g., asset). This prevents incorrect account type linkages.
+        base account type (e.g., asset). This prevents incorrect account type linkages
+        by checking that any extended account field references an account of the
+        appropriate base type.
 
         Returns:
             AccountsIndexerDTO: The instance with validated linked accounts

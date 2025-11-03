@@ -7,13 +7,18 @@ default implementations for some builder methods while requiring concrete subcla
 to implement the core building logic.
 """
 
-from typing import Generic, Self
+import logging
+from typing import Generic, Self, TypeVar
 
-from papita_txnsregistrar.builders.abstract import AbstractContractBuilder, H
-from papita_txnsregistrar.contracts.plugin import L
+from papita_txnsregistrar.builders.abstract import AbstractContractBuilder
+from papita_txnsregistrar.loaders.abstract import AbstractLoader
+
+logger = logging.getLogger(__name__)
+
+L = TypeVar("L", bound=AbstractLoader)
 
 
-class BaseContractBuilder(AbstractContractBuilder, Generic[H, L]):
+class BaseContractBuilder(AbstractContractBuilder, Generic[L]):
     """
     Base implementation of the contract builder.
 
@@ -43,7 +48,8 @@ class BaseContractBuilder(AbstractContractBuilder, Generic[H, L]):
         Raises:
             NotImplementedError: Always raised as this method must be overridden.
         """
-        raise NotImplementedError("Subclasses must implement build_loader method")
+        self.loader = self.loader_type().model_validate(**kwargs)
+        return self
 
     def build_service(self, **kwargs) -> Self:
         """
@@ -58,6 +64,23 @@ class BaseContractBuilder(AbstractContractBuilder, Generic[H, L]):
         Returns:
             Self: The builder instance for method chaining.
         """
+        if not self.handler:
+            raise ValueError("Handler not built.")
+
+        logger.debug("Building service for handler %s", self.handler.labels())
+        for remove_key in "handler_modules", "connector", "connection":
+            kwargs.pop(remove_key, None)
+
+        on_failure_do = kwargs.pop("on_failure_do", None) or self.on_failure_do
+        missing_upsertions_tol = kwargs.pop("missing_upsertions_tol", None)
+        self.service = self.handler.service_type().model_validate(
+            {
+                "connector": self.connector,
+                "on_failure_do": on_failure_do,
+                **({} if missing_upsertions_tol is None else {"missing_upsertions_tol": missing_upsertions_tol}),
+                **kwargs,
+            }
+        )
         return self
 
     def build_handler(self, **kwargs) -> Self:
@@ -73,4 +96,4 @@ class BaseContractBuilder(AbstractContractBuilder, Generic[H, L]):
         Returns:
             Self: The builder instance for method chaining.
         """
-        return self
+        raise NotImplementedError("Subclasses must implement build_handler method")

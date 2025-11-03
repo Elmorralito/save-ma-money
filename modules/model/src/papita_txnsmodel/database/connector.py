@@ -9,10 +9,12 @@ Classes:
     SQLDatabaseConnector: A class to handle SQL database connections and session management.
 """
 
+import abc
 import functools
 import logging
 import os
 from pathlib import Path
+from typing import Any, Callable, Self, Type
 
 import sqlalchemy as db
 from sqlmodel import Session
@@ -22,7 +24,54 @@ from papita_txnsmodel.utils.classutils import FallbackAction
 logger = logging.getLogger(__name__)
 
 
-class SQLDatabaseConnector:
+class AbstractConnector(abc.ABC):
+
+    @classmethod
+    @abc.abstractmethod
+    def establish(cls, *, connection: dict | str | db.URL | None, **sql_kwargs) -> Type[Self]:
+        """
+        Establish a connection to the database.
+
+        Args:
+            connection: Connection information, can be a dictionary with connection details,
+                        a string representing a file path or database URL, or a SQLAlchemy URL object.
+            **sql_kwargs: Additional keyword arguments for SQLAlchemy engine creation.
+
+        Returns:
+            Type[Self]: The class with established connection.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def connect(cls, func: Callable[..., Any]) -> Callable[..., Any]:
+        """
+        Decorator to wrap a function with a database session.
+
+        This decorator ensures that the function is executed with an active
+        database session provided as the '_db_session' parameter.
+
+        Args:
+            func: The function to wrap.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def close(cls):
+        """
+        Close the database connection.
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def connected(
+        cls, on_disconnected: FallbackAction | str = FallbackAction.LOG, custom_logger: logging.Logger | None = None
+    ) -> bool:
+        """
+        Check if the database connection is established.
+        """
+
+
+class SQLDatabaseConnector(AbstractConnector):
     """
     A class to manage SQL database connections and sessions.
 

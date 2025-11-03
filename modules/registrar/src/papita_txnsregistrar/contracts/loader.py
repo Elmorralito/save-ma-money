@@ -1,3 +1,4 @@
+# type: ignore
 """
 Plugin Decorator Module.
 
@@ -9,22 +10,20 @@ Functions:
     plugin: A decorator function for registering plugin implementations.
 """
 
+import functools
 from typing import Any, Callable, Type, TypeVar
-
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
 
 from .meta import PluginMetadata
 from .plugin import PluginContract
 from .registry import Registry
 
-T = TypeVar("T", bound=Type[PluginContract])
+P = TypeVar("P", bound=PluginContract)
 
 
 def plugin(
     *,
-    loader_type: Type[AbstractLoader] | None = None,
     meta: PluginMetadata | dict[str, Any],
-) -> Callable[[T], T]:
+) -> Callable[[Type[P]], Type[P]]:
     """
     Decorator for registering plugin implementations.
 
@@ -52,20 +51,13 @@ def plugin(
 
     validated_meta = PluginMetadata.model_validate(meta, strict=True)
 
-    def decorator(cls: T) -> T:
+    @functools.wraps
+    def decorator(cls: P) -> P:
         if not issubclass(cls, PluginContract):
             raise TypeError("Plugin type not supported.")
 
-        # Attach metadata to the class
         setattr(cls, "__meta__", validated_meta)
-
-        # Attach loader type if provided
-        if loader_type is not None:
-            setattr(cls, "__loader_type__", loader_type)
-
-        # Register the class with the registry
         Registry().register(cls, validated_meta)
-
         return cls
 
     return decorator

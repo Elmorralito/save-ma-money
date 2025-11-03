@@ -6,6 +6,8 @@ for storing different types of assets with their specific attributes and relatio
 
 Classes:
     AssetAccounts: Base model for all asset accounts in the system.
+    ExtendedAssetAccounts: Abstract base model for specialized asset accounts.
+    FinancedAssetAccounts: Model for assets financed through bank credit.
     BankingAssetAccounts: Model for banking-related asset accounts.
     RealEstateAssetAccounts: Model for real estate asset accounts.
     TradingAssetAccounts: Model for trading and investment asset accounts.
@@ -42,10 +44,6 @@ class AssetAccounts(BaseSQLModel, table=True):  # type: ignore
 
     Attributes:
         id (uuid.UUID): Unique identifier for the asset account. Auto-generated UUID.
-        account_id (uuid.UUID): Foreign key to the associated account.
-        type_id (uuid.UUID): Foreign key to the asset type.
-        bank_credit_liability_account_id (uuid.UUID | None): Optional foreign key to a
-            bank credit liability account.
         months_per_period (int): Number of months per accounting period. Must be positive.
         initial_value (float | None): Initial monetary value of the asset. Must be positive.
         last_value (float | None): Most recent monetary value of the asset. Must be positive.
@@ -53,16 +51,8 @@ class AssetAccounts(BaseSQLModel, table=True):  # type: ignore
         yearly_interest_rate (float | None): Yearly interest rate as a decimal. Must be positive.
         roi (float | None): Return on investment as a decimal. Must be positive.
         periodical_earnings (float | None): Earnings per period. Must be positive.
-        accounts (Accounts): Related account information.
-        types (Types): Related type information.
-        bank_credit_liability_accounts (Optional[BankCreditLiabilityAccounts]): Optional related
-            bank credit liability account.
-        banking_asset_accounts (Optional[BankingAssetAccounts]): Optional related banking asset
-            account details with one-to-one relationship.
-        trading_asset_accounts (Optional[TradingAssetAccounts]): Optional related trading asset
-            account details with one-to-one relationship.
-        real_state_asset_accounts (Optional[RealEstateAssetAccounts]): Optional related real estate
-            asset account details with one-to-one relationship.
+        accounts_indexer (AccountsIndexer): Related account indexer with one-to-one relationship.
+        financed_asset_accounts (List[FinancedAssetAccounts]): List of financing arrangements for this asset.
     """
 
     __tablename__ = ASSET_ACCOUNTS__TABLENAME
@@ -86,11 +76,33 @@ class AssetAccounts(BaseSQLModel, table=True):  # type: ignore
 
 
 class ExtendedAssetAccounts(BaseSQLModel):
+    """Abstract base model for specialized asset account types.
+
+    This class serves as a base for more specific asset account types like banking,
+    real estate, and trading assets. It provides a common structure with a unique
+    identifier that specialized asset models extend.
+
+    Attributes:
+        id (uuid.UUID): Unique identifier for the extended asset account. Auto-generated UUID.
+    """
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 
 
 class FinancedAssetAccounts(BaseSQLModel, table=True):  # type: ignore
+    """Model representing the financing relationship between assets and bank credit liabilities.
+
+    This class defines the structure for linking assets with their financing sources,
+    particularly bank credit liability accounts. It tracks what portion of an asset
+    is financed through a specific bank credit instrument.
+
+    Attributes:
+        bank_credit_liability_account_id (uuid.UUID): ID of the bank credit liability account financing the asset.
+        asset_account_id (uuid.UUID): ID of the asset account being financed.
+        financing_share (float): Portion of the asset financed by this credit (0-1). Default is 1.0 (fully financed).
+        bank_credit_liability_accounts (BankCreditLiabilityAccounts): Related bank credit liability account.
+        asset_accounts (AssetAccounts): Related asset account being financed.
+    """
 
     __tablename__ = FINANCED_ASSET_ACCOUNTS__TABLENAME
 
@@ -117,10 +129,9 @@ class BankingAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignore
     the base asset account with banking-specific attributes.
 
     Attributes:
-        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
-            Serves as the primary key.
         entity (str): Name of the banking entity or institution. Indexed for faster lookups.
         account_number (str | None): Optional bank account number. Indexed for faster lookups.
+        accounts_indexer (AccountsIndexer): Related account indexer with one-to-one relationship.
     """
 
     __tablename__ = BANKING_ASSET_ACCOUNTS__TABLENAME
@@ -143,8 +154,6 @@ class RealEstateAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignor
     asset account with real estate-specific attributes.
 
     Attributes:
-        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
-            Serves as the primary key.
         address (str): Address of the real estate property.
         city (str): City where the real estate property is located.
         country (str): Country where the real estate property is located.
@@ -152,7 +161,8 @@ class RealEstateAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignor
         built_area (float): Built-up area of the real estate property. Must be positive.
         area_unit (RealEstateAssetAccountsAreaUnits): Unit of measurement for the property area.
         ownership (RealEstateAssetAccountsOwnership): Type of ownership for the real estate property.
-        participation (float): Percentage of ownership in the real estate property. Must be between 0 and 1.
+        participation (float): Percentage of ownership in the property (0-1). Default is 1.0 (full ownership).
+        accounts_indexer (AccountsIndexer): Related account indexer with one-to-one relationship.
     """
 
     __tablename__ = REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME
@@ -181,11 +191,10 @@ class TradingAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignore
     with trading-specific attributes.
 
     Attributes:
-        asset_account_id (uuid.UUID): Foreign key to the associated asset account.
-            Serves as the primary key.
         buy_value (float): Purchase value of the trading asset. Must be positive.
         last_value (float | None): Most recent market value of the trading asset. Must be positive.
         units (int): Number of units or shares of the trading asset. Must be positive.
+        accounts_indexer (AccountsIndexer): Related account indexer with one-to-one relationship.
     """
 
     __tablename__ = TRADING_ASSET_ACCOUNTS__TABLENAME

@@ -13,11 +13,11 @@ result property.
 from typing import Self
 
 import pandas as pd
-from pydantic import Field
 
 from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsregistrar.loaders.memory.impl import InMemoryLoader
 
-from .abstract import FileLoader
+from .base import FileLoader
 
 
 class CSVFileLoader(FileLoader, AbstractLoader):
@@ -77,12 +77,25 @@ class CSVFileLoader(FileLoader, AbstractLoader):
         return self
 
     def unload(self, **kwargs) -> Self:
+        """
+        Clear the loaded CSV data.
+
+        Removes the currently loaded DataFrame from memory and replaces it with an empty DataFrame.
+        This method is useful when reusing the loader instance for different files or when
+        freeing up memory resources.
+
+        Args:
+            **kwargs: Optional keyword arguments (not used in the current implementation).
+
+        Returns:
+            Self: The loader instance for method chaining.
+        """
         del self._result
         self._result = pd.DataFrame([])
         return self
 
 
-class ExcelFileLoader(FileLoader, AbstractLoader):
+class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
     """
     Loader for Excel spreadsheet files.
 
@@ -107,18 +120,6 @@ class ExcelFileLoader(FileLoader, AbstractLoader):
         sheets_dict = loader.load(sheet="Sheet1").result
         ```
     """
-
-    _result: dict[str, pd.DataFrame] = Field(default_factory=dict)
-
-    @property
-    def result(self) -> dict[str, pd.DataFrame]:
-        """
-        Get the loaded Excel data.
-
-        Returns:
-            dict[str, pd.DataFrame]: Dictionary mapping sheet names to pandas DataFrames.
-        """
-        return self._result
 
     def load(self, **kwargs) -> Self:
         """
@@ -147,9 +148,4 @@ class ExcelFileLoader(FileLoader, AbstractLoader):
             self.result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
             excel_file.close()
 
-        return self
-
-    def unload(self, **kwargs) -> Self:
-        del self._result
-        self._result = {}.copy()
         return self

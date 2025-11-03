@@ -1,11 +1,14 @@
 """Enumeration module for the Papita Transactions system.
 
 This module defines various enumeration types used throughout the Papita Transactions
-system to represent fixed sets of values for different attributes of models.
+system to represent fixed sets of values for different attributes of models. These
+enumerations provide type safety and semantic meaning to categorical data used in
+financial accounts and transactions.
 
 Classes:
     RealEstateAssetAccountsOwnership: Enumeration for real estate ownership types.
     RealEstateAssetAccountsAreaUnits: Enumeration for area measurement units in real estate.
+    TypesClassifications: Enumeration for classification categories of financial types.
 """
 
 from enum import Enum
@@ -48,6 +51,17 @@ class RealEstateAssetAccountsAreaUnits(Enum):
 
 
 class TypesClassifications(Enum):
+    """Enumeration for classification categories of financial types.
+
+    This enumeration represents the major classification categories used to categorize
+    different financial types in the system. These classifications form the top-level
+    organization of the financial data model.
+
+    Attributes:
+        ASSETS: Types related to asset accounts and holdings.
+        LIABILITIES: Types related to liability accounts and obligations.
+        TRANSACTIONS: Types related to financial transactions and movements.
+    """
 
     ASSETS = "ASSETS"
     LIABILITIES = "LIABILITIES"
