@@ -383,7 +383,7 @@ class PluginContract(AbstractPluginContract[L, B]):
         Returns:
             Self: A new instance of the plugin.
         """
-        return cls.model_construct(cls.model_fields_set, **kwargs)
+        raise NotImplementedError()
 
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
@@ -401,4 +401,4 @@ class PluginContract(AbstractPluginContract[L, B]):
         Returns:
             Self: A new validated instance of the plugin.
         """
-        return cls.model_validate(kwargs)
+        raise NotImplementedError()

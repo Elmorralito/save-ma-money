@@ -121,6 +121,8 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
         ```
     """
 
+    sheet: str | None = None
+
     def load(self, **kwargs) -> Self:
         """
         Load data from the Excel file.
@@ -138,7 +140,7 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
         Returns:
             Self: The loader instance for method chaining.
         """
-        sheet = kwargs.get("sheet", kwargs.get("sheet_name"))
+        sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
         with open(self.path, mode="r", encoding=kwargs.get("encoding", "utf-8")) as freader:
             excel_file = pd.ExcelFile(freader)
             sheets = excel_file.sheet_names
