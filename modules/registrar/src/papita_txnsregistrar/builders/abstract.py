@@ -55,7 +55,7 @@ class AbstractContractBuilder(BaseModel, Generic[L], metaclass=abc.ABCMeta):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    connector: SQLDatabaseConnector
+    connector: Type[SQLDatabaseConnector]
     handler: Type[AbstractLoadHandler] | AbstractLoadHandler | None = None
     loader: L | None = None
     service: BaseService | None = None

@@ -6,6 +6,7 @@ loading, processing, and registration of transaction data from Excel spreadsheet
 """
 
 import logging
+import sys
 
 # from typing import Dict, Self, Tuple, Type
 from argparse import ArgumentError, ArgumentParser
@@ -19,6 +20,7 @@ from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
+from papita_txnsregistrar.utils.cli import AbstractCLIUtils
 
 logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
 
@@ -144,7 +146,7 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         enabled=True,
     ),
 )
-class CLIExcelFilePlugin(ExcelFilePlugin):
+class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
 
     @classmethod
     def load(cls, **kwargs) -> Self:
@@ -161,9 +163,15 @@ class CLIExcelFilePlugin(ExcelFilePlugin):
         Returns:
             Self: A new instance of the plugin.
         """
-        parser = ArgumentParser(description=cls.__doc__, parents=kwargs.get("args_parent", []))
+        parser = ArgumentParser(description=cls.__doc__)
         parser.add_argument(
-            "--path", "--excel-file-path", dest="path", help="(/path/to/file) Excel file.", type=str, required=True
+            "-p",
+            "--path",
+            "--excel-file-path",
+            dest="path",
+            help="(/path/to/file) Excel file.",
+            type=str,
+            required=True,
         )
         parser.add_argument(
             "--sheet",
@@ -172,8 +180,8 @@ class CLIExcelFilePlugin(ExcelFilePlugin):
             required=False,
             default=None,
         )
-        args, _ = parser.parse_known_args(kwargs.get("args"))
-        return super().load(**(kwargs | vars(args)))
+        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
+        return super().load(**(kwargs | vars(parsed_args)))
 
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
@@ -234,20 +242,16 @@ class CLIExcelFilePlugin(ExcelFilePlugin):
 
         except ArgumentError as arg_err:
             logger.error("CLI argument error: %s", str(arg_err))
-            print(f"Error: {str(arg_err)}")
             raise SystemExit(1) from arg_err
         except KeyError as kerr:
             message = f"Missing required argument: {str(kerr)}"
             logger.error("CLI error: %s", message)
-            print(f"Error: {message}")
             raise SystemExit(2) from kerr
         except ValidationError as verr:
             message = f"Invalid argument format: {str(verr)}"
             logger.error("CLI validation error: %s", message)
-            print(f"Error: {message}")
             raise SystemExit(3) from verr
         except Exception as err:
             message = f"Failed to load plugin: {str(err)}"
             logger.error("CLI error: %s", message)
-            print(f"Error: {message}")
             raise SystemExit(4) from err
