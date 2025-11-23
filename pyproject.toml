@@ -37,9 +37,9 @@ genbadge = {version = "^1.1.2", extras = ["coverage"]}
 
 
 [tool.poetry.group.development.dependencies]
-papita-transactions-api = {path = "modules/api"}
-papita-transactions-model = {path = "modules/model"}
-papita-transactions-registrar = {path = "modules/registrar"}
+papita-transactions-api = {path = "modules/api", develop = true}
+papita-transactions-model = {path = "modules/model", develop = true}
+papita-transactions-registrar = {path = "modules/registrar", develop = true}
 
 
 [build-system]

@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-registrar"
-version = "0.0.9"
+version = "0.1.1"
 description = "Transactions wrapper to automate tracking financial transaction movements"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "LICENSE"
@@ -26,6 +26,9 @@ packages = [
     { include = "papita_txnsregistrar", from = "src/" },
     { include = "papita_txnsregistrar_plugins", from = "src/" },
 ]
+
+[tool.poetry.scripts]
+papita-txnsregistrar = "papita_txnsregistrar.__main__:main"
 
 [build-system]
 requires = [

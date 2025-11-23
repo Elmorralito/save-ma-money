@@ -28,7 +28,7 @@ from papita_txnsregistrar.loaders.abstract import AbstractLoader
 L = TypeVar("L", bound=AbstractLoader)
 
 
-class AbstractContractBuilder(BaseModel, Generic[L], metaclass=abc.ABCMeta):
+class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
     """Abstract base class for building transaction processing contracts.
 
     This abstract builder defines the interface for constructing transaction contracts

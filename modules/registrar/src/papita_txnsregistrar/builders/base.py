@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 L = TypeVar("L", bound=AbstractLoader)
 
 
-class BaseContractBuilder(AbstractContractBuilder, Generic[L]):
+class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
     """
     Base implementation of the contract builder.
 

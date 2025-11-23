@@ -1,17 +1,21 @@
 import contextlib
+import inspect
 import logging
 import sys
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Action, Namespace
 from typing import Annotated, List, Self, Type
 
+from papita_txnsregistrar.utils.logger import DEFAULT_LOGGING_CONFIG, setup_logger
 from pydantic import Field, model_validator
 
+from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME, __version__ as MODEL_VERSION
+from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME, __version__ as REGISTRAR_VERSION
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.utils.classutils import ClassDiscovery
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.contracts.registry import Registry
 from papita_txnsregistrar.utils.cli import AbstractCLIUtils
-from papita_txnsregistrar.utils.connector import BaseCLIConnectorWrapper
+from papita_txnsregistrar.utils.connector import BaseCLIConnectorWrapper, CLIDefaultConnectorWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +91,7 @@ class MainCLIUtils(AbstractCLIUtils):
                 strict_exact=self.strict_exact,
                 fuzz_threshold=self.fuzzy_threshold,
             )
-            if not self.plugin:
+            if not self.plugin or not inspect.isclass(self.plugin):
                 raise ValueError("The specified plugin could not be found.")
 
             if not issubclass(self.plugin, AbstractCLIUtils):
@@ -99,31 +103,129 @@ class MainCLIUtils(AbstractCLIUtils):
         return self
 
     @classmethod
+    def _load_plugin_class(cls, plugin_name: str, modules: List[str], case_sensitive: bool, strict_exact: bool, fuzzy_threshold: int) -> Type[AbstractCLIUtils]:
+        """Load and return the plugin class without creating an instance."""
+        try:
+            with contextlib.suppress(AttributeError):
+                modules = [mod.strip() for mods in modules for mod in mods.strip().split(",")]
+
+            Registry().discover(*modules, debug=True)
+            logger.debug("Discovering plugin from modules: %s", modules)
+            plugin = Registry().get(
+                label=plugin_name,
+                case_sensitive=case_sensitive,
+                strict_exact=strict_exact,
+                fuzz_threshold=fuzzy_threshold,
+            )
+            if not plugin or not inspect.isclass(plugin):
+                raise ValueError("The specified plugin could not be found.")
+
+            if not issubclass(plugin, AbstractCLIUtils):
+                raise TypeError("The specified plugin does not support CLI utilities.")
+            
+            return plugin
+        except Exception as err:
+            raise RuntimeError from err
+
+    @classmethod
+    def _create_custom_help_action(cls, args_list):
+        """Create a custom help action class that has access to the args list."""
+        class CustomHelpAction(Action):
+            def __init__(self, option_strings, dest, **kwargs):
+                super().__init__(option_strings, dest, nargs=0, **kwargs)
+            
+            def __call__(self, parser, namespace, values, option_string=None):
+                # Parse known args to get plugin name and other necessary parameters
+                temp_parser = ArgumentParser(add_help=False)
+                temp_parser.add_argument(cls.model_fields["plugin"].alias, type=str)
+                temp_parser.add_argument("-m", "--mod", "--module", dest=cls.model_fields["modules"].alias, nargs="*", default=[])
+                temp_parser.add_argument("--modules", dest=cls.model_fields["modules"].alias, nargs="*", default=[])
+                temp_parser.add_argument("--connector-wrapper", dest=cls.model_fields["connector_wrapper"].alias, default='.'.join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))))
+                temp_parser.add_argument("--case-sensitive", dest=cls.model_fields["case_sensitive"].alias, action="store_false", default=cls.model_fields["case_sensitive"].default)
+                temp_parser.add_argument("--strict-exact", dest=cls.model_fields["strict_exact"].alias, action="store_true", default=cls.model_fields["strict_exact"].default)
+                temp_parser.add_argument("--fuzzy-threshold", dest=cls.model_fields["fuzzy_threshold"].alias, type=int, default=cls.model_fields["fuzzy_threshold"].default)
+                
+                # Filter out help flags from args
+                filtered_args = [arg for arg in args_list if arg not in ['-h', '--help']]
+                parsed_temp, _ = temp_parser.parse_known_args(args=filtered_args)
+                
+                # Load the plugin class and show its help
+                try:
+                    plugin_name = getattr(parsed_temp, cls.model_fields["plugin"].alias)
+                    if plugin_name:
+                        plugin_class = cls._load_plugin_class(
+                            plugin_name=plugin_name,
+                            modules=getattr(parsed_temp, cls.model_fields["modules"].alias) or cls.model_fields["modules"].default_factory(),
+                            case_sensitive=getattr(parsed_temp, cls.model_fields["case_sensitive"].alias),
+                            strict_exact=getattr(parsed_temp, cls.model_fields["strict_exact"].alias),
+                            fuzzy_threshold=getattr(parsed_temp, cls.model_fields["fuzzy_threshold"].alias),
+                        )
+                        
+                        # Get plugin's parser by creating it with help flag
+                        # We'll intercept the plugin's load method to get its parser
+                        logger.debug("\n" + "="*80 + "\n")
+                        plugin_name_display = plugin_class.meta().name if hasattr(plugin_class, 'meta') and callable(getattr(plugin_class, 'meta', None)) else plugin_class.__name__
+                        logger.debug(f"Plugin '{plugin_name_display}' help:\n")
+                        
+                        # Create plugin parser by temporarily modifying sys.argv and calling load
+                        # The plugin's load method will create a parser - we'll capture it
+                        old_argv = sys.argv[:]
+                        try:
+                            # Remove plugin name from args - plugins don't need it
+                            # The plugin's parser will ignore unknown main CLI args via parse_known_args
+                            plugin_args = [arg for arg in filtered_args if arg != plugin_name]
+                            sys.argv = ['plugin'] + plugin_args + ['--help']
+                            try:
+                                # This will trigger the plugin's help
+                                plugin_class.load(args=sys.argv)
+                            except SystemExit:
+                                # SystemExit is expected when --help is used
+                                pass
+                        finally:
+                            sys.argv = old_argv
+                    else:
+                        logger.debug("\nNote: Specify a plugin name to see plugin-specific help.")
+                except Exception as e:
+                    # If plugin loading fails, show a message
+                    logger.warning("Could not load plugin for help: %s", e)
+                    logger.warning(f"\nNote: Could not load plugin for help: {e}")
+                    logger.warning("Showing main help only.")
+                
+                parser.exit()
+        
+        return CustomHelpAction
+
+    @classmethod
+    def _setup_logger(cls, args: Namespace) -> None:
+        # Configure logging based on verbosity level
+        if args.verbose == 1:
+            level = logging.INFO
+        elif args.verbose == 2:
+            level = logging.DEBUG
+        elif args.verbose >= 3:
+            level = logging.NOTSET # Or a custom level for maximum verbosity
+        else:
+            level = logging.WARNING 
+
+        logger.debug("Logger setup with level '%s'", level)
+        logger.debug("Logger setup with config '%s'", args.log_config)
+        setup_logger(name=MODEL_LIB_NAME, config=args.log_config, level=level)
+        setup_logger(name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
+
+    @classmethod
     def load(cls, **kwargs) -> Self:
-        parser = ArgumentParser(cls.__doc__)
+        parser = ArgumentParser(cls.__doc__, add_help=False)
         parser.add_argument(
-            "-p",
-            "--plugin",
-            dest=cls.model_fields["plugin"].alias,
-            help=cls.model_fields["plugin"].field_info.description,
+            cls.model_fields["plugin"].alias,
+            help=cls.model_fields["plugin"].description,
             type=str,
-            required=True,
         )
         parser.add_argument(
             "-m",
             "--mod",
             "--module",
             dest=cls.model_fields["modules"].alias,
-            help=cls.model_fields["modules"].field_info.description,
-            type=str,
-            required=False,
-            nargs="*",
-            default=[],
-        )
-        parser.add_argument(
-            "--modules",
-            dest=cls.model_fields["modules"].alias,
-            help=cls.model_fields["modules"].field_info.description,
+            help=cls.model_fields["modules"].description,
             type=str,
             required=False,
             nargs="*",
@@ -132,42 +234,68 @@ class MainCLIUtils(AbstractCLIUtils):
         parser.add_argument(
             "--connector-wrapper",
             dest=cls.model_fields["connector_wrapper"].alias,
-            help=cls.model_fields["connector_wrapper"].field_info.description,
+            help=cls.model_fields["connector_wrapper"].description,
             type=str,
-            required=True,
+            required=False,
+            default='.'.join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))),
         )
         parser.add_argument(
             "--case-sensitive",
             dest=cls.model_fields["case_sensitive"].alias,
-            help=cls.model_fields["case_sensitive"].field_info.description,
+            help=cls.model_fields["case_sensitive"].description,
             action="store_false",
             default=cls.model_fields["case_sensitive"].default,
         )
         parser.add_argument(
             "--strict-exact",
             dest=cls.model_fields["strict_exact"].alias,
-            help=cls.model_fields["strict_exact"].field_info.description,
+            help=cls.model_fields["strict_exact"].description,
             action="store_true",
             default=cls.model_fields["strict_exact"].default,
         )
         parser.add_argument(
             "--fuzzy-threshold",
             dest=cls.model_fields["fuzzy_threshold"].alias,
-            help=cls.model_fields["fuzzy_threshold"].field_info.description,
+            help=cls.model_fields["fuzzy_threshold"].description,
             type=int,
             default=cls.model_fields["fuzzy_threshold"].default,
         )
         parser.add_argument(
             "--safe-mode",
             dest=cls.model_fields["safe_mode"].alias,
-            help=cls.model_fields["safe_mode"].field_info.description,
+            help=cls.model_fields["safe_mode"].description,
             action="store_true",
             default=cls.model_fields["safe_mode"].default,
         )
-
+        parser.add_argument(
+            "--version",
+            action="version",
+            version=f"%(prog)s {REGISTRAR_VERSION} | Papita Transaction Model {MODEL_VERSION} | by Papita Software",
+        )
+        parser.add_argument(
+            "-v", "--verbose", action="count", default=0,
+            help="Increase output verbosity (e.g., -v, -vv, -vvv)"
+        )
+        parser.add_argument(
+            "--log-config",
+            dest="log_config",
+            help="Specify the path to the logging configuration file.",
+            type=str,
+            default=DEFAULT_LOGGING_CONFIG,
+        )
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
             raise ValueError("args must be   a list of strings or None")
 
+        # Create custom help action with access to args
+        CustomHelpAction = cls._create_custom_help_action(args_)
+        parser.add_argument(
+            "-h",
+            "--help",
+            action=CustomHelpAction,
+            help="Show this help message and plugin-specific help.",
+        )
+
         parsed_args, _ = parser.parse_known_args(args=args_)
+        cls._setup_logger(args=parsed_args)
         return cls.model_validate(vars(parsed_args))
