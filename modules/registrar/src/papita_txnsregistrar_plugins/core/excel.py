@@ -140,7 +140,12 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
     meta=PluginMetadata(
         name="cli_excel_loader_plugin",
         version="1.0.0",
-        feature_tags=["cli_excel_loader_plugin", "cli_excel_file_loader", "cli_excel_transactions", "cli_excel_accounts"],
+        feature_tags=[
+            "cli_excel_loader_plugin",
+            "cli_excel_file_loader",
+            "cli_excel_transactions",
+            "cli_excel_accounts",
+        ],
         dependencies=[ExcelFilePlugin],
         description="Loading transactions and accounts from Excel files.",
         enabled=True,

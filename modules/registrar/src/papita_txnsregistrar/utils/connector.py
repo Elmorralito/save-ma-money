@@ -1,11 +1,11 @@
 import argparse
+import json
 import logging
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import ClassVar, Self, Tuple, Type
 
-import json
 import toml
 import yaml
 
@@ -126,8 +126,8 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
     @classmethod
     def _load_toml_file(cls, connect_file: str) -> dict | None:
         with open(connect_file, mode="r", encoding="utf-8") as freader:
-            content = toml.load(freader)
-        
+            content = toml.load(freader, _dict=dict)
+
         if not isinstance(content, dict):
             raise TypeError("The content of the TOML file is not a dictionary.")
 
@@ -136,38 +136,43 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
     @classmethod
     def _load_yaml_file(cls, connect_file: str) -> dict | None:
         with open(connect_file, mode="r", encoding="utf-8") as freader:
-            content = yaml.load(freader)
-        
+            content = yaml.load(freader, Loader=yaml.SafeLoader)
+
         if not isinstance(content, dict):
             raise TypeError("The content of the YAML file is not a dictionary.")
 
         return content
 
-
     @classmethod
     def _load_file(cls, connect_file: str) -> dict:
         try:
             if connect_file.endswith(cls.JSON_FILE_EXTENSIONS):
-                return cls._load_json_file(connect_file)
+                connection = cls._load_json_file(connect_file)
             elif connect_file.endswith(cls.YAML_FILE_EXTENSIONS):
-                return cls._load_yaml_file(connect_file)
+                connection = cls._load_yaml_file(connect_file)
             elif connect_file.endswith(cls.TOML_FILE_EXTENSIONS):
-                return cls._load_toml_file(connect_file)
+                connection = cls._load_toml_file(connect_file)
             elif connect_file.endswith(cls.CONFIG_FILE_EXTENSIONS):
-                return cls._load_config_file(connect_file)
+                connection = cls._load_config_file(connect_file)
             else:
                 raise ValueError(f"The file extension is not recognized on '{connect_file}'.")
 
+            if not isinstance(connection, dict):
+                raise TypeError("The content of the file is not a dictionary.")
+
+            return connection
         except Exception:
             logger.exception("Something happened while loading the file: %s", connect_file)
             logger.warning("Trying to load the file over different formats...")
 
-        for format_ in cls.JSON_FILE_EXTENSIONS | cls.TOML_FILE_EXTENSIONS | cls.YAML_FILE_EXTENSIONS | cls.CONFIG_FILE_EXTENSIONS:
-            file_path = connect_file.removesuffix('.') + f'.{format_.lstrip('.')}'
+        for format_ in set(
+            cls.JSON_FILE_EXTENSIONS + cls.TOML_FILE_EXTENSIONS + cls.YAML_FILE_EXTENSIONS + cls.CONFIG_FILE_EXTENSIONS
+        ):
+            file_path = connect_file.removesuffix(".") + f".{format_.lstrip('.')}"
             try:
                 return cls._load_file(file_path)
             except Exception:
-                logger.exception("Something happened while loading the file: %s", file_path)
+                logger.warning("Something happened while loading the file: %s", file_path)
 
         raise ValueError(f"The file format is not supported on '{connect_file}'.")
 
@@ -195,11 +200,13 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
     SQLDatabaseConnector based on the provided file path.
     """
 
-    LOCAL_DEFAULT_CONNECTION: ClassVar[str] = f"duckdb:///{os.path.join(os.path.expanduser('~'), '.config', 'papita', 'db', 'store.duckdb')}"
+    LOCAL_DEFAULT_CONNECTION: ClassVar[str] = (
+        f"duckdb:///{os.path.join(os.path.expanduser('~'), '.config', 'papita', 'db', 'store.duckdb')}"
+    )
 
     @classmethod
     def load(cls, **kwargs) -> Self:
-        local_default_path = Path(cls.LOCAL_DEFAULT_CONNECTION.lstrip("duckdb:///"))
+        local_default_path = Path(cls.LOCAL_DEFAULT_CONNECTION.removeprefix("duckdb:///"))
         logger.debug("Using local default connection: %s", local_default_path)
         local_default_path.parent.mkdir(parents=True, exist_ok=True)
         if not local_default_path.exists():
@@ -208,4 +215,6 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
         else:
             logger.debug("Local default connection file already exists: %s", local_default_path)
 
-        return cls.model_validate({"connector": SQLDatabaseConnector.establish(connection=cls.LOCAL_DEFAULT_CONNECTION), **kwargs})
+        return cls.model_validate(
+            {"connector": SQLDatabaseConnector.establish(connection=cls.LOCAL_DEFAULT_CONNECTION), **kwargs}
+        )
