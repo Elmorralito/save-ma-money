@@ -25,6 +25,7 @@
 >  # Environment variables that cannot be uploaded into the repo...
 >  # ... Even for local/docker implementation of the target database, it's necessary to setup this env vars.
 >
+>  DB_URL="Optional. ODBC URL of the database."
 >  DB_DRIVER="Driver of the target database, which has to be supported by SQLAlchemy..."
 >  DB_HOST="Hostname of the target database..."
 >  DB_PORT="Port of the target database..."

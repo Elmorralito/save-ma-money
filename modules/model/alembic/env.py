@@ -8,8 +8,16 @@ from logging.config import fileConfig
 
 import sqlalchemy as sa
 from alembic import context
+from alembic.ddl.impl import DefaultImpl
 from dotenv import load_dotenv
 from sqlmodel import SQLModel
+
+
+class AlembicDuckDBImpl(DefaultImpl):
+    """Alembic implementation for DuckDB."""
+
+    __dialect__ = "duckdb"
+
 
 DB_URL_PATTERN = re.compile(
     r"^(?P<scheme>\w+)(?P<driver>\+\w+)://"
@@ -44,6 +52,12 @@ if config.config_file_name is not None:
 def load_url() -> None:
     logger.info("Loading database URL.")
     x_args = context.get_x_argument(as_dictionary=True)
+    if x_args.get("duckdbPath"):
+        db_path = x_args.get("duckdbPath")
+        logger.info("Using DuckDB database path from arguments.")
+        config.set_main_option("sqlalchemy.url", db_path)
+        return None
+
     load_dotenv(dotenv_path=x_args.get("envPath", x_args.get("env_path", DEFAULT_ENV_PATH)), override=True)
     with contextlib.suppress(KeyError):
         if not config.get_main_option("sqlalchemy.url"):

@@ -49,3 +49,6 @@ dist/
 
 .coverage
 duckdb:*
+*.duckdb
+
+.data/
