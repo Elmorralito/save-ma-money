@@ -25,6 +25,7 @@
 >  # Environment variables that cannot be uploaded into the repo...
 >  # ... Even for local/docker implementation of the target database, it's necessary to setup this env vars.
 >
+>  DB_URL="Optional. ODBC URL of the database."
 >  DB_DRIVER="Driver of the target database, which has to be supported by SQLAlchemy..."
 >  DB_HOST="Hostname of the target database..."
 >  DB_PORT="Port of the target database..."
@@ -46,7 +47,6 @@
 > ```
 
 ## TODOs
-
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#14](https://github.com/Elmorralito/save-ma-money/issues/14)**_] :: **test/PPT-025: Unit test design, implementation and code refinement** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-05 20:07:41+00:00+00:00</sub>_ :weary:
 

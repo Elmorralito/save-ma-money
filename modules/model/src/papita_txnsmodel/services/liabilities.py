@@ -7,7 +7,8 @@ entities like accounts.
 
 Classes:
     LiabilityAccountsService: Service for managing basic liability accounts.
-    ExtendedLiabilityAccountService: Service for managing extended liability account information.
+    BankCreditLiabilityAccountsService: Service for managing bank credit liability accounts.
+    CreditCardLiabilityAccountsService: Service for managing credit card liability accounts.
 """
 
 # pylint: disable=W0511
@@ -27,19 +28,17 @@ from papita_txnsmodel.services.base import BaseService
 class LiabilityAccountsService(BaseService):
     """Service for managing liability accounts in the Papita Transactions system.
 
-    This service extends the TypedLinkedEntitiesServiceMixin to handle liability accounts
-    that have both type associations and relationships with other entities like
-    regular accounts.
+    This service provides functionality for creating, retrieving, updating, and deleting
+    liability accounts. It leverages the LiabilityAccountsRepository for database operations
+    and uses LiabilityAccountsDTO for data transfer.
+
+    The service manages the core attributes of liability accounts including identifiers,
+    names, descriptions, balances, and any relationships to other financial entities.
 
     Attributes:
-        __links__ (dict[str, LinkedEntity]): Dictionary defining the relationships
-            between liability accounts and other entities.
-        type_id_column_name (str): Name of the column storing the liability account type ID.
-        type_id_field_name (str): Name of the field storing the liability account type.
-        dto_type (type[LiabilityAccountsDTO]): DTO type for liability accounts.
-        repository_type (type[LiabilityAccountsRepository]): Repository for liability account
-            database operations.
-        types_dto_type (type[TypesDTO]): DTO type for types.
+        dto_type (type[LiabilityAccountsDTO]): DTO class used for liability account data transfer.
+        repository_type (type[LiabilityAccountsRepository]): Repository class used for
+            liability account database operations.
     """
 
     dto_type: type[LiabilityAccountsDTO] = LiabilityAccountsDTO
@@ -47,12 +46,43 @@ class LiabilityAccountsService(BaseService):
 
 
 class BankCreditLiabilityAccountsService(BaseService):
+    """Service for managing bank credit liability accounts.
+
+    This service specializes in handling bank credit liability accounts which may include
+    lines of credit, overdraft facilities, and other bank-provided credit products. It extends
+    the base service functionality with bank credit-specific operations.
+
+    The service uses an extended liability accounts repository to handle additional fields
+    and relationships specific to bank credit accounts such as credit limits, interest rates,
+    and payment terms.
+
+    Attributes:
+        dto_type (type[BankCreditLiabilityAccountsDTO]): DTO class used for bank credit
+            liability account data transfer.
+        repository_type (type[ExtendedLiabilityAccountsRepository]): Repository class used for
+            extended liability account database operations.
+    """
 
     dto_type: type[BankCreditLiabilityAccountsDTO] = BankCreditLiabilityAccountsDTO
     repository_type: type[ExtendedLiabilityAccountsRepository] = ExtendedLiabilityAccountsRepository
 
 
 class CreditCardLiabilityAccountsService(BaseService):
+    """Service for managing credit card liability accounts.
+
+    This service specializes in handling credit card liability accounts, providing functionality
+    specific to credit card management such as tracking credit limits, statement periods,
+    minimum payments, and interest calculations.
+
+    The service uses an extended liability accounts repository to accommodate the additional
+    attributes and relationships specific to credit card accounts.
+
+    Attributes:
+        dto_type (type[CreditCardLiabilityAccountsDTO]): DTO class used for credit card
+            liability account data transfer.
+        repository_type (type[ExtendedLiabilityAccountsRepository]): Repository class used for
+            extended liability account database operations.
+    """
 
     dto_type: type[CreditCardLiabilityAccountsDTO] = CreditCardLiabilityAccountsDTO
     repository_type: type[ExtendedLiabilityAccountsRepository] = ExtendedLiabilityAccountsRepository

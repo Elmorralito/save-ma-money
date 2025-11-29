@@ -22,11 +22,15 @@ depends_on: Union[str, Sequence[str], None] = ${repr(depends_on)}
 
 def upgrade() -> None:
     """Upgrade schema."""
+    op.execute(sa.text("BEGIN"))
     ${schema_setup}
     ${upgrades if upgrades else "pass"}
+    op.execute(sa.text("COMMIT"))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
+    op.execute(sa.text("BEGIN"))
     ${downgrades if downgrades else "pass"}
     ${schema_destroy}
+    op.execute(sa.text("COMMIT"))

@@ -71,7 +71,7 @@ class TypedEntitiesService(BaseService):
         setattr(dto, self.type_id_field_name, type_dto)
         return dto
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a typed entity record from the database.
 
         This method extends the base get method to include type information in the
@@ -217,12 +217,14 @@ class LinkedEntitiesService(BaseService):
         if not self.__links__:
             raise RuntimeError("The __links__ are not supposed to be empty.")
 
-        dto_fields = self.dto_type.model_fields
+        dto_fields = tuple(self.dto_type.model_fields.keys())
+        logger.debug("DTO fields: %s", dto_fields)
         updated_links = {
             link_name: self.__links__[link_name].load_other_entity_service(service, reload=reload, **kwargs)
             for link_name, service in links.items()
             if link_name in self.__links__ and link_name in dto_fields
         }
+        logger.debug("Updated links: %s", updated_links)
         setattr(self, "__links__", updated_links)
         return self
 
@@ -260,7 +262,7 @@ class LinkedEntitiesService(BaseService):
 
         return dto
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a linked entity record from the database.
 
         This method extends the base get method to include linked entity information
@@ -316,7 +318,7 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
         typed_dto = super(TypedEntitiesService).create(obj=obj, **kwargs)
         return super(LinkedEntitiesService).create(obj=typed_dto, **kwargs)
 
-    def get(self, *, obj: TableDTO | dict[str, Any] | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
         """Retrieve a typed and linked entity record from the database.
 
         This method combines the get methods of TypedEntitiesService and

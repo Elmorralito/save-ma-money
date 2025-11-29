@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-model"
-version = "0.1.0"
+version = "0.1.7"
 description = "Transactions data model."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -17,11 +17,15 @@ dependencies = [
     "sqlmodel (>=0.0.24,<1.0)",
     "dotenv (>=0.9.9,<1.0)",
     "psycopg2-binary (>=2.9.10,<3.0)",
-    "duckdb-engine (>=0.13.6,<0.14)",
+    "duckdb-engine (>=0.17.0,<0.18)",
     "sqlalchemy[duckdb-engine] (>=2.0.43,<2.1)",
     "pytest (>=8.3.1)",
     "toml (>=0.10.2,<0.11.0)",
+    "duckdb (>=1.4.2,<2.0.0)",
 ]
+
+[project.urls]
+HomePage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/model"
 
 [tool.poetry]
 packages = [
