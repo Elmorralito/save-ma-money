@@ -5,6 +5,7 @@ DOCKER_RM_FLAG=
 DOCKER_LOCAL_FLAG=
 DUCKDB_DB_PATH=
 ENV_FILE=
+DUCKDB_SCHEMA="papita_transactions"
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 ALEMBIC_EXEC_COMMAND="alembic"
 ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
@@ -18,7 +19,7 @@ Usage: $0 ACTION [options]
 
 Database migration utility for Alembic with optional Docker integration.
 
-The script loads environment variables from transactions-model/.env by default.
+The script loads environment variables from docker/database/.env by default.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
@@ -27,16 +28,24 @@ ACTIONS:
     up                                  Start the Docker services for migration environment
     halt, stop                          Stop the Docker services for migration environment
     down                                Destroy the Docker services for migration environment
-    duckdb                              Run with DuckDB (uses :memory: database by default)
 
 OPTIONS:
     --message, --slug, -m MESSAGE           Specify a message for the migration
                                             (used with version/autogenerate)
-    --env-file, -ef FILE                    Specify a custom environment file path (defaults to transactions-model/.env)
-    --duckdb-db-path, -dbp PATH             Specify a custom DuckDB database path (defaults to duckdb:///:memory:)
+    --env-file, -ef FILE                    Specify a custom environment file path
+                                            (defaults to docker/database/.env)
+    --duckdb-db-path, -dbp PATH             Specify a DuckDB database path. Supports:
+                                                - DuckDB protocol: duckdb:///path or duckdb://path
+                                                - POSIX paths: /absolute/path.db, ./relative.db,
+                                                    ../relative.db, or path/to/file.db
+                                                - In-memory: :memory: or duckdb:///:memory:
+                                            When provided, operations use DuckDB instead of Docker
+    --duckdb-schema, -ds SCHEMA             Specify the DuckDB schema name
+                                            (defaults to papita_transactions)
     --alembic-version, --version, -av VER   Specify version to downgrade to
                                             (defaults to head^1)
     --docker-compose-file, -dcf FILE        Specify a custom Docker Compose file path
+                                            (defaults to docker/database/docker-compose.yml)
     --docker-local, -dl                     Run with Docker services (starts containers)
     --docker-rm, -dr                        Remove Docker containers after execution
     --docker-frm, -dfrm                     Force remove containers AND volumes after execution
@@ -45,13 +54,15 @@ EXAMPLES:
     $(basename "$0") version -m "Add users table"
     $(basename "$0") upgrade --docker-local --docker-rm
     $(basename "$0") downgrade -av abc123
-    $(basename "$0") upgrade --docker-local --docker-rm
+    $(basename "$0") upgrade --duckdb-db-path /path/to/duckdb.db
+    $(basename "$0") upgrade --duckdb-db-path ./data/store.duckdb --duckdb-schema my_schema
+    $(basename "$0") version -m "New migration" --duckdb-db-path duckdb:///path/to/db.db
     $(basename "$0") down --docker-frm
-    $(basename "$0") duckdb --duckdb-db-path /path/to/duckdb.db
 
-PRERREQUISITES:
+PREREQUISITES:
     - Alembic must be installed in your environment
     - Docker and Docker Compose (if using Docker functionality)
+    - Python and Poetry (for DuckDB operations)
 EOM
 )"
     log "TRACE" "$USAGE"
@@ -94,8 +105,10 @@ duckdb_run() {
         usage
     fi
 
-    mkdir -p "$(dirname "$DUCKDB_DB_PATH")"
-    touch "$DUCKDB_DB_PATH"
+    python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA" || {
+        log ERROR "Failed to setup DuckDB schema."
+        exit 1
+    }
     run_command 0 "$ALEMBIC_COMMAND" ;
     cd - || return
 }
@@ -118,18 +131,6 @@ shift
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --message | --slug | -m)
-            MESSAGE="$2"
-            shift 2
-            ;;
-        --env-file | -ef)
-            ENV_FILE="$2"
-            shift 2
-            ;;
-        --duckdb-db-path | -dbp)
-            DUCKDB_DB_PATH="$2"
-            shift 2
-            ;;
         --alembic-version | --version | -av)
             ALEMBIC_VERSION="$2"
             shift 2
@@ -152,6 +153,22 @@ while [[ "$#" -gt 0 ]]; do
             DOCKER_RM_FLAG=2
             RUN_FLAG="docker_run"
             shift 1
+            ;;
+        --duckdb-db-path | -dbp)
+            DUCKDB_DB_PATH="$2"
+            shift 2
+            ;;
+        --duckdb-schema | -ds)
+            DUCKDB_SCHEMA="$2"
+            shift 2
+            ;;
+        --env-file | -ef)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        --message | --slug | -m)
+            MESSAGE="$2"
+            shift 2
             ;;
         *)
             log "ERROR" "Unknown option: $1"
