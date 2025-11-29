@@ -4,10 +4,12 @@
 DOCKER_RM_FLAG=
 DOCKER_LOCAL_FLAG=
 DUCKDB_DB_PATH=
+ENV_FILE=
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 ALEMBIC_EXEC_COMMAND="alembic"
-ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
-ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
+ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
+DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
+DEFAULT_DB_ENV_FILE="${PROJECT_PATH}/docker/database/.env"
 source "${PROJECT_PATH}/deploy/utils.sh"
 
 usage() {
@@ -57,7 +59,6 @@ EOM
 }
 
 docker_run() {
-    DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-"${PROJECT_PATH}/docker/alembic/docker-compose.yml"}"
     if [[ "$DOCKER_LOCAL_FLAG" -eq 1 ]]; then
         DOCKER_COMMAND="docker compose -f $DOCKER_COMPOSE_FILE --env-file $ENV_FILE up -d --build"
         run_command 1 "$DOCKER_COMMAND"
@@ -65,7 +66,7 @@ docker_run() {
         sleep 5
     fi
 
-    cd "$ALEMBIC_PATH" && run_command 0 "$ALEMBIC_COMMAND"
+    cd "$ALEMBIC_PROJECT_PATH" && run_command 0 "$ALEMBIC_COMMAND"
 
     if [[ "$DOCKER_LOCAL_FLAG" -eq 2 ]] && [[ "$DOCKER_RM_FLAG" -eq 0 ]] && [ -n "$DOCKER_COMPOSE_FILE" ]; then
         log INFO "Stoping local database..."
@@ -104,7 +105,7 @@ if ! test -e "$(which "$ALEMBIC_EXEC_COMMAND")" && ! test -e "$(python -m poetry
     exit 1
 fi
 
-ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c ${ALEMBIC_PATH}/alembic.ini"
+ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -158,6 +159,21 @@ while [[ "$#" -gt 0 ]]; do
             ;;
     esac
 done
+
+DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-"${DEFAULT_DB_COMPOSE_FILE}"}"
+ENV_FILE="${ENV_FILE:-"${DEFAULT_DB_ENV_FILE}"}"
+
+log "INFO" "Using Docker Compose file at $DOCKER_COMPOSE_FILE"
+if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
+    log "ERROR" "Docker Compose file not found at $DOCKER_COMPOSE_FILE"
+    exit 1
+fi
+
+log "INFO" "Using env file at $ENV_FILE"
+if [[ ! -f "$ENV_FILE" ]]; then
+    log "ERROR" "Env file not found at $ENV_FILE"
+    exit 1
+fi
 
 log "INFO" "Loading env file at $ENV_FILE"
 source "${ENV_FILE}" || {
