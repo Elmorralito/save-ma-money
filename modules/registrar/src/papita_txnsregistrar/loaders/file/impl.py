@@ -14,6 +14,7 @@ from typing import Self
 
 import pandas as pd
 
+from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
 from papita_txnsregistrar.loaders.abstract import AbstractLoader
 from papita_txnsregistrar.loaders.memory.impl import InMemoryLoader
 
@@ -141,7 +142,7 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
             Self: The loader instance for method chaining.
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
-        with open(self.path, mode="r", encoding=kwargs.get("encoding", "utf-8")) as freader:
+        with open(self.path, mode="r", encoding=kwargs.get("encoding", DEFAULT_ENCODING)) as freader:
             excel_file = pd.ExcelFile(freader)
             sheets = excel_file.sheet_names
             if sheet and sheet in sheets:

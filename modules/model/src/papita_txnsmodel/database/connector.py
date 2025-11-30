@@ -149,7 +149,7 @@ class SQLDatabaseConnector(AbstractConnector):
                 try:
                     url = Path(os.path.abspath(connection))
                     url = url.joinpath("store.duckdb") if url.is_dir() else url
-                    url = f"duckdb://{url.absolute().as_posix()}"
+                    url = f"duckdb:///{url.absolute().as_posix()}"
                 except OSError:
                     logger.exception("Cannot load duckdb storage due to:")
                     url = connection

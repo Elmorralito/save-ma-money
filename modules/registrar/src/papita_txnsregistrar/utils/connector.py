@@ -10,6 +10,7 @@ import toml
 import yaml
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
 from papita_txnsregistrar.utils.cli import AbstractCLIUtils
 
 logger = logging.getLogger(__name__)
@@ -104,7 +105,7 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
     @classmethod
     def _load_config_file(cls, connect_file: str) -> dict | None:
         output = {}
-        with open(connect_file, mode="r", encoding="utf-8") as freader:
+        with open(connect_file, mode="r", encoding=DEFAULT_ENCODING) as freader:
             for line in freader:
                 if line.strip().startswith("#"):
                     continue
@@ -115,7 +116,7 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
 
     @classmethod
     def _load_json_file(cls, connect_file: str) -> dict | None:
-        with open(connect_file, mode="r", encoding="utf-8") as freader:
+        with open(connect_file, mode="r", encoding=DEFAULT_ENCODING) as freader:
             content = json.load(freader)
 
         if not isinstance(content, dict):
@@ -125,7 +126,7 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
 
     @classmethod
     def _load_toml_file(cls, connect_file: str) -> dict | None:
-        with open(connect_file, mode="r", encoding="utf-8") as freader:
+        with open(connect_file, mode="r", encoding=DEFAULT_ENCODING) as freader:
             content = toml.load(freader, _dict=dict)
 
         if not isinstance(content, dict):
@@ -135,7 +136,7 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
 
     @classmethod
     def _load_yaml_file(cls, connect_file: str) -> dict | None:
-        with open(connect_file, mode="r", encoding="utf-8") as freader:
+        with open(connect_file, mode="r", encoding=DEFAULT_ENCODING) as freader:
             content = yaml.load(freader, Loader=yaml.SafeLoader)
 
         if not isinstance(content, dict):

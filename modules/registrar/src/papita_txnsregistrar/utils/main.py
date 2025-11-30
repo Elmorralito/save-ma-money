@@ -1,4 +1,5 @@
 import contextlib
+import importlib.resources as importlib_resources
 import inspect
 import logging
 import sys
@@ -11,13 +12,17 @@ from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME
 from papita_txnsmodel import __version__ as MODEL_VERSION
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.utils.classutils import ClassDiscovery
+from papita_txnsmodel.utils.configutils import configure_logger
 from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.contracts.registry import Registry
 from papita_txnsregistrar.utils.cli import AbstractCLIUtils
 from papita_txnsregistrar.utils.connector import BaseCLIConnectorWrapper, CLIDefaultConnectorWrapper
-from papita_txnsregistrar.utils.logger import DEFAULT_LOGGING_CONFIG, setup_logger
+
+DEFAULT_LOGGER_CONFIG_PATH = (
+    importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml").as_posix()
+)
 
 logger = logging.getLogger(__name__)
 
@@ -238,8 +243,9 @@ class MainCLIUtils(AbstractCLIUtils):
 
         logger.debug("Logger setup with level '%s'", level)
         logger.debug("Logger setup with config '%s'", args.log_config)
-        setup_logger(name=MODEL_LIB_NAME, config=args.log_config, level=level)
-        setup_logger(name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
+        configure_logger(logger_name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
+        configure_logger(logger_name=f"{REGISTRAR_LIB_NAME}_plugins", config=args.log_config, level=level)
+        configure_logger(logger_name=MODEL_LIB_NAME, config=args.log_config, level=level)
 
     @classmethod
     def load(cls, **kwargs) -> Self:
@@ -299,7 +305,11 @@ class MainCLIUtils(AbstractCLIUtils):
         parser.add_argument(
             "--version",
             action="version",
-            version=f"%(prog)s {REGISTRAR_VERSION} | Papita Transaction Model {MODEL_VERSION} | by Papita Software",
+            version=(
+                f"%(prog)s ({REGISTRAR_LIB_NAME}=={REGISTRAR_VERSION}) | "
+                f"Papita Transaction Model ({MODEL_LIB_NAME}=={MODEL_VERSION}) | "
+                "by Papita Software"
+            ),
         )
         parser.add_argument(
             "-v", "--verbose", action="count", default=0, help="Increase output verbosity (e.g., -v, -vv, -vvv)"
@@ -309,7 +319,7 @@ class MainCLIUtils(AbstractCLIUtils):
             dest="log_config",
             help="Specify the path to the logging configuration file.",
             type=str,
-            default=DEFAULT_LOGGING_CONFIG,
+            default=DEFAULT_LOGGER_CONFIG_PATH,
         )
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
