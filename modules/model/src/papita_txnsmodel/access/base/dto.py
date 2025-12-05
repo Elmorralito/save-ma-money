@@ -9,15 +9,16 @@ Classes:
     CoreTableDTO: Extended base class with additional common fields for core entities.
 """
 
+import itertools
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Iterator, Self
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, WrapValidator, model_validator
 
 from papita_txnsmodel.model.base import BaseSQLModel
-from papita_txnsmodel.utils import datautils
+from papita_txnsmodel.utils import datautils, modelutils
 
 
 class TableDTO(BaseModel):
@@ -39,7 +40,7 @@ class TableDTO(BaseModel):
     model_config = ConfigDict(ignored_types=(pd.Timestamp,), arbitrary_types_allowed=True)
 
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4)
-    active: bool = True
+    active: Annotated[bool | str | int, WrapValidator(modelutils.validate_bool)] = True
     deleted_at: datetime | None = None
 
     @classmethod
@@ -99,6 +100,18 @@ class CoreTableDTO(TableDTO):
         tags (List[str]): List of tags associated with the entity.
     """
 
-    name: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
-    description: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
-    tags: Annotated[set[str], Field(min_length=1)]
+    name: Annotated[str, Field(min_length=3)]
+    description: Annotated[str, Field(min_length=3)]
+    tags: Annotated[Iterator[str], Field(min_items=1)] | Annotated[str, Field(min_length=3)]
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        self.name = self.name.strip()
+        self.description = self.description.strip()
+        self.tags = modelutils.normalize_tags(
+            itertools.chain(
+                [self.tags] if isinstance(self.tags, str) else self.tags,
+                [self.name.lower(), self.classification.value.lower()],
+            )
+        )
+        return self

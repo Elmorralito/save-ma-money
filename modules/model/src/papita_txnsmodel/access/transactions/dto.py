@@ -13,7 +13,6 @@ Classes:
 
 import datetime
 import uuid
-from typing import Annotated, Optional
 
 from pydantic import Field, model_serializer
 
@@ -73,11 +72,11 @@ class TransactionsDTO(TableDTO):
 
     __dao_type__ = Transactions
 
-    identified_transaction: Optional[
-        Annotated[uuid.UUID | IdentifiedTransactionsDTO, Field(serialization_alias="identified_transaction_id")]
-    ] = None
-    from_account: Optional[Annotated[uuid.UUID | AccountsDTO, Field(serialization_alias="from_account_id")]] = None
-    to_account: Optional[Annotated[uuid.UUID | AccountsDTO, Field(serialization_alias="to_account_id")]] = None
+    identified_transaction: uuid.UUID | IdentifiedTransactionsDTO | None = Field(
+        default=None, serialization_alias="identified_transaction_id"
+    )
+    from_account: uuid.UUID | AccountsDTO | None = Field(default=None, serialization_alias="from_account_id")
+    to_account: uuid.UUID | AccountsDTO | None = Field(default=None, serialization_alias="to_account_id")
     active: bool = True
     transaction_ts: datetime.datetime = Field(default_factory=datetime.datetime.now)
     value: float = Field(gt=0, description="Monetary value of the transaction")

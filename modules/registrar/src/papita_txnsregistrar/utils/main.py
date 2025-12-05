@@ -1,9 +1,27 @@
+"""Main CLI utilities for the transaction registrar system.
+
+This module provides the primary command-line interface utilities for the transaction registrar,
+enabling plugin discovery, database connector management, and argument parsing. The MainCLIUtils
+class serves as the entry point for CLI operations, handling plugin loading, module discovery,
+and configuration of database connections.
+
+The module supports dynamic plugin discovery from specified modules, fuzzy matching for plugin
+names, and flexible database connector configuration. It integrates with the plugin registry
+system to locate and instantiate plugins that support CLI operations.
+
+Classes:
+    HelpAction: Custom argparse action that displays comprehensive help including plugin and
+                connector wrapper documentation.
+    MainCLIUtils: Main CLI utility class that handles plugin discovery, connector setup, and
+                  argument parsing for the registrar system.
+"""
+
 import contextlib
 import importlib.resources as importlib_resources
 import inspect
 import logging
 import sys
-from argparse import Action, ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace
 from typing import Annotated, List, Self, Type
 
 from pydantic import Field, model_validator
@@ -17,27 +35,57 @@ from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.contracts.registry import Registry
+from papita_txnsregistrar.utils import connector as connector_wrapper_module
 from papita_txnsregistrar.utils.cli import AbstractCLIUtils
-from papita_txnsregistrar.utils.connector import BaseCLIConnectorWrapper, CLIDefaultConnectorWrapper
 
-DEFAULT_LOGGER_CONFIG_PATH = (
-    importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml").as_posix()
-)
+DEFAULT_LOGGER_CONFIG_PATH = str(importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml"))
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(REGISTRAR_LIB_NAME)
 
 
 class MainCLIUtils(AbstractCLIUtils):
+    """Main CLI utility class for the transaction registrar system.
+
+    This class provides the primary command-line interface for discovering and loading plugins,
+    configuring database connectors, and managing CLI operations. It handles argument parsing,
+    plugin discovery from specified modules, and dynamic connector wrapper selection.
+
+    The class uses Pydantic for validation and configuration management, supporting flexible
+    plugin matching through case-sensitive, exact, and fuzzy matching strategies. It integrates
+    with the plugin registry to discover and instantiate plugins that support CLI operations.
+
+    Attributes:
+        plugin: The plugin name or PluginContract instance to be used. Can be specified as a
+                string (for discovery) or a PluginContract instance.
+        modules: List of module names to search for plugins. Defaults to
+                 ["papita_txnsregistrar_plugins"]. Multiple modules can be specified, separated
+                 by commas.
+        connector_wrapper: Optional database connector wrapper class or string identifier.
+                          Used to wrap SQLDatabaseConnector for CLI integration.
+        connector: The resolved SQLDatabaseConnector instance, set during model validation.
+                   This is populated automatically from the connector_wrapper.
+        case_sensitive: Enable case-sensitive matching for plugin names and tags. Defaults to True.
+        strict_exact: Enable strict exact matching for plugin names and tags. When enabled,
+                      only exact matches are considered. Defaults to False.
+        fuzzy_threshold: Threshold for fuzzy matching (0-100). Higher values require closer
+                         matches. Defaults to 90.
+        safe_mode: Enable safe mode to prevent execution of potentially harmful operations.
+                   Defaults to False.
+
+    Note:
+        The plugin attribute is resolved during model validation. If a string is provided,
+        it will be looked up in the registry using the specified matching criteria.
+    """
 
     plugin: Annotated[
-        str | PluginContract, Field(..., alias="plugin", description="Specify the name of the plugin to be used.")
+        str | Type[PluginContract], Field(..., alias="plugin", description="Specify the name of the plugin to be used.")
     ]
     modules: List[str] = Field(
         default_factory=lambda: ["papita_txnsregistrar_plugins"],
         description="Specify the module(s) to be used. This can include multiple modules separated by commas.",
     )
     connector_wrapper: Annotated[
-        str | Type[BaseCLIConnectorWrapper],
+        str | Type[connector_wrapper_module.BaseCLIConnectorWrapper],
         Field(None, alias="connector_wrapper", description="An optional database connector wrapper instance."),
     ]
     connector: Annotated[
@@ -65,18 +113,64 @@ class MainCLIUtils(AbstractCLIUtils):
 
     @model_validator(mode="after")
     def _build_model(self) -> Self:
+        """Build and validate the model after field assignment.
+
+        This method is called automatically by Pydantic after field validation. It performs
+        post-initialization tasks including: normalizing module names, discovering and loading
+        the connector wrapper, discovering plugins from specified modules, resolving the plugin
+        class, and validating that the plugin supports CLI utilities.
+
+        The method processes comma-separated module names, searches for connector wrappers
+        across modules, and uses the registry to locate the specified plugin using the configured
+        matching criteria (case-sensitive, exact, or fuzzy matching).
+
+        Returns:
+            Self: The validated and configured instance with connector and plugin attributes
+                  populated.
+
+        Raises:
+            RuntimeError: If any error occurs during model building, including connector wrapper
+                          discovery failures, plugin not found, or plugin incompatibility.
+                          The original exception is chained as the cause.
+            ValueError: If no valid connector wrapper could be found, or if the specified
+                        plugin could not be found in the registry.
+            TypeError: If the specified plugin does not support CLI utilities (i.e., is not
+                       a subclass of AbstractCLIUtils).
+
+        Note:
+            This method modifies the instance in place, setting the connector and plugin
+            attributes based on the provided configuration.
+        """
         with contextlib.suppress(AttributeError):
             logger.debug("Cleaning modules: %s", self.modules)
             self.modules = [mod.strip() for mods in self.modules for mod in mods.strip().split(",")]
 
+        mod_, class_ = ClassDiscovery.decompose_class(self.connector_wrapper)
+        if not class_:
+            raise ValueError("No valid connector wrapper could be found.")
+
+        if not mod_:
+            self.connector_wrapper = f"{connector_wrapper_module.__name__}.{class_}"
+
         try:
+            if isinstance(self.plugin, str):
+                logger.debug("Loading plugin from registry: %s with modules: %s", self.plugin, self.modules)
+                self.plugin = self._load_plugin_class(
+                    plugin_name=self.plugin,
+                    modules=self.modules,
+                    case_sensitive=self.case_sensitive,
+                    strict_exact=self.strict_exact,
+                    fuzzy_threshold=self.fuzzy_threshold,
+                )
+
+            logger.debug("Using plugin: %s", self.plugin)
             connector_wrapper = next(
                 filter(
                     None,
                     [
                         ClassDiscovery.select(
                             self.connector_wrapper,
-                            class_type=BaseCLIConnectorWrapper,
+                            class_type=connector_wrapper_module.BaseCLIConnectorWrapper,
                             default_module=mod_,
                             debug=True,
                         )
@@ -89,36 +183,62 @@ class MainCLIUtils(AbstractCLIUtils):
                 raise ValueError("No valid connector wrapper could be found.")
 
             logger.debug("Using connector wrapper: %s", connector_wrapper)
-            self.connector = connector_wrapper.load().connector
-            Registry().discover(*self.modules, debug=True)
             logger.debug("Discovering plugin from modules: %s", self.modules)
-            self.plugin = Registry().get(
-                label=self.plugin,
-                case_sensitive=self.case_sensitive,
-                strict_exact=self.strict_exact,
-                fuzz_threshold=self.fuzzy_threshold,
-            )
-            if not self.plugin or not inspect.isclass(self.plugin):
-                raise ValueError("The specified plugin could not be found.")
-
-            if not issubclass(self.plugin, AbstractCLIUtils):
-                raise TypeError("The specified plugin does not support CLI utilities.")
+            self.connector = connector_wrapper.load().connector
+            logger.debug("Using connector: %s", self.connector)
         except Exception as err:
-            raise RuntimeError from err
+            logger.exception("Error building model: %s", err)
+            raise RuntimeError(f"Error building model: {err}") from err
 
         logger.debug("Plugin '%s' supports CLI utilities.", self.plugin.meta().name)
         return self
 
     @classmethod
     def _load_plugin_class(cls, plugin_name: str, modules: List[str], **kwargs) -> Type[AbstractCLIUtils]:
-        """Load and return the plugin class without creating an instance."""
+        """Load and return the plugin class without creating an instance.
+
+        This method discovers and loads a plugin class from the specified modules using the
+        plugin registry. It normalizes module names, performs plugin discovery, and validates
+        that the found plugin supports CLI utilities. The plugin class is returned without
+        instantiation, allowing for further inspection or delayed instantiation.
+
+        Args:
+            plugin_name: The name or identifier of the plugin to load. This will be used
+                         for registry lookup using the specified matching criteria.
+            modules: List of module names to search for plugins. Module names can be
+                     comma-separated strings, which will be automatically split and normalized.
+            **kwargs: Additional keyword arguments for plugin matching. Valid keys include:
+                      - case_sensitive (bool): Enable case-sensitive matching. Defaults to True.
+                      - strict_exact (bool): Enable strict exact matching. Defaults to False.
+                      - fuzzy_threshold (int): Threshold for fuzzy matching (0-100).
+                        Defaults to 90.
+
+        Returns:
+            Type[AbstractCLIUtils]: The plugin class that supports CLI utilities.
+
+        Raises:
+            RuntimeError: If any error occurs during plugin loading, including discovery
+                          failures or validation errors. The original exception is chained
+                          as the cause.
+            ValueError: If the specified plugin could not be found in the registry or is
+                        not a class.
+            TypeError: If the specified plugin does not support CLI utilities (i.e., is not
+                       a subclass of AbstractCLIUtils).
+
+        Note:
+            This method performs plugin discovery but does not instantiate the plugin. Use
+            this method when you need the plugin class for inspection or to create instances
+            later.
+        """
         try:
             with contextlib.suppress(AttributeError):
                 modules = [mod.strip() for mods in modules for mod in mods.strip().split(",")]
 
-            Registry().discover(*modules, debug=True)
             logger.debug("Discovering plugin from modules: %s", modules)
-            plugin = Registry().get(
+            registry = Registry().discover(*modules, debug=True)
+            logger.debug("Discovered plugins: %s")
+            logger.debug("Getting plugin '%s' from registry", plugin_name)
+            plugin = registry.get(
                 label=plugin_name,
                 case_sensitive=kwargs.get("case_sensitive", True),
                 strict_exact=kwargs.get("strict_exact", False),
@@ -131,125 +251,101 @@ class MainCLIUtils(AbstractCLIUtils):
                 raise TypeError("The specified plugin does not support CLI utilities.")
 
             return plugin
+        except (ValueError, TypeError) as err:
+            raise RuntimeError(f"Error loading plugin: {err}") from err
         except Exception as err:
-            raise RuntimeError from err
-
-    @classmethod
-    def _create_custom_help_action(cls, args_list):
-        """Create a custom help action class that has access to the args list."""
-
-        class CustomHelpAction(Action):
-            def __init__(self, option_strings, dest, **kwargs):
-                super().__init__(option_strings, dest, nargs=0, **kwargs)
-
-            def __call__(self, parser, namespace, values, option_string=None):
-                # Parse known args to get plugin name and other necessary parameters
-                temp_parser = ArgumentParser(add_help=False)
-                temp_parser.add_argument(cls.model_fields["plugin"].alias, type=str)
-                temp_parser.add_argument(
-                    "-m", "--mod", "--module", dest=cls.model_fields["modules"].alias, nargs="*", default=[]
-                )
-                temp_parser.add_argument("--modules", dest=cls.model_fields["modules"].alias, nargs="*", default=[])
-                temp_parser.add_argument(
-                    "--connector-wrapper",
-                    dest=cls.model_fields["connector_wrapper"].alias,
-                    default=".".join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))),
-                )
-                temp_parser.add_argument(
-                    "--case-sensitive",
-                    dest=cls.model_fields["case_sensitive"].alias,
-                    action="store_false",
-                    default=cls.model_fields["case_sensitive"].default,
-                )
-                temp_parser.add_argument(
-                    "--strict-exact",
-                    dest=cls.model_fields["strict_exact"].alias,
-                    action="store_true",
-                    default=cls.model_fields["strict_exact"].default,
-                )
-                temp_parser.add_argument(
-                    "--fuzzy-threshold",
-                    dest=cls.model_fields["fuzzy_threshold"].alias,
-                    type=int,
-                    default=cls.model_fields["fuzzy_threshold"].default,
-                )
-
-                # Filter out help flags from args
-                filtered_args = [arg for arg in args_list if arg not in ["-h", "--help"]]
-                parsed_temp, _ = temp_parser.parse_known_args(args=filtered_args)
-
-                # Load the plugin class and show its help
-                try:
-                    plugin_name = getattr(parsed_temp, cls.model_fields["plugin"].alias)
-                    if plugin_name:
-                        plugin_class = cls._load_plugin_class(
-                            plugin_name=plugin_name,
-                            modules=getattr(parsed_temp, cls.model_fields["modules"].alias)
-                            or cls.model_fields["modules"].default_factory(),
-                            case_sensitive=getattr(parsed_temp, cls.model_fields["case_sensitive"].alias),
-                            strict_exact=getattr(parsed_temp, cls.model_fields["strict_exact"].alias),
-                            fuzzy_threshold=getattr(parsed_temp, cls.model_fields["fuzzy_threshold"].alias),
-                        )
-
-                        # Get plugin's parser by creating it with help flag
-                        # We'll intercept the plugin's load method to get its parser
-                        logger.debug("\n%s\n", "=" * 80)
-                        plugin_name_display = (
-                            plugin_class.meta().name
-                            if hasattr(plugin_class, "meta") and callable(getattr(plugin_class, "meta", None))
-                            else plugin_class.__name__
-                        )
-                        logger.debug("Plugin '%s' help:\n", plugin_name_display)
-
-                        # Create plugin parser by temporarily modifying sys.argv and calling load
-                        # The plugin's load method will create a parser - we'll capture it
-                        old_argv = sys.argv[:]
-                        try:
-                            # Remove plugin name from args - plugins don't need it
-                            # The plugin's parser will ignore unknown main CLI args via parse_known_args
-                            plugin_args = [arg for arg in filtered_args if arg != plugin_name]
-                            sys.argv = ["plugin"] + plugin_args + ["--help"]
-                            try:
-                                # This will trigger the plugin's help
-                                plugin_class.load(args=sys.argv)
-                            except SystemExit:
-                                # SystemExit is expected when --help is used
-                                pass
-                        finally:
-                            sys.argv = old_argv
-                    else:
-                        logger.debug("\nNote: Specify a plugin name to see plugin-specific help.")
-                except Exception as e:
-                    # If plugin loading fails, show a message
-                    logger.exception("Could not load plugin for help: %s", e)
-                    logger.exception("Showing main help only.")
-                    parser.print_help()
-
-                parser.exit()
-
-        return CustomHelpAction
+            raise err
 
     @classmethod
     def _setup_logger(cls, args: Namespace) -> None:
-        # Configure logging based on verbosity level
+        """Configure logging based on command-line arguments.
+
+        This method sets up logging for the registrar system and its components based on
+        the verbosity level and log configuration file specified in the command-line arguments.
+        It configures loggers for the main registrar library, plugin system, and model library.
+
+        The verbosity level is determined by the count of -v flags:
+        - No -v flags: WARNING level
+        - -v: INFO level
+        - -vv: DEBUG level
+        - -vvv or more: NOTSET level (maximum verbosity)
+
+        Args:
+            args: The parsed command-line arguments namespace. Must contain:
+                  - verbose (int): Integer count of verbosity flags (default: 0)
+                  - log_config (str): Path to the logging configuration file (YAML format)
+
+        Note:
+            This method configures three separate loggers:
+            - The main registrar library logger
+            - The plugin system logger
+            - The model library logger
+
+            All loggers use the same configuration file and verbosity level for consistency.
+        """
         if args.verbose == 1:
             level = logging.INFO
         elif args.verbose == 2:
             level = logging.DEBUG
         elif args.verbose >= 3:
-            level = logging.NOTSET  # Or a custom level for maximum verbosity
+            level = logging.NOTSET  # Maximum verbosity
         else:
             level = logging.WARNING
 
-        logger.debug("Logger setup with level '%s'", level)
-        logger.debug("Logger setup with config '%s'", args.log_config)
         configure_logger(logger_name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
         configure_logger(logger_name=f"{REGISTRAR_LIB_NAME}_plugins", config=args.log_config, level=level)
         configure_logger(logger_name=MODEL_LIB_NAME, config=args.log_config, level=level)
+        # Ensure the module logger also uses the configured level
+        logger.setLevel(level)
+        for handler in logger.handlers:
+            handler.setLevel(level)
+
+        logger.info("Logger setup with level '%s'", level)
+        logger.debug("Logger setup with config '%s'", args.log_config)
 
     @classmethod
     def load(cls, **kwargs) -> Self:
-        parser = ArgumentParser(cls.__doc__, add_help=False)
+        """Load and configure the MainCLIUtils instance from command-line arguments.
+
+        This is the primary entry point for creating a MainCLIUtils instance. It sets up
+        an argument parser with all CLI options, parses command-line arguments, configures
+        logging, and returns a validated instance ready for use.
+
+        The method supports a comprehensive set of command-line arguments including:
+        plugin selection, module specification, connector configuration, matching options,
+        verbosity control, and logging configuration. It also provides a custom help action
+        that displays both main CLI help and plugin-specific help.
+
+        Args:
+            **kwargs: Optional keyword arguments. Valid keys include:
+                     - args (List[str]): List of command-line argument strings. If not
+                       provided, sys.argv is used. Must be a list of strings.
+
+        Returns:
+            Self: A fully configured MainCLIUtils instance with all fields validated and
+                  populated, including the resolved plugin class and database connector.
+
+        Raises:
+            ValueError: If the args parameter is provided but is not a list of strings.
+
+        Note:
+            This method performs the following operations:
+            1. Creates an argument parser with all CLI options
+            2. Sets up a custom help action that includes plugin-specific help
+            3. Parses command-line arguments
+            4. Configures logging based on verbosity and log config
+            5. Validates and builds the model instance
+
+            The plugin and connector are resolved during model validation, which occurs
+            when model_validate is called with the parsed arguments.
+        """
+        parser = ArgumentParser(epilog=cls.__doc__)
+        parser.add_argument(
+            "script",
+            help="The script to run. Not used at all",
+            type=str,
+            metavar="<script>",
+        )
         parser.add_argument(
             cls.model_fields["plugin"].alias,
             help=cls.model_fields["plugin"].description,
@@ -272,7 +368,9 @@ class MainCLIUtils(AbstractCLIUtils):
             help=cls.model_fields["connector_wrapper"].description,
             type=str,
             required=False,
-            default=".".join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))),
+            default=".".join(
+                filter(None, ClassDiscovery.decompose_class(connector_wrapper_module.CLIDefaultConnectorWrapper))
+            ),
         )
         parser.add_argument(
             "--case-sensitive",
@@ -306,9 +404,9 @@ class MainCLIUtils(AbstractCLIUtils):
             "--version",
             action="version",
             version=(
-                f"%(prog)s ({REGISTRAR_LIB_NAME}=={REGISTRAR_VERSION}) | "
-                f"Papita Transaction Model ({MODEL_LIB_NAME}=={MODEL_VERSION}) | "
-                "by Papita Software"
+                f"Papita Transactions Registrar ({REGISTRAR_LIB_NAME}=={REGISTRAR_VERSION}) | "
+                f"Papita Transactions Model ({MODEL_LIB_NAME}=={MODEL_VERSION}) | "
+                f"by Papita Software under MIT License"
             ),
         )
         parser.add_argument(
@@ -324,15 +422,6 @@ class MainCLIUtils(AbstractCLIUtils):
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
             raise ValueError("args must be   a list of strings or None")
-
-        # Create custom help action with access to args
-        CustomHelpAction = cls._create_custom_help_action(args_)
-        parser.add_argument(
-            "-h",
-            "--help",
-            action=CustomHelpAction,
-            help="Show this help message and plugin-specific help.",
-        )
 
         parsed_args, _ = parser.parse_known_args(args=args_)
         cls._setup_logger(args=parsed_args)

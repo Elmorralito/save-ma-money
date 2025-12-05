@@ -4,8 +4,9 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import ClassVar, Self, Tuple, Type
+from typing import ClassVar, Dict, Self, Tuple, Type
 
+import dotenv
 import toml
 import yaml
 
@@ -47,7 +48,7 @@ class BaseCLIConnectorWrapper(AbstractCLIUtils):
         raise NotImplementedError("This method should be implemented in subclasses.")
 
 
-class CLIURLConnectoryWrapper(BaseCLIConnectorWrapper):
+class CLIURLConnectorWrapper(BaseCLIConnectorWrapper):
     """
     A CLI wrapper for SQLDatabaseConnector that connects using a database URL.
 
@@ -81,14 +82,13 @@ class CLIURLConnectoryWrapper(BaseCLIConnectorWrapper):
             type=str,
             required=True,
         )
-        parsed_args, _ = parser.parse_known_args(args=kwargs.pop("args") or sys.argv)
-
+        parsed_args, _ = parser.parse_known_args(args=kwargs.pop("args", None) or sys.argv)
         return cls.model_validate(
             {"connector": SQLDatabaseConnector.establish(connection=getattr(parsed_args, "connect_url")), **kwargs}
         )
 
 
-class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
+class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
     """
     A CLI wrapper for SQLDatabaseConnector that connects using a file path.
 
@@ -101,6 +101,23 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
     JSON_FILE_EXTENSIONS: ClassVar[Tuple[str, ...]] = (".json", ".jsonc")
     YAML_FILE_EXTENSIONS: ClassVar[Tuple[str, ...]] = (".yaml", ".yml")
     TOML_FILE_EXTENSIONS: ClassVar[Tuple[str, ...]] = (".toml",)
+    ENV_FILE_EXTENSIONS: ClassVar[Tuple[str, ...]] = (".env", ".properties")
+    MAPPING_VARIABLES: ClassVar[Dict[str, str]] = {
+        "DB_DRIVER": "drivername",
+        "DB_URL": "url",
+        "DB_USER": "username",
+        "DB_PASSWORD": "password",
+        "DB_HOST": "host",
+        "DB_PORT": "port",
+        "DB_NAME": "database",
+        "USERNAME": "username",
+        "PASSWORD": "password",
+        "HOST": "host",
+        "PORT": "port",
+        "DATABASE": "database",
+        "DRIVERNAME": "drivername",
+        "URL": "url",
+    }
 
     @classmethod
     def _load_config_file(cls, connect_file: str) -> dict | None:
@@ -145,6 +162,21 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
         return content
 
     @classmethod
+    def _load_env_file(cls, connect_file: str) -> dict | None:
+        content = dotenv.load_dotenv(dotenv_path=connect_file, override=True)
+        output = {}
+        for key, value in content.items():
+            if key in cls.MAPPING_VARIABLES:
+                output[cls.MAPPING_VARIABLES[key]] = value
+            else:
+                output[key] = value
+
+        if "url" in output or all(key in output for key in set(cls.MAPPING_VARIABLES.values())):
+            return output
+
+        raise ValueError("The environment file does not contain a valid database connection URL.")
+
+    @classmethod
     def _load_file(cls, connect_file: str) -> dict:
         try:
             if connect_file.endswith(cls.JSON_FILE_EXTENSIONS):
@@ -155,6 +187,8 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
                 connection = cls._load_toml_file(connect_file)
             elif connect_file.endswith(cls.CONFIG_FILE_EXTENSIONS):
                 connection = cls._load_config_file(connect_file)
+            elif connect_file.endswith(cls.ENV_FILE_EXTENSIONS):
+                connection = cls._load_env_file(connect_file)
             else:
                 raise ValueError(f"The file extension is not recognized on '{connect_file}'.")
 
@@ -167,7 +201,11 @@ class CLIFileConnectoryWrapper(BaseCLIConnectorWrapper):
             logger.warning("Trying to load the file over different formats...")
 
         for format_ in set(
-            cls.JSON_FILE_EXTENSIONS + cls.TOML_FILE_EXTENSIONS + cls.YAML_FILE_EXTENSIONS + cls.CONFIG_FILE_EXTENSIONS
+            cls.JSON_FILE_EXTENSIONS
+            + cls.TOML_FILE_EXTENSIONS
+            + cls.YAML_FILE_EXTENSIONS
+            + cls.CONFIG_FILE_EXTENSIONS
+            + cls.ENV_FILE_EXTENSIONS
         ):
             file_path = connect_file.removesuffix(".") + f".{format_.lstrip('.')}"
             try:
@@ -202,7 +240,7 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
     """
 
     LOCAL_DEFAULT_CONNECTION: ClassVar[str] = (
-        f"duckdb:///{os.path.join(os.path.expanduser('~'), '.config', 'papita', 'db', 'store.duckdb')}"
+        f"duckdb:///{os.path.join(os.path.expanduser('~'), '.papita-local', 'store.duckdb')}"
     )
 
     @classmethod

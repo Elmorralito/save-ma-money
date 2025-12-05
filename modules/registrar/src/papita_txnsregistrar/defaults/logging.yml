@@ -14,12 +14,17 @@ handlers:
 
 loggers:
   papita_txnsregistrar:
-    level: INFO
+    level: DEBUG
+    handlers:
+      - console
+    propagate: no
+  papita_txnsregistrar_plugins:
+    level: DEBUG
     handlers:
       - console
     propagate: no
   papita_txnsmodel:
-    level: INFO
+    level: DEBUG
     handlers:
       - console
     propagate: no

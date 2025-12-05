@@ -14,7 +14,7 @@ import functools
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Self, Type
+from typing import Any, Callable, ClassVar, Self, Type
 
 import sqlalchemy as db
 from sqlmodel import Session
@@ -85,10 +85,8 @@ class SQLDatabaseConnector(AbstractConnector):
         sql_kwargs (dict): Keyword arguments for SQLAlchemy engine creation.
     """
 
-    def __new__(cls, *args, **kwargs) -> type["SQLDatabaseConnector"]:
-        cls.engine: db.Engine | None = None
-        cls.sql_kwargs: dict = kwargs.pop("sql_kwargs", {})
-        return cls
+    engine: ClassVar[db.Engine | None] = None
+    sql_kwargs: ClassVar[dict | None] = None
 
     @classmethod
     def establish(
@@ -157,11 +155,14 @@ class SQLDatabaseConnector(AbstractConnector):
                 url = "duckdb:///:memory:"
 
         url = db.make_url(url) if isinstance(url, str) else url
-        if not sql_kwargs and url.drivername == "duckdb":
-            sql_kwargs = {"connect_args": {"read_only": False}}
+        sql_kwargs_ = (cls.sql_kwargs or {}) | sql_kwargs
+        if not sql_kwargs_ and url.drivername == "duckdb":
+            sql_kwargs_ = {"connect_args": {"read_only": False}}
 
-        cls.engine = db.create_engine(url, **(cls.sql_kwargs | sql_kwargs))
-        print(cls.engine)
+        cls.engine = db.create_engine(url, **sql_kwargs_)
+        logger.debug("Connection to the database established.")
+        logger.debug("Engine: %s", cls.engine.url)
+        logger.debug("SQL kwargs: %s", sql_kwargs_)
         return cls
 
     @classmethod

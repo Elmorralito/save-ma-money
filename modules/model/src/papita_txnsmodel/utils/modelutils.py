@@ -9,8 +9,9 @@ date parsing and validation, and interest rate normalization. It contains:
 """
 
 import inspect
+import re
 from datetime import date, datetime
-from typing import Callable, Type
+from typing import Callable, Iterator, Type
 
 import numpy as np
 import pandas as pd
@@ -20,6 +21,43 @@ from dateutil.parser import parse as dt_parse
 from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
 
 from .classutils import ClassDiscovery
+
+ALLOWED_DELIMITERS = (",", "|", ";", ":", "\n", "\t")
+ALLOWED_TRUE_BOOL_VALUES = ("true", "yes", "y", "1", "on", "s", 1, True)
+ALLOWED_FALSE_BOOL_VALUES = ("false", "no", "n", "0", "off", 0, False)
+
+
+def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler) -> bool:
+    value_ = handler(value)
+    if isinstance(value_, bool):
+        return value_
+
+    if isinstance(value_, str):
+        value_ = value_.lower()
+
+    if value_ in ALLOWED_TRUE_BOOL_VALUES:
+        return True
+
+    if value_ in ALLOWED_FALSE_BOOL_VALUES:
+        return False
+
+    raise ValueError(f"'{value}' is not a valid boolean value.")
+
+
+def normalize_tags(value: Iterator[str] | str) -> Iterator[str]:
+    if isinstance(value, str):
+        value_ = [value]
+        for delimiter in ALLOWED_DELIMITERS:
+            if delimiter in value:
+                value_ = value.split(delimiter)
+                break
+
+    tags = list({str.lower(tag).strip() for tag in value_ if re.match(r"^([A-Za-z]|\s)+$", tag.strip() or "")})
+
+    if not tags:
+        raise ValueError("No valid tags found.")
+
+    return iter(tags)
 
 
 def make_class_validator(
@@ -160,7 +198,7 @@ def validate_interest_rate(value: float, handler: ValidatorFunctionWrapHandler) 
 
     Returns:
         float | None: The validated and normalized interest rate as a decimal,
-                     or None if validation fails or input is empty.
+                        or None if validation fails or input is empty.
 
     Example:
         When used as a Pydantic validator, it will convert 5.0 to 0.05

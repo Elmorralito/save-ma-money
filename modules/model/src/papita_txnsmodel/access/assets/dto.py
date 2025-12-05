@@ -92,12 +92,10 @@ class FinancedAssetAccountsDTO(ExtendedAssetAccountsDTO):
             Must be greater than 0 and less than or equal to 1. Defaults to 0.0.
     """
 
-    bank_credit_liability_account: Optional[
-        Annotated[
-            uuid.UUID | BankCreditLiabilityAccountsDTO, Field(serialization_alias="bank_credit_liability_account_id")
-        ]
-    ]
-    asset_account: Optional[Annotated[uuid.UUID | AssetAccountsDTO, Field(serialization_alias="asset_account_id")]]
+    bank_credit_liability_account: uuid.UUID | BankCreditLiabilityAccountsDTO | None = Field(
+        serialization_alias="bank_credit_liability_account_id"
+    )
+    asset_account: uuid.UUID | AssetAccountsDTO | None = Field(default=None, serialization_alias="asset_account_id")
     financing_share: Annotated[float, Field(le=1, gt=0)] = 0.0
 
     @model_serializer()

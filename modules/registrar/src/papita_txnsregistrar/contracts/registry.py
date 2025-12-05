@@ -13,6 +13,7 @@ from typing import Sequence, Type
 from rapidfuzz import fuzz, process
 
 from papita_txnsmodel.utils.classutils import ClassDiscovery, MetaSingleton
+from papita_txnsregistrar import LIB_NAME
 
 from .meta import PluginMetadata
 from .plugin import PluginContract
@@ -63,8 +64,9 @@ class Registry(metaclass=MetaSingleton):
         Returns:
             The Registry instance for method chaining.
         """
+        modules_ = set(modules) | {LIB_NAME} | {f"{LIB_NAME}_plugins"}
         self._plugins = getattr(self, "_plugins", None) or set()
-        for module_ in set(modules) | {__name__.split(".", maxsplit=1)[0]}:
+        for module_ in modules_:
             if not isinstance(module_, (ModuleType, str)):
                 continue
 
