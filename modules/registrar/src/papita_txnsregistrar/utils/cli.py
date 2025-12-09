@@ -98,3 +98,29 @@ class AbstractCLIUtils(BaseModel, abc.ABC):
                     # Perform additional setup if needed
                     return instance
         """
+
+    @abc.abstractmethod
+    def run(self) -> Self:
+        """Run the CLI utility.
+
+        This abstract method must be implemented by subclasses to provide their own
+        run logic. The method typically performs the main operation of the CLI utility,
+        such as loading data, processing input, or generating output.
+
+        Returns:
+            Self: The CLI utility instance for method chaining.
+        """
+
+    @abc.abstractmethod
+    def stop(self) -> Self:
+        """Shutdown the CLI utility.
+
+        This abstract method must be implemented by subclasses to provide their own
+        shutdown logic. The method typically performs the necessary cleanup operations,
+        such as closing database connections or releasing resources. This method should
+        be called when the CLI utility is no longer needed and should be the last method
+        called before exiting the program.
+
+        Returns:
+            Self: The CLI utility instance for method chaining.
+        """

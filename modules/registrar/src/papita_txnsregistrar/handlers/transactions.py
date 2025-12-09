@@ -1,3 +1,5 @@
+# pylint: disable=access-member-before-definition
+# mypy: disable-error-code="has-type"
 """
 Transaction Data Processing and Matching Module.
 
@@ -32,7 +34,7 @@ from .core import BaseLoadTableHandler
 logger = logging.getLogger(__name__)
 
 
-class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransactionsService], TypesService):
+class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransactionsService, TypesService]):
     """
     Handler for loading and processing identified transactions table data.
 
@@ -92,7 +94,7 @@ class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransact
         return "identified_transactions_table", "identified_transactions"
 
 
-class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
+class TransactionsHandler(AbstractLoadHandler):
     """
     Handler for processing and matching transaction data.
 
@@ -115,6 +117,7 @@ class TransactionsHandler(AbstractLoadHandler[TransactionsService]):
         fuzzy_match_threshold: Threshold value for fuzzy matching (0.7-100), determining match quality.
     """
 
+    service: TransactionsService
     accounts_service: AccountsService
     identified_transactions_service: IdentifiedTransactionsService
     on_multiple_account_matches: OnMultipleMatchesDo = OnMultipleMatchesDo.FAIL

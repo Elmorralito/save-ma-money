@@ -108,10 +108,12 @@ class CoreTableDTO(TableDTO):
     def _normalize_model(self) -> Self:
         self.name = self.name.strip()
         self.description = self.description.strip()
-        self.tags = modelutils.normalize_tags(
-            itertools.chain(
-                [self.tags] if isinstance(self.tags, str) else self.tags,
-                [self.name.lower(), self.classification.value.lower()],
-            )
-        )
+        if isinstance(self.tags, str):
+            tag_sources = [self.tags]
+        else:
+            tag_sources = list(self.tags)
+        tag_sources.append(self.name.lower())
+        if hasattr(self, "classification") and hasattr(self.classification, "value"):
+            tag_sources.append(self.classification.value.lower())
+        self.tags = modelutils.normalize_tags(itertools.chain(tag_sources))
         return self

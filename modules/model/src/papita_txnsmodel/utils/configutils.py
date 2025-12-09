@@ -97,8 +97,7 @@ def configure_logger(
 
     logger = logging.getLogger(logger_name)
     logger.setLevel(level)
-    # Update handler levels to match the logger level
     for handler in logger.handlers:
         handler.setLevel(level)
 
-    logger.debug("Logger '%s' setup with level '%s' from config '%s'", logger_name, level, logger_config)
+    logger.debug("Logger '%s' setup with level '%s'", logger_name, level)

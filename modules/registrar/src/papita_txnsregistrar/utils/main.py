@@ -106,7 +106,7 @@ class MainCLIUtils(AbstractCLIUtils):
             le=100,
             description="Set the threshold for fuzzy matching (0-100). Higher values require closer matches.",
         ),
-    ] = 90
+    ] = 95
     safe_mode: Annotated[
         bool, Field(..., description="Enable safe mode to prevent execution of potentially harmful operations.")
     ] = False
@@ -163,7 +163,7 @@ class MainCLIUtils(AbstractCLIUtils):
                     fuzzy_threshold=self.fuzzy_threshold,
                 )
 
-            logger.debug("Using plugin: %s", self.plugin)
+            logger.info("Using plugin: %s", self.plugin)
             connector_wrapper = next(
                 filter(
                     None,
@@ -182,10 +182,10 @@ class MainCLIUtils(AbstractCLIUtils):
             if not connector_wrapper:
                 raise ValueError("No valid connector wrapper could be found.")
 
-            logger.debug("Using connector wrapper: %s", connector_wrapper)
+            logger.info("Using connector wrapper: %s", connector_wrapper)
             logger.debug("Discovering plugin from modules: %s", self.modules)
             self.connector = connector_wrapper.load().connector
-            logger.debug("Using connector: %s", self.connector)
+            logger.info("Using connector: %s", self.connector)
         except Exception as err:
             logger.exception("Error building model: %s", err)
             raise RuntimeError(f"Error building model: {err}") from err
@@ -234,9 +234,9 @@ class MainCLIUtils(AbstractCLIUtils):
             with contextlib.suppress(AttributeError):
                 modules = [mod.strip() for mods in modules for mod in mods.strip().split(",")]
 
-            logger.debug("Discovering plugin from modules: %s", modules)
+            logger.info("Discovering plugin from modules: %s", modules)
             registry = Registry().discover(*modules, debug=True)
-            logger.debug("Discovered plugins: %s")
+            logger.debug("Discovered plugins: %s", registry.plugins)
             logger.debug("Getting plugin '%s' from registry", plugin_name)
             plugin = registry.get(
                 label=plugin_name,
@@ -245,10 +245,12 @@ class MainCLIUtils(AbstractCLIUtils):
                 fuzz_threshold=kwargs.get("fuzzy_threshold", 90),
             )
             if not plugin or not inspect.isclass(plugin):
-                raise ValueError("The specified plugin could not be found.")
+                raise ValueError(f"The specified plugin '{plugin_name}' could not be found.")
 
             if not issubclass(plugin, AbstractCLIUtils):
-                raise TypeError("The specified plugin does not support CLI utilities.")
+                raise TypeError(
+                    f"The specified plugin '{plugin_name}({plugin.__class__.__name__})' does not support CLI utilities."
+                )
 
             return plugin
         except (ValueError, TypeError) as err:
@@ -295,13 +297,10 @@ class MainCLIUtils(AbstractCLIUtils):
         configure_logger(logger_name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
         configure_logger(logger_name=f"{REGISTRAR_LIB_NAME}_plugins", config=args.log_config, level=level)
         configure_logger(logger_name=MODEL_LIB_NAME, config=args.log_config, level=level)
-        # Ensure the module logger also uses the configured level
-        logger.setLevel(level)
         for handler in logger.handlers:
             handler.setLevel(level)
 
-        logger.info("Logger setup with level '%s'", level)
-        logger.debug("Logger setup with config '%s'", args.log_config)
+        logger.setLevel(level)
 
     @classmethod
     def load(cls, **kwargs) -> Self:
@@ -426,3 +425,21 @@ class MainCLIUtils(AbstractCLIUtils):
         parsed_args, _ = parser.parse_known_args(args=args_)
         cls._setup_logger(args=parsed_args)
         return cls.model_validate(vars(parsed_args))
+
+    # TODO: Implement the run method
+    def run(self) -> Self:
+        self._plugin_instance = self.plugin.load()
+        return self
+
+    # TODO: Implement the stop method
+    def stop(self) -> Self:
+        with contextlib.suppress(Exception):
+            # Call stop() on the plugin instance if it exists
+            if hasattr(self, "_plugin_instance") and self._plugin_instance is not None:
+                if hasattr(self._plugin_instance, "stop"):
+                    self._plugin_instance.stop()
+            if self.connector:
+                self.connector.close()
+
+        logger.debug("CLI utilities stopped successfully.")
+        return self

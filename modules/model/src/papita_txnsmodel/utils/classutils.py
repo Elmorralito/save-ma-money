@@ -197,16 +197,16 @@ class ClassDiscovery:
         except (ImportError, AttributeError):
             return _(mod)
 
-        classes = {}
+        classes_ = {}
         for mod_info in mods:
             if not mod_info:
                 continue
 
             try:
                 if mod_info.ispkg:
-                    classes.update(ClassDiscovery.get_classes(mod_info.name, debug=debug))
+                    classes_.update(ClassDiscovery.get_classes(mod_info.name, debug=debug))
 
-                classes.update(_(importlib.import_module(mod_info.name)))
+                classes_.update(_(importlib.import_module(mod_info.name)))
             except (ImportError, ValueError, SystemExit, TypeError, OSError, SystemError) as ex:
                 if not debug:
                     continue
@@ -217,7 +217,7 @@ class ClassDiscovery:
                 except Exception:
                     _utils_logger.debug(message, mod_info, ex)
 
-        return classes
+        return dict(classes_)
 
     @staticmethod
     def get_children(module: Union[str, ModuleType], *class_types: Type, debug: bool = False) -> List[Type]:

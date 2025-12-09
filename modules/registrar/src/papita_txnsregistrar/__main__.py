@@ -1,7 +1,12 @@
+import contextlib
+import logging
 import sys
 import warnings
 
+from papita_txnsregistrar import LIB_NAME
 from papita_txnsregistrar.utils.main import MainCLIUtils
+
+logger = logging.getLogger(LIB_NAME)
 
 
 def _is_running_as_module() -> bool:
@@ -40,4 +45,33 @@ def main() -> None:
     This function initializes and runs the registrar CLI utility. It loads the
     configuration and executes the main workflow.
     """
-    MainCLIUtils.load().run()
+    cli_utils = None
+    try:
+        logger.debug("Loading CLI utilities...")
+        cli_utils = MainCLIUtils.load()
+        logger.debug("CLI utilities loaded successfully.")
+    except Exception as err:
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.exception("Error loading CLI utilities: %s", err)
+        else:
+            logger.error("Error loading CLI utilities: %s", err)
+
+        logger.error("Please check the configuration and try again.")
+        sys.exit(1)
+
+    try:
+        logger.debug("Running CLI utilities...")
+        cli_utils.run()
+        logger.debug("CLI utilities completed successfully.")
+    except Exception as err:
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.exception("Error running CLI utilities: %s", err)
+        else:
+            logger.error("Error running CLI utilities: %s", err)
+
+        logger.error("Please check the configuration and try again.")
+        sys.exit(1)
+    finally:
+        if cli_utils is not None:
+            with contextlib.suppress(Exception):
+                cli_utils.stop()

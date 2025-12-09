@@ -33,6 +33,7 @@ class PluginMetadata(BaseModel):
     name: str
     version: Annotated[str, Field(min_length=1), validate_python_version]
     feature_tags: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
-    dependencies: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
+    # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
+    # dependencies: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
     description: str = ""
     enabled: bool = True

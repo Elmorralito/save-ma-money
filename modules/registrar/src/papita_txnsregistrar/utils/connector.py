@@ -163,7 +163,9 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
 
     @classmethod
     def _load_env_file(cls, connect_file: str) -> dict | None:
-        content = dotenv.load_dotenv(dotenv_path=connect_file, override=True)
+        content = dotenv.dotenv_values(dotenv_path=connect_file)
+        if not content:
+            return None
         output = {}
         for key, value in content.items():
             if key in cls.MAPPING_VARIABLES:

@@ -1,3 +1,5 @@
+# pylint: disable=access-member-before-definition
+# mypy: disable-error-code="has-type"
 """
 Account Table Handler Module.
 
@@ -40,7 +42,7 @@ from papita_txnsmodel.services.types import TypesService
 from .core import BaseLoadTableHandler
 
 
-class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
+class AccountsTableHandler(BaseLoadTableHandler[AccountsService, ...]):
     """Handler for loading and processing general account table data.
 
     This handler specializes in managing account-related data by leveraging the
@@ -77,7 +79,7 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService]):
         return "accounts", "account_table", "general_accounts"
 
 
-class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService]):
+class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...]):
     """Handler for loading and processing asset account table data.
 
     This specialized handler manages accounts that represent assets, such as
@@ -106,7 +108,7 @@ class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService]):
         return "asset_accounts_table", "asset_accounts", "assets"
 
 
-class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService]):
+class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService, ...]):
     """Handler for loading and processing liability account table data.
 
     This specialized handler manages accounts that represent liabilities, such as
@@ -137,7 +139,7 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
 
 
 class FinancedAssetAccountsTableHandler(
-    BaseLoadTableHandler[FinancedAssetAccountsService, BankCreditLiabilityAccountsService, AssetAccountsService]
+    BaseLoadTableHandler[FinancedAssetAccountsService, (BankCreditLiabilityAccountsService, AssetAccountsService)]
 ):
     """Handler for loading and processing financed asset account table data.
 
@@ -190,10 +192,12 @@ class FinancedAssetAccountsTableHandler(
 class AccountsIndexerTableHandler(
     BaseLoadTableHandler[
         AccountsIndexerService,
-        AccountsService,
-        AssetAccountsService,
-        LiabilityAccountsService,
-        TypesService,
+        (
+            AccountsService,
+            AssetAccountsService,
+            LiabilityAccountsService,
+            TypesService,
+        ),
     ]
 ):
     """Handler for indexing and cross-referencing different types of account data.

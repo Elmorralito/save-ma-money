@@ -73,7 +73,7 @@ class Registry(metaclass=MetaSingleton):
             self._plugins |= {
                 class_
                 for class_ in ClassDiscovery.get_children(module_, PluginContract, debug=debug)
-                if class_ != PluginContract and getattr(class_, "__name__", None)
+                if class_.__class__ != PluginContract and getattr(class_, "__name__", None)
             }
 
         return self
@@ -138,7 +138,9 @@ class Registry(metaclass=MetaSingleton):
                     return plugin
             else:
                 matches = [
-                    match_ for match_, score in (process.extract(label, tags, limit=1) or []) if score >= fuzz_threshold
+                    match_
+                    for match_, score, _ in (process.extract(label, tags, limit=1) or [])
+                    if score >= fuzz_threshold
                 ]
                 if fuzz.ratio(name, label) >= fuzz_threshold or matches:
                     return plugin

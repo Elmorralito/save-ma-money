@@ -30,7 +30,8 @@ logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
         name="excel_loader_plugin",
         version="1.0.0",
         feature_tags=["excel_file_loader", "excel_transactions", "excel_accounts"],
-        dependencies=[ExcelFileLoader, ExcelContractBuilder],
+        # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
+        # dependencies=[ExcelFileLoader, ExcelContractBuilder],
         description="Loading transactions and accounts from Excel files.",
         enabled=True,
     ),
@@ -146,7 +147,8 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
             "cli_excel_transactions",
             "cli_excel_accounts",
         ],
-        dependencies=[ExcelFilePlugin],
+        # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
+        # dependencies=[ExcelFilePlugin],
         description="Loading transactions and accounts from Excel files.",
         enabled=True,
     ),

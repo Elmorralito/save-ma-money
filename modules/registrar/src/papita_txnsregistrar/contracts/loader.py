@@ -10,7 +10,6 @@ Functions:
     plugin: A decorator function for registering plugin implementations.
 """
 
-import functools
 from typing import Any, Callable, Type, TypeVar
 
 from .meta import PluginMetadata
@@ -51,7 +50,6 @@ def plugin(
 
     validated_meta = PluginMetadata.model_validate(meta, strict=True)
 
-    @functools.wraps
     def decorator(cls: P) -> P:
         if not issubclass(cls, PluginContract):
             raise TypeError("Plugin type not supported.")

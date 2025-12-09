@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
-
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 LIBS_INPUT_PATH="${PROJECT_PATH}/modules"
 source "${PROJECT_PATH}/deploy/utils.sh"
@@ -9,7 +8,6 @@ source "${PROJECT_PATH}/deploy/utils.sh"
 MOD="${MOD:-ALL}"
 VERSION="${VERSION:-prerelease}"
 SKIP_INSTALL="${SKIP_INSTALL:-0}"
-
 
 usage() {
     USAGE="$(cat <<EOM
@@ -39,12 +37,10 @@ EOM
     exit 1
 }
 
-
 _get_valid_modules() {
     find "${LIBS_INPUT_PATH}" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null || \
     find "${LIBS_INPUT_PATH}" -mindepth 1 -maxdepth 1 -type d -exec basename {} \;
 }
-
 
 _validate_module() {
     if [ -z "${MOD}" ] || [ ! -d "${LIBS_INPUT_PATH}/${MOD}" ] && [ "${MOD}" != "ALL" ] ; then
@@ -57,7 +53,6 @@ _validate_module() {
     return 0
 }
 
-
 _prep() {
     log "INFO" "Checking Poetry installation..."
     python -m poetry env info >/dev/null 2>&1 || {
@@ -69,7 +64,6 @@ _prep() {
     }
     return 0
 }
-
 
 _lite_dev() {
     log "INFO" "Running lite-dev (poetry lock and install)..."
@@ -87,7 +81,6 @@ _lite_dev() {
     }
     return 0
 }
-
 
 version() {
     log "INFO" "Starting version update process..."
@@ -149,7 +142,6 @@ version() {
 
     log "INFO" "Version update process completed successfully."
 }
-
 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
