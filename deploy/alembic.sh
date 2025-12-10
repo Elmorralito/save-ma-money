@@ -34,13 +34,13 @@ OPTIONS:
                                             (used with version/autogenerate)
     --env-file, -ef FILE                    Specify a custom environment file path
                                             (defaults to docker/database/.env)
-    --duckdb-db-path, -dbp PATH             Specify a DuckDB database path. Supports:
+    --duckdb-path, -dbp PATH                Specify a DuckDB database path. Supports:
                                                 - DuckDB protocol: duckdb:///path or duckdb://path
                                                 - POSIX paths: /absolute/path.db, ./relative.db,
                                                     ../relative.db, or path/to/file.db
                                                 - In-memory: :memory: or duckdb:///:memory:
                                             When provided, operations use DuckDB instead of Docker
-    --duckdb-schema, -ds SCHEMA             Specify the DuckDB schema name
+    --duckdb-schema, -dbs SCHEMA            Specify the DuckDB schema name
                                             (defaults to papita_transactions)
     --alembic-version, --version, -av VER   Specify version to downgrade to
                                             (defaults to head^1)
@@ -54,9 +54,9 @@ EXAMPLES:
     $(basename "$0") version -m "Add users table"
     $(basename "$0") upgrade --docker-local --docker-rm
     $(basename "$0") downgrade -av abc123
-    $(basename "$0") upgrade --duckdb-db-path /path/to/duckdb.db
-    $(basename "$0") upgrade --duckdb-db-path ./data/store.duckdb --duckdb-schema my_schema
-    $(basename "$0") version -m "New migration" --duckdb-db-path duckdb:///path/to/db.db
+    $(basename "$0") upgrade --duckdb-path /path/to/duckdb.db
+    $(basename "$0") upgrade --duckdb-path ./data/store.duckdb --duckdb-schema my_schema
+    $(basename "$0") version -m "New migration" --duckdb-path duckdb:///path/to/db.db
     $(basename "$0") down --docker-frm
 
 PREREQUISITES:
@@ -105,12 +105,17 @@ duckdb_run() {
         usage
     fi
 
-    python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA" || {
+    DUCKDB_DB_PATH=$(python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
+    # shellcheck disable=SC2181
+    if [[ "$?" -ne 0 ]]; then
         log ERROR "Failed to setup DuckDB schema."
         exit 1
-    }
+    fi
+    log "INFO" "Running Alembic with database path: $DUCKDB_DB_PATH"
+    OLD_PWD="$(pwd)"
+    ALEMBIC_COMMAND="${ALEMBIC_COMMAND/\{DUCKDB_DB_PATH\}/$DUCKDB_DB_PATH}"
     run_command 0 "$ALEMBIC_COMMAND" ;
-    cd - || return
+    cd "$OLD_PWD" || return
 }
 
 if ! test -e "$(which "$ALEMBIC_EXEC_COMMAND")" && ! test -e "$(python -m poetry env info -p)"; then
@@ -154,11 +159,11 @@ while [[ "$#" -gt 0 ]]; do
             RUN_FLAG="docker_run"
             shift 1
             ;;
-        --duckdb-db-path | -dbp)
+        --duckdb-path | -dbp)
             DUCKDB_DB_PATH="$2"
             shift 2
             ;;
-        --duckdb-schema | -ds)
+        --duckdb-schema | -dbs)
             DUCKDB_SCHEMA="$2"
             shift 2
             ;;
@@ -201,21 +206,21 @@ source "${ENV_FILE}" || {
 case "$ACTION" in
     version | autogenerate)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         fi
         ;;
     upgrade)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" upgrade head"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade head"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade head"
         fi
         ;;
     downgrade)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         fi

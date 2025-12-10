@@ -16,6 +16,7 @@ Key Functions:
 """
 
 import argparse
+import logging
 import re
 import sys
 from pathlib import Path
@@ -40,6 +41,15 @@ DUCKDB_URL_PATTERN = re.compile(
     r"(?:/|\./|\.\./)?[^:]+\.(?:db|duckdb)"  # POSIX paths (absolute, relative, or plain)
     r")$",
     re.IGNORECASE,
+)
+
+
+# Configure logging to write to stderr
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s :: %(filename)s :: %(levelname)s :: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    stream=sys.stderr,
 )
 
 
@@ -150,14 +160,14 @@ def parse_db_path(db_path: str) -> Path:
         raise ValueError("In-memory database URLs are not supported. Please provide a file path.")
 
     file_path = Path(extract_file_path(db_path))
-    print(f"Database File path: {file_path}")
+    logging.info("Database File path: %s", file_path)
     if file_path.exists() and file_path.is_file():
         return file_path
 
     if file_path.is_dir():
         file_path = file_path.joinpath("store.duckdb")
 
-    print(f"Creating database folder at: {file_path.parent}")
+    logging.info("Creating database folder at: %s", file_path.parent)
     file_path.parent.mkdir(parents=True, exist_ok=True)
     return file_path
 
@@ -203,14 +213,14 @@ def setup_schema(db_path: Path, schema: str):
         already exist.
     """
     uri = db_path.absolute().as_posix()
-    print(f"Connecting to database: {uri}")
+    logging.info("Connecting to database: %s", uri)
     with duckdb.connect(uri) as conn:
-        print(f"Setting up schema: {schema}")
+        logging.info("Setting up schema: %s", schema)
         conn.execute(f"CREATE SCHEMA IF NOT EXISTS {schema};")
-        print(f"Schema {schema} setup successfully")
+        logging.info("Schema %s setup successfully", schema)
         conn.commit()
 
-    print(f"Schema {schema} setup successfully in {db_path}")
+    logging.info("Schema %s setup successfully in %s", schema, db_path)
 
 
 def parse_args():
@@ -251,11 +261,12 @@ def main():
         db_path = parse_db_path(args.duckdb_db_path)
         schema = parse_schema(args.schema)
         setup_schema(db_path, schema)
+        print(f"duckdb:///{db_path.absolute().as_posix()}")  # Output valid DuckDB URL
     except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logging.error("Error: %s", e)
         sys.exit(2)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        logging.error("Error: %s", e)
         sys.exit(1)
     else:
         sys.exit(0)
