@@ -1,0 +1,59 @@
+---
+description: Alembic migration patterns and database schema management
+globs:
+  - "**/alembic/**/*.py"
+  - "**/alembic.ini"
+  - "**/*migration*.py"
+alwaysApply: false
+---
+
+NOTE: This rule file was generated or updated by the `/rules-architect` command.
+
+## Alembic Migration Guidelines
+
+### Migration File Naming
+
+- Use the configured template: `%%(year)d_%%(month).2d_%%(day).2d_%%(hour).2d%%(minute).2d-%%(rev)s_%%(slug)s`
+- Example: `2025_10_14_2211-93420bed0a90_seed_version.py`
+- Always include a descriptive slug/message for the migration.
+
+### Migration Structure
+
+- Use `op.execute()` for raw SQL when needed.
+- Use `op.create_table()`, `op.drop_table()`, `op.add_column()`, etc. for schema changes.
+- Always create the schema if it doesn't exist: `op.execute(sa.schema.CreateSchema("papita_transactions", if_not_exists=True))`
+- Use `upgrade()` and `downgrade()` functions for reversible migrations.
+
+### Schema Management
+
+- All tables must be in the `papita_transactions` schema.
+- Use `SCHEMA_NAME = "papita_transactions"` constant from `papita_txnsmodel.model.base`.
+- Check for schema existence before operations when needed.
+
+### Database Support
+
+- Support both PostgreSQL and DuckDB.
+- Use `AlembicDuckDBImpl` for DuckDB-specific operations.
+- Handle dialect-specific differences in migration scripts.
+
+### Environment Configuration
+
+- Load database URL from environment variables or `.env` file.
+- Support `DB_URL` or `DATABASE_URL` environment variables.
+- Fall back to constructing URL from `DB_DRIVER`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`.
+- Support `--duckdbPath` and `--envPath` command-line arguments for Alembic.
+
+### Migration Best Practices
+
+- Always test migrations in both directions (upgrade and downgrade).
+- Use autogenerate carefully; review generated migrations before committing.
+- Include data migrations separately from schema migrations when needed.
+- Document breaking changes in migration docstrings.
+- Use transactions for data migrations to ensure atomicity.
+
+### Running Migrations
+
+- Use the `deploy/alembic.sh` script for migration operations.
+- Support Docker-based database environments.
+- Use `alembic upgrade head` to apply migrations.
+- Use `alembic downgrade -1` to roll back one migration.

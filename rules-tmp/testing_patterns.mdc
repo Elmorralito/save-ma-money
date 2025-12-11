@@ -1,0 +1,88 @@
+---
+description: Testing patterns and conventions for pytest
+globs:
+  - "**/tests/**/*.py"
+  - "**/test_*.py"
+  - "**/*_test.py"
+alwaysApply: false
+---
+
+NOTE: This rule file was generated or updated by the `/rules-architect` command.
+
+## Testing Patterns
+
+### Test Structure
+
+- Place tests in `tests/` directories within each module.
+- Use `conftest.py` for shared fixtures and configuration.
+- Name test files: `test_*.py` or `*_test.py`.
+- Name test functions: `test_*`.
+
+### Pytest Configuration
+
+- Use `pytest` with coverage reporting.
+- Coverage paths: `./modules/model/tests`, `./modules/registrar/tests`, `./modules/api/tests`.
+- Coverage report: XML format to `docs/coverage.xml`.
+- Import mode: `importlib`.
+- Test paths: `./modules/api/tests`, `./modules/model/tests`, `./modules/registrar/tests`.
+
+### Test Organization
+
+- Group related tests in classes when appropriate.
+- Use descriptive test names that explain what is being tested.
+- Use fixtures for common setup and teardown.
+- Use `@pytest.fixture` for reusable test data and mocks.
+
+### Coverage Requirements
+
+- Exclude from coverage:
+  - `def __repr__`
+  - `if self.debug`
+  - `raise AssertionError`
+  - `raise NotImplementedError`
+  - `if 0:`
+  - `if __name__ == .__main__.:`
+  - `@(abc\.)?abstractmethod`
+- Branch coverage: enabled.
+- Ignore errors: true (for gradual coverage improvement).
+
+### Test Data
+
+- Use factories or fixtures for creating test data.
+- Use `pytest.fixture` for database connections and sessions.
+- Clean up test data after tests (use fixtures with `yield` for teardown).
+- Use realistic but minimal test data.
+
+### Mocking and Stubbing
+
+- Mock external dependencies (database, APIs, file system).
+- Use `unittest.mock` or `pytest-mock` for mocking.
+- Mock database sessions when testing service/repository logic in isolation.
+- Use dependency injection to make code testable.
+
+### Assertions
+
+- Use `assert` statements with descriptive messages.
+- Use `pytest.raises()` for testing exceptions.
+- Use `pytest.approx()` for floating-point comparisons.
+- Use `pytest.parametrize` for testing multiple scenarios.
+
+### Integration Tests
+
+- Test the full stack when possible (Model → Repository → Service → Handler).
+- Use test databases (separate from development/production).
+- Clean up test data between tests.
+- Use transactions that roll back after each test.
+
+### Unit Tests
+
+- Test individual components in isolation.
+- Mock dependencies to focus on the unit under test.
+- Test edge cases and error conditions.
+- Test both happy paths and failure scenarios.
+
+### Test Documentation
+
+- Include docstrings for complex test functions.
+- Explain the purpose of fixtures in their docstrings.
+- Document test data requirements and assumptions.

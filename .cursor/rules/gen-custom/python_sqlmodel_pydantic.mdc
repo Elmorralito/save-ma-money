@@ -1,0 +1,167 @@
+---
+description: Python patterns for SQLModel, Pydantic v2, and layered architecture
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+
+NOTE: This rule file was generated or updated by the `/rules-architect` command.
+
+You are an expert in Python, SQLModel, Pydantic v2, and layered architecture patterns for financial transaction systems.
+
+## Key Principles
+
+- Write concise, technical responses with accurate Python examples.
+- Use functional, declarative programming; prefer composition over inheritance where possible.
+- Use descriptive variable names with auxiliary verbs (e.g., `is_active`, `has_deleted_at`, `should_validate`).
+- Use lowercase with underscores for directories and files (e.g., `access/accounts/repository.py`).
+- Follow the layered architecture: Model → Access (DTO/Repository) → Service → Handler.
+- All database models must inherit from `BaseSQLModel` with schema `papita_transactions`.
+- All DTOs must inherit from `TableDTO` or `CoreTableDTO`.
+- All repositories must inherit from `BaseRepository`.
+- All services must inherit from `BaseService`.
+
+## Python/SQLModel/Pydantic Patterns
+
+### Model Layer (`model/`)
+
+- Use SQLModel for database models, inheriting from `BaseSQLModel`.
+- Define models with type hints for all fields.
+- Use `Field()` for field configuration (defaults, constraints, etc.).
+- Include `active: bool` and `deleted_at: datetime | None` fields (inherited from `BaseSQLModel`).
+- Set `__table_args__ = {"schema": SCHEMA_NAME}` (inherited from `BaseSQLModel`).
+- Use `table=True` for actual database tables, `table=False` for base classes.
+
+```python
+from datetime import datetime
+from sqlmodel import Field, SQLModel
+from papita_txnsmodel.model.base import BaseSQLModel, SCHEMA_NAME
+
+class Account(BaseSQLModel, table=True):
+    __tablename__ = "accounts"
+    name: str = Field(max_length=255)
+    balance: float = Field(default=0.0)
+```
+
+### Access Layer (`access/`)
+
+#### DTOs (`dto.py`)
+
+- Inherit from `TableDTO` or `CoreTableDTO`.
+- Define `__dao_type__` class attribute pointing to the SQLModel class.
+- Use Pydantic v2 `BaseModel` with `model_config = ConfigDict(...)`.
+- Implement `from_dao()` class method for DAO → DTO conversion.
+- Implement `to_dao()` instance method for DTO → DAO conversion.
+- Use `standardized_dataframe()` class method for DataFrame standardization.
+- Use `model_validator` for custom validation logic.
+- Use `Field()` with validators for field-level validation.
+
+```python
+from uuid import UUID
+from pydantic import BaseModel, ConfigDict, Field
+from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.model.accounts import Account
+
+class AccountDTO(TableDTO):
+    __dao_type__ = Account
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    name: str = Field(min_length=1, max_length=255)
+    balance: float = Field(ge=0.0)
+```
+
+#### Repositories (`repository.py`)
+
+- Inherit from `BaseRepository`.
+- Use `@SQLDatabaseConnector.connect` decorator for database operations.
+- Accept `_db_session: Session` as a keyword argument (provided by decorator).
+- Return `pd.DataFrame` for query operations.
+- Use `get_records()`, `get_record_by_id()`, `upsert_record()`, `upsert_records()` from base class.
+- Implement soft delete by default; use `hard_delete_records()` only when necessary.
+- Use `OnUpsertConflictDo` enum for conflict resolution strategies.
+
+```python
+from sqlmodel import Session
+from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.access.accounts.dto import AccountDTO
+
+class AccountRepository(BaseRepository):
+    __expected_dto__ = AccountDTO
+
+    @SQLDatabaseConnector.connect
+    def get_active_accounts(self, _db_session: Session, **kwargs) -> pd.DataFrame:
+        dao = AccountDTO.__dao_type__
+        return self.get_records(dao.active == True, dto_type=AccountDTO, **kwargs)
+```
+
+### Service Layer (`services/`)
+
+- Inherit from `BaseService` (which is a Pydantic `BaseModel`).
+- Define `dto_type` and `repository_type` class attributes.
+- Use `model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")`.
+- Implement CRUD operations: `create()`, `get()`, `get_or_create()`, `get_records()`, `delete()`, `upsert_records()`.
+- Use `check_expected_dto_type()` to validate DTO types.
+- Handle both DTO instances and dictionaries in method parameters.
+- Use `close()` method to release database connections.
+
+```python
+from papita_txnsmodel.services.base import BaseService
+from papita_txnsmodel.access.accounts.dto import AccountDTO
+from papita_txnsmodel.access.accounts.repository import AccountRepository
+
+class AccountService(BaseService):
+    dto_type = AccountDTO
+    repository_type = AccountRepository
+    missing_upsertions_tol: float = 0.01
+    on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING
+```
+
+### Handler Layer (`handlers/`)
+
+- Inherit from `AbstractLoadHandler` or `BaseLoadTableHandler`.
+- Use dependency injection for service dependencies.
+- Implement `load()` and `dump()` methods for data processing.
+- Use `build_record()` and `build_records()` for dependency resolution.
+- Support method chaining (return `Self`).
+
+## Type Hints and Validation
+
+- Use type hints for all function signatures.
+- Use `Type[TableDTO]` for DTO class types, `TableDTO` for instances.
+- Use `pd.DataFrame` for DataFrame returns.
+- Use `uuid.UUID` for ID fields.
+- Use `datetime` from `datetime` module (not `from datetime import datetime as base_datetime`).
+- Use Pydantic v2 validators: `model_validator`, `field_validator`, `BeforeValidator`, `WrapValidator`.
+- Use `Annotated` types for complex validation.
+
+## Error Handling
+
+- Use guard clauses at the beginning of functions.
+- Use early returns for invalid inputs.
+- Log errors with structured context using `logger.exception()` or `logger.error()`.
+- Raise custom exceptions with descriptive messages.
+- Use `_db_session.rollback()` on exceptions, `_db_session.commit()` on success.
+
+## Database Operations
+
+- Always use the `@SQLDatabaseConnector.connect` decorator for database operations.
+- Never manually create database sessions; use the decorator-provided `_db_session`.
+- Use soft deletes by default (`soft_delete_records()`).
+- Use upsert operations for idempotent data loading.
+- Support both PostgreSQL and DuckDB dialects.
+- Use `SCHEMA_NAME = "papita_transactions"` for all database operations.
+
+## Data Conversion
+
+- Use `model_validate()` for Pydantic model creation from dicts/DAOs.
+- Use `model_dump(mode="python")` for serialization.
+- Use `standardize_dataframe()` utility for DataFrame normalization.
+- Convert between DTOs and DAOs using `from_dao()` and `to_dao()` methods.
+
+## Documentation
+
+- Include comprehensive docstrings for all classes and methods.
+- Use Google-style docstrings with Args, Returns, Raises sections.
+- Document type hints in docstrings when using complex types.
+- Include examples in docstrings for complex operations.
