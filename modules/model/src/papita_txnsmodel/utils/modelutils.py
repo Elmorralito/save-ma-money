@@ -11,7 +11,7 @@ date parsing and validation, and interest rate normalization. It contains:
 import inspect
 import re
 from datetime import date, datetime
-from typing import Callable, Iterator, Type
+from typing import Callable, Iterable, Type
 
 import numpy as np
 import pandas as pd
@@ -22,7 +22,7 @@ from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
 
 from .classutils import ClassDiscovery
 
-ALLOWED_DELIMITERS = (",", "|", ";", ":", "\n", "\t")
+ALLOWED_DELIMITERS = (",", "|", ";", ":", "\n")
 ALLOWED_TRUE_BOOL_VALUES = ("true", "yes", "y", "1", "on", "s", 1, True)
 ALLOWED_FALSE_BOOL_VALUES = ("false", "no", "n", "0", "off", 0, False)
 
@@ -44,20 +44,21 @@ def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler
     raise ValueError(f"'{value}' is not a valid boolean value.")
 
 
-def normalize_tags(value: Iterator[str] | str) -> Iterator[str]:
+def normalize_tags(value: Iterable[str] | str) -> Iterable[str]:
     if isinstance(value, str):
         value_ = [value]
         for delimiter in ALLOWED_DELIMITERS:
             if delimiter in value:
                 value_ = value.split(delimiter)
                 break
+    else:
+        value_ = list(value)
 
-    tags = list({str.lower(tag).strip() for tag in value_ if re.match(r"^([A-Za-z]|\s)+$", tag.strip() or "")})
-
+    tags = list({str.lower(tag).strip() for tag in value_ if re.match(r"^([A-Za-z0-9-_]|\s)+$", tag.strip() or "")})
     if not tags:
         raise ValueError("No valid tags found.")
 
-    return iter(tags)
+    return tags
 
 
 def make_class_validator(
@@ -211,4 +212,4 @@ def validate_interest_rate(value: float, handler: ValidatorFunctionWrapHandler) 
     if value_ >= 1.0:
         value_ = value_ / 100
 
-    return float(np.around(value_))
+    return float(np.around(value_, decimals=8))

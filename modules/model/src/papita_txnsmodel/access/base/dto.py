@@ -9,10 +9,9 @@ Classes:
     CoreTableDTO: Extended base class with additional common fields for core entities.
 """
 
-import itertools
 import uuid
 from datetime import datetime
-from typing import Annotated, Iterator, Self
+from typing import Annotated, Iterable, Self
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, WrapValidator, model_validator
@@ -59,7 +58,14 @@ class TableDTO(BaseModel):
         if not isinstance(obj, cls.__dao_type__):
             raise TypeError(f"Unsupported DAO type: {type(obj)}")
 
-        return cls.model_validate(obj, strict=True)
+        data = {
+            field.alias if field.alias else field_name: getattr(
+                obj, field_name, getattr(obj, field.alias, None) if field.alias else None
+            )
+            for field_name, field in cls.model_fields.items()
+            if field_name in obj.model_fields_set or field.alias in obj.model_fields_set
+        }
+        return cls.model_validate(data)
 
     @classmethod
     def standardized_dataframe(
@@ -102,7 +108,7 @@ class CoreTableDTO(TableDTO):
 
     name: Annotated[str, Field(min_length=3)]
     description: Annotated[str, Field(min_length=3)]
-    tags: Annotated[Iterator[str], Field(min_items=1)] | Annotated[str, Field(min_length=3)]
+    tags: Annotated[Iterable[str], Field(min_length=1)] | Annotated[str, Field(min_length=3)]
 
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:
@@ -112,8 +118,10 @@ class CoreTableDTO(TableDTO):
             tag_sources = [self.tags]
         else:
             tag_sources = list(self.tags)
+
         tag_sources.append(self.name.lower())
         if hasattr(self, "classification") and hasattr(self.classification, "value"):
             tag_sources.append(self.classification.value.lower())
-        self.tags = modelutils.normalize_tags(itertools.chain(tag_sources))
+
+        self.tags = list(modelutils.normalize_tags(tag_sources))
         return self

@@ -90,7 +90,7 @@ class FallbackAction(Enum):
             logger: Optional - Custom logger instance. Default module's logger instance.
             **kwargs: Additional context for the error.
         """
-        logger_ = self.get_logger(**kwargs)
+        logger_ = self.get_logger(logger=logger, **kwargs)
         if isinstance(message, Exception):
             logger_.exception(message, stack_info=True)
             return
@@ -335,7 +335,7 @@ class ClassDiscovery:
 
         try:
             return importlib.import_module(module_path)
-        except OSError:
+        except (OSError, ModuleNotFoundError):
             return None
 
     @staticmethod
@@ -350,7 +350,8 @@ class ClassDiscovery:
             tuple: A tuple containing the module path and class name.
         """
         if inspect.isclass(class_name):
-            class_name = f"{inspect.getmodule(class_name).__name__}.{class_name.__name__}"
+            module_name_ = getattr(inspect.getmodule(class_name), "__name__", getattr(class_name, "__module__", ""))
+            class_name = f"{module_name_}.{class_name.__name__}" if module_name_ else class_name.__name__
 
         decomposed = class_name.split(".")
         if len(decomposed) == 1:

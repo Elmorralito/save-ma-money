@@ -112,7 +112,7 @@ class SQLDatabaseConnector(AbstractConnector):
             connection = Path(os.getcwd()).joinpath(".tmp").as_posix()
 
         match connection:
-            case db.URL():
+            case db.URL:
                 url = connection
             case dict():
                 try:

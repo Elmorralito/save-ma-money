@@ -84,7 +84,10 @@ def convert_dto_obj_on_serialize(
     """
     data = obj.model_dump()
     field = getattr(obj, id_field)
-    data[target_field] = getattr(field, id_field_attr_name) if isinstance(field, expected_intput_field_type) else field
+    if isinstance(field, expected_intput_field_type) and hasattr(field, id_field_attr_name):
+        data[target_field] = getattr(field, id_field_attr_name)
+    else:
+        data[target_field] = field
     if not isinstance(data[target_field], expected_output_field_type):
         raise TypeError(
             f"The output type of the field {id_field} was not expected {expected_output_field_type.__name__}"

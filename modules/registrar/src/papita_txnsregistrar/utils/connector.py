@@ -47,6 +47,12 @@ class BaseCLIConnectorWrapper(AbstractCLIUtils):
         """
         raise NotImplementedError("This method should be implemented in subclasses.")
 
+    def run(self) -> Self:
+        return self
+
+    def stop(self) -> Self:
+        return self
+
 
 class CLIURLConnectorWrapper(BaseCLIConnectorWrapper):
     """
