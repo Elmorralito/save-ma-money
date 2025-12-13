@@ -27,12 +27,19 @@ logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
 
 @plugin(
     meta=PluginMetadata(
-        name="excel_loader_plugin",
+        name="Excel File Loader Plugin",
         version="1.0.0",
         feature_tags=["excel_file_loader", "excel_transactions", "excel_accounts"],
         # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
         # dependencies=[ExcelFileLoader, ExcelContractBuilder],
-        description="Loading transactions and accounts from Excel files.",
+        description=(
+            "Plugin for loading and processing transactions and accounts from Excel files. "
+            "This plugin integrates the Excel file loader with the transaction tracking system, "
+            "providing capabilities to load and process transaction data from Excel files. "
+            "It utilizes the ExcelFileLoader for data loading and a specified handler for "
+            "transaction processing. The plugin acts as a bridge between Excel data sources "
+            "and the transaction registration system."
+        ),
         enabled=True,
     ),
 )
@@ -139,7 +146,7 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
 
 @plugin(
     meta=PluginMetadata(
-        name="cli_excel_loader_plugin",
+        name="CLI Excel File Loader Plugin",
         version="1.0.0",
         feature_tags=[
             "cli_excel_loader_plugin",
@@ -149,7 +156,13 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         ],
         # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
         # dependencies=[ExcelFilePlugin],
-        description="Loading transactions and accounts from Excel files.",
+        description=(
+            "CLI-enabled plugin for loading and processing transactions and accounts from Excel files. "
+            "This plugin provides a command-line interface for the Excel file loader, allowing users to "
+            "specify Excel file paths and sheet names via command-line arguments. It automatically "
+            "parses Excel spreadsheets, extracts transaction and account data, and integrates with the "
+            "transaction registration system for data processing and storage."
+        ),
         enabled=True,
     ),
 )

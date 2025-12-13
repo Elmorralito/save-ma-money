@@ -21,7 +21,7 @@ import importlib.resources as importlib_resources
 import inspect
 import logging
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import Action, ArgumentParser, Namespace
 from typing import Annotated, List, Self, Type
 
 from pydantic import Field, model_validator
@@ -41,6 +41,141 @@ from papita_txnsregistrar.utils.cli import AbstractCLIUtils
 DEFAULT_LOGGER_CONFIG_PATH = str(importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml"))
 
 logger = logging.getLogger(REGISTRAR_LIB_NAME)
+
+
+class HelpAction(Action):
+    """Custom argparse action that displays comprehensive help including plugin-specific help.
+
+    This action extends the standard argparse help action to include plugin-specific help
+    information when a plugin is provided as an argument. It first displays the standard
+    CLI help, then attempts to load the specified plugin and display its help information.
+
+    Attributes:
+        option_strings: List of command-line option strings that trigger this action.
+        dest: The name of the attribute to hold the created object(s).
+        default: The value produced if the argument is absent.
+        type: The type to which the command-line argument should be converted.
+        choices: A container of the allowable values for the argument.
+        required: Whether the action option must be provided.
+        help: A brief description of what the option does.
+        metavar: A name for the argument in usage messages.
+    """
+
+    def __init__(self, option_strings, dest="help", default=None, help=None):  # pylint: disable=redefined-builtin
+        """Initialize the custom help action.
+
+        Args:
+            option_strings: List of command-line option strings (e.g., ['-h', '--help']).
+            dest: The name of the attribute to hold the created object(s).
+            default: The value produced if the argument is absent.
+            help: A brief description of what the option does.
+        """
+        super().__init__(option_strings=option_strings, dest=dest, default=default, nargs=0, help=help)
+
+    def __call__(
+        self, parser, namespace, values, option_string=None
+    ):  # pylint: disable=too-many-branches,too-many-locals
+        """Execute the help action.
+
+        This method is called when the help option is encountered. It displays the standard
+        argparse help first, then attempts to load and display plugin-specific help if a
+        plugin argument is provided.
+
+        Args:
+            parser: The ArgumentParser object which contains this action.
+            namespace: The namespace object that will be returned by parse_args().
+            values: The associated command-line arguments (should be None for help action).
+            option_string: The option string that was used to invoke this action.
+        """
+        # Display standard help first
+        parser.print_help()
+
+        # Extract plugin name from command-line arguments
+        # Since help is triggered early, we need to parse args manually
+        plugin_name = None
+        modules = ["papita_txnsregistrar_plugins"]
+        try:
+            # Get the original args - argparse stores them in parser._argv if available
+            # Otherwise fall back to sys.argv
+            args_to_parse = getattr(parser, "_argv", None)
+            if args_to_parse is None:
+                # Try to get from sys.argv, but we need to be careful about the script name
+                args_to_parse = sys.argv[1:] if len(sys.argv) > 1 else []
+
+            # Remove help flags to avoid recursion
+            args_to_parse = [arg for arg in args_to_parse if arg not in ("-h", "--help")]
+
+            # Try to extract plugin name and modules from command line
+            if args_to_parse:
+                # Parse positional arguments: script and plugin
+                # Skip known option flags and their values
+                positional_args = []
+                skip_next = False
+                for i, arg in enumerate(args_to_parse):
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if arg.startswith("-"):
+                        # Check if this option takes a value
+                        if arg in ["-m", "--module", "--mod"] and i + 1 < len(args_to_parse):
+                            module_arg = args_to_parse[i + 1]
+                            modules = [m.strip() for m in module_arg.split(",")]
+                            skip_next = True
+                        continue
+                    positional_args.append(arg)
+
+                # First positional should be script, second should be plugin
+                if len(positional_args) > 1:
+                    plugin_name = positional_args[1]
+                elif len(positional_args) > 0:
+                    # If only one positional, it might be the plugin (script might be implicit)
+                    potential_plugin = positional_args[0]
+                    if potential_plugin and not potential_plugin.startswith("-"):
+                        plugin_name = potential_plugin
+        except Exception as err:
+            logger.debug("Error extracting plugin name from args: %s", err)
+            plugin_name = None
+
+        # If we have a plugin name, try to load and show its help
+        if plugin_name:
+            try:
+                # Create a minimal instance to load plugin and show help
+                # Use minimal defaults to avoid requiring all arguments
+                try:
+                    connector_wrapper = ".".join(
+                        filter(
+                            None, ClassDiscovery.decompose_class(connector_wrapper_module.CLIDefaultConnectorWrapper)
+                        )
+                    )
+
+                    instance = MainCLIUtils.model_construct(
+                        plugin=plugin_name,
+                        modules=modules,
+                        connector_wrapper=connector_wrapper,
+                        case_sensitive=True,
+                        strict_exact=False,
+                        fuzzy_threshold=95,
+                        safe_mode=False,
+                    )
+                    # Build model to load plugin
+                    instance._build_model()
+                    # Show plugin help
+                    instance.show_plugin_help()
+                except Exception as err:
+                    logger.debug("Could not load plugin for help: %s", err)
+                    print(f"\nNote: Could not load plugin '{plugin_name}' for help display.")
+                    print(f"Error: {err}\n")
+                    print("This may be due to:")
+                    print("  - Plugin not found in the specified modules")
+                    print("  - Plugin requires additional configuration")
+                    print("  - Database connection issues\n")
+
+            except Exception as err:
+                logger.debug("Error showing plugin help: %s", err)
+                print(f"\nNote: Error displaying plugin help: {err}\n")
+
+        # Exit after showing help
+        parser.exit()
 
 
 class MainCLIUtils(AbstractCLIUtils):
@@ -235,6 +370,7 @@ class MainCLIUtils(AbstractCLIUtils):
                 modules = [mod.strip() for mods in modules for mod in mods.strip().split(",")]
 
             logger.info("Discovering plugin from modules: %s", modules)
+            # TODO: Fix issue where plugin is intermitently not registered in the registry and not loaded.
             registry = Registry().discover(*modules, debug=True)
             logger.debug("Discovered plugins: %s", registry.plugins)
             logger.debug("Getting plugin '%s' from registry", plugin_name)
@@ -338,7 +474,7 @@ class MainCLIUtils(AbstractCLIUtils):
             The plugin and connector are resolved during model validation, which occurs
             when model_validate is called with the parsed arguments.
         """
-        parser = ArgumentParser(epilog=cls.__doc__)
+        parser = ArgumentParser(add_help=False)
         parser.add_argument(
             "script",
             help="The script to run. Not used at all",
@@ -408,6 +544,13 @@ class MainCLIUtils(AbstractCLIUtils):
                 f"by Papita Software under MIT License"
             ),
         )
+        # Replace default help action with custom one that shows plugin help
+        parser.add_argument(
+            "-h",
+            "--help",
+            action=HelpAction,
+            help="Show this help message and exit. If a plugin is specified, also displays plugin-specific help.",
+        )
         parser.add_argument(
             "-v", "--verbose", action="count", default=0, help="Increase output verbosity (e.g., -v, -vv, -vvv)"
         )
@@ -425,6 +568,64 @@ class MainCLIUtils(AbstractCLIUtils):
         parsed_args, _ = parser.parse_known_args(args=args_)
         cls._setup_logger(args=parsed_args)
         return cls.model_validate(vars(parsed_args))
+
+    def show_plugin_help(self) -> Self:
+        """Display comprehensive help information for the loaded plugin.
+
+        This method displays formatted help information about the currently loaded plugin,
+        including its metadata (name, version, description, feature tags), class documentation,
+        and any additional information available from the plugin's metadata.
+
+        The help is formatted in a user-friendly way, showing:
+        - Plugin name and version
+        - Description
+        - Feature tags
+        - Enabled status
+
+        Returns:
+            Self: Returns self for method chaining.
+
+        Note:
+            This method should be called after the plugin has been loaded (i.e., after
+            `load()` or `run()` has been called). If the plugin is not loaded, it will
+            attempt to use the plugin class directly.
+        """
+        try:
+            plugin_class = self.plugin
+            if hasattr(self, "_plugin_instance") and self._plugin_instance is not None:
+                plugin_class = type(self._plugin_instance)
+
+            if hasattr(plugin_class, "meta"):
+                metadata = plugin_class.meta()
+            else:
+                logger.warning("Plugin does not have a meta() method. Limited help available.")
+                metadata = None
+
+            if metadata:
+                print(f"\n\nPlugin Name: {metadata.name}")
+                print(f"Version: {metadata.version}")
+                print(f"Enabled: {metadata.enabled}")
+
+                if metadata.description:
+                    print("\nDescription:")
+                    print(metadata.description)
+
+                if metadata.feature_tags:
+                    print("\nFeature Tags:")
+                    for tag in metadata.feature_tags:
+                        print(f"  - {tag}")
+
+            print(f"\nPlugin Class: {'.'.join(filter(None, ClassDiscovery.decompose_class(plugin_class)))}")
+            if metadata.enabled:
+                plugin_class.load()
+            else:
+                print("\nPlugin is not enabled. Please enable it in the configuration.")
+
+        except Exception as err:
+            logger.exception("Error displaying plugin help: %s", err)
+            print(f"\nError displaying plugin help: {err}\n")
+
+        return self
 
     # TODO: Implement the run method
     def run(self) -> Self:
