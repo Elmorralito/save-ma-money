@@ -629,10 +629,10 @@ class MainCLIUtils(AbstractCLIUtils):
         plugin_name = self.plugin.meta().name
         if self.safe_mode:
             logger.info("Safely building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.safe_load()
+            self._plugin_instance = self.plugin.safe_load(connector=self.connector)
         else:
             logger.info("Building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.load()
+            self._plugin_instance = self.plugin.load(connector=self.connector)
 
         logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
         logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
