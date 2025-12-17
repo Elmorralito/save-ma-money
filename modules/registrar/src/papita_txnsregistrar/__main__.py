@@ -3,8 +3,8 @@ import logging
 import sys
 import warnings
 
-from papita_txnsregistrar import LIB_NAME
-from papita_txnsregistrar.utils.main import MainCLIUtils
+from papita_txnsregistrar import LIB_NAME, __configs__
+from papita_txnsregistrar.utils.cli.main import MainCLIUtils
 
 logger = logging.getLogger(LIB_NAME)
 
@@ -30,9 +30,9 @@ def _is_running_as_module() -> bool:
 
 
 if _is_running_as_module():
+    command = next(iter(__configs__.get("tool", {}).get("poetry", {}).get("scripts", {})), "papita-txnsregistrar")
     warnings.warn(
-        "Running 'python -m papita_txnsregistrar' is not recommended. "
-        "Please use the command 'papita-txnsregistrar' instead.",
+        "Running 'python -m papita_txnsregistrar' is not recommended. " f"Please use the command '{command}' instead.",
         UserWarning,
         stacklevel=2,
     )

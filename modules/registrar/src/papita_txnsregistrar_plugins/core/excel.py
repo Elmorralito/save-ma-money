@@ -1,14 +1,24 @@
-"""
-Excel file plugin module for transaction registration.
-This module provides a plugin for loading and processing transaction data from Excel files.
+"""Excel file plugin module for transaction registration.
+
+This module provides plugins for loading and processing transaction data from Excel files.
 It integrates the Excel file loader with the transaction tracking system, enabling the
 loading, processing, and registration of transaction data from Excel spreadsheets.
+
+The module defines two main plugin classes:
+    - ExcelFilePlugin: Base plugin for programmatic Excel file processing that integrates
+      the ExcelFileLoader with the transaction registration system.
+    - CLIExcelFilePlugin: CLI-enabled plugin that extends ExcelFilePlugin with
+      command-line argument parsing capabilities, allowing users to specify Excel file
+      paths and sheet names via command-line arguments.
+
+Both plugins utilize the ExcelFileLoader for data loading and ExcelContractBuilder for
+managing registered handlers that process the loaded data. The plugins act as bridges
+between Excel data sources and the transaction registration system, automatically
+distributing loaded data to appropriate handlers for processing and storage.
 """
 
 import logging
 import sys
-
-# from typing import Dict, Self, Tuple, Type
 from argparse import ArgumentError, ArgumentParser
 from typing import Self
 
@@ -20,7 +30,7 @@ from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
-from papita_txnsregistrar.utils.cli import AbstractCLIUtils
+from papita_txnsregistrar.utils.cli.abstract import AbstractCLIUtils
 
 logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
 
@@ -65,19 +75,28 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
     def start(self, **kwargs) -> Self:
         """Start the plugin execution process.
 
-        Initiates the plugin's data loading and processing workflow by:
-        1. Calling the parent class's start method to initialize the plugin
-        2. Retrieving data for each registered handler from the loader results
-        3. Passing the appropriate data to each handler for processing
-        4. Executing the handler's load and dump operations sequentially
+        Initiates the plugin's data loading and processing workflow by calling the parent
+        class's start method, then distributing loaded data to registered handlers and
+        executing their load and dump operations sequentially.
+
+        The method performs the following steps:
+        1. Calls the parent class's start method to initialize the plugin
+        2. Retrieves data for each registered handler from the loader results
+        3. Passes the appropriate data to each handler for processing
+        4. Executes each handler's load and dump operations sequentially
 
         Args:
-            **kwargs: Additional keyword arguments passed to handlers.
-                These arguments are forwarded to the handlers' load and dump methods,
-                except for 'data_source' which is removed before passing.
+            **kwargs: Additional keyword arguments passed to handlers. These arguments
+                are forwarded to the handlers' load and dump methods, except for
+                'data_source' which is removed before passing.
 
         Returns:
             Self: The plugin instance for method chaining.
+
+        Note:
+            If data for a handler is not found in the loader results, a warning is
+            logged and that handler is skipped. The method continues processing
+            remaining handlers.
         """
         super().start(**kwargs)
         kwargs.pop("data_source", None)
@@ -115,19 +134,26 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
 
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
-        """
-        Safely load the plugin with full validation.
+        """Safely load the plugin with full validation.
 
         This method creates a new plugin instance using Pydantic's model_validate method,
         which performs complete validation of input data according to the model schema.
         This provides additional safety compared to the standard load method.
 
+        The method expects 'path' and optionally 'sheet' parameters in kwargs. It extracts
+        these parameters and passes them to the load method for instance creation.
+
         Args:
             **kwargs: Parameters for loading the plugin, such as configuration options
-                      or dependencies.
+                or dependencies. Must include 'path' (str) for the Excel file path, and
+                optionally 'sheet' (str | None) for the sheet name.
 
         Returns:
             Self: A new validated instance of the plugin.
+
+        Raises:
+            RuntimeError: If required arguments are missing or malformed. The original
+                exception (KeyError or ValidationError) is chained as the cause.
         """
         try:
             path = kwargs.pop("path")
@@ -167,21 +193,63 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
     ),
 )
 class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
+    """CLI-enabled plugin for handling Excel file transactions.
+
+    This plugin extends ExcelFilePlugin with command-line interface capabilities,
+    allowing users to specify Excel file paths and sheet names via command-line
+    arguments. It automatically parses command-line arguments, extracts the required
+    parameters, and creates a configured plugin instance for processing.
+
+    The plugin integrates with the transaction registrar's CLI system through the
+    AbstractCLIUtils interface, enabling it to be discovered and executed via the
+    main CLI utilities. It provides a user-friendly command-line interface for loading
+    and processing transaction data from Excel files without requiring programmatic
+    configuration.
+
+    The plugin workflow follows the standard plugin lifecycle:
+    1. Load - Parse CLI arguments and create plugin instance
+    2. Init - Perform initialization tasks
+    3. Start - Begin data loading and processing
+    4. Stop - Terminate operation gracefully
+
+    Attributes:
+        _loader (ExcelFileLoader): Instance that loads and parses Excel files.
+        _builder (ExcelContractBuilder): Builder containing registered handlers for
+            processing data.
+
+    Note:
+        This plugin requires command-line arguments to be provided either through
+        sys.argv or via the 'args' parameter in kwargs. The required arguments are:
+        - path (str): Path to the Excel file (required)
+        - sheet (str | None): Sheet name to select as target (optional)
+    """
 
     @classmethod
     def load(cls, **kwargs) -> Self:
-        """
-        Load the plugin using Pydantic's model construction.
+        """Load the plugin using Pydantic's model construction with CLI argument parsing.
 
-        This method creates a new plugin instance using Pydantic's model_construct method,
-        which directly initializes the model fields without additional validation.
+        This method creates a new plugin instance by parsing command-line arguments
+        and using Pydantic's model_validate method to directly initialize the model
+        fields without additional validation.
+
+        The method sets up an ArgumentParser to parse CLI arguments for the Excel file
+        path and optional sheet name. It extracts these arguments from either the 'args'
+        parameter in kwargs or from sys.argv, then merges them with any additional
+        kwargs before creating the plugin instance.
 
         Args:
-            **kwargs: Parameters for loading the plugin, such as configuration options
-                      or dependencies.
+            **kwargs: Parameters for loading the plugin. May include:
+                - args (List[str] | None): Command-line arguments to parse. If not
+                  provided, sys.argv is used.
+                - Additional configuration options or dependencies that will be passed
+                  to the parent class's load method.
 
         Returns:
-            Self: A new instance of the plugin.
+            Self: A new instance of the plugin initialized with parsed CLI arguments.
+
+        Note:
+            The method uses parse_known_args to allow unknown arguments to be passed
+            through without raising errors. Unknown arguments are ignored.
         """
         parser = ArgumentParser(description=cls.__doc__)
         parser.add_argument(

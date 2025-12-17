@@ -35,10 +35,13 @@ from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.contracts.registry import Registry
-from papita_txnsregistrar.utils import connector as connector_wrapper_module
-from papita_txnsregistrar.utils.cli import AbstractCLIUtils
 
-DEFAULT_LOGGER_CONFIG_PATH = str(importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml"))
+from .abstract import AbstractCLIUtils
+from .connector import BaseCLIConnectorWrapper, CLIDefaultConnectorWrapper
+
+DEFAULT_LOGGER_CONFIG_PATH: str = str(
+    importlib_resources.files(f"{REGISTRAR_LIB_NAME}.configs").joinpath("logger.yaml")
+)
 
 logger = logging.getLogger(REGISTRAR_LIB_NAME)
 
@@ -62,31 +65,11 @@ class HelpAction(Action):
     """
 
     def __init__(self, option_strings, dest="help", default=None, help=None):  # pylint: disable=redefined-builtin
-        """Initialize the custom help action.
-
-        Args:
-            option_strings: List of command-line option strings (e.g., ['-h', '--help']).
-            dest: The name of the attribute to hold the created object(s).
-            default: The value produced if the argument is absent.
-            help: A brief description of what the option does.
-        """
         super().__init__(option_strings=option_strings, dest=dest, default=default, nargs=0, help=help)
 
     def __call__(
         self, parser, namespace, values, option_string=None
     ):  # pylint: disable=too-many-branches,too-many-locals
-        """Execute the help action.
-
-        This method is called when the help option is encountered. It displays the standard
-        argparse help first, then attempts to load and display plugin-specific help if a
-        plugin argument is provided.
-
-        Args:
-            parser: The ArgumentParser object which contains this action.
-            namespace: The namespace object that will be returned by parse_args().
-            values: The associated command-line arguments (should be None for help action).
-            option_string: The option string that was used to invoke this action.
-        """
         # Display standard help first
         parser.print_help()
 
@@ -143,9 +126,7 @@ class HelpAction(Action):
                 # Use minimal defaults to avoid requiring all arguments
                 try:
                     connector_wrapper = ".".join(
-                        filter(
-                            None, ClassDiscovery.decompose_class(connector_wrapper_module.CLIDefaultConnectorWrapper)
-                        )
+                        filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))
                     )
 
                     instance = MainCLIUtils.model_construct(
@@ -160,7 +141,7 @@ class HelpAction(Action):
                     # Build model to load plugin
                     instance._build_model()
                     # Show plugin help
-                    instance.show_plugin_help()
+                    instance._show_plugin_help()
                 except Exception as err:
                     logger.debug("Could not load plugin for help: %s", err)
                     print(f"\nNote: Could not load plugin '{plugin_name}' for help display.")
@@ -220,7 +201,7 @@ class MainCLIUtils(AbstractCLIUtils):
         description="Specify the module(s) to be used. This can include multiple modules separated by commas.",
     )
     connector_wrapper: Annotated[
-        str | Type[connector_wrapper_module.BaseCLIConnectorWrapper],
+        str | Type[BaseCLIConnectorWrapper],
         Field(None, alias="connector_wrapper", description="An optional database connector wrapper instance."),
     ]
     connector: Annotated[
@@ -285,7 +266,7 @@ class MainCLIUtils(AbstractCLIUtils):
             raise ValueError("No valid connector wrapper could be found.")
 
         if not mod_:
-            self.connector_wrapper = f"{connector_wrapper_module.__name__}.{class_}"
+            self.connector_wrapper = f"{__name__}.{class_}"
 
         try:
             if isinstance(self.plugin, str):
@@ -305,7 +286,7 @@ class MainCLIUtils(AbstractCLIUtils):
                     [
                         ClassDiscovery.select(
                             self.connector_wrapper,
-                            class_type=connector_wrapper_module.BaseCLIConnectorWrapper,
+                            class_type=BaseCLIConnectorWrapper,
                             default_module=mod_,
                             debug=True,
                         )
@@ -378,7 +359,7 @@ class MainCLIUtils(AbstractCLIUtils):
                 label=plugin_name,
                 case_sensitive=kwargs.get("case_sensitive", True),
                 strict_exact=kwargs.get("strict_exact", False),
-                fuzz_threshold=kwargs.get("fuzzy_threshold", 90),
+                fuzz_threshold=kwargs.get("fuzzy_threshold", 95),
             )
             if not plugin or not inspect.isclass(plugin):
                 raise ValueError(f"The specified plugin '{plugin_name}' could not be found.")
@@ -503,9 +484,7 @@ class MainCLIUtils(AbstractCLIUtils):
             help=cls.model_fields["connector_wrapper"].description,
             type=str,
             required=False,
-            default=".".join(
-                filter(None, ClassDiscovery.decompose_class(connector_wrapper_module.CLIDefaultConnectorWrapper))
-            ),
+            default=".".join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))),
         )
         parser.add_argument(
             "--case-sensitive",
@@ -569,7 +548,7 @@ class MainCLIUtils(AbstractCLIUtils):
         cls._setup_logger(args=parsed_args)
         return cls.model_validate(vars(parsed_args))
 
-    def show_plugin_help(self) -> Self:
+    def _show_plugin_help(self) -> Self:
         """Display comprehensive help information for the loaded plugin.
 
         This method displays formatted help information about the currently loaded plugin,
@@ -627,20 +606,72 @@ class MainCLIUtils(AbstractCLIUtils):
 
         return self
 
-    # TODO: Implement the run method
     def run(self) -> Self:
-        self._plugin_instance = self.plugin.load()
+        """Execute the plugin instance lifecycle operations.
+
+        This method builds, initializes, and starts the plugin instance based on the configured
+        plugin. It handles both safe and normal loading modes, creating the plugin instance,
+        performing initialization, and starting the plugin's main operations.
+
+        The method follows the plugin lifecycle sequence:
+        1. Load - Create the plugin instance using safe_load() or load() depending on safe_mode
+        2. Init - Perform initialization tasks via init()
+        3. Start - Begin active operation via start()
+
+        Returns:
+            Self: Returns self for method chaining.
+
+        Note:
+            The plugin instance is stored in the _plugin_instance attribute for later use by
+            the stop() method. If safe_mode is enabled, safe_load() is used instead of load()
+            to prevent execution of potentially harmful operations.
+        """
+        plugin_name = self.plugin.meta().name
+        if self.safe_mode:
+            logger.info("Safely building plugin instance from plugin: %s", plugin_name)
+            self._plugin_instance = self.plugin.safe_load()
+        else:
+            logger.info("Building plugin instance from plugin: %s", plugin_name)
+            self._plugin_instance = self.plugin.load()
+
+        logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
+        logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
+        self._plugin_instance.init().start()
+        logger.info("Plugin instance of plugin '%s' started.", plugin_name)
         return self
 
-    # TODO: Implement the stop method
     def stop(self) -> Self:
+        """Shutdown the CLI utility and release all resources.
+
+        This method performs graceful shutdown of the CLI utility by stopping the plugin instance
+        (if it exists and has a stop method) and closing the database connector. All operations
+        are wrapped in exception suppression to ensure cleanup continues even if individual
+        shutdown steps fail.
+
+        The method performs the following cleanup operations:
+        1. Stop the plugin instance if it exists and supports the stop() method
+        2. Close the database connector if it exists
+
+        Returns:
+            Self: Returns self for method chaining.
+
+        Note:
+            This method uses contextlib.suppress(Exception) to ensure that errors during
+            shutdown do not prevent complete cleanup. All exceptions are silently suppressed
+            to allow the shutdown process to complete as much as possible.
+        """
         with contextlib.suppress(Exception):
             # Call stop() on the plugin instance if it exists
             if hasattr(self, "_plugin_instance") and self._plugin_instance is not None:
                 if hasattr(self._plugin_instance, "stop"):
+                    plugin_name = self.plugin.meta().name
+                    logger.info("Stopping plugin instance from plugin '%s'...", plugin_name)
                     self._plugin_instance.stop()
+                    logger.info("Plugin instance from plugin '%s' stopped.", plugin_name)
+
             if self.connector:
+                logger.info("Closing database connector...")
                 self.connector.close()
 
-        logger.debug("CLI utilities stopped successfully.")
+        logger.info("CLI utilities stopped successfully.")
         return self

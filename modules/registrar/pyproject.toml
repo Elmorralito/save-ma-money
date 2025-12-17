@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-registrar"
-version = "0.1.6a16"
+version = "0.1.6a17"
 description = "Transactions wrapper to automate tracking financial transaction movements"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "LICENSE"
