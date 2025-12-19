@@ -74,9 +74,8 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             Self: The builder instance for method chaining.
         """
         if not self.handler:
-            raise ValueError("Handler not built.")
+            raise ValueError("Handler not loaded yet.")
 
-        logger.debug("Building service for handler %s", self.handler.labels())
         for remove_key in "handler_modules", "connector", "connection":
             kwargs.pop(remove_key, None)
 
@@ -90,6 +89,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
                 **kwargs,
             }
         )
+        logger.debug("Built service %s(handler=%s)", self.service.__class__.__name__, self.handler.__name__)
         return self
 
     def build_handler(self, **kwargs) -> Self:

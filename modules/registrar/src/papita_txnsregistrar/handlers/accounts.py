@@ -76,7 +76,7 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService, ...]):
                 in the handler registry system. These labels can be used to look up
                 or reference this specific handler type.
         """
-        return "accounts", "account_table", "general_accounts"
+        return "accounts", "accounts_table", "account_table", "general_accounts"
 
 
 class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...]):
@@ -105,7 +105,7 @@ class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...])
                 in the handler registry system. These labels can be used to look up
                 or reference this specific asset account handler type.
         """
-        return "asset_accounts_table", "asset_accounts", "assets"
+        return "asset_accounts_table", "asset_accounts", "assets_table", "assets"
 
 
 class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService, ...]):
@@ -135,7 +135,7 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
                 in the handler registry system. These labels can be used to look up
                 or reference this specific liability account handler type.
         """
-        return "liability_accounts_table", "liability_accounts", "liabilities"
+        return "liability_accounts_table", "liability_accounts", "liabilities_table", "liabilities"
 
 
 class FinancedAssetAccountsTableHandler(
@@ -252,4 +252,4 @@ class AccountsIndexerTableHandler(
                 in the handler registry system. These labels can be used to look up
                 or reference this specific accounts indexer handler type.
         """
-        return "accounts_indexer_table", "accounts_indexer", "account_indexer", "indexer"
+        return "accounts_indexer_table", "accounts_indexer", "account_indexer", "indexer_table", "indexer"

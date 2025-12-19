@@ -18,7 +18,7 @@ loggers:
     handlers:
       - console
     propagate: no
-  papita_txnsregistrar_plugins:
+  papita_txnsregistrar.plugins:
     level: DEBUG
     handlers:
       - console

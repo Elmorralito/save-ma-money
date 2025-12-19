@@ -12,7 +12,7 @@ Classes:
 
 import abc
 import logging
-from typing import List, Self, Tuple, Type, get_args
+from typing import Generic, List, Self, Tuple, Type, TypeVar, get_args
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -23,8 +23,10 @@ from papita_txnsmodel.utils.classutils import FallbackAction
 
 logger = logging.getLogger(__name__)
 
+S = TypeVar("S", bound=BaseService)
 
-class AbstractLoadHandler(BaseModel, metaclass=abc.ABCMeta):
+
+class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
     """
     Abstract base handler that incorporates data loading functionality.
 
@@ -46,12 +48,13 @@ class AbstractLoadHandler(BaseModel, metaclass=abc.ABCMeta):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
     service: BaseService
+    generic_service_type: Type[S] = S
     on_failure_do: FallbackAction = FallbackAction.RAISE
     _loaded_data: pd.DataFrame | None = None
 
     @classmethod
     def service_type(cls) -> Type[BaseService]:
-        return next(iter(get_args(cls.model_fields["service"].annotation)), BaseService)
+        return next(iter(get_args(cls.model_fields["generic_service_type"].annotation)), BaseService)
 
     @classmethod
     @abc.abstractmethod
@@ -126,3 +129,6 @@ class AbstractLoadHandler(BaseModel, metaclass=abc.ABCMeta):
         """
         logger.debug("Loading records from %s", service.dto_type.__dao_type__.__tablename__)
         return service.get_records(None)
+
+    def __str__(self) -> str:
+        return f"{self.__class__.__name__}(labels={self.labels()})"

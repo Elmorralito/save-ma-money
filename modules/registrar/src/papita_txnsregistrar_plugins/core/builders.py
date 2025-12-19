@@ -12,11 +12,12 @@ from typing import Annotated, Dict, Self, Type
 
 from pydantic import Field
 
+from papita_txnsregistrar import LIB_NAME
 from papita_txnsregistrar.builders.base import BaseContractBuilder
 from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
 from papita_txnsregistrar.handlers.factory import HandlerFactory
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(f"{LIB_NAME}.plugins.core.builders")
 
 
 class ExcelContractBuilder(BaseContractBuilder):
@@ -61,8 +62,10 @@ class ExcelContractBuilder(BaseContractBuilder):
         if not self.loader:
             raise ValueError("Loader not built.")
 
-        sheets = self.loader.check_source(**kwargs).load(**kwargs).result.keys()
-        factory = HandlerFactory.load(*tuple(kwargs.get("handler_modules", [])))
+        logger.info("Checking source for loader %s", self.loader)
+        sheets = self.loader.check_source(**kwargs).load(**kwargs).result
+        logger.info("Building handlers for sheets %s", set(sheets))
+        factory = HandlerFactory.load(*tuple(kwargs.get("handler_modules", [])), **kwargs)
         self.handlers = {sheet.strip(): factory.get(sheet.strip(), **kwargs) for sheet in sheets}
         return self
 
@@ -80,12 +83,17 @@ class ExcelContractBuilder(BaseContractBuilder):
             Self: The builder instance for method chaining.
         """
         handlers = {}.copy()
-        logger.debug("Building services for handlers %s", set(self.handlers.keys()))
         for handler_name, handler_type in self.handlers.items():
             self.handler = handler_type
             super().build_service(**kwargs)
-            handlers[handler_name] = self.service
+            handlers[handler_name] = self.handler.model_validate({"service": self.service, **kwargs})
+            logger.debug(
+                "Built handler %s(labels=%s)",
+                handlers[handler_name].__class__.__name__,
+                handlers[handler_name].labels(),
+            )
 
+        self.handlers = handlers
         return self
 
     def build(self, **kwargs) -> Self:

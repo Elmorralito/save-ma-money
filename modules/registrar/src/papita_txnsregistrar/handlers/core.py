@@ -13,7 +13,7 @@ by providing record retrieval methods and dependency management capabilities.
 import inspect
 import logging
 import uuid
-from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVar, TypeVarTuple
+from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple
 
 import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
@@ -21,15 +21,14 @@ from pydantic import BeforeValidator, Field, model_validator
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import ClassDiscovery
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
+from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler, S
 from papita_txnsregistrar.utils.modelutils import make_service_dependencies_validator
 
-T = TypeVar("T", bound=BaseService)
 ServiceDependencies = TypeVarTuple("ServiceDependencies")
 logger = logging.getLogger(__name__)
 
 
-class BaseLoadTableHandler(AbstractLoadHandler, Generic[T, *ServiceDependencies]):
+class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependencies]):
     """
     Base implementation of a handler for loading table data with service dependencies.
 
@@ -64,9 +63,9 @@ class BaseLoadTableHandler(AbstractLoadHandler, Generic[T, *ServiceDependencies]
     """
 
     dependencies: Annotated[
-        Dict[str, Type[T] | T | str],
+        Dict[str, Type[S] | S | str],
         BeforeValidator(
-            make_service_dependencies_validator(principal_service=T, allowed_dependencies=ServiceDependencies)
+            make_service_dependencies_validator(principal_service=S, allowed_dependencies=ServiceDependencies)
         ),
     ] = Field(default_factory=dict)
 

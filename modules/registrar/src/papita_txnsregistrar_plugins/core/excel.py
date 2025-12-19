@@ -34,7 +34,7 @@ from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
 from papita_txnsregistrar.utils.cli.abstract import AbstractCLIUtils
 
-logger = logging.getLogger(f"{LIB_NAME}.plugin.core.excel")
+logger = logging.getLogger(f"{LIB_NAME}.plugins.core.excel")
 
 
 @plugin(
@@ -112,8 +112,8 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         for handler_name, handler in self._builder.handlers.items():
             logger.debug("Loading data into handler %s", handler_name)
             data = self._loader.result.get(handler_name)
-            if not data:
-                logger.warning("Data for handler %s not found in the loader result.", handler_name)
+            if getattr(data, "empty", True):
+                logger.warning("haData for handler %s not found in the loader result.", handler_name)
                 continue
 
             logger.debug("Running handler %s", handler_name)

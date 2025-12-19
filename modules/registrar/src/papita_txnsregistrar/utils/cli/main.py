@@ -399,17 +399,18 @@ class MainCLIUtils(AbstractCLIUtils):
             logger_name=REGISTRAR_LIB_NAME, config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH), level=level
         )
         configure_logger(
-            logger_name=f"{REGISTRAR_LIB_NAME}_plugins",
+            logger_name=f"{REGISTRAR_LIB_NAME}.plugins",
             config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH),
             level=level,
         )
         configure_logger(
             logger_name=MODEL_LIB_NAME, config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH), level=level
         )
-        for handler in logger.handlers:
-            handler.setLevel(level)
-
-        logger.setLevel(level)
+        for logger_name in (REGISTRAR_LIB_NAME, f"{REGISTRAR_LIB_NAME}.plugins", MODEL_LIB_NAME):
+            logger_instance = logging.getLogger(logger_name)
+            logger_instance.setLevel(level)
+            for handler in logger_instance.handlers:
+                handler.setLevel(level)
 
     @classmethod
     def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
@@ -640,11 +641,9 @@ class MainCLIUtils(AbstractCLIUtils):
             logger.info("Building plugin instance from plugin: %s", plugin_name)
             self._plugin_instance = self.plugin.load(on_failure_do=self.on_failure_do)
 
-        logger.info("Plugin instance of plugin '%s' built: %s", self.plugin, self._plugin_instance)
         logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
         logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
         self._plugin_instance.init(connector=self.connector).start()
-        logger.info("Plugin instance of plugin '%s' started.", plugin_name)
         return self
 
     def stop(self) -> Self:

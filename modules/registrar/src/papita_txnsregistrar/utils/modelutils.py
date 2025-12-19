@@ -63,7 +63,7 @@ def validate_tags(value: Iterable[str]) -> Iterable[str]:
     Raises:
         ValueError: If no valid tags are found after filtering.
     """
-    tags = [str.lower(elem) for elem in value if re.match(r"^([A-Za-z]|\s)+$", elem or "")]
+    tags = [str.lower(elem).strip() for elem in value if re.match(r"^([A-Za-z0-9-_]|\s)+$", elem or "")]
     if not tags:
         raise ValueError("No valid tags found.")
 

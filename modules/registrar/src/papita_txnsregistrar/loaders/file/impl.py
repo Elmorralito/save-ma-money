@@ -143,13 +143,13 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
         try:
-            with open(self.path, mode="r", encoding=kwargs.get("encoding", DEFAULT_ENCODING)) as freader:
+            with open(self.path, mode="rb", encoding=kwargs.get("encoding", DEFAULT_ENCODING)) as freader:
                 excel_file = pd.ExcelFile(freader)
                 sheets = excel_file.sheet_names
                 if sheet and sheet in sheets:
                     sheets = [sheet]
 
-                self.result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
+                self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
                 excel_file.close()
         except Exception as err:
             self.on_failure_do.handle(err, logger=kwargs.get("logger"))

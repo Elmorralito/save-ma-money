@@ -13,8 +13,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from papita_txnsregistrar.contracts.plugin import PluginContract
-from papita_txnsregistrar.utils.cli import AbstractCLIUtils
-from papita_txnsregistrar.utils.main import MainCLIUtils
+from papita_txnsregistrar.utils.cli.abstract import AbstractCLIUtils
+from papita_txnsregistrar.utils.cli.main import MainCLIUtils
 
 
 @pytest.fixture
