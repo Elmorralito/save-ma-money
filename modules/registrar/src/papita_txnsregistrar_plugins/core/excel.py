@@ -20,11 +20,13 @@ distributing loaded data to appropriate handlers for processing and storage.
 import logging
 import sys
 from argparse import ArgumentError, ArgumentParser
-from typing import Self
+from typing import Any, Dict, Self, Type
 
 from papita_txnsregistrar_plugins.core.builders import ExcelContractBuilder
 from pydantic import ValidationError
 
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.utils.classutils import FallbackAction
 from papita_txnsregistrar import LIB_NAME
 from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata
@@ -71,6 +73,13 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         _loader (ExcelFileLoader): Instance that loads and parses Excel files.
         _builder (ExcelContractBuilder): Builder containing registered handlers for processing data.
     """
+
+    path: str
+    sheet: str | None = None
+
+    def init(self, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+        """Initialize the plugin."""
+        return super().init(connector=connector, path=self.path, sheet=self.sheet, **kwargs)
 
     def start(self, **kwargs) -> Self:
         """Start the plugin execution process.
@@ -129,8 +138,13 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         Returns:
             Self: A new instance of the plugin.
         """
-        plugin = cls.model_validate(kwargs)
-        return plugin.init(**kwargs)
+        kwargs_ = {
+            "on_failure_do": kwargs.pop("on_failure_do", FallbackAction.RAISE),
+            "path": kwargs.pop("path"),
+            "sheet": kwargs.pop("sheet", None),
+            **kwargs,
+        }
+        return cls.model_validate(kwargs_)
 
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
@@ -192,7 +206,7 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
         enabled=True,
     ),
 )
-class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
+class CLIExcelFilePlugin(ExcelFilePlugin, AbstractCLIUtils):
     """CLI-enabled plugin for handling Excel file transactions.
 
     This plugin extends ExcelFilePlugin with command-line interface capabilities,
@@ -225,6 +239,29 @@ class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
     """
 
     @classmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Build the argument parser for the plugin."""
+        parser = ArgumentParser(description=cls.__doc__)
+        parser.add_argument(
+            "-p",
+            "--path",
+            "--excel-file-path",
+            dest="path",
+            help="(/path/to/file) Excel file.",
+            type=str,
+            required=True,
+        )
+        parser.add_argument(
+            "--sheet",
+            dest="sheet",
+            help="Sheet name to select as target.",
+            required=False,
+            default=None,
+        )
+        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
+        return vars(parsed_args)
+
+    @classmethod
     def load(cls, **kwargs) -> Self:
         """Load the plugin using Pydantic's model construction with CLI argument parsing.
 
@@ -251,25 +288,8 @@ class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
             The method uses parse_known_args to allow unknown arguments to be passed
             through without raising errors. Unknown arguments are ignored.
         """
-        parser = ArgumentParser(description=cls.__doc__)
-        parser.add_argument(
-            "-p",
-            "--path",
-            "--excel-file-path",
-            dest="path",
-            help="(/path/to/file) Excel file.",
-            type=str,
-            required=True,
-        )
-        parser.add_argument(
-            "--sheet",
-            dest="sheet",
-            help="Sheet name to select as target.",
-            required=False,
-            default=None,
-        )
-        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
-        return super().load(**(kwargs | vars(parsed_args)))
+        args = cls.parse_cli_args(**kwargs)
+        return super().load(**(kwargs | args))
 
     @classmethod
     def safe_load(cls, **kwargs) -> Self:
@@ -292,40 +312,11 @@ class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
                     appropriate error message and exit code.
         """
         try:
-            # Parse CLI arguments just like in the load method
-            parser = ArgumentParser(description=cls.__doc__, parents=kwargs.get("args_parent", []))
-            parser.add_argument(
-                "-p",
-                "--path",
-                "--excel-file-path",
-                dest="path",
-                help="(/path/to/file) Excel file.",
-                type=str,
-                required=True,
-            )
-            parser.add_argument(
-                "--sheet",
-                dest="sheet",
-                help="Sheet name to select as target.",
-                required=False,
-                default=None,
-            )
-
-            # Parse known args from the CLI arguments
-            args, unknown = parser.parse_known_args(kwargs.get("args", []))
-            if unknown:
-                logger.warning("Unknown arguments ignored: %s", unknown)
-
-            # Extract the parsed arguments
-            parsed_kwargs = vars(args)
-            path = parsed_kwargs.get("path")
-            sheet = parsed_kwargs.get("sheet")
-
-            # Merge parsed args with any other provided kwargs
+            parsed_kwargs = cls.parse_cli_args(**kwargs)
+            path = parsed_kwargs.pop("path")
+            sheet = parsed_kwargs.pop("sheet")
             combined_kwargs = kwargs.copy()
             combined_kwargs.update(parsed_kwargs)
-
-            # Call the parent class's load method to create and validate the instance
             return super().load(path=path, sheet=sheet, **combined_kwargs)
 
         except ArgumentError as arg_err:
@@ -343,3 +334,11 @@ class CLIExcelFilePlugin(AbstractCLIUtils, ExcelFilePlugin):
             message = f"Failed to load plugin: {str(err)}"
             logger.error("CLI error: %s", message)
             raise SystemExit(4) from err
+
+    def run(self) -> Self:
+        """Run the plugin."""
+        return self
+
+    def stop(self) -> Self:
+        """Stop the plugin."""
+        return self

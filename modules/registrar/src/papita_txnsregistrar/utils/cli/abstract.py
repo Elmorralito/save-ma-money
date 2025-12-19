@@ -16,7 +16,7 @@ Key Components:
 """
 
 import abc
-from typing import Self
+from typing import Any, Dict, Self
 
 from pydantic import BaseModel
 
@@ -54,6 +54,11 @@ class AbstractCLIUtils(BaseModel, abc.ABC):
                     # Custom instantiation logic
                     return cls(**kwargs)
     """
+
+    @classmethod
+    @abc.abstractmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Factory method to create and configure an instance of the CLI utility class with error handling."""
 
     @classmethod
     @abc.abstractmethod

@@ -8,8 +8,9 @@ to implement the core building logic.
 """
 
 import logging
-from typing import Generic, Self, TypeVar
+from typing import Generic, Self, Type, TypeVar, get_args
 
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder
 from papita_txnsregistrar.loaders.abstract import AbstractLoader
 
@@ -32,6 +33,14 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
         Inherits all attributes from AbstractContractBuilder.
     """
 
+    @classmethod
+    def loader_type(cls) -> Type[L]:
+        loader_type = next(iter(get_args(cls.model_fields["loader_generic_type"].annotation)))
+        if not issubclass(loader_type, AbstractLoader):
+            raise TypeError("Loader type is not a subclass of AbstractLoader.")
+
+        return loader_type
+
     def build_loader(self, **kwargs) -> Self:
         """
         Build and configure the loader component.
@@ -48,7 +57,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
         Raises:
             NotImplementedError: Always raised as this method must be overridden.
         """
-        self.loader = self.loader_type().model_validate(**kwargs)
+        self.loader = self.loader_type().model_validate(kwargs)
         return self
 
     def build_service(self, **kwargs) -> Self:
@@ -97,3 +106,22 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             Self: The builder instance for method chaining.
         """
         raise NotImplementedError("Subclasses must implement build_handler method")
+
+    @classmethod
+    def load(cls, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+        """
+        Load the builder.
+
+        This method creates a new builder instance using Pydantic's model_validate method,
+        which performs complete validation of input data according to the model schema.
+        This provides additional safety compared to the standard load method.
+
+        Args:
+            **kwargs: Parameters for loading the builder, such as configuration options
+                      or dependencies.
+
+        Returns:
+            Self: A new validated instance of the builder.
+        """
+        params = {"connector": connector, **kwargs}
+        return cls.model_validate(params)

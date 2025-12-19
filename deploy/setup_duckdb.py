@@ -223,7 +223,7 @@ def setup_schema(db_path: Path, schema: str):
     logging.info("Schema %s setup successfully in %s", schema, db_path)
 
 
-def parse_args():
+def parse_cli_args():
     """Parse command-line arguments for database setup.
 
     Creates an argument parser and defines the required command-line arguments
@@ -237,7 +237,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Setup DuckDB database")
     parser.add_argument("-p", "-path", "--duckdb-db-path", type=str, required=True, help="Path to the DuckDB database")
     parser.add_argument("-s", "-schema", "--schema", type=str, required=True, help="Schema to setup")
-    return parser.parse_args()
+    return parser.parse_cli_args()
 
 
 def main():
@@ -256,7 +256,7 @@ def main():
         SystemExit: Always exits with code 0 on success, 1 on general errors,
             or 2 on validation errors.
     """
-    args = parse_args()
+    args = parse_cli_args()
     try:
         db_path = parse_db_path(args.duckdb_db_path)
         schema = parse_schema(args.schema)

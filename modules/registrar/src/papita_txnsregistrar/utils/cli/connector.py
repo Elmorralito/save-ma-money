@@ -27,7 +27,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import ClassVar, Dict, Self, Tuple, Type
+from typing import Any, ClassVar, Dict, Self, Tuple, Type
 
 import dotenv
 import toml
@@ -128,6 +128,20 @@ class CLIURLConnectorWrapper(BaseCLIConnectorWrapper):
     """
 
     @classmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Build the argument parser for the connector wrapper."""
+        parser = argparse.ArgumentParser(description=cls.__doc__)
+        parser.add_argument(
+            "--connect-url",
+            dest="connect_url",
+            help="The database connection URL.",
+            type=str,
+            required=True,
+        )
+        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
+        return vars(parsed_args)
+
+    @classmethod
     def load(cls, **kwargs) -> Self:
         """Load the connector wrapper using the provided database URL.
 
@@ -150,17 +164,9 @@ class CLIURLConnectorWrapper(BaseCLIConnectorWrapper):
             ValidationError: If the model validation fails after parsing
                               arguments.
         """
-        parser = argparse.ArgumentParser(cls.__doc__)
-        parser.add_argument(
-            "--connect-url",
-            dest="connect_url",
-            help="The database connection URL.",
-            type=str,
-            required=True,
-        )
-        parsed_args, _ = parser.parse_known_args(args=kwargs.pop("args", None) or sys.argv)
+        parsed_args = cls.parse_cli_args(**kwargs)
         return cls.model_validate(
-            {"connector": SQLDatabaseConnector.establish(connection=getattr(parsed_args, "connect_url")), **kwargs}
+            {"connector": SQLDatabaseConnector.establish(connection=parsed_args["connect_url"]), **kwargs}
         )
 
 
@@ -434,6 +440,20 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
         raise ValueError(f"The file format is not supported on '{connect_file}'.")
 
     @classmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Build the argument parser for the connector wrapper."""
+        parser = argparse.ArgumentParser(description=cls.__doc__)
+        parser.add_argument(
+            "--connect-file",
+            dest="connect_file",
+            help="The database connection file path.",
+            type=str,
+            required=True,
+        )
+        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
+        return vars(parsed_args)
+
+    @classmethod
     def load(cls, **kwargs) -> Self:
         """Load the connector wrapper using a configuration file.
 
@@ -460,16 +480,8 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
             ValidationError: If the model validation fails after loading the
                               configuration file.
         """
-        parser = argparse.ArgumentParser(cls.__doc__)
-        parser.add_argument(
-            "--connect-file",
-            dest="connect_file",
-            help="The database connection file path.",
-            type=str,
-            required=True,
-        )
-        parsed_args, _ = parser.parse_known_args(args=kwargs.pop("args") or sys.argv)
-        content = cls._load_file(getattr(parsed_args, "connect_file"))
+        parsed_args = cls.parse_cli_args(**kwargs)
+        content = cls._load_file(parsed_args["connect_file"])
         return cls.model_validate({"connector": SQLDatabaseConnector.establish(connection=content), **kwargs})
 
 
@@ -498,6 +510,13 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
     LOCAL_DEFAULT_CONNECTION: ClassVar[str] = (
         f"duckdb:///{os.path.join(os.path.expanduser('~'), '.papita-local', 'store.duckdb')}"
     )
+
+    @classmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Build the argument parser for the connector wrapper."""
+        parser = argparse.ArgumentParser(description=cls.__doc__)
+        parsed_args, _ = parser.parse_known_args(kwargs.pop("args", None) or sys.argv)
+        return vars(parsed_args)
 
     @classmethod
     def load(cls, **kwargs) -> Self:
@@ -529,7 +548,7 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
         """
         local_default_path = Path(cls.LOCAL_DEFAULT_CONNECTION.removeprefix("duckdb:///"))
         logger.debug("Using local default connection: %s", local_default_path)
-        local_default_path.parent.mkdir(parents=True, exist_ok=True)
+        os.makedirs(local_default_path.parent, exist_ok=True)
         if not local_default_path.exists():
             local_default_path.touch()
             logger.debug("Created local default connection file: %s", local_default_path)

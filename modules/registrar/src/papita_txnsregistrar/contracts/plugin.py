@@ -14,17 +14,18 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, Self, Type, TypeVar
+from typing import Generic, Self, Type, TypeVar, get_args
 
 from pydantic import BaseModel
 
-from papita_txnsregistrar.builders.base import AbstractContractBuilder
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsregistrar.builders.base import AbstractContractBuilder, L
 from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
 from papita_txnsregistrar.loaders.abstract import AbstractLoader
 
 from .meta import PluginMetadata
 
-L = TypeVar("L", bound=AbstractLoader)
 B = TypeVar("B", bound=AbstractContractBuilder)
 
 logger = logging.getLogger(__name__)
@@ -56,8 +57,9 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
     """
 
     __meta__: PluginMetadata
-    loader_type: Type[L] = L
-    builder_type: Type[B] = B
+    loader_generic_type: Type[L] = L
+    builder_generic_type: Type[B] = B
+    on_failure_do: FallbackAction = FallbackAction.RAISE
     _handler: AbstractLoadHandler | None = None
     _loader: L | None = None
     _builder: B | None = None
@@ -101,8 +103,73 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
             TypeError: If the loader has not been loaded or is corrupt.
         """
 
+    @property
     @abc.abstractmethod
-    def init(self, **kwargs) -> Self:
+    def loader_type(self) -> Type[L]:
+        """Get the loader type class from the plugin's generic type parameters.
+
+        This property extracts and returns the concrete loader type class that was
+        specified as the first generic parameter when the plugin class was defined.
+        For example, if a plugin is defined as
+        `ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder])`,
+        this property will return the `ExcelFileLoader` class.
+
+        The implementation should extract the loader type from the plugin's generic
+        type parameters, typically by inspecting the class's type annotations or
+        using typing introspection utilities like `get_args()` to retrieve the
+        generic type arguments.
+
+        Returns:
+            The loader type class (a subclass of AbstractLoader) that was specified
+            as the first generic parameter in the plugin's class definition. This
+            class can be used to instantiate loader instances or perform type checking.
+
+        Raises:
+            TypeError: If the extracted type is not a valid subclass of AbstractLoader,
+                      indicating that the generic type parameter was incorrectly specified
+                      or the type extraction failed.
+
+        Note:
+            Concrete implementations should extract the type from the plugin's generic
+            parameters using typing introspection. The type is typically stored in the
+            `loader_generic_type` field annotation and can be extracted using `get_args()`.
+        """
+
+    @property
+    @abc.abstractmethod
+    def builder_type(self) -> Type[B]:
+        """Get the builder type class from the plugin's generic type parameters.
+
+        This property extracts and returns the concrete builder type class that was
+        specified as the second generic parameter when the plugin class was defined.
+        For example, if a plugin is defined as
+        `ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder])`,
+        this property will return the `ExcelContractBuilder` class.
+
+        The implementation should extract the builder type from the plugin's generic
+        type parameters, typically by inspecting the class's type annotations or
+        using typing introspection utilities like `get_args()` to retrieve the
+        generic type arguments.
+
+        Returns:
+            The builder type class (a subclass of AbstractContractBuilder) that was
+            specified as the second generic parameter in the plugin's class definition.
+            This class can be used to instantiate builder instances or perform type
+            checking.
+
+        Raises:
+            TypeError: If the extracted type is not a valid subclass of
+                      AbstractContractBuilder, indicating that the generic type parameter
+                      was incorrectly specified or the type extraction failed.
+
+        Note:
+            Concrete implementations should extract the type from the plugin's generic
+            parameters using typing introspection. The type is typically stored in the
+            `builder_generic_type` field annotation and can be extracted using `get_args()`.
+        """
+
+    @abc.abstractmethod
+    def init(self, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
         """
         Initialize the plugin.
 
@@ -209,7 +276,7 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
         """
 
 
-class PluginContract(AbstractPluginContract[L, B]):
+class PluginContract(AbstractPluginContract):
     """
     Concrete implementation of the plugin contract interface.
 
@@ -268,7 +335,24 @@ class PluginContract(AbstractPluginContract[L, B]):
 
         return self._loader
 
-    def init(self, **kwargs) -> Self:
+    @property
+    def loader_type(self) -> Type[L]:
+        loader_type = next(iter(get_args(self.__class__.model_fields["loader_generic_type"].annotation)))
+        if not issubclass(loader_type, AbstractLoader):
+            raise TypeError("Loader type is not a subclass of AbstractLoader.")
+
+        return loader_type
+
+    @property
+    def builder_type(self) -> Type[B]:
+        builder_type = next(iter(get_args(self.__class__.model_fields["builder_generic_type"].annotation)))
+        if not issubclass(builder_type, AbstractContractBuilder):
+            raise TypeError("Builder type is not a subclass of AbstractContractBuilder.")
+
+        return builder_type
+
+    # TODO: Add a way to automatically handle attributes from children contracts.
+    def init(self, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
         """
         Initialize the plugin by setting up the builder and connections.
 
@@ -288,7 +372,10 @@ class PluginContract(AbstractPluginContract[L, B]):
             TypeError: If the loader is not of the correct type.
         """
         logger.info("Building the builder...")
-        self._builder = self.builder_type[self.loader_type].build(**kwargs)
+        logger.debug("Loader type: %s", self.loader_type)
+        logger.debug("Builder type: %s", self.builder_type)
+        kwargs_ = {"connector": connector, "on_failure_do": self.on_failure_do, **kwargs}
+        self._builder = self.builder_type[self.loader_type].load(**kwargs_).build(**kwargs_)
         logger.info("Checking connection to the database...")
         if not self.builder.connector.connected(on_disconnected=self.on_failure_do, custom_logger=logger):
             raise ValueError("Failed to connect to the database.")

@@ -18,23 +18,22 @@ Classes:
 
 import contextlib
 import importlib.resources as importlib_resources
-import inspect
 import logging
 import sys
-from argparse import Action, ArgumentParser, Namespace
-from typing import Annotated, List, Self, Type
+from argparse import Action, ArgumentParser
+from typing import Annotated, Any, Dict, List, Self, Type
 
 from pydantic import Field, model_validator
 
 from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME
 from papita_txnsmodel import __version__ as MODEL_VERSION
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.utils.classutils import ClassDiscovery
+from papita_txnsmodel.utils.classutils import ClassDiscovery, FallbackAction
 from papita_txnsmodel.utils.configutils import configure_logger
 from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
+from papita_txnsregistrar.contracts.loader import load_plugin
 from papita_txnsregistrar.contracts.plugin import PluginContract
-from papita_txnsregistrar.contracts.registry import Registry
 
 from .abstract import AbstractCLIUtils
 from .connector import BaseCLIConnectorWrapper, CLIDefaultConnectorWrapper
@@ -227,6 +226,10 @@ class MainCLIUtils(AbstractCLIUtils):
         bool, Field(..., description="Enable safe mode to prevent execution of potentially harmful operations.")
     ] = False
 
+    on_failure_do: Annotated[
+        FallbackAction, Field(..., description="Specify the fallback action to take when an error occurs.")
+    ] = FallbackAction.RAISE
+
     @model_validator(mode="after")
     def _build_model(self) -> Self:
         """Build and validate the model after field assignment.
@@ -346,37 +349,17 @@ class MainCLIUtils(AbstractCLIUtils):
             this method when you need the plugin class for inspection or to create instances
             later.
         """
-        try:
-            with contextlib.suppress(AttributeError):
-                modules = [mod.strip() for mods in modules for mod in mods.strip().split(",")]
-
-            logger.info("Discovering plugin from modules: %s", modules)
-            # TODO: Fix issue where plugin is intermitently not registered in the registry and not loaded.
-            registry = Registry().discover(*modules, debug=True)
-            logger.debug("Discovered plugins: %s", registry.plugins)
-            logger.debug("Getting plugin '%s' from registry", plugin_name)
-            plugin = registry.get(
-                label=plugin_name,
-                case_sensitive=kwargs.get("case_sensitive", True),
-                strict_exact=kwargs.get("strict_exact", False),
-                fuzz_threshold=kwargs.get("fuzzy_threshold", 95),
+        plugin_class = load_plugin(plugin_name, modules, **kwargs)
+        if not issubclass(plugin_class, AbstractCLIUtils):
+            raise TypeError(
+                f"The specified plugin '{plugin_name}({plugin_class.__class__.__name__})' does not support CLI "
+                "utilities."
             )
-            if not plugin or not inspect.isclass(plugin):
-                raise ValueError(f"The specified plugin '{plugin_name}' could not be found.")
 
-            if not issubclass(plugin, AbstractCLIUtils):
-                raise TypeError(
-                    f"The specified plugin '{plugin_name}({plugin.__class__.__name__})' does not support CLI utilities."
-                )
-
-            return plugin
-        except (ValueError, TypeError) as err:
-            raise RuntimeError(f"Error loading plugin: {err}") from err
-        except Exception as err:
-            raise err
+        return plugin_class
 
     @classmethod
-    def _setup_logger(cls, args: Namespace) -> None:
+    def _setup_logger(cls, args: Dict[str, Any]) -> None:
         """Configure logging based on command-line arguments.
 
         This method sets up logging for the registrar system and its components based on
@@ -390,7 +373,7 @@ class MainCLIUtils(AbstractCLIUtils):
         - -vvv or more: NOTSET level (maximum verbosity)
 
         Args:
-            args: The parsed command-line arguments namespace. Must contain:
+            args: The parsed command-line arguments dictionary. Must contain:
                   - verbose (int): Integer count of verbosity flags (default: 0)
                   - log_config (str): Path to the logging configuration file (YAML format)
 
@@ -402,59 +385,35 @@ class MainCLIUtils(AbstractCLIUtils):
 
             All loggers use the same configuration file and verbosity level for consistency.
         """
-        if args.verbose == 1:
+        verbose = args.get("verbose", 0)
+        if verbose == 1:
             level = logging.INFO
-        elif args.verbose == 2:
+        elif verbose == 2:
             level = logging.DEBUG
-        elif args.verbose >= 3:
+        elif verbose >= 3:
             level = logging.NOTSET  # Maximum verbosity
         else:
             level = logging.WARNING
 
-        configure_logger(logger_name=REGISTRAR_LIB_NAME, config=args.log_config, level=level)
-        configure_logger(logger_name=f"{REGISTRAR_LIB_NAME}_plugins", config=args.log_config, level=level)
-        configure_logger(logger_name=MODEL_LIB_NAME, config=args.log_config, level=level)
+        configure_logger(
+            logger_name=REGISTRAR_LIB_NAME, config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH), level=level
+        )
+        configure_logger(
+            logger_name=f"{REGISTRAR_LIB_NAME}_plugins",
+            config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH),
+            level=level,
+        )
+        configure_logger(
+            logger_name=MODEL_LIB_NAME, config=args.get("log_config", DEFAULT_LOGGER_CONFIG_PATH), level=level
+        )
         for handler in logger.handlers:
             handler.setLevel(level)
 
         logger.setLevel(level)
 
     @classmethod
-    def load(cls, **kwargs) -> Self:
-        """Load and configure the MainCLIUtils instance from command-line arguments.
-
-        This is the primary entry point for creating a MainCLIUtils instance. It sets up
-        an argument parser with all CLI options, parses command-line arguments, configures
-        logging, and returns a validated instance ready for use.
-
-        The method supports a comprehensive set of command-line arguments including:
-        plugin selection, module specification, connector configuration, matching options,
-        verbosity control, and logging configuration. It also provides a custom help action
-        that displays both main CLI help and plugin-specific help.
-
-        Args:
-            **kwargs: Optional keyword arguments. Valid keys include:
-                     - args (List[str]): List of command-line argument strings. If not
-                       provided, sys.argv is used. Must be a list of strings.
-
-        Returns:
-            Self: A fully configured MainCLIUtils instance with all fields validated and
-                  populated, including the resolved plugin class and database connector.
-
-        Raises:
-            ValueError: If the args parameter is provided but is not a list of strings.
-
-        Note:
-            This method performs the following operations:
-            1. Creates an argument parser with all CLI options
-            2. Sets up a custom help action that includes plugin-specific help
-            3. Parses command-line arguments
-            4. Configures logging based on verbosity and log config
-            5. Validates and builds the model instance
-
-            The plugin and connector are resolved during model validation, which occurs
-            when model_validate is called with the parsed arguments.
-        """
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Build the argument parser for the MainCLIUtils class."""
         parser = ArgumentParser(add_help=False)
         parser.add_argument(
             "script",
@@ -540,13 +499,60 @@ class MainCLIUtils(AbstractCLIUtils):
             type=str,
             default=DEFAULT_LOGGER_CONFIG_PATH,
         )
+        parser.add_argument(
+            "--on-failure-do",
+            dest="on_failure_do",
+            help="Specify the fallback action to take when an error occurs.",
+            type=str,
+            choices=[x.value for x in FallbackAction],
+            default=FallbackAction.RAISE.value,
+        )
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
             raise ValueError("args must be   a list of strings or None")
 
         parsed_args, _ = parser.parse_known_args(args=args_)
+        return vars(parsed_args)
+
+    @classmethod
+    def load(cls, **kwargs) -> Self:
+        """Load and configure the MainCLIUtils instance from command-line arguments.
+
+        This is the primary entry point for creating a MainCLIUtils instance. It sets up
+        an argument parser with all CLI options, parses command-line arguments, configures
+        logging, and returns a validated instance ready for use.
+
+        The method supports a comprehensive set of command-line arguments including:
+        plugin selection, module specification, connector configuration, matching options,
+        verbosity control, and logging configuration. It also provides a custom help action
+        that displays both main CLI help and plugin-specific help.
+
+        Args:
+            **kwargs: Optional keyword arguments. Valid keys include:
+                     - args (List[str]): List of command-line argument strings. If not
+                       provided, sys.argv is used. Must be a list of strings.
+
+        Returns:
+            Self: A fully configured MainCLIUtils instance with all fields validated and
+                  populated, including the resolved plugin class and database connector.
+
+        Raises:
+            ValueError: If the args parameter is provided but is not a list of strings.
+
+        Note:
+            This method performs the following operations:
+            1. Creates an argument parser with all CLI options
+            2. Sets up a custom help action that includes plugin-specific help
+            3. Parses command-line arguments
+            4. Configures logging based on verbosity and log config
+            5. Validates and builds the model instance
+
+            The plugin and connector are resolved during model validation, which occurs
+            when model_validate is called with the parsed arguments.
+        """
+        parsed_args = cls.parse_cli_args(**kwargs)
         cls._setup_logger(args=parsed_args)
-        return cls.model_validate(vars(parsed_args))
+        return cls.model_validate(parsed_args)
 
     def _show_plugin_help(self) -> Self:
         """Display comprehensive help information for the loaded plugin.
@@ -629,14 +635,15 @@ class MainCLIUtils(AbstractCLIUtils):
         plugin_name = self.plugin.meta().name
         if self.safe_mode:
             logger.info("Safely building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.safe_load(connector=self.connector)
+            self._plugin_instance = self.plugin.safe_load(on_failure_do=self.on_failure_do)
         else:
             logger.info("Building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.load(connector=self.connector)
+            self._plugin_instance = self.plugin.load(on_failure_do=self.on_failure_do)
 
+        logger.info("Plugin instance of plugin '%s' built: %s", self.plugin, self._plugin_instance)
         logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
         logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
-        self._plugin_instance.init().start()
+        self._plugin_instance.init(connector=self.connector).start()
         logger.info("Plugin instance of plugin '%s' started.", plugin_name)
         return self
 

@@ -15,12 +15,11 @@ from pydantic import Field
 from papita_txnsregistrar.builders.base import BaseContractBuilder
 from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
 from papita_txnsregistrar.handlers.factory import HandlerFactory
-from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
 
 logger = logging.getLogger(__name__)
 
 
-class ExcelContractBuilder(BaseContractBuilder[ExcelFileLoader]):
+class ExcelContractBuilder(BaseContractBuilder):
     """Builder for creating and configuring Excel file processing contracts.
 
     This builder is responsible for constructing the processing pipeline for Excel files.

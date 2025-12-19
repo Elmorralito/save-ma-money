@@ -28,7 +28,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
             encountered during loading should be handled.
     """
 
-    error_handler: FallbackAction
+    on_failure_do: FallbackAction
 
     @property
     @abc.abstractmethod

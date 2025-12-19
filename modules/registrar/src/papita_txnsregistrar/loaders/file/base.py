@@ -69,7 +69,7 @@ class FileLoader(BaseModel):
         """
         path = Path(self.path) if isinstance(self.path, str) else self.path
         if not (path.is_file() and path.exists() and os.access(path.as_posix(), os.R_OK)):
-            self.error_handler.handle(
+            self.on_failure_do.handle(
                 OSError("The path does not correspond to a file or does not exist."), logger=logger
             )
 
