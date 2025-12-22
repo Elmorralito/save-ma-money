@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class FileLoader(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     """
     Base class for all file-based data loaders.
 
@@ -45,6 +44,8 @@ class FileLoader(BaseModel):
         data = loader.load().result
         ```
     """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     path: str | Path
 

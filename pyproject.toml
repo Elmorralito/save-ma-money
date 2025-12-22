@@ -10,7 +10,6 @@ include = ["README.md"]
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 
-
 [tool.poetry.group.development.dependencies]
 papita-transactions-api = { path = "modules/api", develop = true }
 papita-transactions-model = { path = "modules/model", develop = true }

@@ -337,6 +337,17 @@ class PluginContract(AbstractPluginContract):
 
     @property
     def loader_type(self) -> Type[L]:
+        """Get the loader type class from the plugin's generic type parameters.
+
+        This property extracts and returns the concrete loader type class that was
+        specified as the first generic parameter when the plugin class was defined.
+
+        Returns:
+            Type[L]: The loader type class associated with the plugin.
+
+        Raises:
+            TypeError: If the extracted type is not a valid subclass of AbstractLoader.
+        """
         loader_type = next(iter(get_args(self.__class__.model_fields["loader_generic_type"].annotation)))
         if not issubclass(loader_type, AbstractLoader):
             raise TypeError("Loader type is not a subclass of AbstractLoader.")
@@ -345,6 +356,17 @@ class PluginContract(AbstractPluginContract):
 
     @property
     def builder_type(self) -> Type[B]:
+        """Get the builder type class from the plugin's generic type parameters.
+
+        This property extracts and returns the concrete builder type class that was
+        specified as the second generic parameter when the plugin class was defined.
+
+        Returns:
+            Type[B]: The builder type class associated with the plugin.
+
+        Raises:
+            TypeError: If the extracted type is not a valid subclass of AbstractContractBuilder.
+        """
         builder_type = next(iter(get_args(self.__class__.model_fields["builder_generic_type"].annotation)))
         if not issubclass(builder_type, AbstractContractBuilder):
             raise TypeError("Builder type is not a subclass of AbstractContractBuilder.")

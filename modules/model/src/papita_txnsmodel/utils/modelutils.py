@@ -28,6 +28,22 @@ ALLOWED_FALSE_BOOL_VALUES = ("false", "no", "n", "0", "off", 0, False)
 
 
 def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler) -> bool:
+    """Validate and coerce input values to a boolean.
+
+    This function attempts to convert various input types (bool, int, str) into
+    a boolean value using predefined sets of allowed true and false values.
+    It is designed to be used as a Pydantic wrap validator.
+
+    Args:
+        value (bool | int | str): The value to validate.
+        handler (ValidatorFunctionWrapHandler): The Pydantic validator handler.
+
+    Returns:
+        bool: The validated boolean value.
+
+    Raises:
+        ValueError: If 'value' cannot be mapped to a valid boolean.
+    """
     value_ = handler(value)
     if isinstance(value_, bool):
         return value_
@@ -45,6 +61,22 @@ def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler
 
 
 def normalize_tags(value: Iterable[str] | str) -> Iterable[str]:
+    """Normalize and filter a collection of tag strings.
+
+    This function processes input tags by splitting strings on allowed delimiters,
+    stripping whitespace, converting to lowercase, and filtering for valid
+    alphanumeric characters (including hyphens and underscores).
+
+    Args:
+        value (Iterable[str] | str): A single string or an iterable of strings
+            to be normalized.
+
+    Returns:
+        Iterable[str]: A list of unique, lowercase, and stripped tag strings.
+
+    Raises:
+        ValueError: If no valid tags are found after processing.
+    """
     if isinstance(value, str):
         value_ = [value]
         for delimiter in ALLOWED_DELIMITERS:

@@ -83,6 +83,16 @@ class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
 
 
 class ExtendedLiabilityAccounts(BaseSQLModel):
+    """Base model for extended liability account information.
+
+    This class serves as a base for specific liability types, providing a common
+    primary key structure. It is inherited by models that add specialized fields
+    for different kinds of liabilities.
+
+    Attributes:
+        id (uuid.UUID): Unique identifier for the extended liability record.
+            Auto-generated UUID.
+    """
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
 

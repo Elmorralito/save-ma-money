@@ -112,6 +112,15 @@ class CoreTableDTO(TableDTO):
 
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:
+        """Normalize and validate entity fields after model initialization.
+
+        This validator strips whitespace from the name and description, and
+        normalizes the tags by combining them with the lowercase name and
+        optional classification value.
+
+        Returns:
+            Self: The normalized entity DTO instance.
+        """
         self.name = self.name.strip()
         self.description = self.description.strip()
         if isinstance(self.tags, str):

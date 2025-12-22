@@ -54,6 +54,14 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
 
     @classmethod
     def service_type(cls) -> Type[BaseService]:
+        """Get the generic service type for this handler.
+
+        This method extracts the service type from the `generic_service_type` field's
+        type annotation using introspection.
+
+        Returns:
+            Type[BaseService]: The service type class that this handler is parameterized with.
+        """
         return next(iter(get_args(cls.model_fields["generic_service_type"].annotation)), BaseService)
 
     @classmethod

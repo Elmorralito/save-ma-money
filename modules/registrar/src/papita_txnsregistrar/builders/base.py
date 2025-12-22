@@ -35,6 +35,17 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
 
     @classmethod
     def loader_type(cls) -> Type[L]:
+        """Get the loader type associated with this builder.
+
+        This implementation extracts the loader type from the `loader_generic_type`
+        field's type annotation using Pydantic's `model_fields` and introspection.
+
+        Returns:
+            Type[L]: The loader type class that this builder is parameterized with.
+
+        Raises:
+            TypeError: If the extracted loader type is not a subclass of AbstractLoader.
+        """
         loader_type = next(iter(get_args(cls.model_fields["loader_generic_type"].annotation)))
         if not issubclass(loader_type, AbstractLoader):
             raise TypeError("Loader type is not a subclass of AbstractLoader.")

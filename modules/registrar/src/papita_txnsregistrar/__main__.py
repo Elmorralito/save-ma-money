@@ -1,3 +1,11 @@
+"""
+Main entry point for the papita-txnsregistrar CLI.
+
+This module provides the command-line interface entry point for the registrar
+package. It handles script initialization, configuration loading, and CLI execution,
+including warnings when run as a module.
+"""
+
 import contextlib
 import logging
 import sys
