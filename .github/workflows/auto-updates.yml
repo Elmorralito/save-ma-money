@@ -1,0 +1,57 @@
+---
+name: Auto Updates
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  auto-update:
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: "Install Poetry"
+        uses: "snok/install-poetry@v1"
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Update TODOs in README
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: python .github/scripts/update_todos.py
+
+      - name: Update badges
+        run: |
+          poetry run genbadge coverage -i "${GITHUB_WORKSPACE}/docs/coverage.xml" -o "${GITHUB_WORKSPACE}/docs/coverage-badge.svg"
+          poetry run flake8 "${GITHUB_WORKSPACE}/modules/" --exit-zero --format=html --htmldir "${GITHUB_WORKSPACE}/docs/.flake8" --statistics --tee --output-file "${GITHUB_WORKSPACE}/docs/.flake8/report.txt" && \
+            poetry run genbadge flake8 -i "${GITHUB_WORKSPACE}/docs/.flake8/report.txt" -o "${GITHUB_WORKSPACE}/docs/flake8-badge.svg"
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add README.md docs/coverage-badge.svg docs/flake8-badge.svg
+          if test -e "$(git diff --quiet)" ; then git diff --staged --quiet ; else git commit -am "Update TODOs in README [skip ci]" --allow-empty ; fi
+          git pull --rebase && git push -o ci.skip
