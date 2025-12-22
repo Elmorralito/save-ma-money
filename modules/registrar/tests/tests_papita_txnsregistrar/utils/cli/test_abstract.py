@@ -7,18 +7,23 @@ directly, while ensuring that concrete subclasses must implement all required ab
 """
 
 import pytest
-from typing import Self
+from typing import Self, Dict, Any
 
-from papita_txnsregistrar.utils.cli import AbstractCLIUtils
+from papita_txnsregistrar.utils.cli.abstract import AbstractCLIUtils
 
 
 class ConcreteCLIUtils(AbstractCLIUtils):
     """Concrete implementation of AbstractCLIUtils for testing purposes."""
 
     @classmethod
+    def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
+        """Parse command-line arguments and return a dictionary of parsed arguments."""
+        return kwargs
+
+    @classmethod
     def load(cls, **kwargs) -> Self:
         """Create and return a new instance of ConcreteCLIUtils."""
-        return cls(**kwargs)
+        return cls.model_validate(cls.parse_cli_args(**kwargs))
 
     def run(self) -> Self:
         """Run the CLI utility and return self for method chaining."""
@@ -35,7 +40,7 @@ class IncompleteCLIUtils(AbstractCLIUtils):
     @classmethod
     def load(cls, **kwargs) -> Self:
         """Create and return a new instance of IncompleteCLIUtils."""
-        return cls(**kwargs)
+        return cls.model_validate(kwargs)
 
     # Missing run() and stop() methods
 

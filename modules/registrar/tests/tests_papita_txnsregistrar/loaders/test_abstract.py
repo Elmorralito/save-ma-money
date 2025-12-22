@@ -17,7 +17,7 @@ def test_abstract_loader_cannot_be_instantiated_directly():
     """Test that AbstractLoader raises TypeError when attempting direct instantiation."""
     # Act & Assert
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        AbstractLoader(error_handler=FallbackAction.RAISE)
+        AbstractLoader(on_failure_do=FallbackAction.RAISE)
 
 
 def test_concrete_loader_must_implement_all_abstract_methods():
@@ -28,7 +28,7 @@ def test_concrete_loader_must_implement_all_abstract_methods():
 
     # Act & Assert
     with pytest.raises(TypeError, match="Can't instantiate abstract class"):
-        IncompleteLoader(error_handler=FallbackAction.LOG)
+        IncompleteLoader(on_failure_do=FallbackAction.LOG)
 
 
 def test_complete_concrete_loader_can_be_instantiated():
@@ -51,9 +51,9 @@ def test_complete_concrete_loader_can_be_instantiated():
             return self
 
     # Act
-    loader = CompleteLoader(error_handler=FallbackAction.IGNORE)
+    loader = CompleteLoader(on_failure_do=FallbackAction.IGNORE)
 
     # Assert
-    assert loader.error_handler == FallbackAction.IGNORE
+    assert loader.on_failure_do == FallbackAction.IGNORE
     assert isinstance(loader, AbstractLoader)
     assert loader.result == []

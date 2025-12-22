@@ -105,7 +105,7 @@ duckdb_run() {
         usage
     fi
 
-    DUCKDB_DB_PATH=$(python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
+    DUCKDB_DB_PATH=$(python -m poetry run python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
     # shellcheck disable=SC2181
     if [[ "$?" -ne 0 ]]; then
         log ERROR "Failed to setup DuckDB schema."

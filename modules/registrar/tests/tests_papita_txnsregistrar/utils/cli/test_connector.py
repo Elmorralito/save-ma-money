@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 
-from papita_txnsregistrar.utils.connector import (
+from papita_txnsregistrar.utils.cli.connector import (
     BaseCLIConnectorWrapper,
     CLIDefaultConnectorWrapper,
     CLIFileConnectorWrapper,
@@ -27,8 +27,8 @@ def test_base_cli_connector_wrapper_load_raises_not_implemented_error():
         BaseCLIConnectorWrapper.load()
 
 
-@patch("papita_txnsregistrar.utils.connector.SQLDatabaseConnector")
-@patch("papita_txnsregistrar.utils.connector.argparse.ArgumentParser")
+@patch("papita_txnsregistrar.utils.cli.connector.SQLDatabaseConnector")
+@patch("papita_txnsregistrar.utils.cli.connector.argparse.ArgumentParser")
 def test_cli_url_connector_wrapper_load_success(mock_parser_class, mock_connector_class):
     """Test that CLIURLConnectorWrapper.load successfully creates instance with URL connection."""
     # Arrange
@@ -50,10 +50,10 @@ def test_cli_url_connector_wrapper_load_success(mock_parser_class, mock_connecto
     mock_connector_class.establish.assert_called_once_with(connection="postgresql://user:pass@localhost/db")
 
 
-@patch("papita_txnsregistrar.utils.connector.SQLDatabaseConnector")
-@patch("papita_txnsregistrar.utils.connector.argparse.ArgumentParser")
+@patch("papita_txnsregistrar.utils.cli.connector.SQLDatabaseConnector")
+@patch("papita_txnsregistrar.utils.cli.connector.argparse.ArgumentParser")
 @patch("builtins.open", new_callable=mock_open, read_data='{"url": "postgresql://localhost/testdb"}')
-@patch("papita_txnsregistrar.utils.connector.json.load")
+@patch("papita_txnsregistrar.utils.cli.connector.json.load")
 def test_cli_file_connector_wrapper_load_json_success(
     mock_json_load, mock_file_open, mock_parser_class, mock_connector_class
 ):
@@ -111,7 +111,7 @@ def test_load_yaml_file_success(mock_file):
     expected_content = {"url": "postgresql://localhost/testdb", "host": "localhost"}
 
     # Act
-    with patch("papita_txnsregistrar.utils.connector.yaml.load", return_value=expected_content) as mock_yaml_load:
+    with patch("papita_txnsregistrar.utils.cli.connector.yaml.load", return_value=expected_content) as mock_yaml_load:
         result = CLIFileConnectorWrapper._load_yaml_file(file_path)
 
     # Assert
@@ -135,7 +135,7 @@ def test_load_config_file_success_with_comments(mock_file):
     mock_file.assert_called_once_with(file_path, mode="r", encoding="utf-8")
 
 
-@patch("papita_txnsregistrar.utils.connector.dotenv.dotenv_values")
+@patch("papita_txnsregistrar.utils.cli.connector.dotenv.dotenv_values")
 def test_load_env_file_success_with_mapping(mock_dotenv_values):
     """Test that _load_env_file successfully loads env file and maps variables correctly."""
     # Arrange
@@ -166,7 +166,7 @@ def test_load_env_file_success_with_mapping(mock_dotenv_values):
     mock_dotenv_values.assert_called_once_with(dotenv_path=file_path)
 
 
-@patch("papita_txnsregistrar.utils.connector.dotenv.dotenv_values")
+@patch("papita_txnsregistrar.utils.cli.connector.dotenv.dotenv_values")
 def test_load_env_file_raises_value_error_when_missing_url(mock_dotenv_values):
     """Test that _load_env_file raises ValueError when env file lacks valid database connection URL."""
     # Arrange
@@ -179,8 +179,8 @@ def test_load_env_file_raises_value_error_when_missing_url(mock_dotenv_values):
 
 
 @pytest.mark.parametrize("file_exists", [True, False])
-@patch("papita_txnsregistrar.utils.connector.SQLDatabaseConnector")
-@patch("papita_txnsregistrar.utils.connector.Path")
+@patch("papita_txnsregistrar.utils.cli.connector.SQLDatabaseConnector")
+@patch("papita_txnsregistrar.utils.cli.connector.Path")
 def test_cli_default_connector_wrapper_load_handles_file_existence(
     mock_path_class, mock_connector_class, file_exists
 ):

@@ -5,9 +5,7 @@ description = "Papita Public projects: save-me-money"
 readme = "README.md"
 package-mode = false
 authors = ["Elmorralito <drestrepohinc@gmail.com>"]
-include = [
-    "README.md"
-]
+include = ["README.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
@@ -33,13 +31,14 @@ types-tabulate = "^0.9.0.20241207"
 types-toml = "^0.10.8.20240310"
 types-requests = "^2.32.4.20250913"
 types-pytz = "^2025.2.0.20250809"
-genbadge = {version = "^1.1.2", extras = ["coverage"]}
+genbadge = { version = "^1.1.2", extras = ["coverage", "flake8"] }
+flake8-pyproject = "^1.2.4"
 
 
 [tool.poetry.group.development.dependencies]
-papita-transactions-api = {path = "modules/api", develop = true}
-papita-transactions-model = {path = "modules/model", develop = true}
-papita-transactions-registrar = {path = "modules/registrar", develop = true}
+papita-transactions-api = { path = "modules/api", develop = true }
+papita-transactions-model = { path = "modules/model", develop = true }
+papita-transactions-registrar = { path = "modules/registrar", develop = true }
 
 
 [build-system]
@@ -48,7 +47,16 @@ build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/registrar/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
-testpaths = ["./modules/api/tests", "./modules/model/tests", "./modules/registrar/tests"]
+testpaths = [
+    "./modules/api/tests",
+    "./modules/model/tests",
+    "./modules/registrar/tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+    "ignore:The `__fields__` attribute is deprecated:pydantic.PydanticDeprecatedSince20",
+]
 
 [tool.coverage.report]
 exclude_also = [
@@ -59,7 +67,7 @@ exclude_also = [
     "if 0:",
     "if __name__ == .__main__.:",
     "@(abc\\.)?abstractmethod",
-    ]
+]
 
 ignore_errors = true
 
@@ -72,9 +80,7 @@ ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
 [tool.pylint.MASTER]
-ignore-paths = [
-    "^.*/tests/.*$",
-]
+ignore-paths = ["^.*/tests/.*$"]
 
 [tool.pylint.'MESSAGES CONTROL']
 disable = [
@@ -102,7 +108,7 @@ disable = [
     "unnecessary-comprehension",
     "consider-using-dict-comprehension",
     "E1101",
-    "W0511"
+    "W0511",
 ]
 
 [tool.pylint.'FORMAT']
@@ -129,15 +135,13 @@ namespace_packages = true
 [tool.isort]
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
-known_first_party=["papita_txnsapi", "papita_txnsmodel", "papita_txnsregistrar"]
-sections = [
-    "FUTURE",
-    "STDLIB",
-    "THIRDPARTY",
-    "FIRSTPARTY",
-    "LOCALFOLDER"
+known_first_party = [
+    "papita_txnsapi",
+    "papita_txnsmodel",
+    "papita_txnsregistrar",
 ]
-py_version=312
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+py_version = 312
 atomic = true
 profile = "black"
 line_length = 120
@@ -158,14 +162,7 @@ max-line-length = 120
 max-complexity = 18
 
 [tool.interrogate]
-paths = [
-    "./modules/api/src",
-
-    "./modules/model/src",
-
-    "./modules/registrar/src",
-
-]
+paths = ["./modules/api/src", "./modules/model/src", "./modules/registrar/src"]
 exclude = [
     "./modules/api/tests",
     "./modules/model/alembic",
@@ -176,7 +173,11 @@ exclude = [
     "build",
     "dist",
 ]
-ignore-regex = ["^get$", "^mock_.*", "^test_.*[Base|Invalid|Test|Valid]+Class.*"]
+ignore-regex = [
+    "^get$",
+    "^mock_.*",
+    "^test_.*[Base|Invalid|Test|Valid]+Class.*",
+]
 fail-under = 90
 verbose = 3
 color = true

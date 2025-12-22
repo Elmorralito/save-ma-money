@@ -548,7 +548,7 @@ class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):
         """
         local_default_path = Path(cls.LOCAL_DEFAULT_CONNECTION.removeprefix("duckdb:///"))
         logger.debug("Using local default connection: %s", local_default_path)
-        os.makedirs(local_default_path.parent, exist_ok=True)
+        local_default_path.parent.mkdir(exist_ok=True, parents=True)
         if not local_default_path.exists():
             local_default_path.touch()
             logger.debug("Created local default connection file: %s", local_default_path)

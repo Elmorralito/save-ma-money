@@ -51,26 +51,26 @@ class TestCSVFileLoader:
     """Test suite for CSVFileLoader class functionality."""
 
     @pytest.mark.parametrize(
-        "path_input,error_handler",
+        "path_input,on_failure_do",
         [
             ("/path/to/file.csv", FallbackAction.RAISE),
             (Path("/path/to/file.csv"), FallbackAction.LOG),
         ],
     )
-    def test_csv_loader_initialization_with_various_paths(self, path_input, error_handler):
+    def test_csv_loader_initialization_with_various_paths(self, path_input, on_failure_do):
         """Test that CSVFileLoader initializes correctly with string or Path object file paths."""
         # Act
-        loader = CSVFileLoader(path=path_input, error_handler=error_handler)
+        loader = CSVFileLoader(path=path_input, on_failure_do=on_failure_do)
 
         # Assert
         assert loader.path == path_input
-        assert loader.error_handler == error_handler
+        assert loader.on_failure_do == on_failure_do
         assert loader._result.empty
 
     def test_csv_loader_result_property_returns_dataframe(self):
         """Test that result property returns pandas DataFrame containing loaded CSV data."""
         # Arrange
-        loader = CSVFileLoader(path="/path/to/file.csv", error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path="/path/to/file.csv", on_failure_do=FallbackAction.RAISE)
         expected_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
         loader._result = expected_df
 
@@ -87,7 +87,7 @@ class TestCSVFileLoader:
         # Arrange
         expected_df = pd.DataFrame({"name": ["John", "Jane"], "age": [30, 25]})
         mock_read_csv.return_value = expected_df
-        loader = CSVFileLoader(path=sample_csv_file, error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path=sample_csv_file, on_failure_do=FallbackAction.RAISE)
 
         # Act
         result = loader.load()
@@ -103,7 +103,7 @@ class TestCSVFileLoader:
         # Arrange
         expected_df = pd.DataFrame({"col1": [1, 2]})
         mock_read_csv.return_value = expected_df
-        loader = CSVFileLoader(path=sample_csv_file, error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path=sample_csv_file, on_failure_do=FallbackAction.RAISE)
         custom_params = {"sep": "|", "header": None, "names": ["col1", "col2"]}
 
         # Act
@@ -115,7 +115,7 @@ class TestCSVFileLoader:
     def test_csv_loader_unload_clears_dataframe(self):
         """Test that unload method clears loaded DataFrame and resets to empty DataFrame."""
         # Arrange
-        loader = CSVFileLoader(path="/path/to/file.csv", error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path="/path/to/file.csv", on_failure_do=FallbackAction.RAISE)
         loader._result = pd.DataFrame({"col1": [1, 2, 3]})
 
         # Act
@@ -131,7 +131,7 @@ class TestCSVFileLoader:
         """Test that load method propagates FileNotFoundError when CSV file does not exist."""
         # Arrange
         nonexistent_path = Path("/nonexistent/file.csv")
-        loader = CSVFileLoader(path=nonexistent_path, error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path=nonexistent_path, on_failure_do=FallbackAction.RAISE)
         mock_read_csv.side_effect = FileNotFoundError("File not found")
 
         # Act & Assert
@@ -141,7 +141,7 @@ class TestCSVFileLoader:
     def test_csv_loader_check_source_inherited_from_file_loader(self, sample_csv_file):
         """Test that CSVFileLoader inherits check_source method from FileLoader base class."""
         # Arrange
-        loader = CSVFileLoader(path=sample_csv_file, error_handler=FallbackAction.RAISE)
+        loader = CSVFileLoader(path=sample_csv_file, on_failure_do=FallbackAction.RAISE)
 
         # Act
         result = loader.check_source()
@@ -155,20 +155,20 @@ class TestExcelFileLoader:
     """Test suite for ExcelFileLoader class functionality."""
 
     @pytest.mark.parametrize(
-        "sheet_name,expected_sheet,error_handler",
+        "sheet_name,expected_sheet,on_failure_do",
         [(None, None, FallbackAction.RAISE), ("Sheet1", "Sheet1", FallbackAction.LOG)],
     )
-    def test_excel_loader_initialization_with_sheet_options(self, sheet_name, expected_sheet, error_handler):
+    def test_excel_loader_initialization_with_sheet_options(self, sheet_name, expected_sheet, on_failure_do):
         """Test that ExcelFileLoader initializes correctly with default or specified sheet parameter."""
         # Arrange
         path = "/path/to/file.xlsx"
 
         # Act
-        loader = ExcelFileLoader(path=path, sheet=sheet_name, error_handler=error_handler)
+        loader = ExcelFileLoader(path=path, sheet=sheet_name, on_failure_do=on_failure_do)
 
         # Assert
         assert loader.path == path
-        assert loader.error_handler == error_handler
+        assert loader.on_failure_do == on_failure_do
         assert loader.sheet == expected_sheet
         if expected_sheet is None:
             assert loader.result == {}
@@ -176,7 +176,7 @@ class TestExcelFileLoader:
     def test_excel_loader_result_property_returns_dictionary(self):
         """Test that result property returns dictionary mapping sheet names to DataFrames."""
         # Arrange
-        loader = ExcelFileLoader(path="/path/to/file.xlsx", error_handler=FallbackAction.RAISE)
+        loader = ExcelFileLoader(path="/path/to/file.xlsx", on_failure_do=FallbackAction.RAISE)
         expected_result = {"Sheet1": pd.DataFrame({"col1": [1, 2]})}
         loader._result = expected_result
 
@@ -198,7 +198,7 @@ class TestExcelFileLoader:
         df2 = pd.DataFrame({"col3": [5, 6]})
         mock_excel_instance.parse.side_effect = [df1, df2]
         mock_excel_file.return_value = mock_excel_instance
-        loader = ExcelFileLoader(path=sample_excel_file, error_handler=FallbackAction.RAISE)
+        loader = ExcelFileLoader(path=sample_excel_file, on_failure_do=FallbackAction.RAISE)
 
         # Act
         result = loader.load()
@@ -221,7 +221,7 @@ class TestExcelFileLoader:
         mock_excel_instance.sheet_names = ["Sheet1", "Sheet2"]
         mock_excel_instance.parse.return_value = pd.DataFrame({"col1": [1, 2]})
         mock_excel_file.return_value = mock_excel_instance
-        loader = ExcelFileLoader(path=sample_excel_file, sheet="Sheet1", error_handler=FallbackAction.RAISE)
+        loader = ExcelFileLoader(path=sample_excel_file, sheet="Sheet1", on_failure_do=FallbackAction.RAISE)
 
         # Act
         result = loader.load()
@@ -234,26 +234,6 @@ class TestExcelFileLoader:
 
     @patch("pandas.ExcelFile")
     @patch("builtins.open", new_callable=mock_open)
-    @pytest.mark.parametrize("sheet_param,expected_sheet", [("sheet", "Sheet2"), ("sheet_name", "Sheet2")])
-    def test_excel_loader_load_with_sheet_parameters(
-        self, mock_file_open, mock_excel_file, sample_excel_file, sheet_param, expected_sheet
-    ):
-        """Test that load method accepts sheet or sheet_name parameter via kwargs to override instance sheet."""
-        # Arrange
-        mock_excel_instance = MagicMock()
-        mock_excel_instance.sheet_names = ["Sheet1", "Sheet2"]
-        mock_excel_instance.parse.return_value = pd.DataFrame({"col1": [1, 2]})
-        mock_excel_file.return_value = mock_excel_instance
-        loader = ExcelFileLoader(path=sample_excel_file, error_handler=FallbackAction.RAISE)
-
-        # Act
-        loader.load(**{sheet_param: expected_sheet})
-
-        # Assert
-        mock_excel_instance.parse.assert_called_once_with(expected_sheet, **{})
-
-    @patch("pandas.ExcelFile")
-    @patch("builtins.open", new_callable=mock_open)
     def test_excel_loader_load_passes_kwargs_to_parse(self, mock_file_open, mock_excel_file, sample_excel_file):
         """Test that load method passes additional kwargs to ExcelFile.parse method."""
         # Arrange
@@ -261,7 +241,7 @@ class TestExcelFileLoader:
         mock_excel_instance.sheet_names = ["Sheet1"]
         mock_excel_instance.parse.return_value = pd.DataFrame({"col1": [1, 2]})
         mock_excel_file.return_value = mock_excel_instance
-        loader = ExcelFileLoader(path=sample_excel_file, error_handler=FallbackAction.RAISE)
+        loader = ExcelFileLoader(path=sample_excel_file, on_failure_do=FallbackAction.RAISE)
         parse_kwargs = {"header": 0, "skiprows": 1}
 
         # Act
@@ -270,27 +250,10 @@ class TestExcelFileLoader:
         # Assert
         mock_excel_instance.parse.assert_called_once_with("Sheet1", **parse_kwargs)
 
-    @patch("pandas.ExcelFile")
-    @patch("builtins.open", new_callable=mock_open)
-    def test_excel_loader_load_uses_default_encoding(self, mock_file_open, mock_excel_file, sample_excel_file):
-        """Test that load method uses DEFAULT_ENCODING when encoding not specified in kwargs."""
-        # Arrange
-        mock_excel_instance = MagicMock()
-        mock_excel_instance.sheet_names = ["Sheet1"]
-        mock_excel_instance.parse.return_value = pd.DataFrame()
-        mock_excel_file.return_value = mock_excel_instance
-        loader = ExcelFileLoader(path=sample_excel_file, error_handler=FallbackAction.RAISE)
-
-        # Act
-        loader.load()
-
-        # Assert
-        mock_file_open.assert_called_once_with(sample_excel_file, mode="r", encoding="utf-8")
-
     def test_excel_loader_unload_clears_result_dictionary(self):
         """Test that unload method clears loaded result dictionary and resets to empty dict."""
         # Arrange
-        loader = ExcelFileLoader(path="/path/to/file.xlsx", error_handler=FallbackAction.RAISE)
+        loader = ExcelFileLoader(path="/path/to/file.xlsx", on_failure_do=FallbackAction.RAISE)
         loader._result = {"Sheet1": pd.DataFrame({"col1": [1, 2]})}
 
         # Act

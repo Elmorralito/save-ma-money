@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-model"
-version = "0.1.13a20"
+version = "0.1.13a21"
 description = "Transactions data model."
 readme = "README.md"
 license = { file = "LICENSE" }

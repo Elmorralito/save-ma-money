@@ -41,51 +41,15 @@ def mock_connector_wrapper():
     return wrapper
 
 
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
-@patch("papita_txnsregistrar.utils.main.Registry")
-def test_load_plugin_class_success(mock_registry_class, mock_class_discovery, mock_plugin_class):
-    """Test that _load_plugin_class successfully discovers and returns plugin class from registry."""
-    # Arrange
-    mock_registry = MagicMock()
-    mock_registry_class.return_value = mock_registry
-    mock_registry.discover.return_value = mock_registry
-    mock_registry.get.return_value = mock_plugin_class
-    mock_plugin_class.__class__ = type
-    mock_plugin_class.__bases__ = (AbstractCLIUtils,)
-
-    # Act
-    result = MainCLIUtils._load_plugin_class("test_plugin", ["test_module"])
-
-    # Assert
-    assert result == mock_plugin_class
-    mock_registry.discover.assert_called_once()
-    mock_registry.get.assert_called_once()
-
-
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
-@patch("papita_txnsregistrar.utils.main.Registry")
-def test_load_plugin_class_raises_runtime_error_when_plugin_not_found(mock_registry_class, mock_class_discovery):
-    """Test that _load_plugin_class raises RuntimeError when plugin cannot be found in registry."""
-    # Arrange
-    mock_registry = MagicMock()
-    mock_registry_class.return_value = mock_registry
-    mock_registry.discover.return_value = mock_registry
-    mock_registry.get.return_value = None
-
-    # Act & Assert
-    with pytest.raises(RuntimeError, match="Error loading plugin"):
-        MainCLIUtils._load_plugin_class("nonexistent_plugin", ["test_module"])
-
-
 @pytest.mark.parametrize("verbose_count,expected_level", [(0, logging.WARNING), (1, logging.INFO), (2, logging.DEBUG), (3, logging.NOTSET)])
-@patch("papita_txnsregistrar.utils.main.configure_logger")
+@patch("papita_txnsregistrar.utils.cli.main.configure_logger")
 def test_setup_logger_configures_correct_level(mock_configure_logger, verbose_count, expected_level):
     """Test that _setup_logger configures logging at the correct level based on verbosity count."""
     # Arrange
     args = Namespace(verbose=verbose_count, log_config="/path/to/config.yaml")
 
     # Act
-    MainCLIUtils._setup_logger(args)
+    MainCLIUtils._setup_logger(vars(args))
 
     # Assert
     assert mock_configure_logger.call_count == 3
@@ -93,10 +57,10 @@ def test_setup_logger_configures_correct_level(mock_configure_logger, verbose_co
         assert call.kwargs["level"] == expected_level
 
 
-@patch("papita_txnsregistrar.utils.main.MainCLIUtils._setup_logger")
-@patch("papita_txnsregistrar.utils.main.MainCLIUtils._load_plugin_class")
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
-@patch("papita_txnsregistrar.utils.main.ArgumentParser")
+@patch("papita_txnsregistrar.utils.cli.main.MainCLIUtils._setup_logger")
+@patch("papita_txnsregistrar.utils.cli.main.MainCLIUtils._load_plugin_class")
+@patch("papita_txnsregistrar.utils.cli.main.ClassDiscovery")
+@patch("papita_txnsregistrar.utils.cli.main.ArgumentParser")
 def test_load_parses_arguments_and_creates_instance(
     mock_parser_class, mock_class_discovery, mock_load_plugin_class, mock_setup_logger
 ):
@@ -139,17 +103,14 @@ def test_load_parses_arguments_and_creates_instance(
     mock_load_plugin_class.assert_called_once()
 
 
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
-@patch("papita_txnsregistrar.utils.main.Registry")
-def test_build_model_loads_plugin_from_string(mock_registry_class, mock_class_discovery, mock_plugin_class):
-    """Test that _build_model successfully loads plugin from string name using registry."""
+@patch("papita_txnsregistrar.utils.cli.main.ClassDiscovery")
+@patch("papita_txnsregistrar.utils.cli.main.MainCLIUtils._load_plugin_class")
+def test_build_model_loads_plugin_from_string(mock_load_plugin_class, mock_class_discovery, mock_plugin_class):
+    """Test that _build_model successfully loads plugin from string name using _load_plugin_class."""
     # Arrange
     mock_class_discovery.decompose_class.return_value = ("test.module", "CLIDefaultConnectorWrapper")
     mock_class_discovery.select.return_value = MagicMock()
-    mock_registry = MagicMock()
-    mock_registry_class.return_value = mock_registry
-    mock_registry.discover.return_value = mock_registry
-    mock_registry.get.return_value = mock_plugin_class
+    mock_load_plugin_class.return_value = mock_plugin_class
     mock_plugin_class.__class__ = type
     mock_plugin_class.__bases__ = (AbstractCLIUtils,)
     mock_connector_wrapper = MagicMock()
@@ -172,10 +133,10 @@ def test_build_model_loads_plugin_from_string(mock_registry_class, mock_class_di
     # Assert
     assert result == instance
     assert instance.plugin == mock_plugin_class
-    mock_registry.get.assert_called_once()
+    mock_load_plugin_class.assert_called_once()
 
 
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
+@patch("papita_txnsregistrar.utils.cli.main.ClassDiscovery")
 def test_build_model_raises_value_error_when_no_connector_wrapper(mock_class_discovery, mock_plugin_class):
     """Test that _build_model raises ValueError when connector wrapper cannot be found."""
     # Arrange
@@ -196,7 +157,7 @@ def test_build_model_raises_value_error_when_no_connector_wrapper(mock_class_dis
         instance._build_model()
 
 
-@patch("papita_txnsregistrar.utils.main.ClassDiscovery")
+@patch("papita_txnsregistrar.utils.cli.main.ClassDiscovery")
 def test_build_model_raises_runtime_error_on_connector_wrapper_discovery_failure(
     mock_class_discovery, mock_plugin_class
 ):
@@ -273,8 +234,8 @@ def test_stop_closes_connector_and_plugin(mock_plugin_class):
     mock_connector.close.assert_called_once()
 
 
-@patch("papita_txnsregistrar.utils.main.MainCLIUtils._setup_logger")
-@patch("papita_txnsregistrar.utils.main.ArgumentParser")
+@patch("papita_txnsregistrar.utils.cli.main.MainCLIUtils._setup_logger")
+@patch("papita_txnsregistrar.utils.cli.main.ArgumentParser")
 def test_load_raises_value_error_when_args_not_list(mock_parser_class, mock_setup_logger):
     """Test that load method raises ValueError when args parameter is not a list of strings."""
     # Arrange

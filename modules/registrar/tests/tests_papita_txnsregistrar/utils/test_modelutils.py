@@ -63,7 +63,7 @@ def test_validate_tags_normalizes_and_deduplicates_tags(input_tags, expected_out
 def test_validate_tags_raises_value_error_when_no_valid_tags():
     """Test that validate_tags raises ValueError when no valid tags are found after filtering."""
     # Arrange
-    invalid_tags = ["123", "tag-with-dash", "tag_with_underscore", ""]
+    invalid_tags = ["**test-tag**", "test..tag", "test tag|"]
 
     # Act & Assert
     with pytest.raises(ValueError, match="No valid tags found"):
