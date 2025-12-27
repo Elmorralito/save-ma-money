@@ -174,7 +174,17 @@ class MainCLIUtils(AbstractCLIUtils):
     """
 
     plugin: Annotated[
-        str | Type[PluginContract], Field(..., alias="plugin", description="Specify the name of the plugin to be used.")
+        str | Type[PluginContract],
+        Field(
+            ...,
+            alias="plugin",
+            description=(
+                "Specify the name of the plugin to be used."
+                "If the keywords 'list-plugins', 'list', 'ls', or 'show-plugins' are provided,"
+                "the available plugins will be listed and the program will exit."
+                "If a plugin name is provided, it will be loaded and used for the program."
+            ),
+        ),
     ]
     modules: List[str] = Field(
         default_factory=list,
