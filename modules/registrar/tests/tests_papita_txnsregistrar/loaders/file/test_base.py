@@ -50,9 +50,9 @@ def test_check_source_with_valid_string_path():
 
             # Assert
             assert result is loader
-            assert isinstance(loader.path, Path)
-            assert loader.path.exists()
-            assert loader.path.is_file()
+            assert isinstance(loader.path, str)
+            assert Path(loader.path).exists()
+            assert Path(loader.path).is_file()
         finally:
             if tmp_path.exists():
                 tmp_path.unlink()
@@ -71,31 +71,31 @@ def test_check_source_with_valid_path_object():
 
             # Assert
             assert result is loader
-            assert isinstance(loader.path, Path)
-            assert loader.path.exists()
-            assert loader.path.is_file()
+            assert isinstance(loader.path, str)
+            assert Path(loader.path).exists()
+            assert Path(loader.path).is_file()
         finally:
             if tmp_path.exists():
                 tmp_path.unlink()
 
 
 def test_check_source_with_nonexistent_path_raises_error():
-    """Test that check_source raises OSError when file path does not exist."""
+    """Test that check_source raises FileNotFoundError when file path does not exist."""
     # Arrange
     nonexistent_path = "/nonexistent/path/to/file.txt"
-    loader = TestFileLoader(path=Path(nonexistent_path), on_failure_do=FallbackAction.RAISE)
+    loader = TestFileLoader(path=nonexistent_path, on_failure_do=FallbackAction.RAISE)
 
     # Act & Assert
-    with pytest.raises(OSError, match="The path does not correspond to a file or does not exist"):
+    with pytest.raises(FileNotFoundError, match=f"The path '{nonexistent_path}' does not correspond to a file or does not exist"):
         loader.check_source()
 
 
 def test_check_source_with_directory_path_raises_error():
-    """Test that check_source raises OSError when path points to a directory instead of a file."""
+    """Test that check_source raises FileNotFoundError when path points to a directory instead of a file."""
     # Arrange
     with tempfile.TemporaryDirectory() as tmp_dir:
         loader = TestFileLoader(path=Path(tmp_dir), on_failure_do=FallbackAction.RAISE)
 
         # Act & Assert
-        with pytest.raises(OSError, match="The path does not correspond to a file or does not exist"):
+        with pytest.raises(IsADirectoryError):
             loader.check_source()

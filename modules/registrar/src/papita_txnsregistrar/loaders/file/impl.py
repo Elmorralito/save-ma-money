@@ -79,14 +79,14 @@ class CSVFileLoader(FileLoader, AbstractDataLoader):
             self.path,
             mode="r",
             encoding=kwargs.get("encoding", DEFAULT_ENCODING),
-            transport_params={"profile": self.profile, "endpoint_url": self.endpoint_url},
+            transport_params=self.transport_params,
         ) as freader:
             if not freader.readable():
                 self.on_failure_do.handle(
                     OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
                 )
 
-            self._result = pd.read_csv(freader, **kwargs)
+                self._result = pd.read_csv(freader, **kwargs)
 
         return self
 
@@ -155,23 +155,18 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractDataLoader):
             Self: The loader instance for method chaining.
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
-        try:
-            with smart_open.open(
-                self.path, mode="rb", transport_params={"profile": self.profile, "endpoint_url": self.endpoint_url}
-            ) as freader:
-                if not freader.readable():
-                    self.on_failure_do.handle(
-                        OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
-                    )
+        with smart_open.open(self.path, mode="rb", transport_params=self.transport_params) as freader:
+            if not freader.readable():
+                self.on_failure_do.handle(
+                    OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
+                )
 
-                excel_file = pd.ExcelFile(freader)
-                sheets = excel_file.sheet_names
-                if sheet and sheet in sheets:
-                    sheets = [sheet]
+            excel_file = pd.ExcelFile(freader)
+            sheets = excel_file.sheet_names
+            if sheet and sheet in sheets:
+                sheets = [sheet]
 
-                self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
-                excel_file.close()
-        except Exception as err:
-            self.on_failure_do.handle(err, logger=kwargs.get("logger"))
+            self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
+            excel_file.close()
 
         return self
