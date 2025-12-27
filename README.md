@@ -8,13 +8,6 @@
 [<img src="./docs/share1.png" width="23" style="border-radius: 50%; border: 1px solid #e1e4e8;" alt="Donated to the PSF."/>](https://www.python.org/psf/donations/)
 [<img src="./docs/share2.png" width="23" style="border-radius: 50%; border: 1px solid #e1e4e8;" alt="Donated to the PSF."/>](https://www.python.org/psf/donations/)
 
-<style>
-  img[src*="share1.png"], img[src*="share2.png"] {
-    height: 23px;
-    border-radius: 10px;
-  }
-</style>
-
 ## Index
 
 | Name                                |                       Package/Library                        |
@@ -57,7 +50,6 @@
 > ```
 
 ## TODOs
-
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#20](https://github.com/Elmorralito/save-ma-money/issues/20)**_] :: **feat/PPT-028: Add feature to list available plugins** :: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 00:25:15+00:00+00:00</sub>_ :weary:
 
