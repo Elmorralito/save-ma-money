@@ -86,6 +86,14 @@ def plugin(
     return decorator
 
 
+def list_plugins(modules: List[str], discover_disabled: bool = False, **kwargs) -> List[Type[PluginContract]]:
+    """List all available plugins from specified modules."""
+    registry = Registry().discover(
+        *modules, discover_disabled=discover_disabled, add_modules=kwargs.get("add_modules", False)
+    )
+    return list(registry.plugins)
+
+
 def load_plugin(plugin_name: str, modules: List[str], **kwargs) -> Type[PluginContract]:
     """Discover and load a plugin class from specified modules by name.
 

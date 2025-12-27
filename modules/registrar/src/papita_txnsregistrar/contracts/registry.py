@@ -57,7 +57,9 @@ class Registry(metaclass=MetaSingleton):
 
         return plugins
 
-    def discover(self, *modules: Sequence[str | ModuleType]) -> "Registry":
+    def discover(
+        self, *modules: Sequence[str | ModuleType], discover_disabled: bool = False, add_modules: bool = False
+    ) -> "Registry":
         """
         Discover plugin classes from specified modules.
 
@@ -84,7 +86,7 @@ class Registry(metaclass=MetaSingleton):
                     check = (
                         class_.__class__ != PluginContract
                         and getattr(class_, "__name__", None) is not None
-                        and class_.meta().enabled
+                        and (class_.meta().enabled or discover_disabled)
                     )
                 except (TypeError, ValueError, AttributeError):
                     if logger.isEnabledFor(logging.DEBUG):
@@ -92,8 +94,13 @@ class Registry(metaclass=MetaSingleton):
 
                     check = False
 
-                if check:
+                if check and not add_modules:
                     self._plugins |= {class_}
+
+                if check and add_modules:
+                    meta = class_.meta()
+                    meta.module = str(module_)
+                    self.register(class_, meta)
 
         return self
 

@@ -24,6 +24,8 @@ import traceback
 from argparse import Action, ArgumentParser
 from typing import Annotated, Any, Dict, List, Self, Type
 
+import pandas as pd
+import tabulate
 from pydantic import Field, model_validator
 
 from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME
@@ -35,7 +37,7 @@ from papita_txnsmodel.utils.configutils import configure_logger
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
-from papita_txnsregistrar.contracts.loader import load_plugin
+from papita_txnsregistrar.contracts.loader import list_plugins, load_plugin
 from papita_txnsregistrar.contracts.plugin import PluginContract
 
 from .abstract import AbstractCLIUtils
@@ -172,7 +174,17 @@ class MainCLIUtils(AbstractCLIUtils):
     """
 
     plugin: Annotated[
-        str | Type[PluginContract], Field(..., alias="plugin", description="Specify the name of the plugin to be used.")
+        str | Type[PluginContract],
+        Field(
+            ...,
+            alias="plugin",
+            description=(
+                "Specify the name of the plugin to be used."
+                "If the keywords 'list-plugins', 'list', 'ls', or 'show-plugins' are provided,"
+                "the available plugins will be listed and the program will exit."
+                "If a plugin name is provided, it will be loaded and used for the program."
+            ),
+        ),
     ]
     modules: List[str] = Field(
         default_factory=list,
@@ -344,6 +356,10 @@ class MainCLIUtils(AbstractCLIUtils):
             this method when you need the plugin class for inspection or to create instances
             later.
         """
+        if plugin_name in ("list-plugins", "list", "ls", "show-plugins"):
+            cls._show_plugins(modules)
+            sys.exit(0)
+
         plugin_class = load_plugin(plugin_name, modules, **kwargs)
         if not issubclass(plugin_class, AbstractCLIUtils):
             raise TypeError(
@@ -557,6 +573,51 @@ class MainCLIUtils(AbstractCLIUtils):
         parsed_args = cls.parse_cli_args(**kwargs)
         cls._setup_logger(args=parsed_args)
         return cls.model_validate(parsed_args)
+
+    @classmethod
+    def _show_plugins(cls, modules: List[str]) -> None:
+        """Show all available plugins."""
+        try:
+            plugins = list_plugins(modules, discover_disabled=True, add_modules=True)
+            if not plugins:
+                raise ValueError("No plugins found in the specified modules")
+
+            plugins_ = (
+                pd.DataFrame(
+                    [
+                        {
+                            "NAME": plugin.meta().name
+                            + (f"\n({plugin.meta().module})" if plugin.meta().module else ""),
+                            "VERSION": plugin.meta().version,
+                            "ENABLED": plugin.meta().enabled,
+                            "LABELS": "\n".join(plugin.meta().feature_tags),
+                            "AUTHORS": " \n".join(plugin.meta().authors),
+                        }
+                        for plugin in plugins
+                    ]
+                )
+                .sort_values(by="ENABLED", ascending=False)
+                .replace((True, False), ("Yes (✓)", "No(✗)"))
+            )
+            table = tabulate.tabulate(
+                plugins_,
+                headers="keys",
+                tablefmt="fancy_grid",
+                showindex=False,
+                colalign=("left", "center", "center", "left", "left"),
+                disable_numparse=True,
+                rowalign="top",
+            )
+            title_length = len(table.split("\n", maxsplit=1)[0])
+            print(" SPECIFIED MODULES ".center(title_length, "="))
+            print(f"  - {'\n  - '.join(modules)}\n")
+            print(" AVAILABLE PLUGINS ".center(title_length, "="))
+            print(table)
+        except Exception:
+            print(f"Could not list available plugins:\n{traceback.format_exc()}")
+            print("This may be due to:")
+            print("  - No plugins found in the specified modules")
+            print("  - An error occurred while listing plugins\n")
 
     def _show_plugin_help(self) -> Self:
         """Display comprehensive help information for the loaded plugin.
