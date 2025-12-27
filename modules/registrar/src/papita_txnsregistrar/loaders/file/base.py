@@ -11,10 +11,10 @@ and interface structure.
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import Self
 
+import smart_open
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -48,6 +48,8 @@ class FileLoader(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     path: str | Path
+    profile: str = "default"
+    endpoint_url: str | None = None
 
     def check_source(self, **kwargs) -> Self:
         """
@@ -68,11 +70,20 @@ class FileLoader(BaseModel):
         Raises:
             OSError: If the path doesn't exist or isn't a readable file.
         """
-        path = Path(self.path) if isinstance(self.path, str) else self.path
-        if not (path.is_file() and path.exists() and os.access(path.as_posix(), os.R_OK)):
-            self.on_failure_do.handle(
-                OSError("The path does not correspond to a file or does not exist."), logger=logger
-            )
+        try:
+            with smart_open.open(
+                self.path, transport_params={"profile": self.profile, "endpoint_url": self.endpoint_url}
+            ) as freader:
+                if not freader.readable():
+                    self.on_failure_do.handle(OSError(f"The path '{self.path}' is not readable."), logger=logger)
 
-        self.path = path
+        except FileNotFoundError:
+            self.on_failure_do.handle(
+                FileNotFoundError(f"The path '{self.path}' does not correspond to a file or does not exist."),
+                logger=logger,
+            )
+        except Exception as err:
+            self.on_failure_do.handle(err, logger=logger)
+
+        self.path = self.path
         return self
