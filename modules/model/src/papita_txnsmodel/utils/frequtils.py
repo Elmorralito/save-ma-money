@@ -44,6 +44,13 @@ class FrequencyHandler:
         self._sample_periods = int(sample_periods) if isinstance(sample_periods, (int, float)) else self.SAMPLE_PERIODS
         self._sample_dt = pd.period_range(self._ref_dt, periods=self._sample_periods, freq=self._freq).max()
         self._sample_dt = self._sample_dt.to_timestamp()
+        if self._ref_dt.tz is not None and self._sample_dt.tz is None:
+            self._sample_dt = self._sample_dt.tz_localize(self._ref_dt.tz)
+        if self._ref_dt.tz is not None and self._sample_dt.tz is not None and self._ref_dt.tz != self._sample_dt.tz:
+            raise ValueError(
+                f"The reference timestamp '{self._ref_dt}' and the sample timestamp '{self._sample_dt}' have different"
+                "timezones."
+            )
 
     @property
     def freq(self) -> str:
@@ -238,5 +245,5 @@ class FrequencyHandler:
         if freq == self:
             return 1
 
-        range_ = pd.date_range(start=self.ref_dt, end=self.sample_dt, freq=freq.offset, inclusive=True)
+        range_ = pd.date_range(start=self.ref_dt, end=self.sample_dt, freq=freq.offset, inclusive="both")
         return len(range_) - 1

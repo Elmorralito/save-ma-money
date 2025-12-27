@@ -8,14 +8,15 @@ to implement the core building logic.
 """
 
 import logging
-from typing import Generic, Self, TypeVar
+from typing import Generic, Self, Type, TypeVar, get_args
 
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
 logger = logging.getLogger(__name__)
 
-L = TypeVar("L", bound=AbstractLoader)
+L = TypeVar("L", bound=AbstractDataLoader)
 
 
 class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
@@ -31,6 +32,25 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
     Attributes:
         Inherits all attributes from AbstractContractBuilder.
     """
+
+    @classmethod
+    def loader_type(cls) -> Type[L]:
+        """Get the loader type associated with this builder.
+
+        This implementation extracts the loader type from the `loader_generic_type`
+        field's type annotation using Pydantic's `model_fields` and introspection.
+
+        Returns:
+            Type[L]: The loader type class that this builder is parameterized with.
+
+        Raises:
+            TypeError: If the extracted loader type is not a subclass of AbstractDataLoader.
+        """
+        loader_type = next(iter(get_args(cls.model_fields["loader_generic_type"].annotation)))
+        if not issubclass(loader_type, AbstractDataLoader):
+            raise TypeError("Loader type is not a subclass of AbstractDataLoader.")
+
+        return loader_type
 
     def build_loader(self, **kwargs) -> Self:
         """
@@ -48,7 +68,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
         Raises:
             NotImplementedError: Always raised as this method must be overridden.
         """
-        self.loader = self.loader_type().model_validate(**kwargs)
+        self.loader = self.loader_type().model_validate(kwargs)
         return self
 
     def build_service(self, **kwargs) -> Self:
@@ -65,9 +85,8 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             Self: The builder instance for method chaining.
         """
         if not self.handler:
-            raise ValueError("Handler not built.")
+            raise ValueError("Handler not loaded yet.")
 
-        logger.debug("Building service for handler %s", self.handler.labels())
         for remove_key in "handler_modules", "connector", "connection":
             kwargs.pop(remove_key, None)
 
@@ -81,6 +100,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
                 **kwargs,
             }
         )
+        logger.debug("Built service %s(handler=%s)", self.service.__class__.__name__, self.handler.__name__)
         return self
 
     def build_handler(self, **kwargs) -> Self:
@@ -97,3 +117,22 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             Self: The builder instance for method chaining.
         """
         raise NotImplementedError("Subclasses must implement build_handler method")
+
+    @classmethod
+    def load(cls, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+        """
+        Load the builder.
+
+        This method creates a new builder instance using Pydantic's model_validate method,
+        which performs complete validation of input data according to the model schema.
+        This provides additional safety compared to the standard load method.
+
+        Args:
+            **kwargs: Parameters for loading the builder, such as configuration options
+                      or dependencies.
+
+        Returns:
+            Self: A new validated instance of the builder.
+        """
+        params = {"connector": connector, **kwargs}
+        return cls.model_validate(params)

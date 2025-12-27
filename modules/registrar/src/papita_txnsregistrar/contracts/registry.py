@@ -7,6 +7,7 @@ transaction tracker system. It handles plugin discovery, registration, and
 retrieval, with support for fuzzy matching when looking up plugins by name or tags.
 """
 
+import logging
 from types import ModuleType
 from typing import Sequence, Type
 
@@ -16,6 +17,8 @@ from papita_txnsmodel.utils.classutils import ClassDiscovery, MetaSingleton
 
 from .meta import PluginMetadata
 from .plugin import PluginContract
+
+logger = logging.getLogger(__name__)
 
 
 class Registry(metaclass=MetaSingleton):
@@ -31,7 +34,12 @@ class Registry(metaclass=MetaSingleton):
         _plugins: A set containing plugin classes that extend PluginContract.
     """
 
+    __slots__ = ("_plugins",)
+
     _plugins: set[Type[PluginContract]]
+
+    def __init__(self):
+        self._plugins = set()
 
     @property
     def plugins(self) -> set[Type[PluginContract]]:
@@ -49,7 +57,7 @@ class Registry(metaclass=MetaSingleton):
 
         return plugins
 
-    def discover(self, *modules: Sequence[str | ModuleType], debug: bool = False) -> "Registry":
+    def discover(self, *modules: Sequence[str | ModuleType]) -> "Registry":
         """
         Discover plugin classes from specified modules.
 
@@ -63,16 +71,29 @@ class Registry(metaclass=MetaSingleton):
         Returns:
             The Registry instance for method chaining.
         """
+        debug = logger.isEnabledFor(logging.DEBUG)
+        modules_ = set(modules)
         self._plugins = getattr(self, "_plugins", None) or set()
-        for module_ in set(modules) | {__name__.split(".", maxsplit=1)[0]}:
+        for module_ in modules_:
+            logger.info("Discovering plugins on module: %s", module_)
             if not isinstance(module_, (ModuleType, str)):
                 continue
 
-            self._plugins |= {
-                class_
-                for class_ in ClassDiscovery.get_children(module_, PluginContract, debug=debug)
-                if class_ != PluginContract and getattr(class_, "__name__", None)
-            }
+            for class_ in ClassDiscovery.get_children(module_, PluginContract, debug=debug):
+                try:
+                    check = (
+                        class_.__class__ != PluginContract
+                        and getattr(class_, "__name__", None) is not None
+                        and class_.meta().enabled
+                    )
+                except (TypeError, ValueError, AttributeError):
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.exception("Plugin %s is not a valid plugin.", class_.__name__)
+
+                    check = False
+
+                if check:
+                    self._plugins |= {class_}
 
         return self
 
@@ -136,7 +157,9 @@ class Registry(metaclass=MetaSingleton):
                     return plugin
             else:
                 matches = [
-                    match_ for match_, score in (process.extract(label, tags, limit=1) or []) if score >= fuzz_threshold
+                    match_
+                    for match_, score, _ in (process.extract(label, tags, limit=1) or [])
+                    if score >= fuzz_threshold
                 ]
                 if fuzz.ratio(name, label) >= fuzz_threshold or matches:
                     return plugin

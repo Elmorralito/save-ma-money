@@ -14,13 +14,13 @@ from typing import Self
 
 import pandas as pd
 
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 from papita_txnsregistrar.loaders.memory.impl import InMemoryLoader
 
 from .base import FileLoader
 
 
-class CSVFileLoader(FileLoader, AbstractLoader):
+class CSVFileLoader(FileLoader, AbstractDataLoader):
     """
     Loader for CSV (Comma-Separated Values) files.
 
@@ -95,7 +95,7 @@ class CSVFileLoader(FileLoader, AbstractLoader):
         return self
 
 
-class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
+class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractDataLoader):
     """
     Loader for Excel spreadsheet files.
 
@@ -141,13 +141,16 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
             Self: The loader instance for method chaining.
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
-        with open(self.path, mode="r", encoding=kwargs.get("encoding", "utf-8")) as freader:
-            excel_file = pd.ExcelFile(freader)
-            sheets = excel_file.sheet_names
-            if sheet and sheet in sheets:
-                sheets = [sheet]
+        try:
+            with open(self.path, mode="rb") as freader:
+                excel_file = pd.ExcelFile(freader)
+                sheets = excel_file.sheet_names
+                if sheet and sheet in sheets:
+                    sheets = [sheet]
 
-            self.result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
-            excel_file.close()
+                self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
+                excel_file.close()
+        except Exception as err:
+            self.on_failure_do.handle(err, logger=kwargs.get("logger"))
 
         return self

@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class FileLoader(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     """
     Base class for all file-based data loaders.
 
@@ -46,6 +45,8 @@ class FileLoader(BaseModel):
         ```
     """
 
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     path: str | Path
 
     def check_source(self, **kwargs) -> Self:
@@ -69,7 +70,7 @@ class FileLoader(BaseModel):
         """
         path = Path(self.path) if isinstance(self.path, str) else self.path
         if not (path.is_file() and path.exists() and os.access(path.as_posix(), os.R_OK)):
-            self.error_handler.handle(
+            self.on_failure_do.handle(
                 OSError("The path does not correspond to a file or does not exist."), logger=logger
             )
 

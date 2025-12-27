@@ -4,10 +4,13 @@
 DOCKER_RM_FLAG=
 DOCKER_LOCAL_FLAG=
 DUCKDB_DB_PATH=
+ENV_FILE=
+DUCKDB_SCHEMA="papita_transactions"
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 ALEMBIC_EXEC_COMMAND="alembic"
-ALEMBIC_PATH="${PROJECT_PATH}/modules/model"
-ENV_FILE="${PROJECT_PATH}/docker/alembic/default.env"
+ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
+DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
+DEFAULT_DB_ENV_FILE="${PROJECT_PATH}/docker/database/.env"
 source "${PROJECT_PATH}/deploy/utils.sh"
 
 usage() {
@@ -16,7 +19,7 @@ Usage: $0 ACTION [options]
 
 Database migration utility for Alembic with optional Docker integration.
 
-The script loads environment variables from transactions-model/.env by default.
+The script loads environment variables from docker/database/.env by default.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
@@ -25,16 +28,24 @@ ACTIONS:
     up                                  Start the Docker services for migration environment
     halt, stop                          Stop the Docker services for migration environment
     down                                Destroy the Docker services for migration environment
-    duckdb                              Run with DuckDB (uses :memory: database by default)
 
 OPTIONS:
     --message, --slug, -m MESSAGE           Specify a message for the migration
                                             (used with version/autogenerate)
-    --env-file, -ef FILE                    Specify a custom environment file path (defaults to transactions-model/.env)
-    --duckdb-db-path, -dbp PATH             Specify a custom DuckDB database path (defaults to duckdb:///:memory:)
+    --env-file, -ef FILE                    Specify a custom environment file path
+                                            (defaults to docker/database/.env)
+    --duckdb-path, -dbp PATH                Specify a DuckDB database path. Supports:
+                                                - DuckDB protocol: duckdb:///path or duckdb://path
+                                                - POSIX paths: /absolute/path.db, ./relative.db,
+                                                    ../relative.db, or path/to/file.db
+                                                - In-memory: :memory: or duckdb:///:memory:
+                                            When provided, operations use DuckDB instead of Docker
+    --duckdb-schema, -dbs SCHEMA            Specify the DuckDB schema name
+                                            (defaults to papita_transactions)
     --alembic-version, --version, -av VER   Specify version to downgrade to
                                             (defaults to head^1)
     --docker-compose-file, -dcf FILE        Specify a custom Docker Compose file path
+                                            (defaults to docker/database/docker-compose.yml)
     --docker-local, -dl                     Run with Docker services (starts containers)
     --docker-rm, -dr                        Remove Docker containers after execution
     --docker-frm, -dfrm                     Force remove containers AND volumes after execution
@@ -43,13 +54,15 @@ EXAMPLES:
     $(basename "$0") version -m "Add users table"
     $(basename "$0") upgrade --docker-local --docker-rm
     $(basename "$0") downgrade -av abc123
-    $(basename "$0") upgrade --docker-local --docker-rm
+    $(basename "$0") upgrade --duckdb-path /path/to/duckdb.db
+    $(basename "$0") upgrade --duckdb-path ./data/store.duckdb --duckdb-schema my_schema
+    $(basename "$0") version -m "New migration" --duckdb-path duckdb:///path/to/db.db
     $(basename "$0") down --docker-frm
-    $(basename "$0") duckdb --duckdb-db-path /path/to/duckdb.db
 
-PRERREQUISITES:
+PREREQUISITES:
     - Alembic must be installed in your environment
     - Docker and Docker Compose (if using Docker functionality)
+    - Python and Poetry (for DuckDB operations)
 EOM
 )"
     log "TRACE" "$USAGE"
@@ -57,7 +70,6 @@ EOM
 }
 
 docker_run() {
-    DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-"${PROJECT_PATH}/docker/alembic/docker-compose.yml"}"
     if [[ "$DOCKER_LOCAL_FLAG" -eq 1 ]]; then
         DOCKER_COMMAND="docker compose -f $DOCKER_COMPOSE_FILE --env-file $ENV_FILE up -d --build"
         run_command 1 "$DOCKER_COMMAND"
@@ -65,7 +77,7 @@ docker_run() {
         sleep 5
     fi
 
-    cd "$ALEMBIC_PATH" && run_command 0 "$ALEMBIC_COMMAND"
+    cd "$ALEMBIC_PROJECT_PATH" && run_command 0 "$ALEMBIC_COMMAND"
 
     if [[ "$DOCKER_LOCAL_FLAG" -eq 2 ]] && [[ "$DOCKER_RM_FLAG" -eq 0 ]] && [ -n "$DOCKER_COMPOSE_FILE" ]; then
         log INFO "Stoping local database..."
@@ -93,10 +105,17 @@ duckdb_run() {
         usage
     fi
 
-    mkdir -p "$(dirname "$DUCKDB_DB_PATH")"
-    touch "$DUCKDB_DB_PATH"
+    DUCKDB_DB_PATH=$(python -m poetry run python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
+    # shellcheck disable=SC2181
+    if [[ "$?" -ne 0 ]]; then
+        log ERROR "Failed to setup DuckDB schema."
+        exit 1
+    fi
+    log "INFO" "Running Alembic with database path: $DUCKDB_DB_PATH"
+    OLD_PWD="$(pwd)"
+    ALEMBIC_COMMAND="${ALEMBIC_COMMAND/\{DUCKDB_DB_PATH\}/$DUCKDB_DB_PATH}"
     run_command 0 "$ALEMBIC_COMMAND" ;
-    cd - || return
+    cd "$OLD_PWD" || return
 }
 
 if ! test -e "$(which "$ALEMBIC_EXEC_COMMAND")" && ! test -e "$(python -m poetry env info -p)"; then
@@ -104,7 +123,7 @@ if ! test -e "$(which "$ALEMBIC_EXEC_COMMAND")" && ! test -e "$(python -m poetry
     exit 1
 fi
 
-ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c ${ALEMBIC_PATH}/alembic.ini"
+ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -117,18 +136,6 @@ shift
 # Parse arguments
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --message | --slug | -m)
-            MESSAGE="$2"
-            shift 2
-            ;;
-        --env-file | -ef)
-            ENV_FILE="$2"
-            shift 2
-            ;;
-        --duckdb-db-path | -dbp)
-            DUCKDB_DB_PATH="$2"
-            shift 2
-            ;;
         --alembic-version | --version | -av)
             ALEMBIC_VERSION="$2"
             shift 2
@@ -152,12 +159,43 @@ while [[ "$#" -gt 0 ]]; do
             RUN_FLAG="docker_run"
             shift 1
             ;;
+        --duckdb-path | -dbp)
+            DUCKDB_DB_PATH="$2"
+            shift 2
+            ;;
+        --duckdb-schema | -dbs)
+            DUCKDB_SCHEMA="$2"
+            shift 2
+            ;;
+        --env-file | -ef)
+            ENV_FILE="$2"
+            shift 2
+            ;;
+        --message | --slug | -m)
+            MESSAGE="$2"
+            shift 2
+            ;;
         *)
             log "ERROR" "Unknown option: $1"
             usage
             ;;
     esac
 done
+
+DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-"${DEFAULT_DB_COMPOSE_FILE}"}"
+ENV_FILE="${ENV_FILE:-"${DEFAULT_DB_ENV_FILE}"}"
+
+log "INFO" "Using Docker Compose file at $DOCKER_COMPOSE_FILE"
+if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
+    log "ERROR" "Docker Compose file not found at $DOCKER_COMPOSE_FILE"
+    exit 1
+fi
+
+log "INFO" "Using env file at $ENV_FILE"
+if [[ ! -f "$ENV_FILE" ]]; then
+    log "ERROR" "Env file not found at $ENV_FILE"
+    exit 1
+fi
 
 log "INFO" "Loading env file at $ENV_FILE"
 source "${ENV_FILE}" || {
@@ -168,21 +206,21 @@ source "${ENV_FILE}" || {
 case "$ACTION" in
     version | autogenerate)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         fi
         ;;
     upgrade)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" upgrade head"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade head"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade head"
         fi
         ;;
     downgrade)
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath=${DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         fi

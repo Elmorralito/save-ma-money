@@ -27,11 +27,25 @@ def standardize_dataframe(
         df: Input DataFrame to standardize
         drops: Optional list of column names to drop from the DataFrame
         by_alias: Whether to use field aliases from the Pydantic model
-        **kwargs: Additional columns to add to the DataFrame before processing
+        **kwargs: Additional columns to add to the DataFrame before processing. Defaults to {}.
+        static_values: Additional static values to add to the DataFrame before processing. Defaults to {}.
+        dump_mode: Either "python" or "json". The mode to dump the DataFrame to when serializing the rows.
+                   Defaults to "json".
 
     Returns:
         A standardized DataFrame with rows validated and transformed according to the model
     """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError("df must be a pandas DataFrame")
+
+    static_values = kwargs.pop("static_values", {})
+    if not isinstance(static_values, dict):
+        static_values = {}
+
+    dump_mode = kwargs.pop("dump_mode", "json")
+    if dump_mode not in ("python", "json"):
+        dump_mode = "json"
+
     drops = drops or []
     temp = df.copy()
     temp.drop(columns=drops, errors="ignore", inplace=True)
@@ -42,11 +56,11 @@ def standardize_dataframe(
         output = temp
 
     standardized = output.reset_index(drop=True).apply(
-        lambda row: cls.model_validate(row.to_dict()).model_dump(mode="python", by_alias=by_alias),
+        lambda row: cls.model_validate(row.to_dict()).model_dump(mode=dump_mode, by_alias=by_alias),
         axis=1,
         result_type="expand",
     )
-    for key, value in kwargs.items():
+    for key, value in static_values.items():
         standardized[key] = value
 
     return standardized
@@ -84,10 +98,13 @@ def convert_dto_obj_on_serialize(
     """
     data = obj.model_dump()
     field = getattr(obj, id_field)
-    data[target_field] = getattr(field, id_field_attr_name) if isinstance(field, expected_intput_field_type) else field
+    if isinstance(field, expected_intput_field_type) and hasattr(field, id_field_attr_name):
+        data[target_field] = getattr(field, id_field_attr_name)
+    else:
+        data[target_field] = field
     if not isinstance(data[target_field], expected_output_field_type):
         raise TypeError(
-            f"The output type of the field {id_field} was not expected {expected_output_field_type.__name__}"
+            f"The output type of the field {id_field} was not expected: {expected_output_field_type.__name__}"
         )
 
     data.pop(id_field)

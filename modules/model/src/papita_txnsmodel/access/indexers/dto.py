@@ -8,7 +8,7 @@ linked according to their types and that relationship constraints are maintained
 """
 
 import uuid
-from typing import Annotated, get_args
+from typing import get_args
 
 from pydantic import Field, field_serializer, model_validator
 
@@ -53,27 +53,27 @@ class AccountsIndexerDTO(TableDTO):
 
     __dao_type__ = AccountsIndexer
 
-    account: Annotated[uuid.UUID | AccountsDTO, Field(serialization_alias="account_id")]
-    type: Annotated[uuid.UUID | TypesDTO, Field(serialization_alias="type_id")]
-    asset_account: Annotated[uuid.UUID | AssetAccountsDTO | None, Field(serialization_alias="asset_account_id")]
-    liability_account: Annotated[
-        uuid.UUID | LiabilityAccountsDTO | None, Field(serialization_alias="liability_account_id")
-    ]
-    banking_asset_account: Annotated[
-        uuid.UUID | BankingAssetAccountsDTO | None, Field(serialization_alias="banking_asset_account_id")
-    ]
-    real_estate_asset_account: Annotated[
-        uuid.UUID | RealEstateAssetAccountsDTO | None, Field(serialization_alias="real_estate_asset_account_id")
-    ]
-    trading_asset_account: Annotated[
-        uuid.UUID | TradingAssetAccountsDTO | None, Field(serialization_alias="trading_asset_account_id")
-    ]
-    bank_credit_liability_account: Annotated[
-        uuid.UUID | BankCreditLiabilityAccountsDTO | None, Field(serialization_alias="bank_credit_liability_account_id")
-    ]
-    credit_card_liability_account: Annotated[
-        uuid.UUID | CreditCardLiabilityAccountsDTO | None, Field(serialization_alias="credit_card_liability_account_id")
-    ]
+    account: uuid.UUID | AccountsDTO = Field(..., serialization_alias="account_id")
+    type: uuid.UUID | TypesDTO = Field(..., serialization_alias="type_id")
+    asset_account: uuid.UUID | AssetAccountsDTO | None = Field(default=None, serialization_alias="asset_account_id")
+    liability_account: uuid.UUID | LiabilityAccountsDTO | None = Field(
+        default=None, serialization_alias="liability_account_id"
+    )
+    banking_asset_account: uuid.UUID | BankingAssetAccountsDTO | None = Field(
+        default=None, serialization_alias="banking_asset_account_id"
+    )
+    real_estate_asset_account: uuid.UUID | RealEstateAssetAccountsDTO | None = Field(
+        default=None, serialization_alias="real_estate_asset_account_id"
+    )
+    trading_asset_account: uuid.UUID | TradingAssetAccountsDTO | None = Field(
+        default=None, serialization_alias="trading_asset_account_id"
+    )
+    bank_credit_liability_account: uuid.UUID | BankCreditLiabilityAccountsDTO | None = Field(
+        default=None, serialization_alias="bank_credit_liability_account_id"
+    )
+    credit_card_liability_account: uuid.UUID | CreditCardLiabilityAccountsDTO | None = Field(
+        default=None, serialization_alias="credit_card_liability_account_id"
+    )
 
     @field_serializer(
         "account",

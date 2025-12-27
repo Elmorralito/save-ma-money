@@ -8,13 +8,16 @@ Classes:
     TypesDTO: DTO for type entities with reference to their classification.
 """
 
-# import uuid
+import hashlib
+import uuid
+from typing import Self
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 
 from papita_txnsmodel.access.base.dto import CoreTableDTO
 from papita_txnsmodel.model.enums import TypesClassifications
 from papita_txnsmodel.model.types import Types
+from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
 
 
 class TypesDTO(CoreTableDTO):
@@ -40,14 +43,18 @@ class TypesDTO(CoreTableDTO):
 
     classification: TypesClassifications
 
-    @property
-    def row(self) -> dict:
-        """Get a dictionary representation of this DTO.
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize the model after initialization.
 
-        This property provides a convenient way to convert the DTO to a dictionary
-        format suitable for data manipulation or serialization.
+        This method normalizes the model by setting the classification field to the correct value.
 
         Returns:
-            dict: Dictionary representation of the DTO with all fields.
+            Self: The normalized model.
         """
-        return self.model_dump(mode="python")
+        super()._normalize_model()
+        self.id = uuid.uuid5(
+            uuid.NAMESPACE_URL,
+            hashlib.sha256(f"{self.name}_{self.classification.value}".encode(DEFAULT_ENCODING)).hexdigest(),
+        )
+        return self

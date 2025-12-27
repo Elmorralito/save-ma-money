@@ -20,12 +20,12 @@ from typing import Generic, Self, Type, TypeVar
 from pydantic import BaseModel, ConfigDict
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.services.base import BaseService
-from papita_txnsmodel.utils.classutils import FallbackAction
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsmodel.utils.enums import FallbackAction
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
-L = TypeVar("L", bound=AbstractLoader)
+L = TypeVar("L", bound=AbstractDataLoader)
 
 
 class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
@@ -56,12 +56,14 @@ class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     connector: Type[SQLDatabaseConnector]
-    handler: Type[AbstractLoadHandler] | AbstractLoadHandler | None = None
+    handler: Type[AbstractHandler] | AbstractHandler | None = None
+    loader_generic_type: Type[L] = L
     loader: L | None = None
     service: BaseService | None = None
     on_failure_do: FallbackAction = FallbackAction.RAISE
 
     @classmethod
+    @abc.abstractmethod
     def loader_type(cls) -> Type[L]:
         """Get the loader type associated with this builder.
 
@@ -72,7 +74,6 @@ class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
         Returns:
             Type[L]: The loader type class that this builder is parameterized with.
         """
-        return cls.model_fields["loader"].annotation
 
     @abc.abstractmethod
     def build_loader(self, **kwargs) -> Self:
@@ -158,4 +159,16 @@ class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
             # Create a complete contract with a single call
             contract = ConcreteBuilder(connection=db_conn).build(param1="value")
             ```
+        """
+
+    @classmethod
+    @abc.abstractmethod
+    def load(cls, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+        """
+        Load the builder.
+
+        This method should implement the logic for loading the builder.
+
+        Args:
+            **kwargs: Implementation-specific parameters needed for loading the builder.
         """

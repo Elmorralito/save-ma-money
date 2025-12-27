@@ -7,10 +7,10 @@ It serves as a utility for handling data that's already loaded into memory and n
 processed by the transaction system.
 """
 
-from typing import Self
+from typing import Dict, Self
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class InMemoryLoader(BaseModel):
@@ -28,16 +28,16 @@ class InMemoryLoader(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    _result: dict[str, pd.DataFrame] = Field(default_factory=dict)
+    _result: Dict[str, pd.DataFrame] | None = None
 
     @property
-    def result(self) -> dict[str, pd.DataFrame]:
+    def result(self) -> Dict[str, pd.DataFrame]:
         """Get the loaded in-memory data.
 
         Returns:
-            dict[str, pd.DataFrame]: Dictionary mapping data source names to pandas DataFrames.
+            Dict[str, pd.DataFrame]: Dictionary mapping data source names to pandas DataFrames.
         """
-        return self._result
+        return self._result or {}
 
     def check_source(self, **kwargs) -> Self:
         """Validate the data source structure and format.

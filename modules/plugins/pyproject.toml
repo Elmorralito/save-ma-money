@@ -1,0 +1,28 @@
+[project]
+name = "papita-transactions-registrar-plugins"
+version = "0.1.6a22"
+description = "Plugins for the Papita Transactions Registrar"
+readme = {file = "README.md", content-type = "text/markdown"}
+license = "LICENSE"
+requires-python = ">=3.10,<3.13"
+authors = [
+    { name = "Elmorralito", email = "drestrepohinc@gmail.com" }
+]
+dependencies = [
+    "papita-transactions-model (>=0.1.0,<1.0)",
+    "papita-transactions-registrar (>=0.1.0,<1.0)",
+]
+
+[project.urls]
+HomePage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/plugins"
+
+[tool.poetry]
+packages = [
+    { include = "papita_txnsplugins", from = "src/" },
+]
+
+[build-system]
+requires = [
+    "poetry-core>=2.0.0,<3.0.0",
+]
+build-backend = "poetry.core.masonry.api"

@@ -11,13 +11,13 @@ Classes:
 
 import uuid
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, List, Self
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, WrapValidator, model_validator
 
 from papita_txnsmodel.model.base import BaseSQLModel
-from papita_txnsmodel.utils import datautils
+from papita_txnsmodel.utils import datautils, modelutils
 
 
 class TableDTO(BaseModel):
@@ -36,10 +36,10 @@ class TableDTO(BaseModel):
     """
 
     __dao_type__ = BaseSQLModel
-    model_config = ConfigDict(ignored_types=(pd.Timestamp,), arbitrary_types_allowed=True)
+    model_config = ConfigDict(ignored_types=(pd.Timestamp,), arbitrary_types_allowed=True, extra="allow")
 
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4)
-    active: bool = True
+    active: Annotated[bool | str | int, WrapValidator(modelutils.validate_bool)] = True
     deleted_at: datetime | None = None
 
     @classmethod
@@ -58,7 +58,14 @@ class TableDTO(BaseModel):
         if not isinstance(obj, cls.__dao_type__):
             raise TypeError(f"Unsupported DAO type: {type(obj)}")
 
-        return cls.model_validate(obj, strict=True)
+        data = {
+            field.alias if field.alias else field_name: getattr(
+                obj, field_name, getattr(obj, field.alias, None) if field.alias else None
+            )
+            for field_name, field in cls.model_fields.items()
+            if field_name in obj.model_fields_set or field.alias in obj.model_fields_set
+        }
+        return cls.model_validate(data)
 
     @classmethod
     def standardized_dataframe(
@@ -83,7 +90,7 @@ class TableDTO(BaseModel):
         Returns:
             BaseSQLModel: The converted database model instance.
         """
-        return self.__dao_type__.model_validate(**self.model_dump(mode="python", exclude_unset=True, exclude_none=True))
+        return self.__dao_type__.model_validate(self.model_dump(mode="python", exclude_unset=True, exclude_none=True))
 
 
 class CoreTableDTO(TableDTO):
@@ -99,6 +106,31 @@ class CoreTableDTO(TableDTO):
         tags (List[str]): List of tags associated with the entity.
     """
 
-    name: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
-    description: Annotated[str, Field(min_length=1, pattern=r".*\S+.*")]
-    tags: Annotated[set[str], Field(min_length=1)]
+    name: Annotated[str, Field(min_length=3)]
+    description: Annotated[str, Field(min_length=3)]
+    tags: Annotated[List[str], Field(min_length=1)] | Annotated[str, Field(min_length=3)]
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize and validate entity fields after model initialization.
+
+        This validator strips whitespace from the name and description, and
+        normalizes the tags by combining them with the lowercase name and
+        optional classification value.
+
+        Returns:
+            Self: The normalized entity DTO instance.
+        """
+        self.name = self.name.strip()
+        self.description = self.description.strip()
+        if isinstance(self.tags, str):
+            tag_sources = [self.tags]
+        else:
+            tag_sources = list(self.tags)
+
+        tag_sources.append(self.name.lower())
+        if hasattr(self, "classification") and hasattr(self.classification, "value"):
+            tag_sources.append(self.classification.value.lower())
+
+        self.tags = list(modelutils.normalize_tags(tag_sources))
+        return self

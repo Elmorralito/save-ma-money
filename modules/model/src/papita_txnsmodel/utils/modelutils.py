@@ -9,8 +9,9 @@ date parsing and validation, and interest rate normalization. It contains:
 """
 
 import inspect
+import re
 from datetime import date, datetime
-from typing import Callable, Type
+from typing import Callable, Iterable, Type
 
 import numpy as np
 import pandas as pd
@@ -18,8 +19,79 @@ import pytz
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dt_parse
 from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
+from semver import Version
 
 from .classutils import ClassDiscovery
+
+ALLOWED_DELIMITERS = (",", "|", ";", ":", "\n")
+ALLOWED_TRUE_BOOL_VALUES = ("true", "yes", "y", "1", "on", "s", 1, True)
+ALLOWED_FALSE_BOOL_VALUES = ("false", "no", "n", "0", "off", 0, False)
+
+
+def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler) -> bool:
+    """Validate and coerce input values to a boolean.
+
+    This function attempts to convert various input types (bool, int, str) into
+    a boolean value using predefined sets of allowed true and false values.
+    It is designed to be used as a Pydantic wrap validator.
+
+    Args:
+        value (bool | int | str): The value to validate.
+        handler (ValidatorFunctionWrapHandler): The Pydantic validator handler.
+
+    Returns:
+        bool: The validated boolean value.
+
+    Raises:
+        ValueError: If 'value' cannot be mapped to a valid boolean.
+    """
+    value_ = handler(value)
+    if isinstance(value_, bool):
+        return value_
+
+    if isinstance(value_, str):
+        value_ = value_.lower()
+
+    if value_ in ALLOWED_TRUE_BOOL_VALUES:
+        return True
+
+    if value_ in ALLOWED_FALSE_BOOL_VALUES:
+        return False
+
+    raise ValueError(f"'{value}' is not a valid boolean value.")
+
+
+def normalize_tags(value: Iterable[str] | str) -> Iterable[str]:
+    """Normalize and filter a collection of tag strings.
+
+    This function processes input tags by splitting strings on allowed delimiters,
+    stripping whitespace, converting to lowercase, and filtering for valid
+    alphanumeric characters (including hyphens and underscores).
+
+    Args:
+        value (Iterable[str] | str): A single string or an iterable of strings
+            to be normalized.
+
+    Returns:
+        Iterable[str]: A list of unique, lowercase, and stripped tag strings.
+
+    Raises:
+        ValueError: If no valid tags are found after processing.
+    """
+    if isinstance(value, str):
+        value_ = [value]
+        for delimiter in ALLOWED_DELIMITERS:
+            if delimiter in value:
+                value_ = value.split(delimiter)
+                break
+    else:
+        value_ = list(value)
+
+    tags = list({str.lower(tag).strip() for tag in value_ if re.match(r"^([A-Za-z0-9-_]|\s)+$", tag.strip() or "")})
+    if not tags:
+        raise ValueError("No valid tags found.")
+
+    return tags
 
 
 def make_class_validator(
@@ -160,7 +232,7 @@ def validate_interest_rate(value: float, handler: ValidatorFunctionWrapHandler) 
 
     Returns:
         float | None: The validated and normalized interest rate as a decimal,
-                     or None if validation fails or input is empty.
+                        or None if validation fails or input is empty.
 
     Example:
         When used as a Pydantic validator, it will convert 5.0 to 0.05
@@ -173,4 +245,66 @@ def validate_interest_rate(value: float, handler: ValidatorFunctionWrapHandler) 
     if value_ >= 1.0:
         value_ = value_ / 100
 
-    return float(np.around(value_))
+    return float(np.around(value_, decimals=8))
+
+
+def validate_python_version_wrapper(value: str, handler: ValidatorFunctionWrapHandler) -> str:
+    """
+    Validate that a string follows semantic versioning format.
+
+    This function verifies that a string represents a valid semantic version
+    using the semver library. It's designed to be used as a Pydantic validator.
+
+    Args:
+        value: The version string to validate.
+        handler: Pydantic validator handler for chaining validators.
+
+    Returns:
+        The validated version string.
+
+    Raises:
+        ValueError: If the string is not a valid semantic version.
+    """
+    value_ = handler(value)
+    return Version.is_valid(value_)
+
+
+def validate_tags(value: Iterable[str]) -> Iterable[str]:
+    """
+    Validate and normalize a list of tag strings.
+
+    This function processes a list of tags, ensuring that each tag:
+    1. Contains only letters and spaces
+    2. Is converted to lowercase
+    3. Is unique in the final list
+
+    It's designed to be used as a Pydantic validator.
+
+    Args:
+        value: Iterable of tag strings to validate.
+        handler: Pydantic validator handler for chaining validators.
+    Returns:
+        A normalized list of unique, lowercase tags.
+    Raises:
+        ValueError: If no valid tags are found after filtering.
+    """
+    tags = [str.lower(elem).strip() for elem in value if re.match(r"^([A-Za-z0-9-_]|\s)+$", elem or "")]
+    if not tags:
+        raise ValueError("No valid tags found.")
+
+    return list(set(tags))
+
+
+def validate_tags_wrapper(value: Iterable[str], handler: ValidatorFunctionWrapHandler) -> Iterable[str]:
+    """
+    Wrapper to use validate_tags as a Pydantic validator.
+    This function serves as a bridge to integrate the validate_tags function
+    with Pydantic's validation system by utilizing the ValidatorFunctionWrapHandler.
+    Args:
+        value: Iterable of tag strings to validate.
+        handler: Pydantic validator handler for chaining validators.
+    Returns:
+        A normalized list of unique, lowercase tags.
+    """
+    value_ = handler(value)
+    return validate_tags(value_)

@@ -10,7 +10,7 @@ from typing import Annotated, List
 
 from pydantic import BaseModel, Field
 
-from papita_txnsregistrar.utils.modelutils import validate_python_version, validate_tags_wrapper
+from papita_txnsmodel.utils.modelutils import validate_python_version_wrapper, validate_tags_wrapper
 
 
 class PluginMetadata(BaseModel):
@@ -31,8 +31,9 @@ class PluginMetadata(BaseModel):
     """
 
     name: str
-    version: Annotated[str, Field(min_length=1), validate_python_version]
+    version: Annotated[str, Field(min_length=1), validate_python_version_wrapper]
     feature_tags: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
-    dependencies: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
+    # TODO: Add dependencies back in when we have a way to validate them, and define a better use for this field
+    # dependencies: Annotated[List[str], Field(default_factory=list), validate_tags_wrapper]
     description: str = ""
     enabled: bool = True

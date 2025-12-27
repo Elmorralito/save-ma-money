@@ -1,12 +1,13 @@
-"""
-Database connection
+"""Database connection management for the Papita Transactions system.
 
-This module provides a `SQLDatabaseConnector` class to manage database connections using SQLAlchemy.
-It includes methods for initializing the connection, parsing file system paths for database storage,
-and wrapping functions to use a database session.
+This module provides the `SQLDatabaseConnector` class, which manages database
+connections using SQLAlchemy and SQLModel. It handles connection establishment
+for various database types (including DuckDB), session lifecycle management
+through decorators, and graceful connection shutdown.
 
 Classes:
-    SQLDatabaseConnector: A class to handle SQL database connections and session management.
+    AbstractConnector: Abstract base class defining the connector interface.
+    SQLDatabaseConnector: Concrete implementation for SQL database management.
 """
 
 import abc
@@ -14,81 +15,86 @@ import functools
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Self, Type
+from typing import Any, Callable, ClassVar, Self, Type
 
 import sqlalchemy as db
 from sqlmodel import Session
 
-from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsmodel.utils.enums import FallbackAction
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractConnector(abc.ABC):
+    """Abstract base class defining the interface for database connectors.
+
+    This class establishes the required methods for establishing connections,
+    managing sessions via decorators, and closing connections.
+    """
 
     @classmethod
     @abc.abstractmethod
     def establish(cls, *, connection: dict | str | db.URL | None, **sql_kwargs) -> Type[Self]:
-        """
-        Establish a connection to the database.
+        """Establish a connection to the database.
 
         Args:
-            connection: Connection information, can be a dictionary with connection details,
-                        a string representing a file path or database URL, or a SQLAlchemy URL object.
-            **sql_kwargs: Additional keyword arguments for SQLAlchemy engine creation.
+            connection: Connection information. Can be a dictionary with credentials,
+                a string (file path or URL), or a SQLAlchemy URL object.
+            **sql_kwargs: Additional arguments for SQLAlchemy engine creation.
 
         Returns:
-            Type[Self]: The class with established connection.
+            Type[Self]: The connector class with an established engine.
         """
 
     @classmethod
     @abc.abstractmethod
     def connect(cls, func: Callable[..., Any]) -> Callable[..., Any]:
-        """
-        Decorator to wrap a function with a database session.
+        """Decorator to wrap a function with a database session.
 
-        This decorator ensures that the function is executed with an active
-        database session provided as the '_db_session' parameter.
+        Injects a `Session` object into the decorated function as `_db_session`.
 
         Args:
-            func: The function to wrap.
+            func: The function to be wrapped with a session.
+
+        Returns:
+            Callable[..., Any]: The decorated function.
         """
 
     @classmethod
     @abc.abstractmethod
     def close(cls):
-        """
-        Close the database connection.
-        """
+        """Close the database connection and dispose of the engine."""
 
     @classmethod
     @abc.abstractmethod
     def connected(
         cls, on_disconnected: FallbackAction | str = FallbackAction.LOG, custom_logger: logging.Logger | None = None
     ) -> bool:
-        """
-        Check if the database connection is established.
+        """Check if the database connection is currently established.
+
+        Args:
+            on_disconnected: Action to take if disconnected.
+            custom_logger: Optional logger for reporting status.
+
+        Returns:
+            bool: True if the engine is initialized, False otherwise.
         """
 
 
 class SQLDatabaseConnector(AbstractConnector):
-    """
-    A class to manage SQL database connections and sessions.
+    """Manager for SQL database connections and sessions.
 
-    This class is designed to be used as a singleton with class-level attributes
-    rather than instance attributes. It provides methods to establish database
-    connections, check connection status, close connections, and decorate functions
-    to use database sessions.
+    Implemented as a singleton-like class with class-level attributes. It
+    provides a unified interface for connection lifecycle management and
+    dependency injection of database sessions.
 
     Attributes:
-        engine (db.Engine | None): SQLAlchemy engine instance.
-        sql_kwargs (dict): Keyword arguments for SQLAlchemy engine creation.
+        engine: The SQLAlchemy engine instance used for sessions.
+        sql_kwargs: Default keyword arguments for engine initialization.
     """
 
-    def __new__(cls, *args, **kwargs) -> type["SQLDatabaseConnector"]:
-        cls.engine: db.Engine | None = None
-        cls.sql_kwargs: dict = kwargs.pop("sql_kwargs", {})
-        return cls
+    engine: ClassVar[db.Engine | None] = None
+    sql_kwargs: ClassVar[dict | None] = None
 
     @classmethod
     def establish(
@@ -97,16 +103,18 @@ class SQLDatabaseConnector(AbstractConnector):
         connection: dict | str | db.URL | None,
         **sql_kwargs,
     ) -> type["SQLDatabaseConnector"]:
-        """
-        Establish a connection to the database.
+        """Establish a connection to the database based on provided parameters.
+
+        Parses the connection input to determine if it's a direct URL, a dictionary
+        of credentials, or a file path (defaulting to DuckDB).
 
         Args:
-            connection: Connection information, can be a dictionary with connection details,
-                        a string representing a file path or database URL, or a SQLAlchemy URL object.
-            **sql_kwargs: Additional keyword arguments for SQLAlchemy engine creation.
+            connection: Connection info. Can be a dict (credentials or URL),
+                a str (file path or URL), or an `sqlalchemy.engine.url.URL`.
+            **sql_kwargs: Overrides for SQLAlchemy engine configuration.
 
         Returns:
-            type["SQLDatabaseConnector"]: The class with established connection.
+            Type[SQLDatabaseConnector]: The class with the configured engine.
         """
         sql_kwargs = sql_kwargs.pop("sql_kwargs", sql_kwargs)
         logger.info("Loading/Connecting DB using '%s'", type(connection))
@@ -114,7 +122,7 @@ class SQLDatabaseConnector(AbstractConnector):
             connection = Path(os.getcwd()).joinpath(".tmp").as_posix()
 
         match connection:
-            case db.URL():
+            case db.URL:
                 url = connection
             case dict():
                 try:
@@ -149,7 +157,7 @@ class SQLDatabaseConnector(AbstractConnector):
                 try:
                     url = Path(os.path.abspath(connection))
                     url = url.joinpath("store.duckdb") if url.is_dir() else url
-                    url = f"duckdb://{url.absolute().as_posix()}"
+                    url = f"duckdb:///{url.absolute().as_posix()}"
                 except OSError:
                     logger.exception("Cannot load duckdb storage due to:")
                     url = connection
@@ -157,23 +165,19 @@ class SQLDatabaseConnector(AbstractConnector):
                 url = "duckdb:///:memory:"
 
         url = db.make_url(url) if isinstance(url, str) else url
-        if not sql_kwargs and url.drivername == "duckdb":
-            sql_kwargs = {"connect_args": {"read_only": False}}
+        sql_kwargs_ = (cls.sql_kwargs or {}) | sql_kwargs
+        if not sql_kwargs_ and url.drivername == "duckdb":
+            sql_kwargs_ = {"connect_args": {"read_only": False}}
 
-        cls.engine = db.create_engine(url, **(cls.sql_kwargs | sql_kwargs))
-        print(cls.engine)
+        cls.engine = db.create_engine(url, **sql_kwargs_)
+        logger.debug("Connection to the database established.")
+        logger.debug("Engine: %s", cls.engine.url)
+        logger.debug("SQL kwargs: %s", sql_kwargs_)
         return cls
 
     @classmethod
     def close(cls):
-        """
-        Close all database connections.
-
-        This method attempts to close the database connection by disposing
-        of the engine. If an exception occurs during closing, it will be logged.
-        Returns:
-            None
-        """
+        """Close all active database connections by disposing of the engine."""
         try:
             cls.connected(on_disconnected=FallbackAction.RAISE)
             cls.engine.dispose(close=True)
@@ -183,17 +187,16 @@ class SQLDatabaseConnector(AbstractConnector):
 
     @classmethod
     def connect(cls, func):
-        """
-        Decorator to wrap a function with a database session.
+        """Decorator that provides a database session to the wrapped function.
 
-        This decorator ensures that the function is executed with an active
-        database session provided as the '_db_session' parameter.
+        Automatically opens a SQLModel `Session`, handles testing mocks if
+        provided, and ensures the engine is connected before execution.
 
         Args:
-            func: The function to wrap.
+            func: The function to decorate.
 
         Returns:
-            function: The wrapped function.
+            Callable: The wrapped function with session management.
         """
 
         @functools.wraps(func)
@@ -210,19 +213,18 @@ class SQLDatabaseConnector(AbstractConnector):
     def connected(
         cls, on_disconnected: FallbackAction | str = FallbackAction.LOG, custom_logger: logging.Logger | None = None
     ) -> bool:
-        """
-        Check if the database connection is established.
+        """Verify the health of the database connection.
 
         Args:
-            on_disconnected: Action to take if not connected. Can be a FallbackAction enum
-                            or a string representing a FallbackAction value.
-            custom_logger: Optional logger to use instead of the default one.
+            on_disconnected: Fallback action (LOG, RAISE, etc.) to take if
+                the connection is missing.
+            custom_logger: Optional logger for reporting connection errors.
 
         Returns:
-            bool: True if connected, False otherwise.
+            bool: True if a valid SQLAlchemy engine is found.
 
         Raises:
-            Exception: If on_disconnected is set to RAISE and not connected.
+            Exception: If `on_disconnected` is RAISE and the engine is missing.
         """
         on_disconnected = (
             on_disconnected

@@ -23,17 +23,19 @@ EXAMPLES:
     $(basename "$0") -trp /path/to/file Run tests with custom output path
 
 PREREQUISITES:
-    - pytest must be installed in your environment
+    - pytest must be installed in the environment
+    - poetry must be installed in the environment
 EOM
 )"
     log "TRACE" "$USAGE"
     exit 1
 }
 
-test -e "$(which pytest)" || {
-    log "ERROR" "Pytest not found."
+if ! test -e "$(which poetry)" || ! test -e "$(which pytest)"; then
+    log "ERROR" "Pytest or poetry not found."
     usage
-}
+fi
+
 
 ENABLE_LOGS=
 TESTS_RESULTS_PATH=".tmp"
@@ -64,7 +66,7 @@ if [[ "$ENABLE_LOGS" -eq "1" ]] ; then
     mkdir -p "$TESTS_RESULTS_PATH"
 fi
 
-TEST_COMMAND="pytest . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
+TEST_COMMAND="poetry run pytest . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
 
 test -e "$(which poetry)" && {
     TEST_COMMAND="poetry run ${TEST_COMMAND}"
