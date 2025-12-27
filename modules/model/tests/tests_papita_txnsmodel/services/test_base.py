@@ -150,7 +150,9 @@ class TestCreate:
         result = service.create(obj=obj_dict)
 
         assert result == mock_dto
-        service.dto_type.model_validate.assert_called_once_with(**obj_dict)
+        service.dto_type.model_validate.assert_called_once_with(
+            obj_dict, strict=False, by_alias=False, by_name=True
+        )
         mock_repository.upsert_record.assert_called_once_with(mock_dto)
 
     def test_create_removes_db_session_from_kwargs(self, service, mock_dto, mock_repository):
@@ -199,7 +201,9 @@ class TestDelete:
 
         service.delete(obj=obj_dict, hard=False)
 
-        service.dto_type.model_validate.assert_called_once_with(obj_dict)
+        service.dto_type.model_validate.assert_called_once_with(
+            obj_dict, strict=False, by_alias=False, by_name=True
+        )
         mock_repository.soft_delete_records.assert_called_once()
 
     def test_delete_removes_db_session_from_kwargs(self, service, mock_dto, mock_repository):

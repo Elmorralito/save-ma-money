@@ -13,13 +13,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from papita_txnsmodel.utils.classutils import FallbackAction
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsmodel.utils.enums import FallbackAction
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 from papita_txnsregistrar.loaders.file.base import FileLoader
 
 
-class TestFileLoader(FileLoader, AbstractLoader):
-    """Test implementation of FileLoader with AbstractLoader for testing purposes."""
+class TestFileLoader(FileLoader, AbstractDataLoader):
+    """Test implementation of FileLoader with AbstractDataLoader for testing purposes."""
 
     _result: list = []
 

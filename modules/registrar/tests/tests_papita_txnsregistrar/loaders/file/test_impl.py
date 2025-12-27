@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pandas as pd
 import pytest
 
-from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.loaders.file.impl import CSVFileLoader, ExcelFileLoader
 
 

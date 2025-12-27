@@ -217,6 +217,7 @@ class Upserter(metaclass=abc.ABCMeta):
         Raises:
             NotImplementedError: This method should be implemented by subclasses.
         """
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     @classmethod
     @abc.abstractmethod
@@ -236,6 +237,7 @@ class Upserter(metaclass=abc.ABCMeta):
         Raises:
             NotImplementedError: This method should be implemented by subclasses.
         """
+        raise NotImplementedError("This method should be implemented by subclasses.")
 
     @classmethod
     def _on_conflict_do_raise(cls, table: Any, conn: Engine, keys: Sequence[str], data_iter: Iterator) -> int:

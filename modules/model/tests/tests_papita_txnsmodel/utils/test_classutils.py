@@ -11,7 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from papita_txnsmodel.utils.classutils import ClassDiscovery, FallbackAction, MetaSingleton
+from papita_txnsmodel.utils.classutils import ClassDiscovery, MetaSingleton
+from papita_txnsmodel.utils.enums import FallbackAction
 
 
 @pytest.fixture

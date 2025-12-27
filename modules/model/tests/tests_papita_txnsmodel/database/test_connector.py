@@ -12,7 +12,7 @@ import sqlalchemy as db
 from sqlmodel import Session
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsmodel.utils.enums import FallbackAction
 
 
 @pytest.fixture

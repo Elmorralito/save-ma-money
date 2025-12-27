@@ -98,7 +98,7 @@ def test_standardize_dataframe_adds_kwargs_columns(sample_pydantic_model, sample
     extra_value = "extra_value"
 
     # Act
-    result = datautils.standardize_dataframe(sample_pydantic_model, df, extra_column=extra_value)
+    result = datautils.standardize_dataframe(sample_pydantic_model, df, static_values={"extra_column": extra_value})
 
     # Assert
     assert "extra_column" in result.columns
