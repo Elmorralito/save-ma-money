@@ -22,6 +22,7 @@ import sys
 from argparse import ArgumentError, ArgumentParser
 from typing import Any, Dict, Self, Type
 
+from papita_txnsplugins.__meta__ import __authors__
 from papita_txnsplugins.core.builders import ExcelContractBuilder
 from pydantic import ValidationError
 
@@ -52,6 +53,7 @@ logger = logging.getLogger(__name__)
             "and the transaction registration system."
         ),
         enabled=True,
+        authors=__authors__,
     ),
 )
 class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
@@ -203,6 +205,7 @@ class ExcelFilePlugin(PluginContract[ExcelFileLoader, ExcelContractBuilder]):
             "transaction registration system for data processing and storage."
         ),
         enabled=True,
+        authors=__authors__,
     ),
 )
 class CLIExcelFilePlugin(ExcelFilePlugin, AbstractCLIUtils):
