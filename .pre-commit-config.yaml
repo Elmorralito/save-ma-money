@@ -14,7 +14,8 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml"]
+        types_or: [yaml, python, toml, json, markdown]
+        args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml", "*.json", "*.md"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
