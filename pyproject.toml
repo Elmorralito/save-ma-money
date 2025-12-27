@@ -13,7 +13,8 @@ python = ">=3.11,<3.13"
 [tool.poetry.group.development.dependencies]
 papita-transactions-api = { path = "modules/api", develop = true }
 papita-transactions-model = { path = "modules/model", develop = true }
-papita-transactions-registrar = { path = "modules/registrar", develop = true }
+papita-transactions-registrar = { path = "modules/registrar", develop = true}
+papita-transactions-registrar-plugins = { path = "modules/plugins", develop = true}
 
 [tool.poetry.group.ci.dependencies]
 requests = "^2.32.5"

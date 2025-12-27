@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-registrar"
-version = "0.1.6a18"
+version = "0.1.6a22"
 description = "Transactions wrapper to automate tracking financial transaction movements"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "LICENSE"
@@ -19,13 +19,17 @@ dependencies = [
     "smart-open[s3] (>=7.5.0,<8.0.0)",
 ]
 
+[project.optional-dependencies]
+base-plugins = [
+    "papita-transactions-registrar-plugins (>=0.1.0,<1.0)",
+]
+
 [project.urls]
 HomePage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/registrar"
 
 [tool.poetry]
 packages = [
     { include = "papita_txnsregistrar", from = "src/" },
-    { include = "papita_txnsregistrar_plugins", from = "src/" },
 ]
 
 [tool.poetry.scripts]

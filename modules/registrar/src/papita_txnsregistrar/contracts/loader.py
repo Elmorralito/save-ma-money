@@ -150,7 +150,7 @@ def load_plugin(plugin_name: str, modules: List[str], **kwargs) -> Type[PluginCo
 
         logger.info("Discovering plugin from modules: %s", modules)
         # TODO: Fix issue where plugin is intermitently not registered in the registry and not loaded.
-        registry = Registry().discover(*modules, debug=True)
+        registry = Registry().discover(*modules)
         logger.debug("Discovered plugins: %s", registry.plugins)
         logger.debug("Getting plugin '%s' from registry", plugin_name)
         plugin = registry.get(
@@ -165,7 +165,7 @@ def load_plugin(plugin_name: str, modules: List[str], **kwargs) -> Type[PluginCo
         if not issubclass(plugin, PluginContract):
             raise TypeError(
                 f"The specified plugin '{plugin_name}({plugin.__class__.__name__})' is not a valid plugin "
-                "implementation."
+                "                                                implementation."
             )
 
         return plugin

@@ -22,19 +22,18 @@ import sys
 from argparse import ArgumentError, ArgumentParser
 from typing import Any, Dict, Self, Type
 
-from papita_txnsregistrar_plugins.core.builders import ExcelContractBuilder
+from papita_txnsplugins.core.builders import ExcelContractBuilder
 from pydantic import ValidationError
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.utils.classutils import FallbackAction
-from papita_txnsregistrar import LIB_NAME
+from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata
 from papita_txnsregistrar.contracts.plugin import PluginContract
 from papita_txnsregistrar.loaders.file.impl import ExcelFileLoader
 from papita_txnsregistrar.utils.cli.abstract import AbstractCLIUtils
 
-logger = logging.getLogger(f"{LIB_NAME}.plugins.core.excel")
+logger = logging.getLogger(__name__)
 
 
 @plugin(

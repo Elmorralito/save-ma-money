@@ -19,10 +19,11 @@ from typing import Generic, Self, Type, TypeVar, get_args
 from pydantic import BaseModel
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.utils.classutils import FallbackAction
-from papita_txnsregistrar.builders.base import AbstractContractBuilder, L
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsmodel.database.upsert import OnUpsertConflictDo
+from papita_txnsmodel.handlers.abstract import AbstractHandler
+from papita_txnsmodel.utils.enums import FallbackAction
+from papita_txnsregistrar.builders.abstract import AbstractContractBuilder, L
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
 from .meta import PluginMetadata
 
@@ -51,7 +52,7 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
                                    and capability information.
         loader_type (Type[L]): Type of loader used by this plugin.
         builder_type (Type[B]): Type of builder used by this plugin.
-        _handler (AbstractLoadHandler | None): Handler used by the plugin for processing transactions.
+        _handler (AbstractHandler | None): Handler used by the plugin for processing transactions.
         _loader (L | None): Loader instance for this plugin.
         _builder (B | None): Builder instance for this plugin.
     """
@@ -59,8 +60,9 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
     __meta__: PluginMetadata
     loader_generic_type: Type[L] = L
     builder_generic_type: Type[B] = B
+    on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.UPDATE
     on_failure_do: FallbackAction = FallbackAction.RAISE
-    _handler: AbstractLoadHandler | None = None
+    _handler: AbstractHandler | None = None
     _loader: L | None = None
     _builder: B | None = None
 
@@ -79,12 +81,12 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def handler(self) -> AbstractLoadHandler:
+    def handler(self) -> AbstractHandler:
         """
         Get the plugin's handler.
 
         Returns:
-            AbstractLoadHandler: The handler associated with this plugin for transaction processing.
+            AbstractHandler: The handler associated with this plugin for transaction processing.
 
         Raises:
             TypeError: If the handler has not been loaded or is corrupt.
@@ -120,12 +122,12 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
         generic type arguments.
 
         Returns:
-            The loader type class (a subclass of AbstractLoader) that was specified
+            The loader type class (a subclass of AbstractDataLoader) that was specified
             as the first generic parameter in the plugin's class definition. This
             class can be used to instantiate loader instances or perform type checking.
 
         Raises:
-            TypeError: If the extracted type is not a valid subclass of AbstractLoader,
+            TypeError: If the extracted type is not a valid subclass of AbstractDataLoader,
                       indicating that the generic type parameter was incorrectly specified
                       or the type extraction failed.
 
@@ -304,17 +306,17 @@ class PluginContract(AbstractPluginContract):
         return self._builder
 
     @property
-    def handler(self) -> AbstractLoadHandler:
+    def handler(self) -> AbstractHandler:
         """
         Get the plugin's handler.
 
         Returns:
-            AbstractLoadHandler: The handler associated with this plugin for transaction processing.
+            AbstractHandler: The handler associated with this plugin for transaction processing.
 
         Raises:
             TypeError: If the handler has not been loaded or is corrupt.
         """
-        if not isinstance(self._handler, AbstractLoadHandler):
+        if not isinstance(self._handler, AbstractHandler):
             raise TypeError("Handler not loaded or corrupt.")
 
         return self._handler
@@ -330,7 +332,7 @@ class PluginContract(AbstractPluginContract):
         Raises:
             TypeError: If the loader has not been loaded or is corrupt.
         """
-        if not isinstance(self._loader, AbstractLoader):
+        if not isinstance(self._loader, AbstractDataLoader):
             raise TypeError("Loader not loaded or corrupt.")
 
         return self._loader
@@ -346,11 +348,11 @@ class PluginContract(AbstractPluginContract):
             Type[L]: The loader type class associated with the plugin.
 
         Raises:
-            TypeError: If the extracted type is not a valid subclass of AbstractLoader.
+            TypeError: If the extracted type is not a valid subclass of AbstractDataLoader.
         """
         loader_type = next(iter(get_args(self.__class__.model_fields["loader_generic_type"].annotation)))
-        if not issubclass(loader_type, AbstractLoader):
-            raise TypeError("Loader type is not a subclass of AbstractLoader.")
+        if not issubclass(loader_type, AbstractDataLoader):
+            raise TypeError("Loader type is not a subclass of AbstractDataLoader.")
 
         return loader_type
 
@@ -396,7 +398,12 @@ class PluginContract(AbstractPluginContract):
         logger.info("Building the builder...")
         logger.debug("Loader type: %s", self.loader_type)
         logger.debug("Builder type: %s", self.builder_type)
-        kwargs_ = {"connector": connector, "on_failure_do": self.on_failure_do, **kwargs}
+        kwargs_ = {
+            "connector": connector,
+            "on_failure_do": self.on_failure_do,
+            "on_conflict_do": self.on_conflict_do,
+            **kwargs,
+        }
         self._builder = self.builder_type[self.loader_type].load(**kwargs_).build(**kwargs_)
         logger.info("Checking connection to the database...")
         if not self.builder.connector.connected(on_disconnected=self.on_failure_do, custom_logger=logger):
@@ -415,7 +422,7 @@ class PluginContract(AbstractPluginContract):
         Start the plugin operation.
 
         This method begins the plugin's primary functionality after verifying that
-        the necessary components have been initialized. It checks for proper initialization
+        the necessary components have been initialized. It checks for on_conflict_do proper initialization
         of the builder and loader before allowing the plugin to start.
 
         Args:
@@ -440,7 +447,7 @@ class PluginContract(AbstractPluginContract):
         """
         Stop the plugin operation and clean up resources.
 
-        This method gracefully terminates the plugin's functionality by closing database
+        This method gracefully terminates the plugin's functionality by closing on_conflict_do database
         connections and unloading the loader. It ensures proper cleanup of all resources
         to prevent memory leaks or orphaned connections.
 

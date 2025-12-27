@@ -39,10 +39,10 @@ from papita_txnsmodel.services.liabilities import (
 )
 from papita_txnsmodel.services.types import TypesService
 
-from .core import BaseLoadTableHandler
+from .base import BaseTableHandler
 
 
-class AccountsTableHandler(BaseLoadTableHandler[AccountsService, ...]):
+class AccountsTableHandler(BaseTableHandler[AccountsService, ...]):
     """Handler for loading and processing general account table data.
 
     This handler specializes in managing account-related data by leveraging the
@@ -54,7 +54,7 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService, ...]):
     before it's processed by the service.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with AccountsService
+        Inherits all attributes from BaseTableHandler, with AccountsService
         as the parameterized service type. These typically include configuration
         settings, connection parameters, and processing options.
 
@@ -79,7 +79,7 @@ class AccountsTableHandler(BaseLoadTableHandler[AccountsService, ...]):
         return "accounts", "accounts_table", "account_table", "general_accounts"
 
 
-class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...]):
+class AssetAccountsTableHandler(BaseTableHandler[AssetAccountsService, ...]):
     """Handler for loading and processing asset account table data.
 
     This specialized handler manages accounts that represent assets, such as
@@ -90,7 +90,7 @@ class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...])
     and processed according to the business rules defined in the service layer.
 
     Attributes:
-        Inherits attributes from BaseLoadTableHandler with AssetAccountsService
+        Inherits attributes from BaseTableHandler with AssetAccountsService
         as the parameterized service type. These typically include configuration
         settings, connection parameters, and processing options specific to
         asset accounts.
@@ -108,7 +108,7 @@ class AssetAccountsTableHandler(BaseLoadTableHandler[AssetAccountsService, ...])
         return "asset_accounts_table", "asset_accounts", "assets_table", "assets"
 
 
-class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsService, ...]):
+class LiabilityAccountsTableHandler(BaseTableHandler[LiabilityAccountsService, ...]):
     """Handler for loading and processing liability account table data.
 
     This specialized handler manages accounts that represent liabilities, such as
@@ -120,7 +120,7 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
     service layer.
 
     Attributes:
-        Inherits attributes from BaseLoadTableHandler with LiabilityAccountsService
+        Inherits attributes from BaseTableHandler with LiabilityAccountsService
         as the parameterized service type. These typically include configuration
         settings, connection parameters, and processing options specific to
         liability accounts.
@@ -139,7 +139,7 @@ class LiabilityAccountsTableHandler(BaseLoadTableHandler[LiabilityAccountsServic
 
 
 class FinancedAssetAccountsTableHandler(
-    BaseLoadTableHandler[FinancedAssetAccountsService, (BankCreditLiabilityAccountsService, AssetAccountsService)]
+    BaseTableHandler[FinancedAssetAccountsService, (BankCreditLiabilityAccountsService, AssetAccountsService)]
 ):
     """Handler for loading and processing financed asset account table data.
 
@@ -190,7 +190,7 @@ class FinancedAssetAccountsTableHandler(
 
 
 class AccountsIndexerTableHandler(
-    BaseLoadTableHandler[
+    BaseTableHandler[
         AccountsIndexerService,
         (
             AccountsService,

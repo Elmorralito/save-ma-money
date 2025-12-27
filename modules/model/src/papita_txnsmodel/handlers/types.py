@@ -21,10 +21,10 @@ from typing import Tuple
 
 from papita_txnsmodel.services.types import TypesService
 
-from .core import BaseLoadTableHandler
+from .base import BaseTableHandler
 
 
-class TypesTableHandler(BaseLoadTableHandler[TypesService, ...]):
+class TypesTableHandler(BaseTableHandler[TypesService, ...]):
     """Handler for loading and processing type table data.
 
     This handler specializes in managing type-related data by leveraging the
@@ -40,7 +40,7 @@ class TypesTableHandler(BaseLoadTableHandler[TypesService, ...]):
     the creation and retrieval of these type classifications.
 
     Attributes:
-        Inherits all attributes from BaseLoadTableHandler, with TypesService
+        Inherits all attributes from BaseTableHandler, with TypesService
         as the parameterized service type. These typically include configuration
         settings, connection parameters, and processing options.
 

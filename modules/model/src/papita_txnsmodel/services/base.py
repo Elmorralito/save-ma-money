@@ -11,7 +11,7 @@ Classes:
 import inspect
 import logging
 import uuid
-from typing import Annotated, Any, Type
+from typing import Annotated, Any, Literal, Type
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -112,11 +112,11 @@ class BaseService(BaseModel):
         Returns:
             TableDTO: The created object as a DTO.
         """
-        obj = obj if isinstance(obj, self.dto_type) else self.dto_type.model_validate(**obj)
-        self.check_expected_dto_type(obj)
+        parsed_obj = self.parse_dto(obj)
+        self.check_expected_dto_type(parsed_obj)
         kwargs.pop("_db_session", None)
-        self._repository.upsert_record(obj, **kwargs)
-        return obj
+        self._repository.upsert_record(parsed_obj, **kwargs)
+        return parsed_obj
 
     def delete(self, *, obj: TableDTO | dict[str, Any], hard: bool = False, **kwargs) -> pd.DataFrame:
         """Delete records based on the provided object.
@@ -130,7 +130,7 @@ class BaseService(BaseModel):
         Returns:
             pd.DataFrame: DataFrame containing the deleted records.
         """
-        parsed_obj = obj if isinstance(obj, self.dto_type) else self.dto_type.model_validate(obj)
+        parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
         dao = self.dto_type.__dao_type__
         query_filters = [
@@ -157,7 +157,7 @@ class BaseService(BaseModel):
         """
         dto = self._repository.get_record_by_id(obj, dto_type=self.dto_type, **kwargs)
         if not dto and isinstance(obj, (dict, self.dto_type)):
-            obj = obj if isinstance(obj, self.dto_type) else self.dto_type.model_construct(**obj)
+            obj = self.parse_dto(obj, strict=True, by_alias=True)
             self.check_expected_dto_type(obj)
             dto = self._repository.get_record_from_attributes(dto=obj, **kwargs)
 
@@ -210,6 +210,46 @@ class BaseService(BaseModel):
 
         return standardize_dataframe(self.dto_type, records_df, **kwargs)
 
+    def parse_dto(
+        self,
+        obj: TableDTO | dict[str, Any],
+        strict: bool = False,
+        by_alias: bool = False,
+        position: int | Literal["first", "last"] | None = None,
+    ) -> TableDTO:
+        """Parse a DTO or dictionary into a TableDTO.
+
+        Args:
+            obj: The DTO or dictionary to parse.
+
+        Returns:
+            TableDTO: The parsed DTO.
+        """
+        if isinstance(obj, dict):
+            return self.dto_type.model_validate(obj, strict=strict, by_alias=by_alias, by_name=not by_alias)
+
+        if isinstance(obj, pd.Series):
+            return self.dto_type.model_validate(obj.to_dict(), strict=strict, by_alias=by_alias, by_name=not by_alias)
+
+        if isinstance(obj, pd.DataFrame):
+            position = position or "first"
+            if position == "first":
+                position = 0
+            elif position == "last":
+                position = -1
+
+            if not isinstance(position, int):
+                position = 0
+
+            return self.dto_type.model_validate(
+                obj.iloc[position].to_dict(), strict=strict, by_alias=by_alias, by_name=not by_alias
+            )
+
+        if isinstance(obj, self.dto_type):
+            return obj
+
+        raise TypeError(f"Expected TableDTO | dict, got {type(obj)}")
+
     def upsert_records(self, *, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
         """Insert or update multiple records in the database.
 
@@ -227,7 +267,8 @@ class BaseService(BaseModel):
         mappings = standardize_dataframe(self.dto_type, df, **kwargs)
         kwargs.pop("_db_session", None)
         on_conflict_do = kwargs.pop("on_conflict_do", self.on_conflict_do)
-        on_conflict_do = OnUpsertConflictDo(getattr(on_conflict_do, "name", on_conflict_do).lower())
+        on_conflict_do = OnUpsertConflictDo(getattr(on_conflict_do, "value", on_conflict_do).upper())
+        logger.info("Upserting %s records", len(mappings.index))
         upsertions = self._repository.upsert_records(
             dto_type=self.dto_type, mappings=mappings, on_conflict_do=on_conflict_do, **kwargs
         )

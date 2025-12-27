@@ -12,11 +12,11 @@ from typing import Generic, Self, Type, TypeVar, get_args
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
 logger = logging.getLogger(__name__)
 
-L = TypeVar("L", bound=AbstractLoader)
+L = TypeVar("L", bound=AbstractDataLoader)
 
 
 class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
@@ -44,11 +44,11 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             Type[L]: The loader type class that this builder is parameterized with.
 
         Raises:
-            TypeError: If the extracted loader type is not a subclass of AbstractLoader.
+            TypeError: If the extracted loader type is not a subclass of AbstractDataLoader.
         """
         loader_type = next(iter(get_args(cls.model_fields["loader_generic_type"].annotation)))
-        if not issubclass(loader_type, AbstractLoader):
-            raise TypeError("Loader type is not a subclass of AbstractLoader.")
+        if not issubclass(loader_type, AbstractDataLoader):
+            raise TypeError("Loader type is not a subclass of AbstractDataLoader.")
 
         return loader_type
 

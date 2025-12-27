@@ -6,7 +6,7 @@ system. It implements the abstract handler interface and adds dependency managem
 allowing handlers to work with multiple services while maintaining proper dependency validation
 and instantiation.
 
-The main class (BaseLoadTableHandler) serves as a foundation for specific table data handlers
+The main class (BaseTableHandler) serves as a foundation for specific table data handlers
 by providing record retrieval methods and dependency management capabilities.
 """
 
@@ -19,16 +19,18 @@ import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import ClassDiscovery
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler, S
-from papita_txnsregistrar.utils.modelutils import make_service_dependencies_validator
+
+from .abstract import AbstractHandler, S
+from .helpers import make_service_dependencies_validator
 
 ServiceDependencies = TypeVarTuple("ServiceDependencies")
 logger = logging.getLogger(__name__)
 
 
-class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependencies]):
+class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
     """
     Base implementation of a handler for loading table data with service dependencies.
 
@@ -47,7 +49,7 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
 
     Examples:
         ```python
-        class UserTableHandler(BaseLoadTableHandler[UserService, AuthService, LoggingService]):
+        class UserTableHandler(BaseTableHandler[UserService, AuthService, LoggingService]):
             # Implementation specific to user table handling
             pass
 
@@ -68,6 +70,7 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
             make_service_dependencies_validator(principal_service=S, allowed_dependencies=ServiceDependencies)
         ),
     ] = Field(default_factory=dict)
+    on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.UPDATE
 
     @model_validator(mode="after")
     def _validate_model(self) -> Self:
@@ -172,7 +175,9 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
 
             return service.get_records(dto=dto, **kwargs)
 
-        return self.service.get_records(dto=dto, **kwargs)
+        return self.service.get_records(
+            dto=dto, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+        )
 
     def build_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
         """
@@ -193,7 +198,6 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
         Raises:
             TypeError: If the provided DTO is not of the expected type
         """
-        logger.debug("Building record for %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(dto, dict):
             dto = self.service.dto_type.model_validate(dto)
 
@@ -205,7 +209,9 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
             if not value:
                 continue
 
-            dependency_dto = dep_service.get_or_create(dto=value, **kwargs)
+            dependency_dto = dep_service.get_or_create(
+                dto=value, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            )
             setattr(dto, field_name, dependency_dto)
 
         return dto
@@ -228,7 +234,6 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
         Raises:
             TypeError: If the provided input is not of a supported type
         """
-        logger.debug("Building records for %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(dtos, list) and all(isinstance(dto, self.service.dto_type) for dto in dtos):
             dtos_ = pd.DataFrame([dto.model_dump(mode="python") for dto in dtos])
         elif isinstance(dtos, list):
@@ -238,7 +243,11 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
         else:
             raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
 
-        return dtos_.apply(lambda row: self.build_record(dto=row.to_dict(), **kwargs).model_dump(mode="python"), axis=1)
+        return dtos_.apply(
+            lambda row: self.build_record(dto=row.to_dict(), **kwargs).model_dump(mode="python"),
+            axis=1,
+            result_type="expand",
+        )
 
     def create_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
         """
@@ -254,7 +263,8 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
             TableDTO: The created record as returned by the service
         """
         logger.debug("Upserting record for %s", self.service.dto_type.__dao_type__.__tablename__)
-        return self.service.create(dto=dto, **kwargs)
+        logger.debug("DTO: %s", dto)
+        return self.service.create(obj=dto, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs)
 
     def create_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
         """
@@ -270,7 +280,18 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
             pd.DataFrame: DataFrame containing the created records as returned by the service
         """
         logger.debug("Upserting records for %s", self.service.dto_type.__dao_type__.__tablename__)
-        return self.service.upsert_records(dtos=dtos, **kwargs)
+        if isinstance(dtos, list) and all(isinstance(dto, self.service.dto_type) for dto in dtos):
+            dtos_ = pd.DataFrame([dto.model_dump(mode="python") for dto in dtos])
+        elif isinstance(dtos, list) and all(isinstance(dto, dict) for dto in dtos):
+            dtos_ = pd.DataFrame(dtos)
+        elif isinstance(dtos, pd.DataFrame):
+            dtos_ = dtos
+        else:
+            raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
+
+        return self.service.upsert_records(
+            df=dtos_, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+        )
 
     def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
         """
@@ -291,13 +312,17 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
         """
         logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(data, (pd.DataFrame, list)):
-            self._loaded_data = self.build_records(dtos=data, **kwargs)
+            self._loaded_data = self.build_records(
+                dtos=data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            )
             return self
 
         if not isinstance(data, (TableDTO, dict)):
             raise TypeError("data must be a DataFrame, list of TableDTO/dict, or a single TableDTO/dict.")
 
-        self._loaded_data = self.build_record(dto=data, **kwargs)
+        self._loaded_data = self.build_record(
+            dto=data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+        )
         return self
 
     def dump(self, **kwargs) -> Self:
@@ -321,8 +346,12 @@ class BaseLoadTableHandler(AbstractLoadHandler[S], Generic[S, *ServiceDependenci
             raise ValueError("No data loaded to dump. Please load data before dumping.")
 
         if isinstance(self._loaded_data, pd.DataFrame):
-            self.create_records(dtos=self._loaded_data, **kwargs)
+            self.create_records(
+                dtos=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            )
         else:
-            self.create_record(dto=self._loaded_data, **kwargs)
+            self.create_record(
+                dto=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            )
 
         return self

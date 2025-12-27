@@ -12,12 +12,11 @@ from typing import Annotated, Dict, Self, Type
 
 from pydantic import Field
 
-from papita_txnsregistrar import LIB_NAME
+from papita_txnsmodel.handlers.abstract import AbstractHandler
+from papita_txnsmodel.handlers.factory import HandlerFactory
 from papita_txnsregistrar.builders.base import BaseContractBuilder
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-from papita_txnsregistrar.handlers.factory import HandlerFactory
 
-logger = logging.getLogger(f"{LIB_NAME}.plugins.core.builders")
+logger = logging.getLogger(__name__)
 
 
 class ExcelContractBuilder(BaseContractBuilder):
@@ -39,7 +38,7 @@ class ExcelContractBuilder(BaseContractBuilder):
             a specific sheet in the Excel file.
     """
 
-    handlers: Annotated[Dict[str, Type[AbstractLoadHandler] | AbstractLoadHandler], Field(default_factory=dict)]
+    handlers: Annotated[Dict[str, Type[AbstractHandler] | AbstractHandler], Field(default_factory=dict)]
 
     def build_handler(self, **kwargs) -> Self:
         """Build handlers for each sheet in the Excel file.

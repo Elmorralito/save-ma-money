@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-api"
-version = "0.0.3a9"
+version = "0.0.3a13"
 description = "API for this mess"
 readme = "README.md"
 license = "LICENSE"

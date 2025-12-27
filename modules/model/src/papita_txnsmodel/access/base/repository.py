@@ -184,14 +184,15 @@ class BaseRepository:
             raise ValueError("There is no id in the DTO")
 
         record = self.get_record_by_id(dto.id, dto, **kwargs)
+        _db_session.begin()
         try:
-            logger.debug("Upserting single record with identified by '%s'", dto.id)
+            logger.debug("Upserting single record with id '%s'", dto.id)
             _ = _db_session.add(dao) if isinstance(record, dto) else _db_session.merge(dao)
             _db_session.commit()
             _db_session.refresh(dao)
             return dto.model_validate(dao.model_dump(), strict=True)
         except Exception as exc:
-            logger.exception("The insert has failed due to: %s", exc)
+            logger.exception("The upsert operation has failed due to: %s", exc)
             _db_session.rollback()
 
         return None
@@ -225,7 +226,7 @@ class BaseRepository:
         inspector = db_inspector(dao)
         return UpserterFactory.get_upserter(_db_session).upsert(
             schema_name=SCHEMA_NAME,
-            table=dao.__tablename__,
+            table=dao,
             pks=[col.name for col in inspector.primary_key],
             df=mappings,
             db_session=_db_session,

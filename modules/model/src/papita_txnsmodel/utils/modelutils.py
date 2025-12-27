@@ -19,6 +19,7 @@ import pytz
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dt_parse
 from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
+from semver import Version
 
 from .classutils import ClassDiscovery
 
@@ -245,3 +246,65 @@ def validate_interest_rate(value: float, handler: ValidatorFunctionWrapHandler) 
         value_ = value_ / 100
 
     return float(np.around(value_, decimals=8))
+
+
+def validate_python_version_wrapper(value: str, handler: ValidatorFunctionWrapHandler) -> str:
+    """
+    Validate that a string follows semantic versioning format.
+
+    This function verifies that a string represents a valid semantic version
+    using the semver library. It's designed to be used as a Pydantic validator.
+
+    Args:
+        value: The version string to validate.
+        handler: Pydantic validator handler for chaining validators.
+
+    Returns:
+        The validated version string.
+
+    Raises:
+        ValueError: If the string is not a valid semantic version.
+    """
+    value_ = handler(value)
+    return Version.is_valid(value_)
+
+
+def validate_tags(value: Iterable[str]) -> Iterable[str]:
+    """
+    Validate and normalize a list of tag strings.
+
+    This function processes a list of tags, ensuring that each tag:
+    1. Contains only letters and spaces
+    2. Is converted to lowercase
+    3. Is unique in the final list
+
+    It's designed to be used as a Pydantic validator.
+
+    Args:
+        value: Iterable of tag strings to validate.
+        handler: Pydantic validator handler for chaining validators.
+    Returns:
+        A normalized list of unique, lowercase tags.
+    Raises:
+        ValueError: If no valid tags are found after filtering.
+    """
+    tags = [str.lower(elem).strip() for elem in value if re.match(r"^([A-Za-z0-9-_]|\s)+$", elem or "")]
+    if not tags:
+        raise ValueError("No valid tags found.")
+
+    return list(set(tags))
+
+
+def validate_tags_wrapper(value: Iterable[str], handler: ValidatorFunctionWrapHandler) -> Iterable[str]:
+    """
+    Wrapper to use validate_tags as a Pydantic validator.
+    This function serves as a bridge to integrate the validate_tags function
+    with Pydantic's validation system by utilizing the ValidatorFunctionWrapHandler.
+    Args:
+        value: Iterable of tag strings to validate.
+        handler: Pydantic validator handler for chaining validators.
+    Returns:
+        A normalized list of unique, lowercase tags.
+    """
+    value_ = handler(value)
+    return validate_tags(value_)

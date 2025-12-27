@@ -20,6 +20,7 @@ import contextlib
 import importlib.resources as importlib_resources
 import logging
 import sys
+import traceback
 from argparse import Action, ArgumentParser
 from typing import Annotated, Any, Dict, List, Self, Type
 
@@ -28,8 +29,10 @@ from pydantic import Field, model_validator
 from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME
 from papita_txnsmodel import __version__ as MODEL_VERSION
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.utils.classutils import ClassDiscovery, FallbackAction
+from papita_txnsmodel.services.base import OnUpsertConflictDo
+from papita_txnsmodel.utils.classutils import ClassDiscovery
 from papita_txnsmodel.utils.configutils import configure_logger
+from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar import LIB_NAME as REGISTRAR_LIB_NAME
 from papita_txnsregistrar import __version__ as REGISTRAR_VERSION
 from papita_txnsregistrar.contracts.loader import load_plugin
@@ -68,29 +71,19 @@ class HelpAction(Action):
 
     def __call__(
         self, parser, namespace, values, option_string=None
-    ):  # pylint: disable=too-many-branches,too-many-locals
-        # Display standard help first
+    ):  # pylint: disable=too-many-branches,too-many-locals,too-many-statements
         parser.print_help()
 
-        # Extract plugin name from command-line arguments
-        # Since help is triggered early, we need to parse args manually
         plugin_name = None
-        modules = ["papita_txnsregistrar_plugins"]
+        modules = []
         try:
-            # Get the original args - argparse stores them in parser._argv if available
-            # Otherwise fall back to sys.argv
             args_to_parse = getattr(parser, "_argv", None)
             if args_to_parse is None:
-                # Try to get from sys.argv, but we need to be careful about the script name
                 args_to_parse = sys.argv[1:] if len(sys.argv) > 1 else []
 
-            # Remove help flags to avoid recursion
             args_to_parse = [arg for arg in args_to_parse if arg not in ("-h", "--help")]
 
-            # Try to extract plugin name and modules from command line
             if args_to_parse:
-                # Parse positional arguments: script and plugin
-                # Skip known option flags and their values
                 positional_args = []
                 skip_next = False
                 for i, arg in enumerate(args_to_parse):
@@ -106,55 +99,42 @@ class HelpAction(Action):
                         continue
                     positional_args.append(arg)
 
-                # First positional should be script, second should be plugin
                 if len(positional_args) > 1:
-                    plugin_name = positional_args[1]
+                    plugin_name = positional_args[0]
                 elif len(positional_args) > 0:
-                    # If only one positional, it might be the plugin (script might be implicit)
                     potential_plugin = positional_args[0]
                     if potential_plugin and not potential_plugin.startswith("-"):
                         plugin_name = potential_plugin
-        except Exception as err:
-            logger.debug("Error extracting plugin name from args: %s", err)
+        except Exception:
+            print(f"Error extracting plugin name from args:\n{traceback.format_exc()}")
             plugin_name = None
 
-        # If we have a plugin name, try to load and show its help
+        print(f"Plugin name: {plugin_name}")
         if plugin_name:
             try:
-                # Create a minimal instance to load plugin and show help
-                # Use minimal defaults to avoid requiring all arguments
-                try:
-                    connector_wrapper = ".".join(
-                        filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper))
-                    )
+                connector_wrapper = ".".join(filter(None, ClassDiscovery.decompose_class(CLIDefaultConnectorWrapper)))
 
-                    instance = MainCLIUtils.model_construct(
-                        plugin=plugin_name,
-                        modules=modules,
-                        connector_wrapper=connector_wrapper,
-                        case_sensitive=True,
-                        strict_exact=False,
-                        fuzzy_threshold=95,
-                        safe_mode=False,
-                    )
-                    # Build model to load plugin
-                    instance._build_model()
-                    # Show plugin help
-                    instance._show_plugin_help()
-                except Exception as err:
-                    logger.debug("Could not load plugin for help: %s", err)
-                    print(f"\nNote: Could not load plugin '{plugin_name}' for help display.")
-                    print(f"Error: {err}\n")
-                    print("This may be due to:")
-                    print("  - Plugin not found in the specified modules")
-                    print("  - Plugin requires additional configuration")
-                    print("  - Database connection issues\n")
+                instance = MainCLIUtils.model_validate(
+                    {
+                        "plugin": plugin_name,
+                        "modules": modules,
+                        "connector_wrapper": connector_wrapper,
+                        "case_sensitive": True,
+                        "strict_exact": False,
+                        "fuzzy_threshold": 95,
+                        "safe_mode": False,
+                    }
+                )
+                instance._build_model()
+                instance._show_plugin_help()
 
-            except Exception as err:
-                logger.debug("Error showing plugin help: %s", err)
-                print(f"\nNote: Error displaying plugin help: {err}\n")
+            except Exception:
+                print(f"Could not load plugin for help:\n{traceback.format_exc()}")
+                print(f"\nNote: Could not load plugin '{plugin_name}' for help display.")
+                print("This may be due to:")
+                print("  - Plugin not found in the specified modules")
+                print("  - Plugin requires additional configuration\n")
 
-        # Exit after showing help
         parser.exit()
 
 
@@ -172,9 +152,8 @@ class MainCLIUtils(AbstractCLIUtils):
     Attributes:
         plugin: The plugin name or PluginContract instance to be used. Can be specified as a
                 string (for discovery) or a PluginContract instance.
-        modules: List of module names to search for plugins. Defaults to
-                 ["papita_txnsregistrar_plugins"]. Multiple modules can be specified, separated
-                 by commas.
+        modules: List of module names to search for plugins. Defaults to an empty list.
+                 Multiple modules can be specified, separated by commas.
         connector_wrapper: Optional database connector wrapper class or string identifier.
                           Used to wrap SQLDatabaseConnector for CLI integration.
         connector: The resolved SQLDatabaseConnector instance, set during model validation.
@@ -196,7 +175,8 @@ class MainCLIUtils(AbstractCLIUtils):
         str | Type[PluginContract], Field(..., alias="plugin", description="Specify the name of the plugin to be used.")
     ]
     modules: List[str] = Field(
-        default_factory=lambda: ["papita_txnsregistrar_plugins"],
+        default_factory=list,
+        alias="modules",
         description="Specify the module(s) to be used. This can include multiple modules separated by commas.",
     )
     connector_wrapper: Annotated[
@@ -208,26 +188,41 @@ class MainCLIUtils(AbstractCLIUtils):
         Field(None, alias="connector", description="An optional database connector wrapper instance."),
     ] = None
     case_sensitive: Annotated[
-        bool, Field(..., description="Enable case-sensitive matching for plugin names and tags.")
+        bool,
+        Field(..., alias="case_sensitive", description="Enable case-sensitive matching for plugin names and tags."),
     ] = True
-    strict_exact: Annotated[bool, Field(..., description="Enable strict exact matching for plugin names and tags.")] = (
-        False
-    )
+    strict_exact: Annotated[
+        bool, Field(..., alias="strict_exact", description="Enable strict exact matching for plugin names and tags.")
+    ] = False
     fuzzy_threshold: Annotated[
         int,
         Field(
             ...,
             ge=0,
             le=100,
+            alias="fuzzy_threshold",
             description="Set the threshold for fuzzy matching (0-100). Higher values require closer matches.",
         ),
     ] = 95
     safe_mode: Annotated[
-        bool, Field(..., description="Enable safe mode to prevent execution of potentially harmful operations.")
+        bool,
+        Field(
+            ...,
+            alias="safe_mode",
+            description="Enable safe mode to prevent execution of potentially harmful operations.",
+        ),
     ] = False
 
+    on_conflict_do: Annotated[
+        OnUpsertConflictDo,
+        Field(
+            ..., alias="on_conflict_do", description="Specify the on conflict do action to take when a conflict occurs."
+        ),
+    ] = OnUpsertConflictDo.UPDATE
+
     on_failure_do: Annotated[
-        FallbackAction, Field(..., description="Specify the fallback action to take when an error occurs.")
+        FallbackAction,
+        Field(..., alias="on_failure_do", description="Specify the fallback action to take when an error occurs."),
     ] = FallbackAction.RAISE
 
     @model_validator(mode="after")
@@ -269,11 +264,11 @@ class MainCLIUtils(AbstractCLIUtils):
             raise ValueError("No valid connector wrapper could be found.")
 
         if not mod_:
-            self.connector_wrapper = f"{__name__}.{class_}"
+            self.connector_wrapper = f'{__name__.replace("main", "connector")}.{class_}'
 
         try:
             if isinstance(self.plugin, str):
-                logger.debug("Loading plugin from registry: %s with modules: %s", self.plugin, self.modules)
+                logger.info("Loading plugin from registry: %s within modules: %s", self.plugin, self.modules)
                 self.plugin = self._load_plugin_class(
                     plugin_name=self.plugin,
                     modules=self.modules,
@@ -283,6 +278,7 @@ class MainCLIUtils(AbstractCLIUtils):
                 )
 
             logger.info("Using plugin: %s", self.plugin)
+            logger.info("Loading connector wrapper as: %s", self.connector_wrapper)
             connector_wrapper = next(
                 filter(
                     None,
@@ -302,7 +298,6 @@ class MainCLIUtils(AbstractCLIUtils):
                 raise ValueError("No valid connector wrapper could be found.")
 
             logger.info("Using connector wrapper: %s", connector_wrapper)
-            logger.debug("Discovering plugin from modules: %s", self.modules)
             self.connector = connector_wrapper.load().connector
             logger.info("Using connector: %s", self.connector)
         except Exception as err:
@@ -501,12 +496,20 @@ class MainCLIUtils(AbstractCLIUtils):
             default=DEFAULT_LOGGER_CONFIG_PATH,
         )
         parser.add_argument(
+            "--on-conflict-do",
+            dest="on_conflict_do",
+            help="Specify the on conflict do action to take when a conflict occurs.",
+            type=str,
+            choices=[x.value for x in OnUpsertConflictDo],
+            default=cls.model_fields["on_conflict_do"].default.value,
+        )
+        parser.add_argument(
             "--on-failure-do",
             dest="on_failure_do",
             help="Specify the fallback action to take when an error occurs.",
             type=str,
             choices=[x.value for x in FallbackAction],
-            default=FallbackAction.RAISE.value,
+            default=cls.model_fields["on_failure_do"].default.value,
         )
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
@@ -578,17 +581,18 @@ class MainCLIUtils(AbstractCLIUtils):
         """
         try:
             plugin_class = self.plugin
+            print(f"Plugin class: {plugin_class}")
             if hasattr(self, "_plugin_instance") and self._plugin_instance is not None:
                 plugin_class = type(self._plugin_instance)
 
             if hasattr(plugin_class, "meta"):
                 metadata = plugin_class.meta()
             else:
-                logger.warning("Plugin does not have a meta() method. Limited help available.")
+                print("WARNING: Plugin does not have a meta() method. Limited help available.")
                 metadata = None
 
             if metadata:
-                print(f"\n\nPlugin Name: {metadata.name}")
+                print(f"\nPlugin Name: {metadata.name}")
                 print(f"Version: {metadata.version}")
                 print(f"Enabled: {metadata.enabled}")
 
@@ -636,14 +640,18 @@ class MainCLIUtils(AbstractCLIUtils):
         plugin_name = self.plugin.meta().name
         if self.safe_mode:
             logger.info("Safely building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.safe_load(on_failure_do=self.on_failure_do)
+            self._plugin_instance = self.plugin.safe_load(
+                on_failure_do=self.on_failure_do, on_conflict_do=self.on_conflict_do
+            )
         else:
             logger.info("Building plugin instance from plugin: %s", plugin_name)
-            self._plugin_instance = self.plugin.load(on_failure_do=self.on_failure_do)
+            self._plugin_instance = self.plugin.load(
+                on_failure_do=self.on_failure_do, on_conflict_do=self.on_conflict_do
+            )
 
         logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
         logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
-        self._plugin_instance.init(connector=self.connector).start()
+        self._plugin_instance.init(connector=self.connector, on_conflict_do=self.on_conflict_do).start()
         return self
 
     def stop(self) -> Self:

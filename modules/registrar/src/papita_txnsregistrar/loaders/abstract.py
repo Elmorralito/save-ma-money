@@ -11,10 +11,10 @@ from typing import Iterable, Self
 
 from pydantic import BaseModel
 
-from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsmodel.utils.enums import FallbackAction
 
 
-class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
+class AbstractDataLoader(BaseModel, metaclass=abc.ABCMeta):
     """
     Abstract base class for all transaction data loaders.
 
@@ -73,7 +73,7 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
             **kwargs: Implementation-specific parameters needed to load data.
 
         Returns:
-            AbstractLoader: The loader instance for method chaining.
+            AbstractDataLoader: The loader instance for method chaining.
         """
 
     @abc.abstractmethod
@@ -89,5 +89,5 @@ class AbstractLoader(BaseModel, metaclass=abc.ABCMeta):
             **kwargs: Implementation-specific parameters needed for unloading.
 
         Returns:
-            AbstractLoader: The loader instance for method chaining.
+            AbstractDataLoader: The loader instance for method chaining.
         """

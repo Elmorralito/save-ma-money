@@ -1,88 +1,10 @@
-"""
-Validation utilities for Pydantic models in the transaction tracker system.
-
-This module provides validator functions used by Pydantic models to ensure data
-consistency and correctness. It includes functions for validating semantic version
-strings and tag formatting to maintain data quality throughout the system.
-consistency and correctness. It includes specialized validators for:
-- Semantic version strings
-- Tag formatting and normalization
-- Service dependency validation
-
-These utilities help maintain data quality and structural integrity throughout
-the transaction tracking system by providing reusable validation logic.
-"""
-
 import inspect
-import re
-from typing import Callable, Dict, Iterable, Tuple, Type
+from typing import Callable, Dict, Tuple, Type
 
-from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
-from semver import Version
+from pydantic import ValidationInfo
 
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import ClassDiscovery
-
-
-def validate_python_version(value: str, handler: ValidatorFunctionWrapHandler) -> str:
-    """
-    Validate that a string follows semantic versioning format.
-
-    This function verifies that a string represents a valid semantic version
-    using the semver library. It's designed to be used as a Pydantic validator.
-
-    Args:
-        value: The version string to validate.
-        handler: Pydantic validator handler for chaining validators.
-
-    Returns:
-        The validated version string.
-
-    Raises:
-        ValueError: If the string is not a valid semantic version.
-    """
-    return Version.is_valid(handler(value))
-
-
-def validate_tags(value: Iterable[str]) -> Iterable[str]:
-    """
-    Validate and normalize a list of tag strings.
-
-    This function processes a list of tags, ensuring that each tag:
-    1. Contains only letters and spaces
-    2. Is converted to lowercase
-    3. Is unique in the final list
-
-    It's designed to be used as a Pydantic validator.
-
-    Args:
-        value: Iterable of tag strings to validate.
-        handler: Pydantic validator handler for chaining validators.
-    Returns:
-        A normalized list of unique, lowercase tags.
-    Raises:
-        ValueError: If no valid tags are found after filtering.
-    """
-    tags = [str.lower(elem).strip() for elem in value if re.match(r"^([A-Za-z0-9-_]|\s)+$", elem or "")]
-    if not tags:
-        raise ValueError("No valid tags found.")
-
-    return list(set(tags))
-
-
-def validate_tags_wrapper(value: Iterable[str], handler: ValidatorFunctionWrapHandler) -> Iterable[str]:
-    """
-    Wrapper to use validate_tags as a Pydantic validator.
-    This function serves as a bridge to integrate the validate_tags function
-    with Pydantic's validation system by utilizing the ValidatorFunctionWrapHandler.
-    Args:
-        value: Iterable of tag strings to validate.
-        handler: Pydantic validator handler for chaining validators.
-    Returns:
-        A normalized list of unique, lowercase tags.
-    """
-    value_ = handler(value)
-    return validate_tags(value_)
 
 
 def make_service_dependencies_validator(

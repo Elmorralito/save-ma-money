@@ -11,7 +11,7 @@ Classes:
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Iterable, Self
+from typing import Annotated, List, Self
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, WrapValidator, model_validator
@@ -36,7 +36,7 @@ class TableDTO(BaseModel):
     """
 
     __dao_type__ = BaseSQLModel
-    model_config = ConfigDict(ignored_types=(pd.Timestamp,), arbitrary_types_allowed=True)
+    model_config = ConfigDict(ignored_types=(pd.Timestamp,), arbitrary_types_allowed=True, extra="allow")
 
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4)
     active: Annotated[bool | str | int, WrapValidator(modelutils.validate_bool)] = True
@@ -90,7 +90,7 @@ class TableDTO(BaseModel):
         Returns:
             BaseSQLModel: The converted database model instance.
         """
-        return self.__dao_type__.model_validate(**self.model_dump(mode="python", exclude_unset=True, exclude_none=True))
+        return self.__dao_type__.model_validate(self.model_dump(mode="python", exclude_unset=True, exclude_none=True))
 
 
 class CoreTableDTO(TableDTO):
@@ -108,7 +108,7 @@ class CoreTableDTO(TableDTO):
 
     name: Annotated[str, Field(min_length=3)]
     description: Annotated[str, Field(min_length=3)]
-    tags: Annotated[Iterable[str], Field(min_length=1)] | Annotated[str, Field(min_length=3)]
+    tags: Annotated[List[str], Field(min_length=1)] | Annotated[str, Field(min_length=3)]
 
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:

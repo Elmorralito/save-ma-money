@@ -17,6 +17,7 @@ Usage:
     - Use the `upsert` method to perform upsert operations.
 """
 
+import abc
 import inspect
 import logging
 import sys
@@ -28,7 +29,7 @@ import pandas as pd
 from sqlalchemy import Table
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.orm import DeclarativeMeta
-from sqlmodel import Session
+from sqlmodel import Session, SQLModel
 
 from papita_txnsmodel.utils.datautils import slice_batches
 
@@ -46,9 +47,10 @@ class OnUpsertConflictDo(Enum):
 
     NOTHING = "NOTHING"
     UPDATE = "UPDATE"
+    RAISE = "RAISE"
 
 
-class Upserter:
+class Upserter(metaclass=abc.ABCMeta):
     """
     Base class for upsert operations.
 
@@ -177,13 +179,12 @@ class Upserter:
                 traceback.format_exc(),
             )
 
-        assert isinstance(
-            table,
-            (
-                DeclarativeMeta,
-                Table,
-            ),
-        ), "The upsert operation cannot bve performed with object types different from DeclarativeMeta or Table."
+        if not isinstance(table, (DeclarativeMeta, Table, SQLModel)):
+            raise TypeError(
+                f"Got table type: {type(table)} - The upsert operation cannot be performed with object types different "
+                "from the expected types: DeclarativeMeta, Table, or SQLModel"
+            )
+
         logger.info("Retrying to upsert the records.")
         batches = slice_batches(df, to_sql_kwargs.get("batch_size", 5000))
         if not inspect.ismethod(cls._upsert_method):
@@ -199,6 +200,7 @@ class Upserter:
         return result or len(df.index)
 
     @classmethod
+    @abc.abstractmethod
     def _on_conflict_do_nothing(cls, table: Any, conn: Engine, keys: Sequence[str], data_iter: Iterator) -> int:
         """
         Handle conflict by doing nothing.
@@ -215,9 +217,9 @@ class Upserter:
         Raises:
             NotImplementedError: This method should be implemented by subclasses.
         """
-        raise NotImplementedError()
 
     @classmethod
+    @abc.abstractmethod
     def _on_conflict_do_update(cls, table: Any, conn: Engine, keys: Sequence[str], data_iter: Iterator) -> int:
         """
         Handle conflict by updating the existing record.
@@ -234,7 +236,25 @@ class Upserter:
         Raises:
             NotImplementedError: This method should be implemented by subclasses.
         """
-        raise NotImplementedError()
+
+    @classmethod
+    def _on_conflict_do_raise(cls, table: Any, conn: Engine, keys: Sequence[str], data_iter: Iterator) -> int:
+        """
+        Handle conflict by raising an exception.
+
+        Args:
+            table (Any): The table object.
+            conn (Engine): SQLAlchemy engine connection.
+            keys (Sequence[str]): Column keys.
+            data_iter (Iterator): Data iterator.
+
+        Returns:
+            int: Number of rows affected.
+
+        Raises:
+            RuntimeError: The exception to raise.
+        """
+        raise RuntimeError("Conflict detected on duplicated keys. Please check the data and the primary keys.")
 
 
 class PostgreSQLUpserter(Upserter):

@@ -1,12 +1,12 @@
 """
 Base handler module for transaction tracking with loader functionality.
 
-This module defines the AbstractLoadHandler class which extends the base handler functionality
+This module defines the AbstractHandler class which extends the base handler functionality
 with data loading capabilities. It provides a foundation for handlers that need to
 load data from external sources and process transactions through specialized service objects.
 
 Classes:
-    AbstractLoadHandler: Abstract base class for handlers with data loading functionality
+    AbstractHandler: Abstract base class for handlers with data loading functionality
                          that work with service components.
 """
 
@@ -19,14 +19,14 @@ from pydantic import BaseModel, ConfigDict
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
-from papita_txnsmodel.utils.classutils import FallbackAction
+from papita_txnsmodel.utils.enums import FallbackAction
 
 logger = logging.getLogger(__name__)
 
 S = TypeVar("S", bound=BaseService)
 
 
-class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
+class AbstractHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
     """
     Abstract base handler that incorporates data loading functionality.
 
@@ -94,7 +94,7 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
                 operation, such as destination paths, format options, or filters.
 
         Returns:
-            AbstractLoadHandler: Self reference for method chaining.
+            AbstractHandler: Self reference for method chaining.
 
         Raises:
             NotImplementedError: When called directly on the abstract class.
@@ -115,14 +115,14 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
                 such as transformation options or validation settings.
 
         Returns:
-            AbstractLoadHandler: Self reference for method chaining.
+            AbstractHandler: Self reference for method chaining.
 
         Raises:
             NotImplementedError: When called directly on the abstract class.
             ValueError: If the data cannot be loaded or fails validation.
         """
 
-    def _load_core_data(self, service: BaseService) -> pd.DataFrame:
+    def _load_core_data(self, service: BaseService | None = None) -> pd.DataFrame:
         """
         Load records from the service's underlying data store.
 
@@ -135,6 +135,9 @@ class AbstractLoadHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
         Returns:
             pd.DataFrame: DataFrame containing the records retrieved from the service.
         """
+        if service is None:
+            return pd.DataFrame([])
+
         logger.debug("Loading records from %s", service.dto_type.__dao_type__.__tablename__)
         return service.get_records(None)
 

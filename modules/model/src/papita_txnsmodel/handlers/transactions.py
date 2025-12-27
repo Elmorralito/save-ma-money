@@ -8,7 +8,7 @@ It includes capabilities for matching transaction accounts and identified transa
 records, with support for both exact and fuzzy matching strategies. The module is primarily used for
 data processing, validation, and standardization of transaction records before they are persisted.
 
-The main class, TransactionsHandler, extends AbstractLoadHandler to provide specific transaction
+The main class, TransactionsHandler, extends AbstractHandler to provide specific transaction
 processing logic including account matching and identified transaction matching.
 """
 
@@ -25,22 +25,22 @@ from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.transactions import IdentifiedTransactionsService, TransactionsService
 from papita_txnsmodel.services.types import TypesService
+from papita_txnsmodel.utils.enums import OnMultipleMatchesDo
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
-from papita_txnsregistrar.utils.enums import OnMultipleMatchesDo
 
-from .abstract import AbstractLoadHandler
-from .core import BaseLoadTableHandler
+from .abstract import AbstractHandler
+from .base import BaseTableHandler
 
 logger = logging.getLogger(__name__)
 
 
-class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransactionsService, TypesService]):
+class IdentifiedTransactionsTableHandler(BaseTableHandler[IdentifiedTransactionsService, TypesService]):
     """
     Handler for loading and processing identified transactions table data.
 
     This handler specializes in managing identified transactions, which represent
     categorized or classified transaction templates in the system. It extends
-    BaseLoadTableHandler with IdentifiedTransactionsService as the parameterized
+    BaseTableHandler with IdentifiedTransactionsService as the parameterized
     service type, and also inherits from TypesService to access transaction type
     information.
 
@@ -94,11 +94,11 @@ class IdentifiedTransactionsTableHandler(BaseLoadTableHandler[IdentifiedTransact
         return "identified_transactions_table", "identified_transactions"
 
 
-class TransactionsHandler(AbstractLoadHandler):
+class TransactionsHandler(AbstractHandler[TransactionsService]):
     """
     Handler for processing and matching transaction data.
 
-    This class extends AbstractLoadHandler to provide specialized functionality for
+    This class extends AbstractHandler to provide specialized functionality for
     transaction data processing, including matching account IDs and identified transactions.
     It supports both exact matching and fuzzy matching strategies with configurable
     thresholds and behaviors for handling multiple matches.
@@ -119,7 +119,7 @@ class TransactionsHandler(AbstractLoadHandler):
 
     service: TransactionsService
     accounts_service: AccountsService
-    identified_transactions_service: IdentifiedTransactionsService
+    identified_transactions_service: IdentifiedTransactionsService | None = None
     on_multiple_account_matches: OnMultipleMatchesDo = OnMultipleMatchesDo.FAIL
     case_sensitive: bool = False
     fuzzy_match: bool = False
@@ -292,6 +292,7 @@ class TransactionsHandler(AbstractLoadHandler):
                 core_id_column=core_id_column,
                 core_name_column=core_name_column,
                 core_tags_column=core_tags_column,
+                on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
                 **kwargs,
             )
 
@@ -301,6 +302,7 @@ class TransactionsHandler(AbstractLoadHandler):
             core_id_column=core_id_column,
             core_name_column=core_name_column,
             core_tags_column=core_tags_column,
+            on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
             **kwargs,
         )
 
@@ -336,6 +338,7 @@ class TransactionsHandler(AbstractLoadHandler):
                     core_id_column=id_column,
                     core_name_column=name_column,
                     core_tags_column=tags_column,
+                    on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
                     **kwargs,
                 )
             )
@@ -400,7 +403,9 @@ class TransactionsHandler(AbstractLoadHandler):
         if not isinstance(self._loaded_data, pd.DataFrame):
             raise ValueError("There is no loaded data to dump.")
 
-        return self.service.upsert_records(df=self._loaded_data, **kwargs)
+        return self.service.upsert_records(
+            df=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+        )
 
     def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
         """

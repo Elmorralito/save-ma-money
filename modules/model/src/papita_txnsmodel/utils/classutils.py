@@ -18,11 +18,10 @@ import pkgutil
 import sys
 import traceback
 import warnings
-from enum import Enum
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Tuple, Type, Union
 
-_utils_logger = logging.getLogger(__name__)
+_UTILS_LOGGER = logging.getLogger(__name__)
 
 
 class MetaSingleton(type):
@@ -40,89 +39,6 @@ class MetaSingleton(type):
             cls._instances[cls] = instance
 
         return cls._instances[cls]
-
-
-class FallbackAction(Enum):
-    """Defines actions to take when post-check validations fail.
-
-    This enum provides strategies for handling validation failures, with methods
-    to execute the appropriate action based on the enum value.
-
-    Attributes:
-        LOG: Log the error message as a warning but continue execution.
-        RAISE: Raise a ValueError with the error message.
-        IGNORE: Ignore the error and continue silently.
-    """
-
-    LOG = "LOG"
-    RAISE = "RAISE"
-    IGNORE = "IGNORE"
-
-    def get_logger(self, **kwargs) -> logging.Logger:
-        """Retrieves a logger instance from kwargs or returns the default logger.
-
-        Args:
-            **kwargs: Keyword arguments that may contain a 'logger' entry.
-                If provided, the logger should be an instance of logging.Logger.
-
-        Returns:
-            logging.Logger: Either the logger provided in kwargs if valid, or
-                the default module logger.
-        """
-        logger = kwargs.get("logger", _utils_logger)
-        return logger if isinstance(logger, logging.Logger) else _utils_logger
-
-    def handle_ignore(self, message: str | Exception, **kwargs) -> None:
-        """Handle failure by ignoring it with minimal logging.
-
-        Args:
-            message: The error message to log.
-            logger: Optional - Custom logger instance. Default module's logger instance.
-            **kwargs: Additional context for the error.
-        """
-        self.get_logger(**kwargs).debug("Ignoring message: %s", message)
-
-    def handle_log(self, message: str | Exception, logger: logging.Logger, **kwargs) -> None:
-        """Handle failure by logging it as a warning.
-
-        Args:
-            message: The error message to log.
-            logger: Optional - Custom logger instance. Default module's logger instance.
-            **kwargs: Additional context for the error.
-        """
-        logger_ = self.get_logger(logger=logger, **kwargs)
-        if isinstance(message, Exception):
-            logger_.exception(message, stack_info=True)
-            return
-
-        logger_.warning(message)
-
-    def handle_raise(self, message: str | Exception, **kwargs) -> None:
-        """Handle failure by raising an exception.
-
-        Args:
-            message: The error message to include in the exception.
-            **kwargs: Additional context for the error.
-
-        Raises:
-            ValueError: Always raised with the provided message.
-        """
-        if isinstance(message, Exception):
-            raise message
-
-        raise ValueError(message)
-
-    def handle(self, message: str | Exception, **kwargs) -> None:
-        """Apply the appropriate failure handling strategy.
-
-        Dynamically dispatches to the specific handler method based on the enum value.
-
-        Args:
-            message: The error message to handle.
-            logger: Optional - Custom logger instance. Default module's logger instance.
-            **kwargs: Additional context for the error.
-        """
-        return getattr(self, f"handle_{self.value.lower()}")(message, **kwargs)
 
 
 class ClassDiscovery:
@@ -190,7 +106,7 @@ class ClassDiscovery:
         if isinstance(mod, (str, ModuleType)):
             mod = ClassDiscovery.get_module(mod)
         else:
-            raise ValueError("The provided object is not supported.")
+            raise ValueError(f"The provided object is not supported {type(mod)}: {mod}.")
 
         try:
             mods = pkgutil.walk_packages(mod.__path__, mod.__name__ + ".", onerror=lambda x: None)
@@ -213,9 +129,9 @@ class ClassDiscovery:
 
                 message = "Could not fetch module << %s >> for classes, due to the following error:\n%s"
                 try:
-                    _utils_logger.debug(message, mod_info, traceback.format_exc())
+                    _UTILS_LOGGER.debug(message, mod_info, traceback.format_exc())
                 except Exception:
-                    _utils_logger.debug(message, mod_info, ex)
+                    _UTILS_LOGGER.debug(message, mod_info, ex)
 
         return dict(classes_)
 
@@ -288,9 +204,9 @@ class ClassDiscovery:
 
                 message = "Could not fetch module << %s >> for objects, due to the following error:\n%s"
                 try:
-                    _utils_logger.debug(message, name, traceback.format_exc())
+                    _UTILS_LOGGER.debug(message, name, traceback.format_exc())
                 except Exception:
-                    _utils_logger.debug(message, name, ex)
+                    _UTILS_LOGGER.debug(message, name, ex)
 
         return list(output)
 

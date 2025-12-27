@@ -14,14 +14,13 @@ from typing import Self
 
 import pandas as pd
 
-from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 from papita_txnsregistrar.loaders.memory.impl import InMemoryLoader
 
 from .base import FileLoader
 
 
-class CSVFileLoader(FileLoader, AbstractLoader):
+class CSVFileLoader(FileLoader, AbstractDataLoader):
     """
     Loader for CSV (Comma-Separated Values) files.
 
@@ -96,7 +95,7 @@ class CSVFileLoader(FileLoader, AbstractLoader):
         return self
 
 
-class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
+class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractDataLoader):
     """
     Loader for Excel spreadsheet files.
 
@@ -143,7 +142,7 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractLoader):
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
         try:
-            with open(self.path, mode="rb", encoding=kwargs.get("encoding", DEFAULT_ENCODING)) as freader:
+            with open(self.path, mode="rb") as freader:
                 excel_file = pd.ExcelFile(freader)
                 sheets = excel_file.sheet_names
                 if sheet and sheet in sheets:

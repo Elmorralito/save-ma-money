@@ -20,12 +20,12 @@ from typing import Generic, Self, Type, TypeVar
 from pydantic import BaseModel, ConfigDict
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.services.base import BaseService
-from papita_txnsmodel.utils.classutils import FallbackAction
-from papita_txnsregistrar.handlers.abstract import AbstractLoadHandler
-from papita_txnsregistrar.loaders.abstract import AbstractLoader
+from papita_txnsmodel.utils.enums import FallbackAction
+from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
-L = TypeVar("L", bound=AbstractLoader)
+L = TypeVar("L", bound=AbstractDataLoader)
 
 
 class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
@@ -56,7 +56,7 @@ class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     connector: Type[SQLDatabaseConnector]
-    handler: Type[AbstractLoadHandler] | AbstractLoadHandler | None = None
+    handler: Type[AbstractHandler] | AbstractHandler | None = None
     loader_generic_type: Type[L] = L
     loader: L | None = None
     service: BaseService | None = None
