@@ -118,7 +118,7 @@ def update_readme():
         logger.info("README.md updated successfully")
 
     except Exception:
-        logger.exception("Error updating README.md due to:", stack_info=True, exc_info=True)
+        logger.exception("Error updating README.md due to:")
 
 
 if __name__ == "__main__":
