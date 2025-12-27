@@ -13,7 +13,9 @@ result property.
 from typing import Self
 
 import pandas as pd
+import smart_open
 
+from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 from papita_txnsregistrar.loaders.memory.impl import InMemoryLoader
 
@@ -73,7 +75,19 @@ class CSVFileLoader(FileLoader, AbstractDataLoader):
         Returns:
             Self: The loader instance for method chaining.
         """
-        self._result = pd.read_csv(self.path, **kwargs)
+        with smart_open.open(
+            self.path,
+            mode="r",
+            encoding=kwargs.get("encoding", DEFAULT_ENCODING),
+            transport_params=self.transport_params,
+        ) as freader:
+            if not freader.readable():
+                self.on_failure_do.handle(
+                    OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
+                )
+
+                self._result = pd.read_csv(freader, **kwargs)
+
         return self
 
     def unload(self, **kwargs) -> Self:
@@ -141,16 +155,18 @@ class ExcelFileLoader(InMemoryLoader, FileLoader, AbstractDataLoader):
             Self: The loader instance for method chaining.
         """
         sheet = kwargs.get("sheet", kwargs.get("sheet_name", self.sheet))
-        try:
-            with open(self.path, mode="rb") as freader:
-                excel_file = pd.ExcelFile(freader)
-                sheets = excel_file.sheet_names
-                if sheet and sheet in sheets:
-                    sheets = [sheet]
+        with smart_open.open(self.path, mode="rb", transport_params=self.transport_params) as freader:
+            if not freader.readable():
+                self.on_failure_do.handle(
+                    OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
+                )
 
-                self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
-                excel_file.close()
-        except Exception as err:
-            self.on_failure_do.handle(err, logger=kwargs.get("logger"))
+            excel_file = pd.ExcelFile(freader)
+            sheets = excel_file.sheet_names
+            if sheet and sheet in sheets:
+                sheets = [sheet]
+
+            self._result = {sheet_: excel_file.parse(sheet_, **kwargs) for sheet_ in sheets}
+            excel_file.close()
 
         return self

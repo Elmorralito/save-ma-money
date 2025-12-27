@@ -11,10 +11,11 @@ and interface structure.
 """
 
 import logging
-import os
 from pathlib import Path
 from typing import Self
 
+import boto3
+import smart_open
 from pydantic import BaseModel, ConfigDict
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,38 @@ class FileLoader(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     path: str | Path
+    profile: str = "default"
+    region_name: str | None = None
+    endpoint_url: str | None = None
+
+    @property
+    def client(self) -> boto3.client:
+        """
+        Get the client for the file loader.
+
+        Returns:
+            boto3.client: The client for the file loader.
+        """
+        session_kwargs = {"profile_name": self.profile}
+        client_kwargs = {}
+        if self.region_name:
+            session_kwargs["region_name"] = self.region_name
+        if self.endpoint_url:
+            client_kwargs["endpoint_url"] = self.endpoint_url
+        return boto3.Session(**session_kwargs).client("s3", **client_kwargs)
+
+    @property
+    def transport_params(self) -> dict:
+        """
+        Get the transport parameters for the file loader.
+
+        Returns:
+            dict: The transport parameters for the file loader.
+        """
+        try:
+            return {"client": self.client}
+        except Exception:
+            return {}
 
     def check_source(self, **kwargs) -> Self:
         """
@@ -68,11 +101,21 @@ class FileLoader(BaseModel):
         Raises:
             OSError: If the path doesn't exist or isn't a readable file.
         """
-        path = Path(self.path) if isinstance(self.path, str) else self.path
-        if not (path.is_file() and path.exists() and os.access(path.as_posix(), os.R_OK)):
-            self.on_failure_do.handle(
-                OSError("The path does not correspond to a file or does not exist."), logger=logger
-            )
+        if isinstance(self.path, Path):
+            self.path = self.path.absolute().as_posix()
 
-        self.path = path
+        try:
+            with smart_open.open(self.path, transport_params=self.transport_params) as freader:
+                if not freader.readable():
+                    self.on_failure_do.handle(OSError(f"The path '{self.path}' is not readable."), logger=logger)
+
+        except FileNotFoundError:
+            self.on_failure_do.handle(
+                FileNotFoundError(f"The path '{self.path}' does not correspond to a file or does not exist."),
+                logger=logger,
+            )
+        except Exception as err:
+            self.on_failure_do.handle(err, logger=logger)
+
+        self.path = self.path
         return self
