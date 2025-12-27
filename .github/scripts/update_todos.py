@@ -109,7 +109,7 @@ def update_readme():
             return
 
         issues = get_github_issues()
-        issues_markdown = format_issues_as_markdown(issues)
+        issues_markdown = format_issues_as_markdown(issues).replace("`", "")
         new_todos_section = f"## TODOs\n\n{issues_markdown}"
         updated_content = re.sub(todos_pattern, new_todos_section, content, flags=re.DOTALL)
         with open("README.md", "w", encoding="utf-8") as file:
