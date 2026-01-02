@@ -86,7 +86,7 @@ class CSVFileLoader(FileLoader, AbstractDataLoader):
                     OSError(f"The path '{self.path}' is not readable."), logger=kwargs.get("logger")
                 )
 
-                self._result = pd.read_csv(freader, **kwargs)
+            self._result = pd.read_csv(freader, **kwargs)
 
         return self
 

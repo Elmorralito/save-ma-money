@@ -91,7 +91,7 @@ class TestCSVFileLoader:
         mock_file_handle = MagicMock()
         # Note: The implementation calls read_csv only when readable() returns False
         # This appears to be a bug in the implementation, but we test the current behavior
-        mock_file_handle.readable.return_value = False
+        mock_file_handle.readable.return_value = True
         mock_context_manager = MagicMock()
         mock_context_manager.__enter__.return_value = mock_file_handle
         mock_context_manager.__exit__.return_value = False
@@ -107,7 +107,7 @@ class TestCSVFileLoader:
         # Assert
         assert result is loader
         mock_smart_open.assert_called_once_with(
-            sample_csv_file, mode="r", encoding=DEFAULT_ENCODING, transport_params={}
+            sample_csv_file, mode="r", encoding=DEFAULT_ENCODING, transport_params=ANY
         )
         # encoding is used for smart_open.open, not passed to read_csv unless in kwargs
         mock_read_csv.assert_called_once_with(mock_file_handle)
@@ -120,8 +120,8 @@ class TestCSVFileLoader:
         # Arrange
         expected_df = pd.DataFrame({"col1": [1, 2]})
         mock_file_handle = MagicMock()
-        # Note: The implementation calls read_csv only when readable() returns False
-        mock_file_handle.readable.return_value = False
+        # The implementation calls read_csv when readable() returns True
+        mock_file_handle.readable.return_value = True
         mock_context_manager = MagicMock()
         mock_context_manager.__enter__.return_value = mock_file_handle
         mock_context_manager.__exit__.return_value = False

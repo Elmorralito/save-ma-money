@@ -226,10 +226,14 @@ class BaseService(BaseModel):
             TableDTO: The parsed DTO.
         """
         if isinstance(obj, dict):
-            return self.dto_type.model_validate(obj, strict=strict, by_alias=by_alias, by_name=not by_alias)
+            return self.dto_type.model_validate(
+                obj, strict=strict, context={"by_alias": by_alias, "by_name": not by_alias}
+            )
 
         if isinstance(obj, pd.Series):
-            return self.dto_type.model_validate(obj.to_dict(), strict=strict, by_alias=by_alias, by_name=not by_alias)
+            return self.dto_type.model_validate(
+                obj.to_dict(), strict=strict, context={"by_alias": by_alias, "by_name": not by_alias}
+            )
 
         if isinstance(obj, pd.DataFrame):
             position = position or "first"
@@ -242,7 +246,7 @@ class BaseService(BaseModel):
                 position = 0
 
             return self.dto_type.model_validate(
-                obj.iloc[position].to_dict(), strict=strict, by_alias=by_alias, by_name=not by_alias
+                obj.iloc[position].to_dict(), strict=strict, context={"by_alias": by_alias, "by_name": not by_alias}
             )
 
         if isinstance(obj, self.dto_type):

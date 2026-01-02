@@ -36,6 +36,21 @@ logger = logging.getLogger(__name__)
     ),
 )
 class CSVFilePlugin(PluginContract[CSVFileLoader, ExcelContractBuilder]):
+    """Plugin for handling CSV file transactions.
+
+    This plugin integrates the CSV file loader with the transaction tracking system,
+    providing capabilities to load and process transaction data from CSV files.
+    It utilizes the CSVFileLoader for data loading and the ExcelContractBuilder
+    for managing the registered handlers that process the loaded data.
+
+    The plugin acts as a bridge between CSV data sources and the transaction
+    registration system, coordinating the data flow from raw files to the
+    structured model.
+
+    Attributes:
+        path: Path to the CSV file to be loaded.
+        sheet: The name of the handler/sheet target for the CSV data.
+    """
 
     path: str
     sheet: str
