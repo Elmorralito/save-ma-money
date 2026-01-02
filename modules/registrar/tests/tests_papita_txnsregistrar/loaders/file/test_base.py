@@ -18,8 +18,8 @@ from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 from papita_txnsregistrar.loaders.file.base import FileLoader
 
 
-class TestFileLoader(FileLoader, AbstractDataLoader):
-    """Test implementation of FileLoader with AbstractDataLoader for testing purposes."""
+class MockFileLoader(FileLoader, AbstractDataLoader):
+    """Mock implementation of FileLoader with AbstractDataLoader for testing purposes."""
 
     _result: list = []
 
@@ -43,7 +43,7 @@ def test_check_source_with_valid_string_path():
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         tmp_path = Path(tmp_file.name)
         try:
-            loader = TestFileLoader(path=tmp_path, on_failure_do=FallbackAction.RAISE)
+            loader = MockFileLoader(path=tmp_path, on_failure_do=FallbackAction.RAISE)
 
             # Act
             result = loader.check_source()
@@ -64,7 +64,7 @@ def test_check_source_with_valid_path_object():
     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         tmp_path = Path(tmp_file.name)
         try:
-            loader = TestFileLoader(path=tmp_path, on_failure_do=FallbackAction.RAISE)
+            loader = MockFileLoader(path=tmp_path, on_failure_do=FallbackAction.RAISE)
 
             # Act
             result = loader.check_source()
@@ -83,7 +83,7 @@ def test_check_source_with_nonexistent_path_raises_error():
     """Test that check_source raises FileNotFoundError when file path does not exist."""
     # Arrange
     nonexistent_path = "/nonexistent/path/to/file.txt"
-    loader = TestFileLoader(path=nonexistent_path, on_failure_do=FallbackAction.RAISE)
+    loader = MockFileLoader(path=nonexistent_path, on_failure_do=FallbackAction.RAISE)
 
     # Act & Assert
     with pytest.raises(FileNotFoundError, match=f"The path '{nonexistent_path}' does not correspond to a file or does not exist"):
@@ -94,7 +94,7 @@ def test_check_source_with_directory_path_raises_error():
     """Test that check_source raises FileNotFoundError when path points to a directory instead of a file."""
     # Arrange
     with tempfile.TemporaryDirectory() as tmp_dir:
-        loader = TestFileLoader(path=Path(tmp_dir), on_failure_do=FallbackAction.RAISE)
+        loader = MockFileLoader(path=Path(tmp_dir), on_failure_do=FallbackAction.RAISE)
 
         # Act & Assert
         with pytest.raises(IsADirectoryError):

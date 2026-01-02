@@ -92,7 +92,7 @@ class TestCheckExpectedDtoType:
 
     def test_check_expected_dto_type_raises_error_when_dto_is_none(self, service):
         """Test that check_expected_dto_type raises TypeError when dto is None."""
-        with pytest.raises(TypeError, match="Provided DTO is not a class or instance"):
+        with pytest.raises(TypeError, match="Provided DTO is not a class or instance."):
             service.check_expected_dto_type(None)
 
     def test_check_expected_dto_type_returns_type_for_valid_dto_instance(self, service, mock_dto):
@@ -151,7 +151,7 @@ class TestCreate:
 
         assert result == mock_dto
         service.dto_type.model_validate.assert_called_once_with(
-            obj_dict, strict=False, by_alias=False, by_name=True
+            obj_dict, strict=False, context={"by_alias": False, "by_name": True}
         )
         mock_repository.upsert_record.assert_called_once_with(mock_dto)
 
@@ -202,7 +202,7 @@ class TestDelete:
         service.delete(obj=obj_dict, hard=False)
 
         service.dto_type.model_validate.assert_called_once_with(
-            obj_dict, strict=False, by_alias=False, by_name=True
+            obj_dict, strict=False, context={"by_alias": False, "by_name": True}
         )
         mock_repository.soft_delete_records.assert_called_once()
 
