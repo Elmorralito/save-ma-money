@@ -237,7 +237,8 @@ def parse_cli_args():
     parser = argparse.ArgumentParser(description="Setup DuckDB database")
     parser.add_argument("-p", "-path", "--duckdb-db-path", type=str, required=True, help="Path to the DuckDB database")
     parser.add_argument("-s", "-schema", "--schema", type=str, required=True, help="Schema to setup")
-    return parser.parse_cli_args()
+    args, _ = parser.parse_known_args()
+    return args
 
 
 def main():
