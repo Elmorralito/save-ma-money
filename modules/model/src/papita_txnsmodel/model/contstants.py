@@ -1,3 +1,5 @@
+SCHEMA_NAME = "papita_transactions"
+
 ACCOUNTS__TABLENAME = "accounts"
 
 ACCOUNTS_INDEXER__TABLENAME = "accounts_indexer"
@@ -25,3 +27,5 @@ TYPES__TABLENAME = "types"
 IDENTIFIED_TRANSACTIONS__TABLENAME = "identified_transactions"
 
 TRANSACTIONS__TABLENAME = "transactions"
+
+USERS__TABLENAME = "users"

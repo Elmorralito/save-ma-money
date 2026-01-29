@@ -17,7 +17,7 @@ services:
     networks:
       - papita-local-net
     expose:
-      - "127.0.0.1:${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}"
+      - "${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}"
     ports:
       - "${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}:${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}/tcp"
     healthcheck:

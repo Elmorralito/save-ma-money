@@ -17,11 +17,12 @@ from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME
+from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME, USERS__TABLENAME
 
 if TYPE_CHECKING:
     from .accounts import Accounts
     from .types import Types
+    from .users import Users
 
 
 class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
@@ -55,6 +56,9 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     description: str = Field(nullable=False)
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_identified_transactions")
 
     types: "Types" = Relationship(back_populates=IDENTIFIED_TRANSACTIONS__TABLENAME)
     transactions: List["Transactions"] = Relationship(
@@ -98,6 +102,9 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
         sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.datetime.now
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_transactions")
 
     identified_transactions: "IdentifiedTransactions" = Relationship(back_populates=TRANSACTIONS__TABLENAME)
     from_accounts: Optional["Accounts"] = Relationship(

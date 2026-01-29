@@ -23,6 +23,15 @@ log() {
 }
 
 
+get_python_cmd() {
+    if [[ "${POETRY_ACTIVE}" == "1" ]] || [[ -n "${VIRTUAL_ENV}" ]]; then
+        echo "python"
+    else
+        echo "python -m poetry"
+    fi
+}
+
+
 run_command() {
     COMMAND="$2"
     EXIT_ON_ERROR="$1"
