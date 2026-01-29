@@ -11,16 +11,17 @@ Classes:
 import uuid
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import ARRAY, Column, String
+from sqlalchemy import ARRAY, Column, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import TYPES__TABLENAME
+from .contstants import TYPES__TABLENAME, USERS__TABLENAME
 from .enums import TypesClassifications
 
 if TYPE_CHECKING:
     from .indexers import AccountsIndexer
     from .transactions import IdentifiedTransactions
+    from .users import Users
 
 
 class Types(BaseSQLModel, table=True):  # type: ignore
@@ -53,7 +54,10 @@ class Types(BaseSQLModel, table=True):  # type: ignore
     classification: TypesClassifications = Field(nullable=False, index=True)
     name: str = Field(nullable=False, index=True, unique=True)
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
-    description: str = Field(nullable=False)
+    description: str = Field(sa_column=Column(Text, nullable=False))
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_types")
 
     accounts_indexer: List["AccountsIndexer"] = Relationship(back_populates=TYPES__TABLENAME, cascade_delete=True)
     identified_transactions: List["IdentifiedTransactions"] = Relationship(

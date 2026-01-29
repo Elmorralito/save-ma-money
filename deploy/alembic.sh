@@ -4,6 +4,7 @@
 DOCKER_RM_FLAG=
 DOCKER_LOCAL_FLAG=
 DUCKDB_DB_PATH=
+DB_URL=
 ENV_FILE=
 DUCKDB_SCHEMA="papita_transactions"
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
@@ -23,7 +24,7 @@ The script loads environment variables from docker/database/.env by default.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
-    upgrade                             Apply pending migrations to the database
+    upgrade, deploy                     Apply pending migrations to the database
     downgrade                           Roll back to a previous migration
     up                                  Start the Docker services for migration environment
     halt, stop                          Stop the Docker services for migration environment
@@ -32,6 +33,7 @@ ACTIONS:
 OPTIONS:
     --message, --slug, -m MESSAGE           Specify a message for the migration
                                             (used with version/autogenerate)
+    --url, -u URL                           Specify a database URL directly
     --env-file, -ef FILE                    Specify a custom environment file path
                                             (defaults to docker/database/.env)
     --duckdb-path, -dbp PATH                Specify a DuckDB database path. Supports:
@@ -105,7 +107,11 @@ duckdb_run() {
         usage
     fi
 
-    DUCKDB_DB_PATH=$(python -m poetry run python "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
+    PYTHON_CMD=$(get_python_cmd)
+    if [[ "${PYTHON_CMD}" == *"poetry"* ]]; then
+        PYTHON_CMD="${PYTHON_CMD} run python"
+    fi
+    DUCKDB_DB_PATH=$(${PYTHON_CMD} "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
     # shellcheck disable=SC2181
     if [[ "$?" -ne 0 ]]; then
         log ERROR "Failed to setup DuckDB schema."
@@ -118,12 +124,20 @@ duckdb_run() {
     cd "$OLD_PWD" || return
 }
 
-if ! test -e "$(which "$ALEMBIC_EXEC_COMMAND")" && ! test -e "$(python -m poetry env info -p)"; then
+PYTHON_CMD=$(get_python_cmd)
+POETRY_CMD="${PYTHON_CMD}"
+[[ "${PYTHON_CMD}" == "python" ]] && POETRY_CMD="python -m poetry"
+
+if ! command -v alembic &>/dev/null && ! ${POETRY_CMD} env info -p &>/dev/null; then
     log "ERROR" "The environment does not have Alembic nor Poetry installed."
     exit 1
 fi
-
-ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; python -m poetry run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
+ 
+if [[ "${PYTHON_CMD}" == *"poetry"* ]]; then
+    ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; ${PYTHON_CMD} run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
+else
+    ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
+fi
 
 # Show usage if no arguments or help requested
 if [[ $# -eq 0 ]] || [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
@@ -175,6 +189,10 @@ while [[ "$#" -gt 0 ]]; do
             MESSAGE="$2"
             shift 2
             ;;
+        --url | -u)
+            DB_URL="$2"
+            shift 2
+            ;;
         *)
             log "ERROR" "Unknown option: $1"
             usage
@@ -185,42 +203,55 @@ done
 DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-"${DEFAULT_DB_COMPOSE_FILE}"}"
 ENV_FILE="${ENV_FILE:-"${DEFAULT_DB_ENV_FILE}"}"
 
-log "INFO" "Using Docker Compose file at $DOCKER_COMPOSE_FILE"
-if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
-    log "ERROR" "Docker Compose file not found at $DOCKER_COMPOSE_FILE"
-    exit 1
+if [[ -n "$DOCKER_LOCAL_FLAG" ]]; then
+    log "INFO" "Using Docker Compose file at $DOCKER_COMPOSE_FILE"
+    if [[ ! -f "$DOCKER_COMPOSE_FILE" ]]; then
+        log "ERROR" "Docker Compose file not found at $DOCKER_COMPOSE_FILE"
+        exit 1
+    fi
 fi
 
-log "INFO" "Using env file at $ENV_FILE"
-if [[ ! -f "$ENV_FILE" ]]; then
-    log "ERROR" "Env file not found at $ENV_FILE"
-    exit 1
-fi
+if [[ -z "$DUCKDB_DB_PATH" ]] && [[ -z "$DB_URL" ]]; then
+    log "INFO" "Using env file at $ENV_FILE"
+    if [[ ! -f "$ENV_FILE" ]]; then
+        log "ERROR" "Env file not found at $ENV_FILE"
+        exit 1
+    fi
 
-log "INFO" "Loading env file at $ENV_FILE"
-source "${ENV_FILE}" || {
-    log "ERROR" "Failed to load env file at $ENV_FILE"
-    exit 1
-}
+    log "INFO" "Loading env file at $ENV_FILE"
+    source "${ENV_FILE}" || {
+        log "ERROR" "Failed to load env file at $ENV_FILE"
+        exit 1
+    }
+fi
 
 case "$ACTION" in
     version | autogenerate)
+        RUN_FLAG="docker_run"
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
+        elif [[ -n "$DB_URL" ]]; then
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"dbUrl=${DB_URL}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" revision --autogenerate $( if [ -n "$MESSAGE" ] ; then echo "-m \"${MESSAGE}\"" ; else echo "" ; fi )"
         fi
         ;;
-    upgrade)
+    upgrade | deploy)
+        RUN_FLAG="docker_run"
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade head"
+        elif [[ -n "$DB_URL" ]]; then
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"dbUrl=${DB_URL}\" upgrade head"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade head"
         fi
         ;;
     downgrade)
+        RUN_FLAG="docker_run"
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+        elif [[ -n "$DB_URL" ]]; then
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"dbUrl=${DB_URL}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         else
             ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
         fi

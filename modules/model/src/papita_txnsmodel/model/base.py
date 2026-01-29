@@ -9,11 +9,11 @@ Classes:
 """
 
 from datetime import datetime as base_datetime
-
 from sqlalchemy import TIMESTAMP
 from sqlmodel import Field, SQLModel
+from .contstants import SCHEMA_NAME
 
-SCHEMA_NAME = "papita_transactions"
+
 SQLModel.metadata.schema = SCHEMA_NAME
 
 
@@ -36,3 +36,5 @@ class BaseSQLModel(SQLModel, table=False):  # type: ignore
 
     active: bool = Field(nullable=False, default=True)
     deleted_at: base_datetime | None = Field(sa_type=TIMESTAMP, nullable=True, default=None)
+    created_at: base_datetime = Field(sa_type=TIMESTAMP, nullable=False, default_factory=base_datetime.now)
+    updated_at: base_datetime = Field(sa_type=TIMESTAMP, nullable=False, default_factory=base_datetime.now)
