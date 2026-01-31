@@ -357,20 +357,12 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
         content = dotenv.dotenv_values(dotenv_path=connect_file)
         if not content:
             return None
-        output = {}
-        for key, value in content.items():
-            if key in cls.MAPPING_VARIABLES:
-                output[cls.MAPPING_VARIABLES[key]] = value
-            else:
-                output[key] = value
 
-        if "url" in output or all(key in output for key in set(cls.MAPPING_VARIABLES.values())):
-            return output
+        return content or None
 
-        raise ValueError("The environment file does not contain a valid database connection URL.")
 
     @classmethod
-    def _load_file(cls, connect_file: str) -> dict:
+    def _load_file(cls, connect_file: str) -> dict | None:
         """Load connection parameters from a configuration file with format detection.
 
         This method automatically detects the file format based on the file extension
@@ -402,27 +394,33 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
             with different format extensions by appending common extensions to
             the base filename. This allows for more flexible file naming.
         """
-        try:
-            if connect_file.endswith(cls.JSON_FILE_EXTENSIONS):
-                connection = cls._load_json_file(connect_file)
-            elif connect_file.endswith(cls.YAML_FILE_EXTENSIONS):
-                connection = cls._load_yaml_file(connect_file)
-            elif connect_file.endswith(cls.TOML_FILE_EXTENSIONS):
-                connection = cls._load_toml_file(connect_file)
-            elif connect_file.endswith(cls.CONFIG_FILE_EXTENSIONS):
-                connection = cls._load_config_file(connect_file)
-            elif connect_file.endswith(cls.ENV_FILE_EXTENSIONS):
-                connection = cls._load_env_file(connect_file)
-            else:
-                raise ValueError(f"The file extension is not recognized on '{connect_file}'.")
+        def _load_extension(extension: str) -> dict | None:
+            logger.debug("Loading file '%s' with extension: %s", connect_file, extension)
+            connection = None
+            try:
+                if extension in cls.JSON_FILE_EXTENSIONS:
+                    connection = cls._load_json_file(connect_file)
+                
+                if extension in cls.YAML_FILE_EXTENSIONS:
+                    connection = cls._load_yaml_file(connect_file)
+                
+                if extension in cls.TOML_FILE_EXTENSIONS:
+                    connection = cls._load_toml_file(connect_file)
+                
+                if extension in cls.CONFIG_FILE_EXTENSIONS:
+                    connection = cls._load_config_file(connect_file)
+                
+                if extension in cls.ENV_FILE_EXTENSIONS:
+                    connection = cls._load_env_file(connect_file)
+                
+                if not isinstance(connection, dict) or connection is None:
+                    raise ValueError(f"The file extension is not recognized or the file format is not supported on '{connect_file}'.")
 
-            if not isinstance(connection, dict):
-                raise TypeError("The content of the file is not a dictionary.")
+            except Exception:
+                logger.exception("Something happened while loading the file: %s", connect_file)
+                logger.warning("Trying to load the file over different formats...")
 
             return connection
-        except Exception:
-            logger.exception("Something happened while loading the file: %s", connect_file)
-            logger.warning("Trying to load the file over different formats...")
 
         for format_ in set(
             cls.JSON_FILE_EXTENSIONS
@@ -431,13 +429,27 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
             + cls.CONFIG_FILE_EXTENSIONS
             + cls.ENV_FILE_EXTENSIONS
         ):
-            file_path = connect_file.removesuffix(".") + f".{format_.lstrip('.')}"
-            try:
-                return cls._load_file(file_path)
-            except Exception:
-                logger.warning("Something happened while loading the file: %s", file_path)
+            connection = _load_extension(format_)
+            if connection:
+                return connection
 
         raise ValueError(f"The file format is not supported on '{connect_file}'.")
+
+    @classmethod
+    def map_connection_params(cls, connection_params: dict) -> dict:
+        """Map connection parameters to database connection parameters."""
+        mapping = { key.upper(): value for key, value in cls.MAPPING_VARIABLES.items() }
+        output = {}
+        for key, value in connection_params.items():
+            if key.upper() in mapping:
+                output[mapping[key.upper()]] = value
+            else:
+                output[key] = value
+
+        if "url" in output:
+            return {"url": output["url"]}
+
+        return output
 
     @classmethod
     def parse_cli_args(cls, **kwargs) -> Dict[str, Any]:
@@ -481,8 +493,10 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
                               configuration file.
         """
         parsed_args = cls.parse_cli_args(**kwargs)
-        content = cls._load_file(parsed_args["connect_file"])
-        return cls.model_validate({"connector": SQLDatabaseConnector.establish(connection=content), **kwargs})
+        raw_connection_params = cls._load_file(parsed_args["connect_file"])
+        connection_params = cls.map_connection_params(raw_connection_params)
+        logger.debug("Connection parameters loaded: %s", connection_params)
+        return cls.model_validate({"connector": SQLDatabaseConnector.establish(connection=connection_params), **kwargs})
 
 
 class CLIDefaultConnectorWrapper(BaseCLIConnectorWrapper):

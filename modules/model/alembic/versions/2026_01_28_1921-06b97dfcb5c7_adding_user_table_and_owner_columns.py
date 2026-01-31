@@ -14,7 +14,7 @@ import sqlmodel  # noqa: F401
 
 
 # revision identifiers, used by Alembic.
-revision: str = "ccc"
+revision: str = "06b97dfcb5c7"
 down_revision: Union[str, Sequence[str], None] = "53fec3d56681"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.TIMESTAMP(), nullable=True),
         sa.Column("created_at", sa.TIMESTAMP(), nullable=False),
         sa.Column("updated_at", sa.TIMESTAMP(), nullable=False),
-        sa.Column("uid", sa.Uuid(), nullable=False),
+        sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column(
             "username", sqlmodel.sql.sqltypes.AutoString(), nullable=False
         ),
@@ -43,7 +43,7 @@ def upgrade() -> None:
         sa.Column(
             "token_salt", sqlmodel.sql.sqltypes.AutoString(), nullable=False
         ),
-        sa.PrimaryKeyConstraint("uid"),
+        sa.PrimaryKeyConstraint("id"),
         schema="papita_transactions",
     )
     op.create_index(
@@ -54,9 +54,9 @@ def upgrade() -> None:
         schema="papita_transactions",
     )
     op.create_index(
-        op.f("ix_papita_transactions_users_uid"),
+        op.f("ix_papita_transactions_users_id"),
         "users",
-        ["uid"],
+        ["id"],
         unique=False,
         schema="papita_transactions",
     )
@@ -84,7 +84,7 @@ def upgrade() -> None:
         "accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -112,7 +112,7 @@ def upgrade() -> None:
         "accounts_indexer",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -133,7 +133,7 @@ def upgrade() -> None:
         "assets_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -147,7 +147,7 @@ def upgrade() -> None:
         "bank_credit_liability_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -161,7 +161,7 @@ def upgrade() -> None:
         "banking_asset_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -175,7 +175,7 @@ def upgrade() -> None:
         "credit_card_liability_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -189,7 +189,7 @@ def upgrade() -> None:
         "financed_asset_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -203,7 +203,7 @@ def upgrade() -> None:
         "identified_transactions",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -224,7 +224,7 @@ def upgrade() -> None:
         "liability_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -238,7 +238,7 @@ def upgrade() -> None:
         "real_estate_asset_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -252,7 +252,7 @@ def upgrade() -> None:
         "trading_asset_accounts",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -273,7 +273,7 @@ def upgrade() -> None:
         "transactions",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -294,7 +294,7 @@ def upgrade() -> None:
         "types",
         "users",
         ["owner_id"],
-        ["uid"],
+        ["id"],
         source_schema="papita_transactions",
         referent_schema="papita_transactions",
     )
@@ -450,7 +450,7 @@ def downgrade() -> None:
         schema="papita_transactions",
     )
     op.drop_index(
-        op.f("ix_papita_transactions_users_uid"),
+        op.f("ix_papita_transactions_users_id"),
         table_name="users",
         schema="papita_transactions",
     )

@@ -14,15 +14,16 @@ Classes:
 import datetime
 import uuid
 
-from pydantic import Field, model_serializer
+from pydantic import Field, field_serializer, model_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import CoreTableDTO, TableDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.transactions import IdentifiedTransactions, Transactions
 from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
 
-class IdentifiedTransactionsDTO(CoreTableDTO):
+class IdentifiedTransactionsDTO(OwnedTableDTO, CoreTableDTO):
     """DTO for planned or recurring transactions in the system.
 
     This class represents identified transactions, which are planned or recurring
@@ -49,7 +50,7 @@ class IdentifiedTransactionsDTO(CoreTableDTO):
     )
 
 
-class TransactionsDTO(TableDTO):
+class TransactionsDTO(OwnedTableDTO):
     """DTO for actual financial transactions in the system.
 
     This class represents actual financial transactions that have occurred or will occur
@@ -81,46 +82,21 @@ class TransactionsDTO(TableDTO):
     transaction_ts: datetime.datetime = Field(default_factory=datetime.datetime.now)
     value: float = Field(gt=0, description="Monetary value of the transaction")
 
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the DTO to a dictionary, handling nested DTOs.
+    @field_serializer("identified_transaction", "from_account", "to_account")
+    def _serialize_relations(self, value: uuid.UUID | TableDTO | None) -> uuid.UUID | None:
+        """Serialize relationship fields to their ID values.
 
-        This method converts nested DTO objects to their ID values for proper
-        serialization to database models.
+        This serializer ensures that relationship fields are consistently represented as UUIDs
+        in the serialized output, regardless of whether they were provided as full DTO objects
+        or just UUIDs.
+
+        Args:
+            value: The relationship value to serialize, either a UUID, TableDTO instance, or None.
 
         Returns:
-            dict: Dictionary representation of the DTO with proper ID references.
+            uuid.UUID or None: The UUID of the related entity, or None if no relation exists.
         """
-        result: dict[str, type] = {}
+        if not value:
+            return None
 
-        if isinstance(self.identified_transaction, IdentifiedTransactionsDTO):
-            result |= convert_dto_obj_on_serialize(
-                obj=self,
-                id_field="identified_transaction",
-                id_field_attr_name="id",
-                target_field="identified_transaction_id",
-                expected_intput_field_type=IdentifiedTransactionsDTO,
-                expected_output_field_type=uuid.UUID,
-            )
-
-        if isinstance(self.from_account, AccountsDTO):
-            result |= convert_dto_obj_on_serialize(
-                obj=self,
-                id_field="from_account",
-                id_field_attr_name="id",
-                target_field="from_account_id",
-                expected_intput_field_type=AccountsDTO,
-                expected_output_field_type=uuid.UUID,
-            )
-
-        if isinstance(self.to_account, AccountsDTO):
-            result |= convert_dto_obj_on_serialize(
-                obj=self,
-                id_field="to_account",
-                id_field_attr_name="id",
-                target_field="to_account_id",
-                expected_intput_field_type=AccountsDTO,
-                expected_output_field_type=uuid.UUID,
-            )
-
-        return result
+        return value.id if isinstance(value, TableDTO) else value

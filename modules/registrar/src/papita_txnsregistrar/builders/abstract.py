@@ -15,7 +15,7 @@ interface design for method chaining.
 """
 
 import abc
-from typing import Generic, Self, Type, TypeVar
+from typing import TYPE_CHECKING, Generic, Optional, Self, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
@@ -24,6 +24,8 @@ from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
+
+from papita_txnsmodel.access.users.dto import UsersDTO
 
 L = TypeVar("L", bound=AbstractDataLoader)
 
@@ -60,6 +62,7 @@ class AbstractContractBuilder(BaseModel, Generic[L], abc.ABC):
     loader_generic_type: Type[L] = L
     loader: L | None = None
     service: BaseService | None = None
+    owner: Optional[UsersDTO] = None
     on_failure_do: FallbackAction = FallbackAction.RAISE
 
     @classmethod

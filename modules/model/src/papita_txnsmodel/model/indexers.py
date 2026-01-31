@@ -78,7 +78,7 @@ class AccountsIndexer(SQLModel, table=True):  # type: ignore
     
     type_id: uuid.UUID = Field(foreign_key=f"{TYPES__TABLENAME}.id", nullable=False, index=True)
 
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False, index=True)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
 
     owner: "Users" = Relationship(back_populates="owned_accounts_indexer")
 

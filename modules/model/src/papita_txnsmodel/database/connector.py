@@ -121,48 +121,45 @@ class SQLDatabaseConnector(AbstractConnector):
         if not connection:
             connection = Path(os.getcwd()).joinpath(".tmp").as_posix()
 
-        match connection:
-            case db.URL:
-                url = connection
-            case dict():
-                try:
-                    url = connection.pop("url", connection.pop("dburl", connection.pop("credentials", None)))
-                    if not url:
-                        url = db.URL(
-                            drivername=connection["drivername"],
-                            username=connection["username"],
-                            password=connection["password"],
-                            host=connection["host"],
-                            database=connection.get("database"),
-                            port=connection["port"],
-                            query="",
-                        )
-                    elif isinstance(url, str):
-                        url = db.make_url(connection)
-                    elif isinstance(url, dict):
-                        url = db.URL(
-                            drivername=url["drivername"],
-                            username=url["username"],
-                            password=url["password"],
-                            host=url["host"],
-                            database=url.get("database"),
-                            port=url["port"],
-                            query="",
-                        )
-                except Exception:
-                    logger.exception("Someting happened while parsing dict params.")
-                    url = db.URL(**connection)
+        if isinstance(connection, dict):
+            try:
+                url = connection.pop("url", connection.pop("dburl", connection.pop("credentials", None)))
+                if not url:
+                    url = db.URL.create(
+                        drivername=connection["drivername"],
+                        username=connection.get("username"),
+                        password=connection.get("password"),
+                        host=connection.get("host"),
+                        database=connection.get("database"),
+                        port=connection.get("port"),
+                    )
+                elif isinstance(url, str):
+                    url = db.make_url(url)
+                elif isinstance(url, dict):
+                    url = db.URL.create(
+                        drivername=url["drivername"],
+                        username=url.get("username"),
+                        password=url.get("password"),
+                        host=url.get("host"),
+                        database=url.get("database"),
+                        port=url.get("port"),
+                    )
+            except Exception:
+                logger.exception("Something happened while parsing dict params.")
+                url = db.URL.create(**connection)
 
-            case str():
-                try:
-                    url = Path(os.path.abspath(connection))
-                    url = url.joinpath("store.duckdb") if url.is_dir() else url
-                    url = f"duckdb:///{url.absolute().as_posix()}"
-                except OSError:
-                    logger.exception("Cannot load duckdb storage due to:")
-                    url = connection
-            case _:
-                url = "duckdb:///:memory:"
+        elif isinstance(connection, str):
+            try:
+                url_path = Path(os.path.abspath(connection))
+                url_path = url_path.joinpath("store.duckdb") if url_path.is_dir() else url_path
+                url = f"duckdb:///{url_path.absolute().as_posix()}"
+            except OSError:
+                logger.exception("Cannot load duckdb storage due to:")
+                url = connection
+        elif hasattr(connection, "drivername"):
+            url = connection
+        else:
+            url = "duckdb:///:memory:"
 
         url = db.make_url(url) if isinstance(url, str) else url
         sql_kwargs_ = (cls.sql_kwargs or {}) | sql_kwargs
@@ -171,8 +168,6 @@ class SQLDatabaseConnector(AbstractConnector):
 
         cls.engine = db.create_engine(url, **sql_kwargs_)
         logger.debug("Connection to the database established.")
-        logger.debug("Engine: %s", cls.engine.url)
-        logger.debug("SQL kwargs: %s", sql_kwargs_)
         return cls
 
     @classmethod

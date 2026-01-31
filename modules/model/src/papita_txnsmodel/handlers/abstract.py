@@ -12,7 +12,7 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, List, Self, Tuple, Type, TypeVar, get_args
+from typing import TYPE_CHECKING, Generic, List, Self, Tuple, Type, TypeVar, get_args
 
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +20,9 @@ from pydantic import BaseModel, ConfigDict
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.enums import FallbackAction
+
+if TYPE_CHECKING:
+    from papita_txnsmodel.access.users.dto import UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +125,7 @@ class AbstractHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
             ValueError: If the data cannot be loaded or fails validation.
         """
 
-    def _load_core_data(self, service: BaseService | None = None) -> pd.DataFrame:
+    def _load_core_data(self, service: BaseService | None = None, owner: "UsersDTO | None" = None) -> pd.DataFrame:
         """
         Load records from the service's underlying data store.
 
@@ -131,6 +134,7 @@ class AbstractHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
 
         Args:
             service: BaseService instance that provides access to the data store.
+            owner: The owner of the records to retrieve. Defaults to None.
 
         Returns:
             pd.DataFrame: DataFrame containing the records retrieved from the service.
@@ -139,7 +143,7 @@ class AbstractHandler(BaseModel, Generic[S], metaclass=abc.ABCMeta):
             return pd.DataFrame([])
 
         logger.debug("Loading records from %s", service.dto_type.__dao_type__.__tablename__)
-        return service.get_records(None)
+        return service.get_records(None, owner=owner)
 
     def __str__(self) -> str:
         return f"{self.__class__.__name__}(labels={self.labels()})"

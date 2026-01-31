@@ -7,7 +7,7 @@ from papita_txnsplugins.__meta__ import __authors__
 from papita_txnsplugins.core.builders import ExcelContractBuilder
 from pydantic import ValidationError
 
-from papita_txnsmodel.services.base import SQLDatabaseConnector
+from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.contracts.loader import plugin
 from papita_txnsregistrar.contracts.meta import PluginMetadata

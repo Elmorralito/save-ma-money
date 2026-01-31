@@ -14,10 +14,11 @@ from typing import Optional
 from pydantic import Field, field_validator
 
 from papita_txnsmodel.access.base.dto import CoreTableDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.accounts import Accounts
 
 
-class AccountsDTO(CoreTableDTO):
+class AccountsDTO(OwnedTableDTO, CoreTableDTO):
     """DTO for Accounts model with field validations matching ORM constraints.
 
     This class represents account data in the system and includes validation

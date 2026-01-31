@@ -12,6 +12,7 @@ from typing import Annotated, Dict, Self, Type
 
 from pydantic import Field
 
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.handlers.factory import HandlerFactory
 from papita_txnsregistrar.builders.base import BaseContractBuilder

@@ -12,7 +12,7 @@ Classes:
 import logging
 import uuid
 from datetime import datetime
-from typing import Type
+from typing import Any, Type
 
 import pandas as pd
 from sqlalchemy import inspect as db_inspector
@@ -24,6 +24,7 @@ from papita_txnsmodel.database.upsert import OnUpsertConflictDo, UpserterFactory
 from papita_txnsmodel.model import SCHEMA_NAME
 
 from .dto import TableDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +116,7 @@ class BaseRepository:
         values = {
             kwargs.get("active_column_name", "active"): False,
             kwargs.get("deleted_at_column_name", "deleted_at"): datetime.now(),
+            kwargs.get("updated_at_column_name", "updated_at"): datetime.now(),
         }
         try:
             for _, where in records[primary_keys].iterrows():
@@ -184,6 +186,9 @@ class BaseRepository:
             raise ValueError("There is no id in the DTO")
 
         record = self.get_record_by_id(dto.id, dto, **kwargs)
+        if hasattr(dao, "updated_at"):
+            setattr(dao, "updated_at", datetime.now())
+
         _db_session.begin()
         try:
             logger.debug("Upserting single record with id '%s'", dto.id)
@@ -224,6 +229,17 @@ class BaseRepository:
         """
         dao = dto_type.__dao_type__
         inspector = db_inspector(dao)
+        if "updated_at" in mappings.columns or hasattr(dao, "updated_at"):
+            mappings["updated_at"] = datetime.now()
+
+        if "created_at" not in mappings.columns and hasattr(dao, "created_at"):
+            mappings["created_at"] = datetime.now()
+
+        if "owner_id" not in mappings.columns and hasattr(dao, "owner_id"):
+            mappings["owner_id"] = kwargs.get("owner_id")
+        
+        kwargs.pop("owner_id", None)
+        kwargs.pop("owner", None)
         return UpserterFactory.get_upserter(_db_session).upsert(
             schema_name=SCHEMA_NAME,
             table=dao,
@@ -325,3 +341,79 @@ class BaseRepository:
             if getattr(output_df, "empty", True)
             else dto.standardized_dataframe(output_df, **kwargs).iloc[0].to_dict()
         )
+
+
+class OwnedTableRepository(BaseRepository):
+    """Repository for tables that are owned by a user.
+
+    This repository requires a UsersDTO to be provided for all CRUD operations
+    to ensure that users can only access and modify their own records.
+    """
+
+    def _get_owner_filter(self, owner: UsersDTO, dao_type: type) -> Any:
+        return dao_type.owner_id == owner.id
+
+    @SQLDatabaseConnector.connect
+    def hard_delete_records(
+        self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
+    ) -> pd.DataFrame:
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().hard_delete_records(
+            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
+        )
+
+    @SQLDatabaseConnector.connect
+    def soft_delete_records(
+        self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
+    ) -> pd.DataFrame:
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().soft_delete_records(
+            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
+        )
+
+    @SQLDatabaseConnector.connect
+    def upsert_record(
+        self, dto: OwnedTableDTO, *, owner: UsersDTO, _db_session: Session, **kwargs
+    ) -> OwnedTableDTO | None:
+        if dto.owner_id != owner.id:
+            if dto.owner_id and dto.owner_id != owner.id:
+                raise ValueError("DTO owner_id does not match the provided owner.")
+            dto.owner_id = owner.id
+
+        kwargs.pop("owner", None)
+        return super().upsert_record(dto, _db_session=_db_session, **kwargs)
+
+    @SQLDatabaseConnector.connect
+    def upsert_records(
+        self,
+        dto_type: Type[OwnedTableDTO],
+        mappings: pd.DataFrame,
+        *,
+        owner: UsersDTO | uuid.UUID,
+        _db_session: Session,
+        on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
+        **kwargs,
+    ) -> int:
+        mappings["owner_id"] = owner if isinstance(owner, uuid.UUID) else owner.id
+        # Remove 'owner' from kwargs to prevent it from being passed to df.to_sql()
+        kwargs.pop("owner", None)
+        return super().upsert_records(
+            dto_type, mappings, _db_session=_db_session, on_conflict_do=on_conflict_do, **kwargs
+        )
+
+    def get_records(self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], **kwargs) -> pd.DataFrame:
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().get_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+
+    def get_records_from_attributes(self, dto: OwnedTableDTO, *, owner: UsersDTO | uuid.UUID, **kwargs) -> pd.DataFrame:
+        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id
+        return super().get_records_from_attributes(dto, **kwargs)
+
+    def get_record_by_id(
+        self, id_: OwnedTableDTO | str | dict | uuid.UUID, dto_type: Type[OwnedTableDTO], **kwargs
+    ) -> OwnedTableDTO | None:
+        return super().get_record_by_id(id_, dto_type, **kwargs)
+
+    def get_record_from_attributes(self, dto: OwnedTableDTO, *, owner: UsersDTO | uuid.UUID, **kwargs) -> OwnedTableDTO | None:
+        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id
+        return super().get_record_from_attributes(dto, **kwargs)

@@ -9,21 +9,21 @@ Classes:
     TransactionsRepository: Repository for actual financial transaction operations.
 """
 
-from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.base.repository import OwnedTableRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
 from .dto import IdentifiedTransactionsDTO, TransactionsDTO
 
 
-class IdentifiedTransactionsRepository(BaseRepository, metaclass=MetaSingleton):
+class IdentifiedTransactionsRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for planned or recurring transaction database operations.
 
-    This class extends the BaseRepository to provide operations specific to identified
+    This class extends the OwnedTableRepository to provide operations specific to identified
     (planned or recurring) transactions. It uses the Singleton pattern via MetaSingleton
     to ensure only one instance exists throughout the application.
 
     The repository works with IdentifiedTransactionsDTO objects and provides all the CRUD
-    operations inherited from BaseRepository, including querying, inserting, updating,
+    operations inherited from OwnedTableRepository, including querying, inserting, updating,
     and deleting identified transaction records.
 
     Attributes:
@@ -34,15 +34,15 @@ class IdentifiedTransactionsRepository(BaseRepository, metaclass=MetaSingleton):
     __expected_dto__ = IdentifiedTransactionsDTO
 
 
-class TransactionsRepository(BaseRepository, metaclass=MetaSingleton):
+class TransactionsRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for actual financial transaction database operations.
 
-    This class extends the BaseRepository to provide operations specific to actual
+    This class extends the OwnedTableRepository to provide operations specific to actual
     financial transactions. It uses the Singleton pattern via MetaSingleton to ensure
     only one instance exists throughout the application.
 
     The repository works with TransactionsDTO objects and provides all the CRUD
-    operations inherited from BaseRepository, including querying, inserting, updating,
+    operations inherited from OwnedTableRepository, including querying, inserting, updating,
     and deleting transaction records.
 
     Attributes:

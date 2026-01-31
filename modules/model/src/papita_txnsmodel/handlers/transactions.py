@@ -14,7 +14,7 @@ processing logic including account matching and identified transaction matching.
 
 import logging
 import uuid
-from typing import Annotated, List, Self, Tuple
+from typing import TYPE_CHECKING, Annotated, List, Self, Tuple
 
 import pandas as pd
 from pydantic import Field, model_validator
@@ -22,6 +22,7 @@ from rapidfuzz import fuzz
 from rapidfuzz import process as fuzz_process
 
 from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.transactions import IdentifiedTransactionsService, TransactionsService
 from papita_txnsmodel.services.types import TypesService
@@ -30,6 +31,9 @@ from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 from .abstract import AbstractHandler
 from .base import BaseTableHandler
+
+if TYPE_CHECKING:
+    from papita_txnsmodel.access.users.dto import UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +125,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
     accounts_service: AccountsService
     identified_transactions_service: IdentifiedTransactionsService | None = None
     on_multiple_account_matches: OnMultipleMatchesDo = OnMultipleMatchesDo.FAIL
+    on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.UPDATE
     case_sensitive: bool = False
     fuzzy_match: bool = False
     fuzzy_match_threshold: Annotated[int | float, Field(gt=0.7, lt=100), validate_interest_rate] = 0.9
@@ -135,31 +140,35 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         """
         return "transactions_handler", "transactions"
 
-    @property
-    def accounts(self) -> pd.DataFrame:
+    def accounts(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
         """
         Get account data from the accounts service.
 
         Retrieves all accounts from the accounts service and returns them as a DataFrame
         for use in matching operations.
 
+        Args:
+            owner: The owner of the accounts to retrieve. Defaults to None.
+
         Returns:
             DataFrame containing account data with all available fields.
         """
-        return self._load_core_data(self.accounts_service)
+        return self._load_core_data(self.accounts_service, owner=owner)
 
-    @property
-    def identified_transactions(self) -> pd.DataFrame:
+    def identified_transactions(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
         """
         Get identified transaction data from the identified transactions service.
 
         Retrieves all identified transactions from the service and returns them as a DataFrame
         for use in matching operations.
 
+        Args:
+            owner: The owner of the identified transactions to retrieve. Defaults to None.
+
         Returns:
             DataFrame containing identified transaction data with all available fields.
         """
-        return self._load_core_data(self.identified_transactions_service)
+        return self._load_core_data(self.identified_transactions_service, owner=owner)
 
     def _match_exact_records(
         self,
@@ -256,6 +265,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         core_id_column: str,
         core_name_column: str,
         core_tags_column: str,
+        owner: "UsersDTO | None" = None,
         **kwargs,
     ) -> str | uuid.UUID | None:
         """
@@ -271,6 +281,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             core_id_column: Column name for the ID field in core_data.
             core_name_column: Column name for the name field in core_data.
             core_tags_column: Column name for the tags field in core_data.
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments passed to the matching strategy.
 
         Returns:
@@ -292,7 +303,8 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
                 core_id_column=core_id_column,
                 core_name_column=core_name_column,
                 core_tags_column=core_tags_column,
-                on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+                on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
+                owner=owner,
                 **kwargs,
             )
 
@@ -302,11 +314,12 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             core_id_column=core_id_column,
             core_name_column=core_name_column,
             core_tags_column=core_tags_column,
-            on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+            on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
+            owner=owner,
             **kwargs,
         )
 
-    def _match_accounts(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def _match_accounts(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
         """
         Match account IDs in the transaction data with accounts in the accounts DataFrame.
 
@@ -316,6 +329,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
 
         Args:
             data: DataFrame containing transaction data with from_account_id and to_account_id columns.
+            owner: The owner of the accounts. Defaults to None.
             **kwargs: Additional arguments passed to the matching functions.
 
         Returns:
@@ -327,7 +341,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         tags_column = self.accounts_service.dto_type.__dao_type__.__table__.c.tags.key
         from_account_id_column = self.service.dto_type.__dao_type__.__table__.c.from_account_id.key
         to_account_id_column = self.service.dto_type.__dao_type__.__table__.c.to_account_id.key
-        accounts = self.accounts[[id_column, name_column, tags_column]]
+        accounts = self.accounts(owner=owner)[[id_column, name_column, tags_column]]
         data_columns = [from_account_id_column, to_account_id_column]
         data_ = data.copy()
         for col_ in data_columns:
@@ -338,7 +352,8 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
                     core_id_column=id_column,
                     core_name_column=name_column,
                     core_tags_column=tags_column,
-                    on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+                    on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
+                    owner=owner,
                     **kwargs,
                 )
             )
@@ -350,7 +365,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             )
         ]
 
-    def _match_identifed_transactions(self, data: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def _match_identified_transactions(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
         """
         Match identified transaction IDs in the transaction data.
 
@@ -360,6 +375,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
 
         Args:
             data: DataFrame containing transaction data with identified_transaction_id column.
+            owner: The owner of the identified transactions. Defaults to None.
             **kwargs: Additional arguments passed to the matching functions.
 
         Returns:
@@ -369,7 +385,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         name_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.name.key
         tags_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.tags.key
         identified_transaction_id_column = self.service.dto_type.__dao_type__.__table__.c.identified_transaction_id.key
-        identified_transactions = self.identified_transactions[[id_column, name_column, tags_column]]
+        identified_transactions = self.identified_transactions(owner=owner)[[id_column, name_column, tags_column]]
         data_ = data.copy()
         data_[identified_transaction_id_column] = data_[identified_transaction_id_column].apply(
             lambda value: self._match_records(
@@ -378,12 +394,13 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
                 core_id_column=id_column,
                 core_name_column=name_column,
                 core_tags_column=tags_column,
+                owner=owner,
                 **kwargs,
             )
         )
         return data_
 
-    def dump(self, **kwargs) -> Self:
+    def dump(self, *, owner: "UsersDTO | None" = None, **kwargs) -> Self:
         """
         Save the loaded transaction data using the associated service.
 
@@ -391,6 +408,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         data store through the service layer.
 
         Args:
+            owner: The owner of the transactions. Defaults to None.
             **kwargs: Additional arguments passed to the service's upsert_records method,
                      such as batch size or conflict resolution strategies.
 
@@ -404,10 +422,19 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             raise ValueError("There is no loaded data to dump.")
 
         return self.service.upsert_records(
-            df=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            df=self._loaded_data,
+            owner=owner,
+            on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+            **kwargs,
         )
 
-    def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
+    def load(
+        self,
+        *,
+        data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO,
+        owner: "UsersDTO | None" = None,
+        **kwargs,
+    ) -> Self:
         """
         Load and process transaction data.
 
@@ -419,6 +446,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
 
         Args:
             data: Raw transaction data to be processed, can be in various formats.
+            owner: The owner of the transactions. Defaults to None.
             **kwargs: Additional arguments for processing and error handling,
                       including loggers and strategy-specific parameters.
 
@@ -429,16 +457,16 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             Various exceptions may be raised based on the on_failure_do strategy
             when data is empty or invalid.
         """
-        logger.debug("Loading data from loader '%s'", self.loader.__class__.__name__)
+        logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
         if getattr(data, "empty", True):
             self.on_failure_do.handle("There are no data or it's empty.", logger=kwargs.pop("logger", logger), **kwargs)
 
-        accounts_data_ = self._match_accounts(data, **kwargs)
+        accounts_data_ = self._match_accounts(data, owner=owner, **kwargs)
         if getattr(accounts_data_, "empty", True):
             self.on_failure_do.handle(
                 "There are no data with valid account relationships.", logger=kwargs.pop("logger", logger), **kwargs
             )
 
-        identified_data_ = self._match_accounts(accounts_data_, **kwargs)
+        identified_data_ = self._match_identified_transactions(accounts_data_, owner=owner, **kwargs)
         self._loaded_data = self.service.dto_type.standardized_dataframe(identified_data_, **kwargs)
         return self

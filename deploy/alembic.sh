@@ -249,11 +249,11 @@ case "$ACTION" in
     downgrade)
         RUN_FLAG="docker_run"
         if [[ -n "$DUCKDB_DB_PATH" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"duckdbPath={DUCKDB_DB_PATH}\" downgrade ${ALEMBIC_VERSION:-"head^1"}"
         elif [[ -n "$DB_URL" ]]; then
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"dbUrl=${DB_URL}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"dbUrl=${DB_URL}\" downgrade ${ALEMBIC_VERSION:-"head^1"}"
         else
-            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" upgrade ${ALEMBIC_VERSION:-"head^1"}"
+            ALEMBIC_COMMAND="$ALEMBIC_EXEC_COMMAND -x \"envPath=${ENV_FILE}\" downgrade ${ALEMBIC_VERSION:-"head^1"}"
         fi
         ;;
     up)

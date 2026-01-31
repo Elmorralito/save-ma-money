@@ -13,7 +13,7 @@ Classes:
 
 import logging
 import uuid
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 import pandas as pd
 from pydantic import BaseModel
@@ -23,6 +23,9 @@ from papita_txnsmodel.access.types.dto import TypesDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.services.types import TypesService
+
+if TYPE_CHECKING:
+    from papita_txnsmodel.access.users.dto import UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +55,7 @@ class TypedEntitiesService(BaseService):
 
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
 
-    def create(self, *, obj: TableDTO | dict[str, Any], **kwargs) -> TableDTO:
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new typed entity record in the database.
 
         This method extends the base create method to handle type relationships.
@@ -61,17 +64,22 @@ class TypedEntitiesService(BaseService):
 
         Args:
             obj: The object to create, either as a DTO or a dictionary of attributes.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
             TableDTO: The created object as a DTO with type information.
         """
-        type_dto = self.types_service.get_or_create(obj=getattr(obj, self.type_id_field_name), **kwargs)
-        dto = super().create(obj=obj, **kwargs)
+        type_dto = self.types_service.get_or_create(
+            obj=getattr(obj, self.type_id_field_name), owner=owner, **kwargs
+        )
+        dto = super().create(obj=obj, owner=owner, **kwargs)
         setattr(dto, self.type_id_field_name, type_dto)
         return dto
 
-    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(
+        self, *, obj: TableDTO | str | dict | uuid.UUID, owner: "UsersDTO | None" = None, **kwargs
+    ) -> TableDTO | None:
         """Retrieve a typed entity record from the database.
 
         This method extends the base get method to include type information in the
@@ -80,6 +88,7 @@ class TypedEntitiesService(BaseService):
         Args:
             obj: The object to retrieve, either as a DTO, a dictionary of attributes,
                 or a UUID.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments including:
                 - include_type (bool): Whether to include type information. Defaults to True.
 
@@ -87,25 +96,34 @@ class TypedEntitiesService(BaseService):
             TableDTO | None: The retrieved object as a DTO with type information,
                 or None if not found.
         """
-        typed_dto = super().get(obj=obj, **kwargs)
+        typed_dto = super().get(obj=obj, owner=owner, **kwargs)
         if kwargs.get("include_type", True) and isinstance(typed_dto, self.dto_type):
             typed_dto = self.dto_type.model_validate(
                 typed_dto.model_dump(mode="python")
                 | {
                     self.type_id_field_name: self.types_service.get(
-                        obj=getattr(typed_dto, self.type_id_field_name), dto_type=self.types_dto_type, **kwargs
+                        obj=getattr(typed_dto, self.type_id_field_name),
+                        owner=owner,
+                        dto_type=self.types_dto_type,
+                        **kwargs,
                     )
                 }
             )
 
         return typed_dto
 
-    def get_records_by_type(self, type_dto: TypesDTO | dict[str, Any] | uuid.UUID, **kwargs) -> pd.DataFrame:
+    def get_records_by_type(
+        self,
+        type_dto: TypesDTO | dict[str, Any] | uuid.UUID,
+        owner: "UsersDTO | None" = None,
+        **kwargs,
+    ) -> pd.DataFrame:
         """Retrieve multiple entity records of a specific type from the database.
 
         Args:
             type_dto: The type to filter by, either as a TypesDTO, a dictionary,
                 or a UUID.
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -124,7 +142,10 @@ class TypedEntitiesService(BaseService):
             raise TypeError("Not supported")
 
         return self._repository.get_records(
-            getattr(self.dto_type.__dao_type__, self.type_id_column_name) == type_id, dto_type=self.dto_type, **kwargs
+            getattr(self.dto_type.__dao_type__, self.type_id_column_name) == type_id,
+            owner=owner,
+            dto_type=self.dto_type,
+            **kwargs,
         )
 
 
@@ -228,7 +249,7 @@ class LinkedEntitiesService(BaseService):
         setattr(self, "__links__", updated_links)
         return self
 
-    def create(self, *, obj: TableDTO | dict[str, Any], **kwargs) -> TableDTO:
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new linked entity record in the database.
 
         This method extends the base create method to handle entity relationships.
@@ -237,6 +258,7 @@ class LinkedEntitiesService(BaseService):
 
         Args:
             obj: The object to create, either as a DTO or a dictionary of attributes.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -251,18 +273,20 @@ class LinkedEntitiesService(BaseService):
             if not isinstance(linked_service, BaseService):
                 raise TypeError(f"Service of the linked enity in field {column_name} has not been loaded.")
 
-            linked_dto = self.linked_service.get_or_create(
-                obj=getattr(obj, entity.own_entity_link_field_name), **kwargs
+            linked_dto = linked_service.get_or_create(
+                obj=getattr(obj, entity.own_entity_link_field_name), owner=owner, **kwargs
             )
-            linked_dtos[self.type_id_field_name] = linked_dto
+            linked_dtos[entity.own_entity_link_field_name] = linked_dto
 
-        dto = super().create(obj=obj, **kwargs)
-        for field_name, dto in linked_dtos.items():
-            setattr(dto, field_name, dto)
+        dto = super().create(obj=obj, owner=owner, **kwargs)
+        for field_name, linked_dto in linked_dtos.items():
+            setattr(dto, field_name, linked_dto)
 
         return dto
 
-    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(
+        self, *, obj: TableDTO | str | dict | uuid.UUID, owner: "UsersDTO | None" = None, **kwargs
+    ) -> TableDTO | None:
         """Retrieve a linked entity record from the database.
 
         This method extends the base get method to include linked entity information
@@ -271,6 +295,7 @@ class LinkedEntitiesService(BaseService):
         Args:
             obj: The object to retrieve, either as a DTO, a dictionary of attributes,
                 or a UUID.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments including:
                 - include_linked_dtos (bool): Whether to include linked entity information.
                   Defaults to True.
@@ -279,13 +304,13 @@ class LinkedEntitiesService(BaseService):
             TableDTO | None: The retrieved object as a DTO with linked entity information,
                 or None if not found.
         """
-        dto = super().get(obj=obj, **kwargs)
+        dto = super().get(obj=obj, owner=owner, **kwargs)
         if kwargs.get("include_linked_dtos", True) and isinstance(dto, self.dto_type):
             linked_dtos = {
                 link.own_entity_link_field_name: link.other_entity_service.get(
-                    obj=getattr(obj, self.own_entity_link_field_name), **kwargs
+                    obj=getattr(dto, link.own_entity_link_field_name), owner=owner, **kwargs
                 )
-                or getattr(obj, self.own_entity_link_field_name)
+                or getattr(dto, link.own_entity_link_field_name)
                 for link in self.__links__.values()
                 if isinstance(link.other_entity_service, link.expected_other_entity_service_type)
             }
@@ -302,7 +327,7 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
     and relationships with other entities.
     """
 
-    def create(self, *, obj: TableDTO | dict[str, Any], **kwargs) -> TableDTO:
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new typed and linked entity record in the database.
 
         This method combines the create methods of TypedEntitiesService and
@@ -310,15 +335,18 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
 
         Args:
             obj: The object to create, either as a DTO or a dictionary of attributes.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
             TableDTO: The created object as a DTO with type and linked entity information.
         """
-        typed_dto = super(TypedEntitiesService).create(obj=obj, **kwargs)
-        return super(LinkedEntitiesService).create(obj=typed_dto, **kwargs)
+        typed_dto = TypedEntitiesService.create(self, obj=obj, owner=owner, **kwargs)
+        return LinkedEntitiesService.create(self, obj=typed_dto, owner=owner, **kwargs)
 
-    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(
+        self, *, obj: TableDTO | str | dict | uuid.UUID, owner: "UsersDTO | None" = None, **kwargs
+    ) -> TableDTO | None:
         """Retrieve a typed and linked entity record from the database.
 
         This method combines the get methods of TypedEntitiesService and
@@ -328,11 +356,12 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
         Args:
             obj: The object to retrieve, either as a DTO, a dictionary of attributes,
                 or a UUID.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository methods.
 
         Returns:
             TableDTO | None: The retrieved object as a DTO with type and linked entity
                 information, or None if not found.
         """
-        typed_dto = super(TypedEntitiesService).get(obj=obj, **kwargs)
-        return super(LinkedEntitiesService).get(obj=typed_dto, **kwargs)
+        typed_dto = TypedEntitiesService.get(self, obj=obj, owner=owner, **kwargs)
+        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)

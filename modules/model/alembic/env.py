@@ -145,7 +145,7 @@ def run_migrations_online() -> None:
                     f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'
                 ),
                 "schema_destroy": (
-                    f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=False, if_exists=True))'
+                    f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=True, if_exists=True))'
                 ),
             }
         else:

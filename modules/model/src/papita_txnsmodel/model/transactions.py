@@ -56,7 +56,7 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     description: str = Field(nullable=False)
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
 
     owner: "Users" = Relationship(back_populates="owned_identified_transactions")
 
@@ -102,7 +102,7 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
         sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.datetime.now
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False, index=True)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
 
     owner: "Users" = Relationship(back_populates="owned_transactions")
 

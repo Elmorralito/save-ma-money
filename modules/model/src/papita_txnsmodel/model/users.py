@@ -23,12 +23,10 @@ class Users(BaseSQLModel, table=True):
 
     __table_args__ = {"schema": SCHEMA_NAME}
 
-    uid: uuid.UUID = Field(primary_key=True, index=True)
-    username: str = Field(nullable=False, index=True)
-    email: str = Field(nullable=False, index=True)
+    id: uuid.UUID = Field(primary_key=True, index=True)
+    username: str = Field(nullable=False, index=True, unique=True)
+    email: str = Field(nullable=False, index=True, unique=True)
     password: str = Field(nullable=False)
-    password_salt: str = Field(nullable=False)
-    token_salt: str = Field(nullable=False)
 
     owned_accounts: List["Accounts"] = Relationship(back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}, cascade_delete=True)
     owned_assets: List["Assets"] = Relationship(back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}, cascade_delete=True)

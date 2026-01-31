@@ -173,22 +173,29 @@ class OnMultipleMatchesDo(Enum):
 
         return matches.iloc[-1]
 
-    def choose(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series:
+    def choose(self, *, matches: pd.DataFrame, **kwargs) -> pd.Series | pd.DataFrame:
         """
         Dispatches to the appropriate handler based on the enum value.
 
         This method dynamically selects and calls the appropriate handler method
-        based on the current enum value (FAIL, FIRST, or LAST).
+        based on the current enum value (FAIL, FIRST, or LAST). It handles the
+        cases of zero or one match before dispatching to the specific strategy.
 
         Args:
             matches: DataFrame containing the matching transactions
             **kwargs: Additional arguments passed to the specific handler
 
         Returns:
-            pd.Series: The selected transaction(s) based on the chosen strategy
+            pd.Series | pd.DataFrame: The selected transaction or an empty DataFrame if no match.
 
         Raises:
-            Exception: If the FAIL strategy is selected and matches exist
+            Exception: If the FAIL strategy is selected and multiple matches exist
         """
+        if matches.empty:
+            return matches
+
+        if len(matches) == 1:
+            return matches.iloc[0]
+
         func = getattr(self, f"choose_{self.value.lower()}")
         return func(matches=matches, **kwargs)

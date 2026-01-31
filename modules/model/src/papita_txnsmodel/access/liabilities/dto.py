@@ -17,7 +17,7 @@ from typing import Annotated
 
 from pydantic import Field
 
-from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.liabilities import (
     BankCreditLiabilityAccounts,
     CreditCardLiabilityAccounts,
@@ -26,7 +26,7 @@ from papita_txnsmodel.model.liabilities import (
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 
-class LiabilityAccountsDTO(TableDTO):
+class LiabilityAccountsDTO(OwnedTableDTO):
     """DTO for liability accounts with financial attributes and relationships.
 
     This class represents liability accounts in the system and includes validation
@@ -63,7 +63,7 @@ class LiabilityAccountsDTO(TableDTO):
     closing_day: int = Field(gt=0, le=28, description="Day of the month when the payment is due (1-28)")
 
 
-class ExtendedLiabilityAccountsDTO(TableDTO):
+class ExtendedLiabilityAccountsDTO(OwnedTableDTO):
     """Base DTO for specialized liability account types.
 
     This class serves as a base for more specific liability account DTOs, providing

@@ -406,7 +406,21 @@ def downgrade() -> None:
         schema="papita_transactions",
     )
     op.drop_table("accounts", schema="papita_transactions")
+    try:
+        op.execute(sa.text("DROP TYPE IF EXISTS realestateassetaccountsareaunits"))
+    except Exception:
+        pass
+
+    try:
+        op.execute(sa.text("DROP TYPE IF EXISTS realestateassetaccountsownership"))
+    except Exception:
+        pass
+
+    try:
+        op.execute(sa.text("DROP TYPE IF EXISTS typesclassifications"))
+    except Exception:
+        pass
 
     # ### end Alembic commands ###
-    op.execute(sa.schema.DropSchema("papita_transactions", cascade=False, if_exists=True))
+    op.execute(sa.schema.DropSchema("papita_transactions", cascade=True, if_exists=True))
     op.execute(sa.text("COMMIT"))

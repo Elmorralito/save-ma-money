@@ -14,7 +14,7 @@ Classes:
 
 import abc
 import logging
-from typing import Generic, Self, Type, TypeVar, get_args
+from typing import TYPE_CHECKING, Generic, Optional, Self, Type, TypeVar, get_args
 
 from pydantic import BaseModel
 
@@ -24,6 +24,8 @@ from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder, L
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
+
+from papita_txnsmodel.access.users.dto import UsersDTO
 
 from .meta import PluginMetadata
 
@@ -62,6 +64,7 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
     builder_generic_type: Type[B] = B
     on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.UPDATE
     on_failure_do: FallbackAction = FallbackAction.RAISE
+    owner: Optional[UsersDTO] = None
     _handler: AbstractHandler | None = None
     _loader: L | None = None
     _builder: B | None = None
@@ -171,7 +174,7 @@ class AbstractPluginContract(BaseModel, Generic[L, B], metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def init(self, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+    def init(self, *, connector: Type[SQLDatabaseConnector], owner: Optional[UsersDTO] = None, **kwargs) -> Self:
         """
         Initialize the plugin.
 
@@ -376,7 +379,7 @@ class PluginContract(AbstractPluginContract):
         return builder_type
 
     # TODO: Add a way to automatically handle attributes from children contracts.
-    def init(self, *, connector: Type[SQLDatabaseConnector], **kwargs) -> Self:
+    def init(self, *, connector: Type[SQLDatabaseConnector], owner: Optional[UsersDTO] = None, **kwargs) -> Self:
         """
         Initialize the plugin by setting up the builder and connections.
 
@@ -395,6 +398,7 @@ class PluginContract(AbstractPluginContract):
             ValueError: If connection to the database fails.
             TypeError: If the loader is not of the correct type.
         """
+        self.owner = owner or kwargs.pop("owner", self.owner)
         logger.info("Building the builder...")
         logger.debug("Loader type: %s", self.loader_type)
         logger.debug("Builder type: %s", self.builder_type)
@@ -402,6 +406,7 @@ class PluginContract(AbstractPluginContract):
             "connector": connector,
             "on_failure_do": self.on_failure_do,
             "on_conflict_do": self.on_conflict_do,
+            "owner": self.owner,
             **kwargs,
         }
         self._builder = self.builder_type[self.loader_type].load(**kwargs_).build(**kwargs_)

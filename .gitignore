@@ -51,7 +51,9 @@ dist/
 duckdb:*
 *.duckdb
 
+data/
 .data/
+
 ~$Setup.xlsx
 
 docs/.flake8/

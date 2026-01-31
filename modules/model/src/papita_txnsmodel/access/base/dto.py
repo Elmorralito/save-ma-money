@@ -10,7 +10,7 @@ Classes:
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated, List, Self
 
 import pandas as pd
@@ -40,7 +40,33 @@ class TableDTO(BaseModel):
 
     id: uuid.UUID | None = Field(default_factory=uuid.uuid4)
     active: Annotated[bool | str | int, WrapValidator(modelutils.validate_bool)] = True
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     deleted_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize and validate entity fields after model initialization.
+
+        This validator strips whitespace from the name and description, and
+        normalizes the tags by combining them with the lowercase name and
+        optional classification value.
+
+        Returns:
+            Self: The normalized entity DTO instance.
+        """
+        now = datetime.now(timezone.utc)
+        if self.updated_at is None and self.created_at is not None:
+            self.updated_at = now
+
+        self.created_at = self.created_at or now
+        if not self.active:
+            self.deleted_at = self.deleted_at or now
+
+        if self.active:
+            self.deleted_at = None
+
+        return self
 
     @classmethod
     def from_dao(cls, obj: BaseSQLModel) -> "TableDTO":
@@ -121,6 +147,7 @@ class CoreTableDTO(TableDTO):
         Returns:
             Self: The normalized entity DTO instance.
         """
+        super()._normalize_model()
         self.name = self.name.strip()
         self.description = self.description.strip()
         if isinstance(self.tags, str):

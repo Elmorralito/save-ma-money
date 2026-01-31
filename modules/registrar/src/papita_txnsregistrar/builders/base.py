@@ -8,9 +8,11 @@ to implement the core building logic.
 """
 
 import logging
-from typing import Generic, Self, Type, TypeVar, get_args
+from typing import TYPE_CHECKING, Generic, Self, Type, TypeVar, get_args
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
+
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
 
@@ -96,6 +98,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             {
                 "connector": self.connector,
                 "on_failure_do": on_failure_do,
+                "owner": kwargs.pop("owner", self.owner),
                 **({} if missing_upsertions_tol is None else {"missing_upsertions_tol": missing_upsertions_tol}),
                 **kwargs,
             }

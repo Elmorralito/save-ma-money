@@ -21,6 +21,7 @@ import importlib.resources as importlib_resources
 import logging
 import sys
 import traceback
+import uuid
 from argparse import Action, ArgumentParser
 from typing import Annotated, Any, Dict, List, Self, Type
 
@@ -224,6 +225,10 @@ class MainCLIUtils(AbstractCLIUtils):
             description="Enable safe mode to prevent execution of potentially harmful operations.",
         ),
     ] = False
+    owner_id: Annotated[
+        uuid.UUID | None,
+        Field(None, alias="owner_id", description="Optional owner ID to filter or label transactions."),
+    ] = None
 
     on_conflict_do: Annotated[
         OnUpsertConflictDo,
@@ -399,10 +404,8 @@ class MainCLIUtils(AbstractCLIUtils):
         verbose = args.get("verbose", 0)
         if verbose == 1:
             level = logging.INFO
-        elif verbose == 2:
-            level = logging.DEBUG
-        elif verbose >= 3:
-            level = logging.NOTSET  # Maximum verbosity
+        elif verbose >= 2:
+            level = logging.DEBUG  # Maximum verbosity
         else:
             level = logging.WARNING
 
@@ -526,6 +529,13 @@ class MainCLIUtils(AbstractCLIUtils):
             type=str,
             choices=[x.value for x in FallbackAction],
             default=cls.model_fields["on_failure_do"].default.value,
+        )
+        parser.add_argument(
+            "--owner-id",
+            dest="owner_id",
+            help="Specify the owner ID for the transaction registration.",
+            type=str,
+            default=None,
         )
         args_ = kwargs.get("args") or sys.argv
         if not isinstance(args_, list):
@@ -710,9 +720,18 @@ class MainCLIUtils(AbstractCLIUtils):
                 on_failure_do=self.on_failure_do, on_conflict_do=self.on_conflict_do
             )
 
+        if self._plugin_instance is None:
+            raise RuntimeError("Failed to build plugin instance.")
+
+        owner = None
+        if self.owner_id:
+            from papita_txnsmodel.access.users.dto import UsersDTO
+
+            owner = UsersDTO.model_construct(id=self.owner_id)
+
         logger.info("Plugin instance of plugin '%s' built and initialized.", plugin_name)
         logger.info("Starting plugin instance from plugin '%s'...", plugin_name)
-        self._plugin_instance.init(connector=self.connector, on_conflict_do=self.on_conflict_do).start()
+        self._plugin_instance.init(connector=self.connector, owner=owner, on_conflict_do=self.on_conflict_do).start()
         return self
 
     def stop(self) -> Self:

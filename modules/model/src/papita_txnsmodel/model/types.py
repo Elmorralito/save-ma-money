@@ -9,7 +9,7 @@ Classes:
 """
 
 import uuid
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ARRAY, Column, String, Text
 from sqlmodel import Field, Relationship
@@ -55,9 +55,9 @@ class Types(BaseSQLModel, table=True):  # type: ignore
     name: str = Field(nullable=False, index=True, unique=True)
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
     description: str = Field(sa_column=Column(Text, nullable=False))
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.uid", nullable=False, index=True)
+    owner_id: uuid.UUID | None = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=True, index=True)
 
-    owner: "Users" = Relationship(back_populates="owned_types")
+    owner: Optional["Users"] = Relationship(back_populates="owned_types")
 
     accounts_indexer: List["AccountsIndexer"] = Relationship(back_populates=TYPES__TABLENAME, cascade_delete=True)
     identified_transactions: List["IdentifiedTransactions"] = Relationship(
