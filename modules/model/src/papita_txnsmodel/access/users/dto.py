@@ -9,20 +9,18 @@ Classes:
     OwnedTableDTO: Base DTO for entities that belong to a specific user.
 """
 
-import uuid
 import hashlib
-from typing import TYPE_CHECKING, Any, Annotated, Self
-from pydantic import model_serializer, model_validator, Field, field_validator, field_serializer
 import re
+import uuid
+from typing import Annotated, Self
+
+from pydantic import Field, field_serializer, field_validator, model_serializer, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.model.contstants import EMAIL_REGEX, PASSWORD_REGEX, USERNAME_REGEX
+from papita_txnsmodel.model.users import Users
 from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
-from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 from papita_txnsmodel.utils.hashutils import PasswordManagerFactory
-
-if TYPE_CHECKING:
-    from papita_txnsmodel.model.users import Users
 
 
 class UsersDTO(TableDTO):
@@ -40,8 +38,12 @@ class UsersDTO(TableDTO):
 
     __dao_type__: "Users"
 
-    username: Annotated[str, Field(strip_whitespace=True, to_lower=False, min_length=6, max_length=255, pattern=USERNAME_REGEX)]
-    email: Annotated[str, Field(strip_whitespace=True, to_lower=True, min_length=5, max_length=255, pattern=EMAIL_REGEX)]
+    username: Annotated[
+        str, Field(strip_whitespace=True, to_lower=False, min_length=6, max_length=255, pattern=USERNAME_REGEX)
+    ]
+    email: Annotated[
+        str, Field(strip_whitespace=True, to_lower=True, min_length=5, max_length=255, pattern=EMAIL_REGEX)
+    ]
     password: str
 
     @field_validator("password")
@@ -115,21 +117,6 @@ class OwnedTableDTO(TableDTO):
 
     owner_id: uuid.UUID | UsersDTO
 
-    @field_validator("owner_id", mode="before")
-    @classmethod
-    def validate_owner_id(cls, v: Any) -> Any:
-        """Validate owner_id and ensure it's a UUID or UsersDTO.
-        
-        Args:
-            v: The value to validate.
-            
-        Returns:
-            The validated value.
-        """
-        if isinstance(v, str):
-            return uuid.UUID(v)
-        return v
-
     @field_serializer("owner_id")
     def _serialize_owner_id(self, value: uuid.UUID | UsersDTO) -> uuid.UUID:
         """Serialize owner_id field to its ID value.
@@ -144,4 +131,4 @@ class OwnedTableDTO(TableDTO):
         Returns:
             uuid.UUID: The UUID of the owner.
         """
-        return value.id if isinstance(value, TableDTO) else value
+        return value.id if isinstance(value, UsersDTO) else value  # type: ignore

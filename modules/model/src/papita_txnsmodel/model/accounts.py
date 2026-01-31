@@ -8,8 +8,8 @@ Classes:
     Accounts: Represents a financial account in the system.
 """
 
-from datetime import datetime
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ARRAY, TIMESTAMP, Column, String, Text
@@ -57,9 +57,7 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
     name: str = Field(sa_type=String, nullable=False, index=True)
     description: str = Field(sa_type=Text, nullable=False)
     tags: List[str] = Field(sa_column=Column(ARRAY(String)), min_items=1, unique_items=True)
-    start_ts: datetime = Field(
-        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now
-    )
+    start_ts: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now)
     end_ts: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
     owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
 

@@ -15,17 +15,16 @@ interface design for method chaining.
 """
 
 import abc
-from typing import TYPE_CHECKING, Generic, Optional, Self, Type, TypeVar
+from typing import Generic, Optional, Self, Type, TypeVar
 
 from pydantic import BaseModel, ConfigDict
 
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
-
-from papita_txnsmodel.access.users.dto import UsersDTO
 
 L = TypeVar("L", bound=AbstractDataLoader)
 

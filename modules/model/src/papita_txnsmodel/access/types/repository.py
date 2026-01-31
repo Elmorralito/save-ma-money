@@ -9,18 +9,17 @@ Classes:
     TypesClassificationRepository: Repository for type classification operations.
 """
 
-from typing import TYPE_CHECKING, Optional, Type
+from typing import Type
 
 import pandas as pd
-from papita_txnsmodel.access.base.dto import TableDTO
-from papita_txnsmodel.access.base.repository import BaseRepository
-from papita_txnsmodel.utils.classutils import MetaSingleton
 from sqlalchemy import or_
 
-from .dto import TypesDTO
+from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.utils.classutils import MetaSingleton
 
-if TYPE_CHECKING:
-    from papita_txnsmodel.access.users.dto import UsersDTO
+from .dto import TypesDTO
 
 
 class TypesRepository(BaseRepository, metaclass=MetaSingleton):
@@ -43,7 +42,7 @@ class TypesRepository(BaseRepository, metaclass=MetaSingleton):
     __expected_dto_type__ = TypesDTO
 
     def get_records(
-        self, *query_filters, owner: Optional["UsersDTO"] = None, dto_type: Type[TableDTO] = TypesDTO, **kwargs
+        self, *query_filters, owner: UsersDTO | None = None, dto_type: Type[TableDTO] = TypesDTO, **kwargs
     ) -> pd.DataFrame:
         """Retrieve records from the database based on query filters.
 
@@ -61,7 +60,9 @@ class TypesRepository(BaseRepository, metaclass=MetaSingleton):
             pd.DataFrame: DataFrame containing the retrieved records.
         """
         if owner:
-            owner_filter = or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id == None)
-            return super().get_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+            owner_filter = [
+                or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id is None)  # noqa: E711
+            ]
+            return super().get_records(*owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
         return super().get_records(*query_filters, dto_type=dto_type, **kwargs)

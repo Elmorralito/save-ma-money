@@ -8,10 +8,9 @@ Create Date: 2026-01-28 18:51:07.629595+00:00
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 import sqlmodel  # noqa: F401
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "53fec3d56681"
@@ -178,12 +177,8 @@ def downgrade() -> None:
     op.drop_column("types", "created_at", schema="papita_transactions")
     op.drop_column("transactions", "updated_at", schema="papita_transactions")
     op.drop_column("transactions", "created_at", schema="papita_transactions")
-    op.drop_column(
-        "trading_asset_accounts", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "trading_asset_accounts", "created_at", schema="papita_transactions"
-    )
+    op.drop_column("trading_asset_accounts", "updated_at", schema="papita_transactions")
+    op.drop_column("trading_asset_accounts", "created_at", schema="papita_transactions")
     op.drop_column(
         "real_estate_asset_accounts",
         "updated_at",
@@ -194,24 +189,12 @@ def downgrade() -> None:
         "created_at",
         schema="papita_transactions",
     )
-    op.drop_column(
-        "liability_accounts", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "liability_accounts", "created_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "identified_transactions", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "identified_transactions", "created_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "financed_asset_accounts", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "financed_asset_accounts", "created_at", schema="papita_transactions"
-    )
+    op.drop_column("liability_accounts", "updated_at", schema="papita_transactions")
+    op.drop_column("liability_accounts", "created_at", schema="papita_transactions")
+    op.drop_column("identified_transactions", "updated_at", schema="papita_transactions")
+    op.drop_column("identified_transactions", "created_at", schema="papita_transactions")
+    op.drop_column("financed_asset_accounts", "updated_at", schema="papita_transactions")
+    op.drop_column("financed_asset_accounts", "created_at", schema="papita_transactions")
     op.drop_column(
         "credit_card_liability_accounts",
         "updated_at",
@@ -222,12 +205,8 @@ def downgrade() -> None:
         "created_at",
         schema="papita_transactions",
     )
-    op.drop_column(
-        "banking_asset_accounts", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "banking_asset_accounts", "created_at", schema="papita_transactions"
-    )
+    op.drop_column("banking_asset_accounts", "updated_at", schema="papita_transactions")
+    op.drop_column("banking_asset_accounts", "created_at", schema="papita_transactions")
     op.drop_column(
         "bank_credit_liability_accounts",
         "updated_at",
@@ -238,12 +217,8 @@ def downgrade() -> None:
         "created_at",
         schema="papita_transactions",
     )
-    op.drop_column(
-        "assets_accounts", "updated_at", schema="papita_transactions"
-    )
-    op.drop_column(
-        "assets_accounts", "created_at", schema="papita_transactions"
-    )
+    op.drop_column("assets_accounts", "updated_at", schema="papita_transactions")
+    op.drop_column("assets_accounts", "created_at", schema="papita_transactions")
     op.alter_column(
         "accounts",
         "description",

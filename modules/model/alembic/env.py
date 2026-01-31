@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import sys
-import urllib.parse
 from logging.config import fileConfig
 
 import sqlalchemy as sa
@@ -139,11 +138,11 @@ def run_migrations_online() -> None:
     )
     with connectable.connect() as connection:
         instpector = sa.inspect(connection)
-        if not context.get_x_argument(as_dictionary=True).get("upgrading") and not instpector.has_schema(target_metadata.schema):
+        if not context.get_x_argument(as_dictionary=True).get("upgrading") and not instpector.has_schema(
+            target_metadata.schema
+        ):
             template_args = {
-                "schema_setup": (
-                    f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'
-                ),
+                "schema_setup": (f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'),
                 "schema_destroy": (
                     f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=True, if_exists=True))'
                 ),

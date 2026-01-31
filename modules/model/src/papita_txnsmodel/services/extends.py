@@ -70,9 +70,7 @@ class TypedEntitiesService(BaseService):
         Returns:
             TableDTO: The created object as a DTO with type information.
         """
-        type_dto = self.types_service.get_or_create(
-            obj=getattr(obj, self.type_id_field_name), owner=owner, **kwargs
-        )
+        type_dto = self.types_service.get_or_create(obj=getattr(obj, self.type_id_field_name), owner=owner, **kwargs)
         dto = super().create(obj=obj, owner=owner, **kwargs)
         setattr(dto, self.type_id_field_name, type_dto)
         return dto
@@ -364,4 +362,4 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
                 information, or None if not found.
         """
         typed_dto = TypedEntitiesService.get(self, obj=obj, owner=owner, **kwargs)
-        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)
+        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)  # type: ignore

@@ -19,12 +19,12 @@ from sqlalchemy import inspect as db_inspector
 from sqlmodel import Session, delete, update
 from sqlmodel.sql.expression import Select
 
+from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo, UpserterFactory
 from papita_txnsmodel.model import SCHEMA_NAME
 
 from .dto import TableDTO
-from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ class BaseRepository:
 
         if "owner_id" not in mappings.columns and hasattr(dao, "owner_id"):
             mappings["owner_id"] = kwargs.get("owner_id")
-        
+
         kwargs.pop("owner_id", None)
         kwargs.pop("owner", None)
         return UpserterFactory.get_upserter(_db_session).upsert(
@@ -346,17 +346,50 @@ class BaseRepository:
 class OwnedTableRepository(BaseRepository):
     """Repository for tables that are owned by a user.
 
-    This repository requires a UsersDTO to be provided for all CRUD operations
-    to ensure that users can only access and modify their own records.
+    This repository extends BaseRepository to provide multi-tenant support by
+    enforcing ownership constraints on all database operations. All CRUD operations
+    require a UsersDTO to ensure users can only access and modify their own records.
+
+    Attributes:
+        __expected_dto__ (type[OwnedTableDTO]): The expected DTO type for this
+            repository. Defaults to OwnedTableDTO.
     """
 
     def _get_owner_filter(self, owner: UsersDTO, dao_type: type) -> Any:
+        """Create a filter condition for owner-based queries.
+
+        Args:
+            owner: The user who owns the records.
+            dao_type: The DAO type to create the filter for.
+
+        Returns:
+            Any: A SQLAlchemy filter condition matching the owner's ID.
+        """
         return dao_type.owner_id == owner.id
 
     @SQLDatabaseConnector.connect
     def hard_delete_records(
-        self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
+        self, *query_filters, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
     ) -> pd.DataFrame:
+        """Permanently delete records owned by the specified user.
+
+        This method extends the base hard_delete_records to include ownership
+        filtering, ensuring only records owned by the specified user are deleted.
+
+        Args:
+            *query_filters: Variable length list of query filter conditions.
+            owner: The user who owns the records to delete.
+            dto_type: The DTO type for the records to delete.
+            _db_session: Database session provided by the connector decorator.
+            **kwargs: Additional keyword arguments for filtering or configuration.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the deleted records.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, UsersDTO):
+            raise ValueError("Owner is required for hard_delete_records")
+
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().hard_delete_records(
             owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
@@ -364,21 +397,62 @@ class OwnedTableRepository(BaseRepository):
 
     @SQLDatabaseConnector.connect
     def soft_delete_records(
-        self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
+        self, *query_filters, dto_type: Type[OwnedTableDTO], _db_session: Session, **kwargs
     ) -> pd.DataFrame:
+        """Mark records owned by the specified user as deleted.
+
+        This method extends the base soft_delete_records to include ownership
+        filtering, ensuring only records owned by the specified user are soft-deleted.
+
+        Args:
+            *query_filters: Variable length list of query filter conditions.
+            owner: The user who owns the records to soft-delete.
+            dto_type: The DTO type for the records to soft-delete.
+            _db_session: Database session provided by the connector decorator.
+            **kwargs: Additional keyword arguments including:
+                - active_column_name (str): Name of the column indicating active status.
+                - deleted_at_column_name (str): Name of the column for deletion timestamp.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the soft-deleted records.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, UsersDTO):
+            raise ValueError("Owner is required for soft_delete_records")
+
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().soft_delete_records(
             owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
         )
 
     @SQLDatabaseConnector.connect
-    def upsert_record(
-        self, dto: OwnedTableDTO, *, owner: UsersDTO, _db_session: Session, **kwargs
-    ) -> OwnedTableDTO | None:
+    def upsert_record(self, dto: OwnedTableDTO, *, _db_session: Session, **kwargs) -> OwnedTableDTO | None:
+        """Insert or update a single record with ownership validation.
+
+        This method ensures that the record being upserted belongs to the specified
+        owner. If the DTO doesn't have an owner_id set, it will be assigned. If it
+        has a different owner_id, a ValueError is raised.
+
+        Args:
+            dto: The DTO containing the record data to upsert.
+            owner: The user who owns the record.
+            _db_session: Database session provided by the connector decorator.
+            **kwargs: Additional keyword arguments for configuration.
+
+        Returns:
+            OwnedTableDTO | None: The upserted DTO if successful, None otherwise.
+
+        Raises:
+            ValueError: If the DTO's owner_id doesn't match the provided owner.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, UsersDTO):
+            raise ValueError("Owner is required for upsert_record")
+
         if dto.owner_id != owner.id:
             if dto.owner_id and dto.owner_id != owner.id:
                 raise ValueError("DTO owner_id does not match the provided owner.")
-            dto.owner_id = owner.id
+            dto.owner_id = owner.id  # type: ignore
 
         kwargs.pop("owner", None)
         return super().upsert_record(dto, _db_session=_db_session, **kwargs)
@@ -389,31 +463,95 @@ class OwnedTableRepository(BaseRepository):
         dto_type: Type[OwnedTableDTO],
         mappings: pd.DataFrame,
         *,
-        owner: UsersDTO | uuid.UUID,
         _db_session: Session,
         on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
         **kwargs,
     ) -> int:
+        """Insert or update multiple records with ownership assignment.
+
+        This method performs bulk upsert operations while automatically assigning
+        the owner_id to all records in the DataFrame.
+
+        Args:
+            dto_type: The DTO type for the records to upsert.
+            mappings: DataFrame containing the records to upsert.
+            owner: The user who owns the records, either as UsersDTO or UUID.
+            _db_session: Database session provided by the connector decorator.
+            on_conflict_do: Action to take on conflicts. Defaults to NOTHING.
+            **kwargs: Additional keyword arguments to pass to the upserter.
+
+        Returns:
+            int: Number of records successfully upserted.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for upsert_records")
+
         mappings["owner_id"] = owner if isinstance(owner, uuid.UUID) else owner.id
-        # Remove 'owner' from kwargs to prevent it from being passed to df.to_sql()
-        kwargs.pop("owner", None)
         return super().upsert_records(
             dto_type, mappings, _db_session=_db_session, on_conflict_do=on_conflict_do, **kwargs
         )
 
-    def get_records(self, *query_filters, owner: UsersDTO, dto_type: Type[OwnedTableDTO], **kwargs) -> pd.DataFrame:
-        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+    def get_records(self, *query_filters, dto_type: Type[OwnedTableDTO], **kwargs) -> pd.DataFrame:
+        """Retrieve records owned by the specified user.
+
+        This method extends the base get_records to include ownership filtering,
+        ensuring only records owned by the specified user are retrieved.
+
+        Args:
+            *query_filters: Variable length list of query filter conditions.
+            owner: The user who owns the records.
+            dto_type: The DTO type for the records to retrieve.
+            **kwargs: Additional keyword arguments to pass to run_query.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the retrieved records.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for get_records")
+
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)  # type: ignore
         return super().get_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
-    def get_records_from_attributes(self, dto: OwnedTableDTO, *, owner: UsersDTO | uuid.UUID, **kwargs) -> pd.DataFrame:
-        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id
+    def get_records_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> pd.DataFrame:
+        """Retrieve records owned by the specified user based on DTO attributes.
+
+        This method sets the owner_id on the DTO and retrieves matching records
+        that belong to the specified owner.
+
+        Args:
+            dto: The DTO containing attributes to filter by.
+            owner: The user who owns the records, either as UsersDTO or UUID.
+            **kwargs: Additional keyword arguments to pass to get_records.
+
+        Returns:
+            pd.DataFrame: DataFrame containing the retrieved records.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for get_records_from_attributes")
+
+        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id  # type: ignore
         return super().get_records_from_attributes(dto, **kwargs)
 
-    def get_record_by_id(
-        self, id_: OwnedTableDTO | str | dict | uuid.UUID, dto_type: Type[OwnedTableDTO], **kwargs
-    ) -> OwnedTableDTO | None:
-        return super().get_record_by_id(id_, dto_type, **kwargs)
+    def get_record_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> OwnedTableDTO | None:
+        """Retrieve a single record owned by the specified user based on DTO attributes.
 
-    def get_record_from_attributes(self, dto: OwnedTableDTO, *, owner: UsersDTO | uuid.UUID, **kwargs) -> OwnedTableDTO | None:
-        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id
+        This method sets the owner_id on the DTO and retrieves the first matching
+        record that belongs to the specified owner.
+
+        Args:
+            dto: The DTO containing attributes to filter by.
+            owner: The user who owns the record, either as UsersDTO or UUID.
+            **kwargs: Additional keyword arguments to pass to get_records_from_attributes.
+
+        Returns:
+            OwnedTableDTO | None: The retrieved record as a DTO, or None if not found.
+        """
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for get_record_from_attributes")
+
+        dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id  # type: ignore
         return super().get_record_from_attributes(dto, **kwargs)

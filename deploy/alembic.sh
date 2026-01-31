@@ -132,7 +132,7 @@ if ! command -v alembic &>/dev/null && ! ${POETRY_CMD} env info -p &>/dev/null; 
     log "ERROR" "The environment does not have Alembic nor Poetry installed."
     exit 1
 fi
- 
+
 if [[ "${PYTHON_CMD}" == *"poetry"* ]]; then
     ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; ${PYTHON_CMD} run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
 else

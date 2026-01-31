@@ -20,8 +20,8 @@ from typing import Annotated, Optional
 
 from pydantic import Field, model_serializer
 
-from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.access.liabilities.dto import BankCreditLiabilityAccountsDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.assets import (
     AssetAccounts,
     BankingAssetAccounts,

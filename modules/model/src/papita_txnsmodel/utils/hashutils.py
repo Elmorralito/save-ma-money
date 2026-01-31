@@ -9,14 +9,16 @@ Classes:
     Argon2PasswordManager: Password manager using the Argon2 hashing algorithm.
     PasswordManagerFactory: Factory class for creating and managing password managers.
 """
-import logging
 
-from types import ModuleType
 import abc
+import logging
+from types import ModuleType
+from typing import Set, Tuple, Type
+
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-from .classutils import MetaSingleton, ClassDiscovery
-from typing import Set, Sequence, Type
+
+from .classutils import ClassDiscovery, MetaSingleton
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +38,6 @@ class AbstractPasswordManager(abc.ABC):
         Returns:
             Set[str]: A set of string keywords (e.g., {"argon2"}).
         """
-        pass
 
     @abc.abstractmethod
     def get_salt(self, hashed_password: str) -> str:
@@ -48,7 +49,6 @@ class AbstractPasswordManager(abc.ABC):
         Returns:
             str: The salt extracted from the hash.
         """
-        pass
 
     @abc.abstractmethod
     def hash_password(self, password: str) -> str:
@@ -60,7 +60,6 @@ class AbstractPasswordManager(abc.ABC):
         Returns:
             str: The resulting password hash.
         """
-        pass
 
     @abc.abstractmethod
     def verify_password(self, password: str, hashed_password: str) -> bool:
@@ -73,7 +72,6 @@ class AbstractPasswordManager(abc.ABC):
         Returns:
             bool: True if the password matches the hash, False otherwise.
         """
-        pass
 
 
 class Argon2PasswordManager(AbstractPasswordManager):
@@ -89,6 +87,7 @@ class Argon2PasswordManager(AbstractPasswordManager):
 
     def __init__(
         self,
+        *,
         memory_cost: int = 65536,
         time_cost: int = 3,
         parallelism: int = 4,
@@ -164,9 +163,9 @@ class Argon2PasswordManager(AbstractPasswordManager):
 
 class PasswordManagerFactory(metaclass=MetaSingleton):
     """Factory for creating and managing password manager instances.
-
-    This class uses discovery to find available password manager implementations
-    and provides a singleton-like access to the active manager.
+    Any,
+        This class uses discovery to find available password manager implementations
+        and provides a singleton-like access to the active manager.
     """
 
     _password_manager: AbstractPasswordManager | None = None
@@ -181,7 +180,7 @@ class PasswordManagerFactory(metaclass=MetaSingleton):
         return self.get_password_manager()
 
     def get_password_manager(
-        self, *modules: "Sequence[ModuleType]", keyword: str | None = None, **kwargs
+        self, *modules: Tuple[ModuleType | str, ...], keyword: str | None = None, **kwargs
     ) -> AbstractPasswordManager:
         """Retrieve or create a password manager instance.
 
@@ -212,7 +211,7 @@ class PasswordManagerFactory(metaclass=MetaSingleton):
 
     @classmethod
     def get_password_manager_type(
-        cls, keyword: str, *modules: "Sequence[ModuleType]"
+        cls, keyword: str, *modules: Tuple[ModuleType | str, ...]
     ) -> Type[AbstractPasswordManager]:
         """Discover and return a password manager class by keyword.
 
@@ -227,9 +226,11 @@ class PasswordManagerFactory(metaclass=MetaSingleton):
             ValueError: If no matching password manager is found.
         """
         for mod in set(modules) | {__import__(__name__)}:
-            for password_manager in ClassDiscovery.get_children(mod, AbstractPasswordManager):
+            for password_manager in ClassDiscovery.get_children(mod, AbstractPasswordManager):  # type: ignore
                 keywords = {kw.lower() for kw in password_manager.keywords()}
-                if keyword.lower() in keywords or keyword == ".".join(filter(None, ClassDiscovery.decompose_class(password_manager))):
+                if keyword.lower() in keywords or keyword == ".".join(
+                    filter(None, ClassDiscovery.decompose_class(password_manager))
+                ):
                     return password_manager
 
         raise ValueError(f"Password manager type {keyword} not found")

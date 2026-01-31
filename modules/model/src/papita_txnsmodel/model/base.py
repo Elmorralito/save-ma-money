@@ -9,10 +9,11 @@ Classes:
 """
 
 from datetime import datetime as base_datetime
+
 from sqlalchemy import TIMESTAMP
 from sqlmodel import Field, SQLModel
-from .contstants import SCHEMA_NAME
 
+from .contstants import SCHEMA_NAME
 
 SQLModel.metadata.schema = SCHEMA_NAME
 

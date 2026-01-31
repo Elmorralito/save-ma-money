@@ -12,8 +12,6 @@ from typing import get_args
 
 from pydantic import Field, field_serializer, model_validator
 
-from papita_txnsmodel.access.base.dto import TableDTO
-
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.assets.dto import (
     AssetAccountsDTO,
@@ -22,7 +20,7 @@ from papita_txnsmodel.access.assets.dto import (
     RealEstateAssetAccountsDTO,
     TradingAssetAccountsDTO,
 )
-from papita_txnsmodel.access.users.dto import OwnedTableDTO
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.liabilities.dto import (
     BankCreditLiabilityAccountsDTO,
     CreditCardLiabilityAccountsDTO,
@@ -30,6 +28,7 @@ from papita_txnsmodel.access.liabilities.dto import (
     LiabilityAccountsDTO,
 )
 from papita_txnsmodel.access.types.dto import TypesDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.indexers import AccountsIndexer
 
 

@@ -14,18 +14,17 @@ Classes:
 
 import abc
 import logging
-from typing import TYPE_CHECKING, Generic, Optional, Self, Type, TypeVar, get_args
+from typing import Generic, Optional, Self, Type, TypeVar, get_args
 
 from pydantic import BaseModel
 
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.handlers.abstract import AbstractHandler
 from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsregistrar.builders.abstract import AbstractContractBuilder, L
 from papita_txnsregistrar.loaders.abstract import AbstractDataLoader
-
-from papita_txnsmodel.access.users.dto import UsersDTO
 
 from .meta import PluginMetadata
 

@@ -18,10 +18,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.utils.datautils import standardize_dataframe
-from papita_txnsmodel.access.users.dto import UsersDTO
 
 logger = logging.getLogger(__name__)
 
@@ -145,13 +145,9 @@ class BaseService(BaseModel):
         ]
         kwargs.pop("_db_session", None)
         if hard:
-            return self._repository.hard_delete_records(
-                *query_filters, owner=owner, dto_type=self.dto_type, **kwargs
-            )
+            return self._repository.hard_delete_records(*query_filters, owner=owner, dto_type=self.dto_type, **kwargs)
 
-        return self._repository.soft_delete_records(
-            *query_filters, owner=owner, dto_type=self.dto_type, **kwargs
-        )
+        return self._repository.soft_delete_records(*query_filters, owner=owner, dto_type=self.dto_type, **kwargs)
 
     def get(
         self, *, obj: TableDTO | str | dict | uuid.UUID, owner: UsersDTO | None = None, **kwargs
@@ -175,9 +171,7 @@ class BaseService(BaseModel):
 
         return dto
 
-    def get_or_create(
-        self, *, obj: TableDTO | dict | uuid.UUID, owner: UsersDTO | None = None, **kwargs
-    ) -> TableDTO:
+    def get_or_create(self, *, obj: TableDTO | dict | uuid.UUID, owner: UsersDTO | None = None, **kwargs) -> TableDTO:
         """Retrieve a record from the database or create it if it doesn't exist.
 
         Args:
@@ -205,9 +199,7 @@ class BaseService(BaseModel):
 
         return self.create(obj=obj, owner=owner, **kwargs)
 
-    def get_records(
-        self, dto: TableDTO | dict | None, owner: UsersDTO | None = None, **kwargs
-    ) -> pd.DataFrame:
+    def get_records(self, dto: TableDTO | dict | None, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
         """Retrieve multiple records from the database based on attributes.
 
         Args:

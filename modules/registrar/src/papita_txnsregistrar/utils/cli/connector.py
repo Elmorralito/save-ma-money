@@ -360,9 +360,8 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
 
         return content or None
 
-
     @classmethod
-    def _load_file(cls, connect_file: str) -> dict | None:
+    def _load_file(cls, connect_file: str) -> dict:
         """Load connection parameters from a configuration file with format detection.
 
         This method automatically detects the file format based on the file extension
@@ -394,27 +393,30 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
             with different format extensions by appending common extensions to
             the base filename. This allows for more flexible file naming.
         """
+
         def _load_extension(extension: str) -> dict | None:
             logger.debug("Loading file '%s' with extension: %s", connect_file, extension)
             connection = None
             try:
                 if extension in cls.JSON_FILE_EXTENSIONS:
                     connection = cls._load_json_file(connect_file)
-                
+
                 if extension in cls.YAML_FILE_EXTENSIONS:
                     connection = cls._load_yaml_file(connect_file)
-                
+
                 if extension in cls.TOML_FILE_EXTENSIONS:
                     connection = cls._load_toml_file(connect_file)
-                
+
                 if extension in cls.CONFIG_FILE_EXTENSIONS:
                     connection = cls._load_config_file(connect_file)
-                
+
                 if extension in cls.ENV_FILE_EXTENSIONS:
                     connection = cls._load_env_file(connect_file)
-                
+
                 if not isinstance(connection, dict) or connection is None:
-                    raise ValueError(f"The file extension is not recognized or the file format is not supported on '{connect_file}'.")
+                    raise ValueError(
+                        f"The file extension is not recognized or the file format is not supported on '{connect_file}'."
+                    )
 
             except Exception:
                 logger.exception("Something happened while loading the file: %s", connect_file)
@@ -438,7 +440,7 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
     @classmethod
     def map_connection_params(cls, connection_params: dict) -> dict:
         """Map connection parameters to database connection parameters."""
-        mapping = { key.upper(): value for key, value in cls.MAPPING_VARIABLES.items() }
+        mapping = {key.upper(): value for key, value in cls.MAPPING_VARIABLES.items()}
         output = {}
         for key, value in connection_params.items():
             if key.upper() in mapping:

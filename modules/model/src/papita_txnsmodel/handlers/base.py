@@ -13,16 +13,16 @@ by providing record retrieval methods and dependency management capabilities.
 import inspect
 import logging
 import uuid
-from typing import TYPE_CHECKING, Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple
+from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple
 
 import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import ClassDiscovery
-from papita_txnsmodel.access.users.dto import UsersDTO
 
 from .abstract import AbstractHandler, S
 from .helpers import make_service_dependencies_validator

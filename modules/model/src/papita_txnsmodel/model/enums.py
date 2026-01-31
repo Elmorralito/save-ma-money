@@ -14,7 +14,7 @@ Classes:
 from enum import Enum
 
 
-class RealEstateAssetAccountsOwnership(str,Enum):
+class RealEstateAssetAccountsOwnership(str, Enum):
     """Enumeration for types of real estate ownership.
 
     This enumeration represents the different types of ownership that can be

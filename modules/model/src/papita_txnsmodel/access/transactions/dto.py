@@ -14,13 +14,12 @@ Classes:
 import datetime
 import uuid
 
-from pydantic import Field, field_serializer, model_serializer
+from pydantic import Field, field_serializer
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import CoreTableDTO, TableDTO
 from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.transactions import IdentifiedTransactions, Transactions
-from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 
 
 class IdentifiedTransactionsDTO(OwnedTableDTO, CoreTableDTO):

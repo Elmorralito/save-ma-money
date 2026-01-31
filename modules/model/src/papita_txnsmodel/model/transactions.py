@@ -9,8 +9,8 @@ Classes:
     Transactions: Model for actual financial transactions between accounts.
 """
 
-import datetime
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
@@ -81,7 +81,7 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
             Can be null for income transactions from external sources.
         to_account_id (uuid.UUID | None): Optional foreign key to the destination account.
             Can be null for expense transactions to external destinations.
-        transaction_ts (datetime.datetime): Timestamp when the transaction occurred.
+        transaction_ts (datetime): Timestamp when the transaction occurred.
             Indexed for time-based queries.
         value (float): Monetary value of the transaction. Must be positive.
         identified_transactions (IdentifiedTransactions): Related identified transaction
@@ -98,8 +98,8 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
     )
     from_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
     to_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
-    transaction_ts: datetime.datetime = Field(
-        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.datetime.now
+    transaction_ts: datetime = Field(
+        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)

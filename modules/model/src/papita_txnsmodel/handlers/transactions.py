@@ -365,7 +365,9 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
             )
         ]
 
-    def _match_identified_transactions(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
+    def _match_identified_transactions(
+        self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs
+    ) -> pd.DataFrame:
         """
         Match identified transaction IDs in the transaction data.
 
