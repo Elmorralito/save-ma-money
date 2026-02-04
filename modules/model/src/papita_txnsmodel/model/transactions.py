@@ -9,19 +9,20 @@ Classes:
     Transactions: Model for actual financial transactions between accounts.
 """
 
-import datetime
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME
+from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME, USERS__TABLENAME
 
 if TYPE_CHECKING:
     from .accounts import Accounts
     from .types import Types
+    from .users import Users
 
 
 class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
@@ -55,6 +56,9 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     description: str = Field(nullable=False)
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_identified_transactions")
 
     types: "Types" = Relationship(back_populates=IDENTIFIED_TRANSACTIONS__TABLENAME)
     transactions: List["Transactions"] = Relationship(
@@ -77,7 +81,7 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
             Can be null for income transactions from external sources.
         to_account_id (uuid.UUID | None): Optional foreign key to the destination account.
             Can be null for expense transactions to external destinations.
-        transaction_ts (datetime.datetime): Timestamp when the transaction occurred.
+        transaction_ts (datetime): Timestamp when the transaction occurred.
             Indexed for time-based queries.
         value (float): Monetary value of the transaction. Must be positive.
         identified_transactions (IdentifiedTransactions): Related identified transaction
@@ -94,10 +98,13 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
     )
     from_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
     to_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
-    transaction_ts: datetime.datetime = Field(
-        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.datetime.now
+    transaction_ts: datetime = Field(
+        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_transactions")
 
     identified_transactions: "IdentifiedTransactions" = Relationship(back_populates=TRANSACTIONS__TABLENAME)
     from_accounts: Optional["Accounts"] = Relationship(

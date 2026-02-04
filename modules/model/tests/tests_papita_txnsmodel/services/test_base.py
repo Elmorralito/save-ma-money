@@ -38,7 +38,8 @@ def mock_dto():
     """Provide a mocked TableDTO instance for testing."""
     dto = MagicMock(spec=TableDTO)
     dto.id = uuid.uuid4()
-    dto.model_fields_set = {"id"}
+    dto.owner = None
+    dto.model_fields_set = {"id", "owner"}
     dto.model_validate = MagicMock(return_value=dto)
     dto.model_construct = MagicMock(return_value=dto)
     return dto
@@ -139,7 +140,7 @@ class TestCreate:
         result = service.create(obj=mock_dto)
 
         assert result == mock_dto
-        mock_repository.upsert_record.assert_called_once_with(mock_dto)
+        mock_repository.upsert_record.assert_called_once_with(mock_dto, owner=None)
 
     def test_create_with_dict_validates_and_calls_upsert_record(self, service, mock_dto, mock_repository):
         """Test that create validates dict and calls repository upsert_record."""
@@ -153,7 +154,7 @@ class TestCreate:
         service.dto_type.model_validate.assert_called_once_with(
             obj_dict, strict=False, context={"by_alias": False, "by_name": True}
         )
-        mock_repository.upsert_record.assert_called_once_with(mock_dto)
+        mock_repository.upsert_record.assert_called_once_with(mock_dto, owner=None)
 
     def test_create_removes_db_session_from_kwargs(self, service, mock_dto, mock_repository):
         """Test that create removes _db_session from kwargs before calling repository."""
@@ -230,7 +231,7 @@ class TestGet:
         result = service.get(obj=test_id)
 
         assert result == mock_dto
-        mock_repository.get_record_by_id.assert_called_once_with(test_id, dto_type=service.dto_type)
+        mock_repository.get_record_by_id.assert_called_once_with(test_id, owner=None, dto_type=service.dto_type)
 
     def test_get_with_uuid_returns_none_when_not_found(self, service, mock_repository):
         """Test that get returns None when UUID record is not found."""
@@ -323,7 +324,7 @@ class TestGetRecords:
         result = service.get_records(dto=None)
 
         assert isinstance(result, pd.DataFrame)
-        mock_repository.get_records.assert_called_once_with(dto_type=service.dto_type)
+        mock_repository.get_records.assert_called_once_with(owner=None, dto_type=service.dto_type)
         mock_standardize.assert_called_once()
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
@@ -353,7 +354,7 @@ class TestGetRecords:
         result = service.get_records(dto=mock_dto)
 
         assert isinstance(result, pd.DataFrame)
-        mock_repository.get_records_from_attributes.assert_called_once_with(mock_dto)
+        mock_repository.get_records_from_attributes.assert_called_once_with(mock_dto, owner=None)
 
 
 class TestUpsertRecords:

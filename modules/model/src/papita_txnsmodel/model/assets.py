@@ -27,12 +27,14 @@ from .contstants import (
     FINANCED_ASSET_ACCOUNTS__TABLENAME,
     REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME,
     TRADING_ASSET_ACCOUNTS__TABLENAME,
+    USERS__TABLENAME,
 )
 from .enums import RealEstateAssetAccountsAreaUnits, RealEstateAssetAccountsOwnership
 
 if TYPE_CHECKING:
     from .indexers import AccountsIndexer
     from .liabilities import BankCreditLiabilityAccounts
+    from .users import Users
 
 
 class AssetAccounts(BaseSQLModel, table=True):  # type: ignore
@@ -65,6 +67,9 @@ class AssetAccounts(BaseSQLModel, table=True):  # type: ignore
     yearly_interest_rate: float | None = Field(sa_column=Column(DECIMAL[10, 4], nullable=True), default=None, gt=0)
     roi: float | None = Field(sa_column=Column(DECIMAL[10, 4], nullable=True), default=None, gt=0)
     periodical_earnings: float | None = Field(sa_column=Column(DECIMAL[22, 8], nullable=True), default=None, gt=0)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_assets")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=ASSET_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
@@ -109,8 +114,10 @@ class FinancedAssetAccounts(BaseSQLModel, table=True):  # type: ignore
     bank_credit_liability_account_id: uuid.UUID = Field(
         foreign_key=f"{BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME}.id", primary_key=True
     )
-
     asset_account_id: uuid.UUID = Field(foreign_key=f"{ASSET_ACCOUNTS__TABLENAME}.id", nullable=False)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_financed_asset_accounts")
 
     financing_share: float = Field(sa_column=Column(DECIMAL[4, 4], nullable=False), default=1.0, le=1, gt=0)
 
@@ -138,6 +145,9 @@ class BankingAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignore
 
     entity: str = Field(nullable=False, index=True)
     account_number: str | None = Field(nullable=True, index=True)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_banking_asset_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=BANKING_ASSET_ACCOUNTS__TABLENAME,
@@ -175,6 +185,9 @@ class RealEstateAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignor
     area_unit: RealEstateAssetAccountsAreaUnits = Field(default=RealEstateAssetAccountsAreaUnits.SQ_MT)
     ownership: RealEstateAssetAccountsOwnership = Field(default=RealEstateAssetAccountsOwnership.FULL)
     participation: float = Field(sa_column=Column(DECIMAL[4, 4], nullable=False), gt=0, le=1, default=1.0)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_real_estate_asset_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME,
@@ -202,6 +215,9 @@ class TradingAssetAccounts(ExtendedAssetAccounts, table=True):  # type: ignore
     buy_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     last_value: float | None = Field(sa_column=Column(DECIMAL[22, 8], nullable=True), default=None, gt=0)
     units: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_trading_asset_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=TRADING_ASSET_ACCOUNTS__TABLENAME,

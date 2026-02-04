@@ -9,11 +9,11 @@ Classes:
 """
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
-from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.base.repository import OwnedTableRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
 
-class AccountsRepository(BaseRepository, metaclass=MetaSingleton):
+class AccountsRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for account entity database operations.
 
     This class extends the BaseRepository to provide account-specific database

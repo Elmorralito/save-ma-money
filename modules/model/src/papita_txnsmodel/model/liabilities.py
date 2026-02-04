@@ -21,11 +21,13 @@ from .contstants import (
     BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
     CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,
     LIABILITY_ACCOUNTS__TABLENAME,
+    USERS__TABLENAME,
 )
 
 if TYPE_CHECKING:
     from .assets import FinancedAssetAccounts
     from .indexers import AccountsIndexer
+    from .users import Users
 
 
 class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
@@ -70,6 +72,9 @@ class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
     overall_periods: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
     periods_paid: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
     closing_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_liabilities")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
@@ -119,6 +124,9 @@ class BankCreditLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # typ
     paid: bool = False
     insurance_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
     extras_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_bank_credit_liability_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
@@ -149,6 +157,9 @@ class CreditCardLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # typ
     __tablename__ = CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME
 
     credit_limit: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+
+    owner: "Users" = Relationship(back_populates="owned_credit_card_liability_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,

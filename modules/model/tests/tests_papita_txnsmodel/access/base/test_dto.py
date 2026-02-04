@@ -44,15 +44,19 @@ def test_table_dto_from_dao_success():
 
     # Arrange
     test_datetime = datetime.now()
-    base_model = BaseSQLModel(active=True, deleted_at=test_datetime)
+    base_model = BaseSQLModel(active=False, deleted_at=test_datetime)
 
     # Act
     result = TableDTO.from_dao(base_model)
 
     # Assert
     assert isinstance(result, TableDTO)
-    assert result.active is True
+    assert result.active is False
     assert result.deleted_at == test_datetime
+    base_model = BaseSQLModel(active=True, deleted_at=test_datetime)
+    result = TableDTO.from_dao(base_model)
+    assert result.active is True
+    assert result.deleted_at is None
     assert result.id is not None  # Should have auto-generated UUID
 
 

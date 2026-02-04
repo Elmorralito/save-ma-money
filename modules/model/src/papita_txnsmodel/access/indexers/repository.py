@@ -8,21 +8,21 @@ Classes:
     AccountsIndexerRepository: Repository for account indexer operations.
 """
 
-from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.base.repository import OwnedTableRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
 from .dto import AccountsIndexerDTO
 
 
-class AccountsIndexerRepository(BaseRepository, metaclass=MetaSingleton):
+class AccountsIndexerRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for account indexer database operations.
 
-    This class extends the BaseRepository to provide account indexer-specific database
+    This class extends the OwnedTableRepository to provide account indexer-specific database
     operations. It uses the Singleton pattern via MetaSingleton to ensure only
     one instance exists throughout the application.
 
     The repository works with AccountsIndexerDTO objects and provides all the CRUD
-    operations inherited from BaseRepository, including querying, inserting,
+    operations inherited from OwnedTableRepository, including querying, inserting,
     updating, and deleting account indexer records.
 
     Attributes:

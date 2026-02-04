@@ -10,7 +10,7 @@ Classes:
                             to various account types.
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.indexers.dto import AccountsIndexerDTO
@@ -26,6 +26,9 @@ from .liabilities import (
     CreditCardLiabilityAccountsService,
     LiabilityAccountsService,
 )
+
+if TYPE_CHECKING:
+    from papita_txnsmodel.access.users.dto import UsersDTO
 
 
 class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
@@ -146,7 +149,7 @@ class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
 
         raise ValueError("obj or field_name not supported.")
 
-    def create(self, *, obj: TableDTO | dict[str, Any], **kwargs) -> TableDTO:
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new typed and linked entity record in the database.
 
         This method combines the create methods of TypedEntitiesService and
@@ -156,6 +159,7 @@ class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
 
         Args:
             obj: The object to create, either as a TableDTO or a dictionary of attributes.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -172,7 +176,7 @@ class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
         else:
             raise TypeError(f"Expected TableDTO | dict[str, Any], got {type(obj)}")
 
-        type_dto = self.types_service.get_or_create(obj=type_obj, **kwargs)
+        type_dto = self.types_service.get_or_create(obj=type_obj, owner=owner, **kwargs)
         if type_dto.classification != self.get_extended_account_classification(obj=obj, **kwargs):
             raise ValueError("The selectedtype does not correspond to the expected classification.")
 
@@ -181,4 +185,4 @@ class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
         elif isinstance(obj, TableDTO):
             setattr(obj, self.type_id_field_name, type_dto)
 
-        return super().create(obj=obj, **kwargs)
+        return super().create(obj=obj, owner=owner, **kwargs)

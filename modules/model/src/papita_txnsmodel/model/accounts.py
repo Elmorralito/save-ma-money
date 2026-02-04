@@ -8,19 +8,20 @@ Classes:
     Accounts: Represents a financial account in the system.
 """
 
-import datetime
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, TIMESTAMP, Column, String
+from sqlalchemy import ARRAY, TIMESTAMP, Column, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import ACCOUNTS__TABLENAME
+from .contstants import ACCOUNTS__TABLENAME, USERS__TABLENAME
 
 if TYPE_CHECKING:
     from .indexers import AccountsIndexer
     from .transactions import Transactions
+    from .users import Users
 
 
 class Accounts(BaseSQLModel, table=True):  # type: ignore
@@ -53,13 +54,14 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = ACCOUNTS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(nullable=False, index=True)
-    description: str = Field(nullable=False)
+    name: str = Field(sa_type=String, nullable=False, index=True)
+    description: str = Field(sa_type=Text, nullable=False)
     tags: List[str] = Field(sa_column=Column(ARRAY(String)), min_items=1, unique_items=True)
-    start_ts: datetime.datetime = Field(
-        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.datetime.now
-    )
-    end_ts: Optional[datetime.datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
+    start_ts: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now)
+    end_ts: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_accounts")
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=ACCOUNTS__TABLENAME,

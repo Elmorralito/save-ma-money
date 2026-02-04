@@ -42,6 +42,7 @@ class TypesDTO(CoreTableDTO):
     __dao_type__ = Types
 
     classification: TypesClassifications
+    owner_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:

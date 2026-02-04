@@ -96,6 +96,7 @@ class BaseContractBuilder(AbstractContractBuilder[L], Generic[L]):
             {
                 "connector": self.connector,
                 "on_failure_do": on_failure_do,
+                "owner": kwargs.pop("owner", self.owner),
                 **({} if missing_upsertions_tol is None else {"missing_upsertions_tol": missing_upsertions_tol}),
                 **kwargs,
             }

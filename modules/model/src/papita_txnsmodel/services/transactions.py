@@ -70,7 +70,7 @@ class TransactionsService(LinkedEntitiesService):
     """
 
     __links__: Dict[str, LinkedEntity] = {
-        "asset_accidentified_transactionount": LinkedEntity(
+        "identified_transaction": LinkedEntity(
             expected_other_entity_service_type=IdentifiedTransactionsService,
             other_entity_link_column_name="id",
             other_entity_link_field_name="id",

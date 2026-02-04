@@ -3,7 +3,6 @@ import logging
 import os
 import re
 import sys
-import urllib.parse
 from logging.config import fileConfig
 
 import sqlalchemy as sa
@@ -52,10 +51,17 @@ if config.config_file_name is not None:
 def load_url() -> None:
     logger.info("Loading database URL.")
     x_args = context.get_x_argument(as_dictionary=True)
+
     if x_args.get("duckdbPath"):
         db_path = x_args.get("duckdbPath")
         logger.info("Using DuckDB database path from arguments.")
         config.set_main_option("sqlalchemy.url", db_path)
+        return None
+
+    db_url_from_x = x_args.get("dbUrl") or x_args.get("db_url")
+    if db_url_from_x:
+        logger.info("Using database URL from arguments.")
+        config.set_main_option("sqlalchemy.url", db_url_from_x.replace("%", "%%"))
         return None
 
     load_dotenv(dotenv_path=x_args.get("envPath", x_args.get("env_path", DEFAULT_ENV_PATH)), override=True)
@@ -66,30 +72,36 @@ def load_url() -> None:
         return None
 
     db_url = os.getenv("DB_URL", os.getenv("DATABASE_URL"))
-    if DB_URL_PATTERN.match(db_url or ""):
-        database_url = db_url
+    if db_url and DB_URL_PATTERN.match(db_url):
+        database_url = sa.make_url(db_url)
     else:
-        db_driver = os.environ["DB_DRIVER"]
-        db_user = os.environ["DB_USER"]
-        db_password = os.environ["DB_PASSWORD"]
-        db_name = os.environ["DB_NAME"]
-        db_host = os.environ["DB_HOST"]
-        db_port = os.environ["DB_PORT"]
-
         try:
+            db_driver = os.environ["DB_DRIVER"]
+            db_user = os.environ["DB_USER"]
+            db_password = os.environ["DB_PASSWORD"]
+            db_name = os.environ["DB_NAME"]
+            db_host = os.environ["DB_HOST"]
+            db_port = os.environ["DB_PORT"]
+
             if not db_password:
                 raise TypeError("Database password is not set.")
 
-            encoded_password = urllib.parse.quote_plus(db_password)
             logger.info("Constructing database URL from environment variables.")
-            database_url = f"{db_driver}://{db_user}:{encoded_password}@{db_host}:{db_port}/{db_name}"
-        except TypeError:
-            database_url = x_args.get("dbUrl", x_args.get("db_url"))
+            database_url = sa.URL.create(
+                drivername=db_driver,
+                username=db_user,
+                password=db_password,
+                host=db_host,
+                port=db_port,
+                database=db_name,
+            )
+        except (KeyError, TypeError):
+            database_url = None
 
     if not database_url:
         raise ValueError("Database URL is not set. Please set the DB_URL or DATABASE_URL environment variable.")
 
-    config.set_main_option("sqlalchemy.url", database_url)
+    config.set_main_option("sqlalchemy.url", database_url.render_as_string(hide_password=False).replace("%", "%%"))
     return None
 
 
@@ -125,22 +137,21 @@ def run_migrations_online() -> None:
         poolclass=sa.pool.NullPool,
     )
     with connectable.connect() as connection:
-        if not context.get_x_argument(as_dictionary=True).get("upgrading"):
-            instpector = sa.inspect(connection)
-            template_args = (
-                None
-                if instpector.has_schema(target_metadata.schema)
-                else {
-                    "schema_setup": (
-                        f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'
-                    ),
-                    "schema_destroy": (
-                        f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=False, if_exists=True))'
-                    ),
-                }
-            )
+        instpector = sa.inspect(connection)
+        if not context.get_x_argument(as_dictionary=True).get("upgrading") and not instpector.has_schema(
+            target_metadata.schema
+        ):
+            template_args = {
+                "schema_setup": (f'op.execute(sa.schema.CreateSchema("{target_metadata.schema}", if_not_exists=True))'),
+                "schema_destroy": (
+                    f'op.execute(sa.schema.DropSchema("{target_metadata.schema}", cascade=True, if_exists=True))'
+                ),
+            }
         else:
-            template_args = None
+            template_args = {
+                "schema_destroy": "",
+                "schema_setup": "",
+            }
 
         context.configure(
             connection=connection,

@@ -19,6 +19,7 @@ import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.classutils import ClassDiscovery
@@ -122,7 +123,11 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         raise NotImplementedError("Subclasses must implement the labels method.")
 
     def get_record(
-        self, dto: TableDTO | dict | str | uuid.UUID, from_dependency: str | None = None, **kwargs
+        self,
+        dto: TableDTO | dict | str | uuid.UUID,
+        from_dependency: str | None = None,
+        owner: UsersDTO | None = None,
+        **kwargs,
     ) -> TableDTO | None:
         """
         Retrieve a single record from the service or a specified dependency.
@@ -133,6 +138,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         Args:
             dto: The data transfer object, dictionary, ID string or UUID identifying the record
             from_dependency: Optional name of the dependency service to use for retrieval
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional arguments to pass to the service's get method
 
         Returns:
@@ -146,11 +152,17 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             if service is None:
                 raise ValueError(f"Dependency '{from_dependency}' not found in dependencies.")
 
-            return service.get(dto=dto, **kwargs)
+            return service.get(obj=dto, owner=owner, **kwargs)
 
-        return self.service.get(dto=dto, **kwargs)
+        return self.service.get(obj=dto, owner=owner, **kwargs)
 
-    def get_records(self, dto: TableDTO | dict | None, from_dependency: str | None = None, **kwargs) -> pd.DataFrame:
+    def get_records(
+        self,
+        dto: TableDTO | dict | None,
+        from_dependency: str | None = None,
+        owner: UsersDTO | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
         """
         Retrieve multiple records from the service or a specified dependency.
 
@@ -160,6 +172,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         Args:
             dto: The data transfer object, dictionary, or None for querying records
             from_dependency: Optional name of the dependency service to use for retrieval
+            owner: The owner of the records to retrieve. Defaults to None.
             **kwargs: Additional arguments to pass to the service's get_records method
 
         Returns:
@@ -173,13 +186,13 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             if service is None:
                 raise ValueError(f"Dependency '{from_dependency}' not found in dependencies.")
 
-            return service.get_records(dto=dto, **kwargs)
+            return service.get_records(dto=dto, owner=owner, **kwargs)
 
         return self.service.get_records(
-            dto=dto, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            dto=dto, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
         )
 
-    def build_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+    def build_record(self, dto: TableDTO | dict, owner: UsersDTO | None = None, **kwargs) -> TableDTO:
         """
         Build a complete record by resolving dependencies.
 
@@ -190,6 +203,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         Args:
             dto: The data transfer object or dictionary to build
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments to pass to dependency service operations
 
         Returns:
@@ -210,13 +224,15 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
                 continue
 
             dependency_dto = dep_service.get_or_create(
-                dto=value, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+                obj=value, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
             )
             setattr(dto, field_name, dependency_dto)
 
         return dto
 
-    def build_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+    def build_records(
+        self, dtos: pd.DataFrame | List[TableDTO] | List[dict], owner: "UsersDTO | None" = None, **kwargs
+    ) -> pd.DataFrame:
         """
         Build multiple records by resolving dependencies for each.
 
@@ -226,6 +242,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         Args:
             dtos: Collection of records to build (DataFrame, list of DTOs, or list of dicts)
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments to pass to dependency service operations
 
         Returns:
@@ -244,12 +261,12 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
 
         return dtos_.apply(
-            lambda row: self.build_record(dto=row.to_dict(), **kwargs).model_dump(mode="python"),
+            lambda row: self.build_record(dto=row.to_dict(), owner=owner, **kwargs).model_dump(mode="python"),
             axis=1,
             result_type="expand",
         )
 
-    def create_record(self, dto: TableDTO | dict, **kwargs) -> TableDTO:
+    def create_record(self, dto: TableDTO | dict, owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """
         Create a new record using the service.
 
@@ -257,16 +274,20 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         Args:
             dto: The data transfer object or dictionary to create
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional arguments to pass to the service's create method
 
         Returns:
             TableDTO: The created record as returned by the service
         """
         logger.debug("Upserting record for %s", self.service.dto_type.__dao_type__.__tablename__)
-        logger.debug("DTO: %s", dto)
-        return self.service.create(obj=dto, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs)
+        return self.service.create(
+            obj=dto, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+        )
 
-    def create_records(self, dtos: pd.DataFrame | List[TableDTO] | List[dict], **kwargs) -> pd.DataFrame:
+    def create_records(
+        self, dtos: pd.DataFrame | List[TableDTO] | List[dict], owner: "UsersDTO | None" = None, **kwargs
+    ) -> pd.DataFrame:
         """
         Create multiple records using the service.
 
@@ -274,10 +295,14 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         Args:
             dtos: Collection of records to create (DataFrame, list of DTOs, or list of dicts)
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments to pass to the service's upsert_records method
 
         Returns:
             pd.DataFrame: DataFrame containing the created records as returned by the service
+
+        Raises:
+            TypeError: If the provided input is not of a supported type
         """
         logger.debug("Upserting records for %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(dtos, list) and all(isinstance(dto, self.service.dto_type) for dto in dtos):
@@ -290,10 +315,19 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
 
         return self.service.upsert_records(
-            df=dtos_, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            df=dtos_,
+            owner=owner,
+            on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+            **kwargs,
         )
 
-    def load(self, *, data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO, **kwargs) -> Self:
+    def load(
+        self,
+        *,
+        data: pd.DataFrame | List[TableDTO] | List[dict] | TableDTO,
+        owner: UsersDTO | None = None,
+        **kwargs,
+    ) -> Self:
         """
         Load data into the handler, building records with resolved dependencies.
 
@@ -302,6 +336,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         Args:
             data: Input data to load (DataFrame, list of DTOs, list of dicts, or a single DTO/dict)
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments to pass to the build operations
 
         Returns:
@@ -313,7 +348,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
         if isinstance(data, (pd.DataFrame, list)):
             self._loaded_data = self.build_records(
-                dtos=data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+                dtos=data, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
             )
             return self
 
@@ -321,11 +356,11 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             raise TypeError("data must be a DataFrame, list of TableDTO/dict, or a single TableDTO/dict.")
 
         self._loaded_data = self.build_record(
-            dto=data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            dto=data, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
         )
         return self
 
-    def dump(self, **kwargs) -> Self:
+    def dump(self, *, owner: UsersDTO | None = None, **kwargs) -> Self:
         """
         Persist loaded data to the underlying data store.
 
@@ -333,6 +368,7 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         through the service layer. It handles both single records and collections of records.
 
         Args:
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional arguments to pass to the create operations
 
         Returns:
@@ -347,11 +383,17 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
 
         if isinstance(self._loaded_data, pd.DataFrame):
             self.create_records(
-                dtos=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+                dtos=self._loaded_data,
+                owner=owner,
+                on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+                **kwargs,
             )
         else:
             self.create_record(
-                dto=self._loaded_data, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+                dto=self._loaded_data,
+                owner=owner,
+                on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
+                **kwargs,
             )
 
         return self

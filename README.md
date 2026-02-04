@@ -60,13 +60,6 @@ The project is built around three core pillars:
 
 ## TODOs
 
-
-- [ ] [_**[#26](https://github.com/Elmorralito/save-ma-money/issues/26)**_] :: **feature/PPT-031: Add users to the data model** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-28 00:17:05+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#25](https://github.com/Elmorralito/save-ma-money/issues/25)**_] :: **feature/PPT-030: API Implementation** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-03 15:55:21+00:00+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#24](https://github.com/Elmorralito/save-ma-money/issues/24)**_] :: **feature/PPT-029: Define Data Model for Isolating finances per User** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-03 15:54:11+00:00+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#17](https://github.com/Elmorralito/save-ma-money/issues/17)**_] :: **fix/PPT-026: Work in entity Relationships between DuckDB tables.** :: _<sub style="vertical-align: middle; color: #636363;">2025-11-29 20:16:41+00:00+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00+00:00</sub>_ :weary:

@@ -1,3 +1,5 @@
+SCHEMA_NAME = "papita_transactions"
+
 ACCOUNTS__TABLENAME = "accounts"
 
 ACCOUNTS_INDEXER__TABLENAME = "accounts_indexer"
@@ -25,3 +27,11 @@ TYPES__TABLENAME = "types"
 IDENTIFIED_TRANSACTIONS__TABLENAME = "identified_transactions"
 
 TRANSACTIONS__TABLENAME = "transactions"
+
+USERS__TABLENAME = "users"
+
+EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{5,255}$"
+
+USERNAME_REGEX = r"^[a-zA-Z0-9_]{6,255}$"
+
+PASSWORD_REGEX = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,128}$"

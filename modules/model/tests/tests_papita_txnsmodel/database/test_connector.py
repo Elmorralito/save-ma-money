@@ -102,7 +102,7 @@ class TestEstablish:
 
         assert result == SQLDatabaseConnector
         assert SQLDatabaseConnector.engine == mock_engine
-        mock_url_class.assert_called_once()
+        mock_url_class.create.assert_called_once()
 
     @patch("papita_txnsmodel.database.connector.db.create_engine")
     @patch("papita_txnsmodel.database.connector.db.make_url")

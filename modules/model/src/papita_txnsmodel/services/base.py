@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.utils.datautils import standardize_dataframe
@@ -102,11 +103,12 @@ class BaseService(BaseModel):
         """
         self.connector.close()
 
-    def create(self, *, obj: TableDTO | dict[str, Any], **kwargs) -> TableDTO:
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: UsersDTO | None = None, **kwargs) -> TableDTO:
         """Create a new record in the database.
 
         Args:
             obj: The object to create, either as a DTO or a dictionary of attributes.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -115,14 +117,17 @@ class BaseService(BaseModel):
         parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
         kwargs.pop("_db_session", None)
-        self._repository.upsert_record(parsed_obj, **kwargs)
+        self._repository.upsert_record(parsed_obj, owner=owner, **kwargs)
         return parsed_obj
 
-    def delete(self, *, obj: TableDTO | dict[str, Any], hard: bool = False, **kwargs) -> pd.DataFrame:
+    def delete(
+        self, *, obj: TableDTO | dict[str, Any], owner: UsersDTO | None = None, hard: bool = False, **kwargs
+    ) -> pd.DataFrame:
         """Delete records based on the provided object.
 
         Args:
             obj: The object to delete, either as a DTO or a dictionary of attributes.
+            owner: The owner of the records. Defaults to None.
             hard: If True, perform a hard delete (completely remove records),
                 otherwise perform a soft delete.
             **kwargs: Additional keyword arguments to pass to the repository method.
@@ -140,35 +145,39 @@ class BaseService(BaseModel):
         ]
         kwargs.pop("_db_session", None)
         if hard:
-            return self._repository.hard_delete_records(*query_filters, dto_type=self.dto_type, **kwargs)
+            return self._repository.hard_delete_records(*query_filters, owner=owner, dto_type=self.dto_type, **kwargs)
 
-        return self._repository.soft_delete_records(*query_filters, dto_type=self.dto_type, **kwargs)
+        return self._repository.soft_delete_records(*query_filters, owner=owner, dto_type=self.dto_type, **kwargs)
 
-    def get(self, *, obj: TableDTO | str | dict | uuid.UUID, **kwargs) -> TableDTO | None:
+    def get(
+        self, *, obj: TableDTO | str | dict | uuid.UUID, owner: UsersDTO | None = None, **kwargs
+    ) -> TableDTO | None:
         """Retrieve a record from the database.
 
         Args:
             obj: The object to retrieve, either as a DTO, a dictionary of attributes,
                 or a UUID.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
             TableDTO | None: The retrieved object as a DTO, or None if not found.
         """
-        dto = self._repository.get_record_by_id(obj, dto_type=self.dto_type, **kwargs)
+        dto = self._repository.get_record_by_id(obj, owner=owner, dto_type=self.dto_type, **kwargs)
         if not dto and isinstance(obj, (dict, self.dto_type)):
             obj = self.parse_dto(obj, strict=True, by_alias=True)
             self.check_expected_dto_type(obj)
-            dto = self._repository.get_record_from_attributes(dto=obj, **kwargs)
+            dto = self._repository.get_record_from_attributes(dto=obj, owner=owner, **kwargs)
 
         return dto
 
-    def get_or_create(self, *, obj: TableDTO | dict | uuid.UUID, **kwargs) -> TableDTO:
+    def get_or_create(self, *, obj: TableDTO | dict | uuid.UUID, owner: UsersDTO | None = None, **kwargs) -> TableDTO:
         """Retrieve a record from the database or create it if it doesn't exist.
 
         Args:
             obj: The object to retrieve or create, either as a DTO, a dictionary
                 of attributes, or a UUID.
+            owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -181,32 +190,33 @@ class BaseService(BaseModel):
         if not isinstance(obj, (TableDTO, dict, uuid.UUID)):
             raise ValueError("Input object not supported. Supported: TableDTO | dict | uuid.UUID")
 
-        dto = self.get(obj=obj, **kwargs)
+        dto = self.get(obj=obj, owner=owner, **kwargs)
         if isinstance(dto, self.dto_type):
             return dto
 
         if isinstance(obj, uuid.UUID):
             raise ValueError("The id does not exist.")
 
-        return self.create(obj=obj, **kwargs)
+        return self.create(obj=obj, owner=owner, **kwargs)
 
-    def get_records(self, dto: TableDTO | dict | None, **kwargs) -> pd.DataFrame:
+    def get_records(self, dto: TableDTO | dict | None, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
         """Retrieve multiple records from the database based on attributes.
 
         Args:
             dto: The object containing attributes to filter by, either as a DTO
                 or a dictionary.
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
             pd.DataFrame: DataFrame containing the retrieved records.
         """
         if not dto:
-            records_df = self._repository.get_records(dto_type=self.dto_type)
+            records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type)
         else:
             parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
             self.check_expected_dto_type(parsed_dto)
-            records_df = self._repository.get_records_from_attributes(parsed_dto, **kwargs)
+            records_df = self._repository.get_records_from_attributes(parsed_dto, owner=owner, **kwargs)
 
         return standardize_dataframe(self.dto_type, records_df, **kwargs)
 
@@ -254,11 +264,12 @@ class BaseService(BaseModel):
 
         raise TypeError(f"Expected TableDTO | dict, got {type(obj)}")
 
-    def upsert_records(self, *, df: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    def upsert_records(self, *, df: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
         """Insert or update multiple records in the database.
 
         Args:
             df: DataFrame containing the records to upsert.
+            owner: The owner of the records. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
@@ -274,7 +285,7 @@ class BaseService(BaseModel):
         on_conflict_do = OnUpsertConflictDo(getattr(on_conflict_do, "value", on_conflict_do).upper())
         logger.info("Upserting %s records", len(mappings.index))
         upsertions = self._repository.upsert_records(
-            dto_type=self.dto_type, mappings=mappings, on_conflict_do=on_conflict_do, **kwargs
+            dto_type=self.dto_type, mappings=mappings, owner=owner, on_conflict_do=on_conflict_do, **kwargs
         )
         if upsertions < (len(mappings.index) * (1 - self.missing_upsertions_tol)):
             raise RuntimeError(

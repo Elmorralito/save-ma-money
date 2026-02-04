@@ -28,10 +28,11 @@ from papita_txnsmodel.access.liabilities.dto import (
     LiabilityAccountsDTO,
 )
 from papita_txnsmodel.access.types.dto import TypesDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.indexers import AccountsIndexer
 
 
-class AccountsIndexerDTO(TableDTO):
+class AccountsIndexerDTO(OwnedTableDTO):
     """Data transfer object for the AccountsIndexer model.
 
     This class represents the data structure for account indexing in the transaction model.

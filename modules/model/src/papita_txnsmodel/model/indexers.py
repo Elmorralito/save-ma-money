@@ -27,6 +27,7 @@ from .contstants import (
     REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME,
     TRADING_ASSET_ACCOUNTS__TABLENAME,
     TYPES__TABLENAME,
+    USERS__TABLENAME,
 )
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
     from .assets import AssetAccounts, BankingAssetAccounts, RealEstateAssetAccounts, TradingAssetAccounts
     from .liabilities import BankCreditLiabilityAccounts, CreditCardLiabilityAccounts, LiabilityAccounts
     from .types import Types
+    from .users import Users
 
 
 class AccountsIndexer(SQLModel, table=True):  # type: ignore
@@ -74,7 +76,11 @@ class AccountsIndexer(SQLModel, table=True):  # type: ignore
 
     account_id: uuid.UUID = Field(foreign_key=f"{ACCOUNTS__TABLENAME}.id", primary_key=True, nullable=False)
 
-    type_id: uuid.UUID = Field(foreign_key=f"{TYPES__TABLENAME}.id", nullable=False)
+    type_id: uuid.UUID = Field(foreign_key=f"{TYPES__TABLENAME}.id", nullable=False, index=True)
+
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+
+    owner: "Users" = Relationship(back_populates="owned_accounts_indexer")
 
     asset_account_id: Optional[uuid.UUID] = Field(
         foreign_key=f"{ASSET_ACCOUNTS__TABLENAME}.id", default=None, nullable=True

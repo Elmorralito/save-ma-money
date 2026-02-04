@@ -12,21 +12,21 @@ These repositories handle the database interactions for liability accounts, prov
 a clean abstraction layer between the database and the business logic.
 """
 
-from papita_txnsmodel.access.base.repository import BaseRepository
+from papita_txnsmodel.access.base.repository import OwnedTableRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
 from .dto import ExtendedLiabilityAccountsDTO, LiabilityAccountsDTO
 
 
-class LiabilityAccountsRepository(BaseRepository, metaclass=MetaSingleton):
+class LiabilityAccountsRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for general liability account database operations.
 
-    This class extends the BaseRepository to provide liability account-specific database
+    This class extends the OwnedTableRepository to provide liability account-specific database
     operations. It uses the Singleton pattern via MetaSingleton to ensure only
     one instance exists throughout the application.
 
     The repository works with LiabilityAccountsDTO objects and provides all the CRUD
-    operations inherited from BaseRepository, including querying, inserting,
+    operations inherited from OwnedTableRepository, including querying, inserting,
     updating, and deleting liability account records.
 
     Attributes:
@@ -37,16 +37,16 @@ class LiabilityAccountsRepository(BaseRepository, metaclass=MetaSingleton):
     __expected_dto__ = LiabilityAccountsDTO
 
 
-class ExtendedLiabilityAccountsRepository(BaseRepository, metaclass=MetaSingleton):
+class ExtendedLiabilityAccountsRepository(OwnedTableRepository, metaclass=MetaSingleton):
     """Repository for specialized liability account database operations.
 
-    This class extends the BaseRepository to provide operations for specialized
+    This class extends the OwnedTableRepository to provide operations for specialized
     liability account types such as bank credit liabilities and credit card liabilities.
     It uses the Singleton pattern via MetaSingleton to ensure only one instance
     exists throughout the application.
 
     The repository works with ExtendedLiabilityAccountsDTO objects and their subclasses,
-    providing all the CRUD operations inherited from BaseRepository for these
+    providing all the CRUD operations inherited from OwnedTableRepository for these
     specialized liability types.
 
     Attributes:

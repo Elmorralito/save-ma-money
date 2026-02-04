@@ -20,8 +20,8 @@ from typing import Annotated, Optional
 
 from pydantic import Field, model_serializer
 
-from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.liabilities.dto import BankCreditLiabilityAccountsDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO
 from papita_txnsmodel.model.assets import (
     AssetAccounts,
     BankingAssetAccounts,
@@ -33,7 +33,7 @@ from papita_txnsmodel.utils.datautils import convert_dto_obj_on_serialize
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 
-class AssetAccountsDTO(TableDTO):
+class AssetAccountsDTO(OwnedTableDTO):
     """DTO for asset accounts with financial attributes and relationships.
 
     This class represents asset accounts in the system and includes validation
@@ -65,7 +65,7 @@ class AssetAccountsDTO(TableDTO):
     periodical_earnings: Annotated[Optional[float], Field(gt=0)] = None
 
 
-class ExtendedAssetAccountsDTO(TableDTO):
+class ExtendedAssetAccountsDTO(OwnedTableDTO):
     """Base DTO for specialized asset account types.
 
     This class serves as a base for more specific asset account DTOs, providing

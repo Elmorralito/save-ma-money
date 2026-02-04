@@ -14,7 +14,7 @@ Classes:
 from enum import Enum
 
 
-class RealEstateAssetAccountsOwnership(Enum):
+class RealEstateAssetAccountsOwnership(str, Enum):
     """Enumeration for types of real estate ownership.
 
     This enumeration represents the different types of ownership that can be
@@ -29,7 +29,7 @@ class RealEstateAssetAccountsOwnership(Enum):
     PARTIAL = "PARTIAL"
 
 
-class RealEstateAssetAccountsAreaUnits(Enum):
+class RealEstateAssetAccountsAreaUnits(str, Enum):
     """Enumeration for area measurement units used in real estate assets.
 
     This enumeration represents the different units of measurement that can be
@@ -50,7 +50,7 @@ class RealEstateAssetAccountsAreaUnits(Enum):
     BLK = "BLK"
 
 
-class TypesClassifications(Enum):
+class TypesClassifications(str, Enum):
     """Enumeration for classification categories of financial types.
 
     This enumeration represents the major classification categories used to categorize
