@@ -358,7 +358,25 @@ class CLIFileConnectorWrapper(BaseCLIConnectorWrapper):
         if not content:
             return None
 
-        return content or None
+        # Map environment variables to connection parameters
+        # Use custom mapping that preserves all mapped values (unlike map_connection_params
+        # which returns only URL if present)
+        mapping = {key.upper(): value for key, value in cls.MAPPING_VARIABLES.items()}
+        mapped_content = {}
+        for key, value in content.items():
+            if key.upper() in mapping:
+                mapped_content[mapping[key.upper()]] = value
+            else:
+                mapped_content[key] = value
+
+        # Validate that we have either a URL or mapped connection parameters
+        if "url" not in mapped_content:
+            # Check if we have any of the mapped connection parameter keys
+            mapped_param_keys = set(cls.MAPPING_VARIABLES.values())
+            if not mapped_param_keys.intersection(set(mapped_content.keys())):
+                raise ValueError("The environment file does not contain a valid database connection URL")
+
+        return mapped_content
 
     @classmethod
     def _load_file(cls, connect_file: str) -> dict:

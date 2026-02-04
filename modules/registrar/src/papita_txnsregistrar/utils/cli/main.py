@@ -404,8 +404,10 @@ class MainCLIUtils(AbstractCLIUtils):
         verbose = args.get("verbose", 0)
         if verbose == 1:
             level = logging.INFO
-        elif verbose >= 2:
-            level = logging.DEBUG  # Maximum verbosity
+        elif verbose == 2:
+            level = logging.DEBUG
+        elif verbose >= 3:
+            level = logging.NOTSET  # Maximum verbosity
         else:
             level = logging.WARNING
 
