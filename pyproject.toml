@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "save-ma-money"
-version = "v0.0.1"
+version = "v1.0.0"
 description = "Papita Public projects: save-me-money"
 readme = "README.md"
 package-mode = false
@@ -8,13 +8,11 @@ authors = ["Elmorralito <drestrepohinc@gmail.com>"]
 include = ["README.md"]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.10,<3.13"
 
 [tool.poetry.group.development.dependencies]
-papita-transactions-api = { path = "modules/api", develop = true }
+papita-transactions-api = { path = "modules/backend", develop = true }
 papita-transactions-model = { path = "modules/model", develop = true }
-papita-transactions-registrar = { path = "modules/registrar", develop = true}
-papita-transactions-registrar-plugins = { path = "modules/plugins", develop = true}
 
 [tool.poetry.group.ci.dependencies]
 requests = "^2.32.5"
@@ -48,11 +46,10 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/registrar/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
+addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/backend/tests --cov-report xml:docs/coverage.xml"
 testpaths = [
-    "./modules/api/tests",
+    "./modules/backend/tests",
     "./modules/model/tests",
-    "./modules/registrar/tests",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -77,7 +74,7 @@ ignore_errors = true
 branch = true
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["./modules/api/src", "./modules/model/src", "./modules/registrar/src"])'
+init-hook = 'import sys; sys.path.extend(["./modules/backend/src", "./modules/model/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
@@ -140,7 +137,6 @@ extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
 known_first_party = [
     "papita_txnsapi",
     "papita_txnsmodel",
-    "papita_txnsregistrar",
 ]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
 py_version = 312
@@ -156,20 +152,18 @@ exclude = [
     "__pycache__",
     "dist",
     "*.ipynb",
-    "./modules/api/tests/*",
+    "./modules/backend/tests/*",
     "./modules/model/tests/*",
-    "./modules/registrar/tests/*",
 ]
 max-line-length = 120
 max-complexity = 18
 
 [tool.interrogate]
-paths = ["./modules/api/src", "./modules/model/src", "./modules/registrar/src"]
+paths = ["./modules/backend/src", "./modules/model/src"]
 exclude = [
-    "./modules/api/tests",
+    "./modules/backend/tests",
     "./modules/model/alembic",
     "./modules/model/tests",
-    "./modules/registrar/tests",
     "venv",
     ".venv",
     "build",

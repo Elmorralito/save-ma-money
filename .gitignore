@@ -58,3 +58,4 @@ data/
 
 docs/.flake8/
 .DS_Store
+.venv-ci/
