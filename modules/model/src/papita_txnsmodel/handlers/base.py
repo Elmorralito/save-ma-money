@@ -122,6 +122,30 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         """
         raise NotImplementedError("Subclasses must implement the labels method.")
 
+    def resolve_owner(self, owner_id: uuid.UUID | str | UsersDTO | None) -> UsersDTO | None:
+        """
+        Resolve an owner id or UsersDTO to a UsersDTO for use as owner= in load/dump/get_records.
+
+        If owner_id is already a UsersDTO, it is returned. If it is a uuid or string,
+        a UsersService dependency (any dependency whose dto_type is UsersDTO) is used
+        to fetch the user; if no such dependency exists, returns None. Use UsersService
+        in dependencies when the handler needs to resolve owner_id from request context.
+
+        Args:
+            owner_id: User id (UUID or string), a UsersDTO instance, or None.
+
+        Returns:
+            UsersDTO if resolved, None otherwise.
+        """
+        if owner_id is None:
+            return None
+        if isinstance(owner_id, UsersDTO):
+            return owner_id
+        for dep in self.dependencies.values():
+            if getattr(dep, "dto_type", None) is UsersDTO:
+                return dep.get(self.service, obj=owner_id, owner=None)
+        return None
+
     def get_record(
         self,
         dto: TableDTO | dict | str | uuid.UUID,

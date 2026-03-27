@@ -11,7 +11,13 @@ authors = [
 dependencies = [
     "python-dateutil (>=2.8.2)",
     "papita-transactions-model (>=0.1.0,<1.0)",
-    "papita-transactions-registrar (>=0.0.2,<1.0)",
+    "fastapi (>=0.129.0,<0.130.0)",
+    "pydantic-settings (>=2.13.1,<3.0.0)",
+    "python-jose (>=3.5.0,<4.0.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
+    "aiofiles (>=25.1.0,<26.0.0)",
+    "uvicorn[standard] (>=0.41.0,<0.42.0)"
+
 ]
 
 [project.urls]

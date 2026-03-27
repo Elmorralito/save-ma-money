@@ -18,8 +18,8 @@ class UsersRepository(BaseRepository, metaclass=MetaSingleton):
     repository instance is used throughout the application.
 
     Attributes:
-        __dto_type__ (type[UsersDTO]): The DTO class associated with this
+        __expected_dto__ (type[UsersDTO]): The expected DTO type for this
             repository, set to UsersDTO.
     """
 
-    __dto_type__ = UsersDTO
+    __expected_dto__ = UsersDTO
