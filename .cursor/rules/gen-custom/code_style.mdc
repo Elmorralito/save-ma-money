@@ -19,11 +19,11 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 
 - Use `isort` with Black profile compatibility.
 - Import sections (in order):
-  1. `FUTURE` - `from __future__ import ...`
-  2. `STDLIB` - Standard library imports
-  3. `THIRDPARTY` - Third-party library imports
-  4. `FIRSTPARTY` - First-party imports (`papita_txnsapi`, `papita_txnsmodel`, `papita_txnsregistrar`)
-  5. `LOCALFOLDER` - Local relative imports
+ 1. `FUTURE` - `from __future__ import ...`
+ 2. `STDLIB` - Standard library imports
+ 3. `THIRDPARTY` - Third-party library imports
+ 4. `FIRSTPARTY` - First-party imports (`papita_txnsapi`, `papita_txnsmodel`, `papita_txnsregistrar`)
+ 5. `LOCALFOLDER` - Local relative imports
 
 - Known first-party packages: `papita_txnsapi`, `papita_txnsmodel`, `papita_txnsregistrar`.
 - Skip: `.gitignore`, `.dockerignore`, `.md`, `.json`, `.yaml`, `.yml`, `.sh`.
