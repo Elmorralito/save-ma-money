@@ -14,13 +14,12 @@ import re
 import uuid
 from typing import Annotated, Self
 
-from pydantic import Field, field_serializer, field_validator, model_serializer, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.model.contstants import EMAIL_REGEX, PASSWORD_REGEX, USERNAME_REGEX
 from papita_txnsmodel.model.users import Users
 from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
-from papita_txnsmodel.utils.hashutils import PasswordManagerFactory
 
 
 class UsersDTO(TableDTO):
@@ -45,6 +44,11 @@ class UsersDTO(TableDTO):
         str, Field(strip_whitespace=True, to_lower=True, min_length=5, max_length=255, pattern=EMAIL_REGEX)
     ]
     password: str
+    admin: bool = Field(default=False)
+    hashing_algorithm_module: str | None = Field(nullable=True, default=None)
+    hashing_algorithm: str = Field(default="argon2")
+    hashing_algorithm_parameters: dict = Field(default_factory=dict)
+    hashing_algorithm_salt: str = Field(default_factory=lambda: uuid.uuid4().hex)
 
     @field_validator("password")
     @classmethod
@@ -65,6 +69,7 @@ class UsersDTO(TableDTO):
                 "Password must be 8-128 characters long, include at least one uppercase letter, "
                 "one lowercase letter, one number, and one special character."
             )
+
         return v
 
     @model_validator(mode="after")
@@ -82,26 +87,6 @@ class UsersDTO(TableDTO):
             hashlib.sha256(self.username.encode(DEFAULT_ENCODING)).hexdigest(),
         )
         return self
-
-    @model_serializer()
-    def _serialize(self) -> dict:
-        """Serialize the user DTO to a dictionary.
-
-        Hashes the password before serialization to ensure security.
-
-        Returns:
-            dict: The serialized user data.
-        """
-        return {
-            "id": self.id,
-            "username": self.username,
-            "email": self.email,
-            "password": PasswordManagerFactory.password_manager.hash_password(self.password),
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-            "deleted_at": self.deleted_at,
-            "active": self.active,
-        }
 
 
 class OwnedTableDTO(TableDTO):

@@ -9,7 +9,7 @@ from .contstants import SCHEMA_NAME, USERS__TABLENAME
 if TYPE_CHECKING:
     from .accounts import Accounts
     from .assets import (
-        Assets,
+        AssetAccounts,
         BankingAssetAccounts,
         FinancedAssetAccounts,
         RealEstateAssetAccounts,
@@ -32,11 +32,17 @@ class Users(BaseSQLModel, table=True):  # type: ignore
     username: str = Field(nullable=False, index=True, unique=True)
     email: str = Field(nullable=False, index=True, unique=True)
     password: str = Field(nullable=False)
+    admin: bool = Field(nullable=False, default=False)
+    # Password algorithm and parameters
+    hashing_algorithm: str = Field(nullable=False, default="argon2")
+    hashing_algorithm_parameters: dict = Field(nullable=False, default_factory=dict)
+    hashing_algorithm_salt: str = Field(nullable=False, default_factory=lambda: uuid.uuid4().hex)
+    hashing_algorithm_module: str | None = Field(nullable=True, default=None)
 
     owned_accounts: List["Accounts"] = Relationship(
         back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}, cascade_delete=True
     )
-    owned_assets: List["Assets"] = Relationship(
+    owned_assets: List["AssetAccounts"] = Relationship(
         back_populates="owner", sa_relationship_kwargs={"cascade": "all, delete-orphan"}, cascade_delete=True
     )
     owned_financed_asset_accounts: List["FinancedAssetAccounts"] = Relationship(

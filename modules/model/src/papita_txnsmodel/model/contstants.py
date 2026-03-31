@@ -30,6 +30,10 @@ TRANSACTIONS__TABLENAME = "transactions"
 
 USERS__TABLENAME = "users"
 
+ROLES__TABLENAME = "roles"
+
+USER_ROLES__TABLENAME = "user_roles"
+
 EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{5,255}$"
 
 USERNAME_REGEX = r"^[a-zA-Z0-9_]{6,255}$"

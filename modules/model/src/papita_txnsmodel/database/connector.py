@@ -20,7 +20,7 @@ from typing import Any, Callable, ClassVar, Self, Type
 import sqlalchemy as db
 from sqlmodel import Session
 
-from papita_txnsmodel.utils.enums import FallbackAction
+from papita_txnsmodel.helpers.enums import FallbackAction
 
 logger = logging.getLogger(__name__)
 

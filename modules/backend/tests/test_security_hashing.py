@@ -1,8 +1,8 @@
-"""Tests for papita_txnsapi.security.hashing."""
+"""Tests for papita_txnsapi.core.security.hashing."""
 
 import pytest
 
-from papita_txnsapi.security.hashing import Argon2PasswordManager, PasswordManagerFactory
+from papita_txnsapi.core.security.hashing import Argon2PasswordManager, PasswordManagerFactory
 
 
 @pytest.fixture(autouse=True)

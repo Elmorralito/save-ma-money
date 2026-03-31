@@ -66,3 +66,15 @@ class TypesClassifications(str, Enum):
     ASSETS = "ASSETS"
     LIABILITIES = "LIABILITIES"
     TRANSACTIONS = "TRANSACTIONS"
+
+
+class UserAuthRole(str, Enum):
+    """Authorization roles assigned to users (slug stored on ``roles.slug``).
+
+    Attributes:
+        ADMIN: Full administrative access.
+        USER: Standard end-user access.
+    """
+
+    ADMIN = "admin"
+    USER = "user"
