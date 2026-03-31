@@ -178,7 +178,7 @@ class AccountsIndexerService(TypedLinkedEntitiesServiceMixin):
 
         type_dto = self.types_service.get_or_create(obj=type_obj, owner=owner, **kwargs)
         if type_dto.classification != self.get_extended_account_classification(obj=obj, **kwargs):
-            raise ValueError("The selectedtype does not correspond to the expected classification.")
+            raise ValueError("The selected type does not correspond to the expected classification.")
 
         if isinstance(obj, dict):
             obj[self.type_id_field_name] = type_dto

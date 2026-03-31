@@ -1,8 +1,9 @@
-"""Tests for papita_txnsapi.core.security.hashing."""
+"""Tests for password hashing (model-layer Argon2 + factory)."""
 
 import pytest
 
-from papita_txnsapi.core.security.hashing import Argon2PasswordManager, PasswordManagerFactory
+from papita_txnsmodel.helpers.hashing.argon2 import Argon2PasswordManager
+from papita_txnsmodel.helpers.hashing.factory import PasswordManagerFactory
 
 
 @pytest.fixture(autouse=True)
@@ -15,6 +16,7 @@ def reset_password_manager_factory() -> None:
 
 def test_argon2_hash_and_verify_roundtrip() -> None:
     manager = Argon2PasswordManager()
+    manager.setup_algorithm()
     password = "secret-password"
     hashed = manager.hash_password(password)
     assert manager.verify_password(password, hashed) is True
@@ -23,9 +25,10 @@ def test_argon2_hash_and_verify_roundtrip() -> None:
 
 def test_argon2_get_salt_from_hash() -> None:
     manager = Argon2PasswordManager()
+    manager.setup_algorithm()
     hashed = manager.hash_password("x")
     salt = manager.get_salt(hashed)
-    assert isinstance(salt, str)
+    assert isinstance(salt, bytes)
     assert len(salt) > 0
 
 

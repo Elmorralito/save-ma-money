@@ -17,7 +17,7 @@ from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME, USERS__TABLENAME
+from .constants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME, USERS__TABLENAME
 
 if TYPE_CHECKING:
     from .accounts import Accounts

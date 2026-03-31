@@ -362,4 +362,6 @@ class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesServic
                 information, or None if not found.
         """
         typed_dto = TypedEntitiesService.get(self, obj=obj, owner=owner, **kwargs)
-        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)  # type: ignore
+        if typed_dto is None:
+            return None
+        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)

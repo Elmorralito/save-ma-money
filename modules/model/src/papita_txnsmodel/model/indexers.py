@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from .contstants import (
+from .constants import (
     ACCOUNTS__TABLENAME,
     ACCOUNTS_INDEXER__TABLENAME,
     ASSET_ACCOUNTS__TABLENAME,

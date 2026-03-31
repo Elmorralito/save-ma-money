@@ -16,7 +16,7 @@ from sqlalchemy import ARRAY, TIMESTAMP, Column, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import ACCOUNTS__TABLENAME, USERS__TABLENAME
+from .constants import ACCOUNTS__TABLENAME, USERS__TABLENAME
 
 if TYPE_CHECKING:
     from .indexers import AccountsIndexer

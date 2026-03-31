@@ -20,7 +20,10 @@ class AuthSecurityManager(metaclass=MetaSingleton):
     """
 
     def __init__(self, settings: APISettings) -> None:
-        self.secret_key = settings.JWT_SECRET_KEY
+        secret = (settings.JWT_SECRET_KEY or "").strip()
+        if not secret:
+            raise ValueError("JWT_SECRET_KEY must be a non-empty string")
+        self.secret_key = secret
         self.algorithm = settings.JWT_ALGORITHM
         self.expiration_time = timedelta(seconds=settings.JWT_EXPIRATION_TIME_SECONDS)
         self.token_type = settings.JWT_TOKEN_TYPE
@@ -96,6 +99,9 @@ class AuthSecurityManager(metaclass=MetaSingleton):
                 self.secret_key,
                 algorithms=[self.algorithm],
             )
+            if payload.get("type") != self.token_type:
+                logger.debug("Token rejected: type claim does not match expected %s", self.token_type)
+                return None
             return payload
         except JWTError as exc:
             logger.debug("Token decode failed: %s", exc)
@@ -103,15 +109,17 @@ class AuthSecurityManager(metaclass=MetaSingleton):
 
     def renew_access_token(self, token: str) -> str | None:
         """
-        If the token is valid, issue a new access token for the same subject.
+        Issue a new access token for the same subject when the token is still valid.
 
-        Used for sliding sessions without trusting an expired token.
+        Note:
+            :meth:`decode_token` validates ``exp``, so expired tokens are rejected
+            and this returns ``None``. There is no refresh using an expired JWT.
 
         Args:
-            token: Current bearer token.
+            token: Current bearer token (must not be expired).
 
         Returns:
-            A new JWT string, or None if the token is invalid.
+            A new JWT string, or None if the token is invalid or expired.
         """
         payload = self.decode_token(token)
         if payload is None:

@@ -13,9 +13,8 @@
 | Name                                         |                           Package/Library                            |
 | :------------------------------------------- | :------------------------------------------------------------------: |
 | Papita Transactions Data Model               |       [`papita-transactions-model`](./modules/model/README.md)       |
-| Papita Trasnsactions Registrar               |   [`papita-transactions-registrar`](./modules/registrar/README.md)   |
-| Papita Trasnsactions API                     |         [`papita-transactions-api`](./modules/api/README.md)         |
-| Papita Transaction Registrar Builtin Plugins | [`papita-transactions-registrar-plugin`](./modules/plugin/README.md) |
+| Papita Transactions Backend API              |         [`papita-transactions-api`](./modules/backend/README.md)     |
+| Papita Transactions Frontend               |          [`papita-transactions-ui`](./modules/frontend/README.md)    |
 
 ## Briefing
 
@@ -24,8 +23,8 @@ The `save-ma-finances` ecosystem is a production-grade framework designed to bri
 The project is built around three core pillars:
 
 - **[Data Model (`papita-txnsmodel`)](./modules/model/README.md)**: The "Central Nervous System". Defines strict type-safe schemas, handles multi-dialect database persistence (DuckDB/PostgreSQL), and implements resilient data logic like soft deletions and conflict resolution.
-- **[Registrar (`papita-txnsregistrar`)](./modules/registrar/README.md)**: The "Orchestration Layer". Uses a sophisticated Contract Pattern to discover and execute ingestion pipelines, providing a unified CLI and API for all data sources.
-- **[Plugins (`papita-txnsplugins`)](./modules/plugins/README.md)**: The "Implementation Layer". Concrete, extensible connectors for universal formats (CSV, Excel) and bank-specific parsers that bridge the gap between raw data and the core model.
+- **[Backend API (`papita-txnsapi`)](./modules/backend/README.md)**: The HTTP layer that exposes the data model and auth flows for clients.
+- **[Frontend](./modules/frontend/README.md)**: Client-side workspace for the product UI (see module README for scope).
 
 ## Development
 

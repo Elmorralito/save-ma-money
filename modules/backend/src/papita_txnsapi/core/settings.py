@@ -52,7 +52,8 @@ class APISettings(BaseSettings):
     JWT_EXPIRATION_TIME_SECONDS: Annotated[int, Field(ge=1)] = 3600
     JWT_SLIDING_REFRESH_ENABLED: bool = False
     JWT_REFRESH_THRESHOLD_SECONDS: Annotated[int, Field(ge=1)] = 600
-    ALLOWED_ORIGINS: Annotated[list[str], Field(min_length=1)] = ["*"]
+    # Set explicit origins in production (e.g. via ALLOWED_ORIGINS env JSON or comma-separated).
+    ALLOWED_ORIGINS: list[str] = Field(default_factory=list)
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
     @field_validator("LOGGER_CONFIG_PATH", mode="before")
@@ -82,6 +83,11 @@ class APISettings(BaseSettings):
 
     @model_validator(mode="after")
     def build_model(self) -> Self:
+        if "*" in self.ALLOWED_ORIGINS and not self.DEBUG:
+            warnings.warn(
+                "ALLOWED_ORIGINS contains '*' while DEBUG is False; set explicit origins for production.",
+                stacklevel=2,
+            )
         configure_logger(logger_name=MODEL_LIB_NAME, config=self.LOGGER_CONFIG_PATH, level=self.LOG_LEVEL)
         configure_logger(logger_name=API_LIB_NAME, config=self.LOGGER_CONFIG_PATH, level=self.LOG_LEVEL)
         logger.info("Application %s %s initialized", self.APP_NAME, self.APP_VERSION)

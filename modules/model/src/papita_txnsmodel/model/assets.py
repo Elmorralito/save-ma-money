@@ -20,7 +20,7 @@ from sqlalchemy import DECIMAL, Column, SmallInteger
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import (
+from .constants import (
     ASSET_ACCOUNTS__TABLENAME,
     BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME,
     BANKING_ASSET_ACCOUNTS__TABLENAME,

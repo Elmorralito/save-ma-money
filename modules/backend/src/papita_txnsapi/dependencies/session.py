@@ -84,7 +84,11 @@ def get_verify_credentials(
         if stored_hash is None or (isinstance(stored_hash, float) and str(stored_hash) == "nan"):
             return None
         stored_hash_str = str(stored_hash)
-        is_active = bool(row.get("active", True))
+        raw_active = row.get("active")
+        if raw_active is None or (isinstance(raw_active, float) and str(raw_active) == "nan"):
+            is_active = False
+        else:
+            is_active = bool(raw_active)
         deleted_at = row.get("deleted_at")
         if not is_active or deleted_at is not None:
             logger.debug("User inactive or deleted username=%s", username)

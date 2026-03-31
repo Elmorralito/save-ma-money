@@ -27,6 +27,16 @@ get_python_cmd() {
     if [[ "${POETRY_ACTIVE}" == "1" ]] || [[ -n "${VIRTUAL_ENV}" ]]; then
         echo "python"
     else
+        # Use python -m poetry so the interpreter on PATH runs Poetry even when the
+        # standalone `poetry` executable is not installed or not on PATH.
+        echo "python -m poetry run python"
+    fi
+}
+
+get_poetry_cmd() {
+    if [[ "${POETRY_ACTIVE}" == "1" ]] || [[ -n "${VIRTUAL_ENV}" ]]; then
+        echo "poetry"
+    else
         echo "python -m poetry"
     fi
 }

@@ -15,7 +15,7 @@ from sqlalchemy import ARRAY, Column, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
-from .contstants import TYPES__TABLENAME, USERS__TABLENAME
+from .constants import TYPES__TABLENAME, USERS__TABLENAME
 from .enums import TypesClassifications
 
 if TYPE_CHECKING:

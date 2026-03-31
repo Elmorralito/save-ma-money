@@ -108,7 +108,7 @@ duckdb_run() {
     fi
 
     PYTHON_CMD=$(get_python_cmd)
-    if [[ "${PYTHON_CMD}" == *"poetry"* ]]; then
+    if [[ "${PYTHON_CMD}" == *"poetry"* ]] && [[ "${PYTHON_CMD}" != *" run python"* ]]; then
         PYTHON_CMD="${PYTHON_CMD} run python"
     fi
     DUCKDB_DB_PATH=$(${PYTHON_CMD} "${PROJECT_PATH}/deploy/setup_duckdb.py" -path "$DUCKDB_DB_PATH" -schema "$DUCKDB_SCHEMA")
@@ -125,16 +125,15 @@ duckdb_run() {
 }
 
 PYTHON_CMD=$(get_python_cmd)
-POETRY_CMD="${PYTHON_CMD}"
-[[ "${PYTHON_CMD}" == "python" ]] && POETRY_CMD="python -m poetry"
+POETRY_CMD=$(get_poetry_cmd)
 
 if ! command -v alembic &>/dev/null && ! ${POETRY_CMD} env info -p &>/dev/null; then
     log "ERROR" "The environment does not have Alembic nor Poetry installed."
     exit 1
 fi
 
-if [[ "${PYTHON_CMD}" == *"poetry"* ]]; then
-    ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; ${PYTHON_CMD} run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
+if [[ "${POETRY_CMD}" == "poetry" ]] || [[ "${POETRY_CMD}" == *"poetry"* ]]; then
+    ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; ${POETRY_CMD} run alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
 else
     ALEMBIC_EXEC_COMMAND="cd $PROJECT_PATH ; alembic -c ${ALEMBIC_PROJECT_PATH}/alembic.ini"
 fi

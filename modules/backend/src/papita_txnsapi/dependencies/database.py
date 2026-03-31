@@ -44,7 +44,11 @@ def get_db_session(
         An open :class:`~sqlmodel.Session` closed after the response is sent.
     """
     connector.connected(on_disconnected=FallbackAction.RAISE)
-    yield connector.connect(Session(connector.engine))
+    session = Session(connector.engine)
+    try:
+        yield session
+    finally:
+        session.close()
 
 
 DatabaseConnectorDep = Annotated[type[SQLDatabaseConnector], Depends(get_database_connector)]

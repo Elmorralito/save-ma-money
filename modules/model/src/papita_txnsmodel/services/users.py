@@ -9,7 +9,10 @@ Key exports:
     UsersService: Pydantic-configured service for user records and credentials.
 """
 
+import base64
+import binascii
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Self
 
 from pydantic import ConfigDict, Field
@@ -20,6 +23,33 @@ from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.helpers.hashing.abstract import AbstractPasswordManager
 from papita_txnsmodel.helpers.hashing.factory import PasswordManagerFactory
 from papita_txnsmodel.services.base import BaseService
+
+
+def _stored_salt_str_to_bytes(stored: str | None) -> bytes | None:
+    """Decode ``UsersDTO.hashing_algorithm_salt`` for Argon2 ``salt=`` (expects ``bytes``).
+
+    Accepts lowercase hex (preferred for new rows) or URL-safe base64 (legacy).
+
+    Args:
+        stored: Serialized salt from the database, or None.
+
+    Returns:
+        Raw salt bytes, or None if ``stored`` is empty/None.
+
+    Raises:
+        ValueError: If the string is not valid hex or base64.
+    """
+    if stored is None or stored == "":
+        return None
+    try:
+        return bytes.fromhex(stored)
+    except ValueError:
+        pass
+    pad = "=" * ((4 - len(stored) % 4) % 4)
+    try:
+        return base64.urlsafe_b64decode(stored + pad)
+    except (ValueError, binascii.Error) as exc:
+        raise ValueError(f"Invalid hashing_algorithm_salt encoding: {exc}") from exc
 
 
 class UsersService(BaseService):
@@ -53,6 +83,17 @@ class UsersService(BaseService):
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
     pepper: bytes | None = None
 
+    @staticmethod
+    def _hashing_algorithm_salt_for_storage(password_manager: AbstractPasswordManager) -> str:
+        """Serialize salt for ``UsersDTO.hashing_algorithm_salt`` (str column)."""
+        raw_hex = getattr(password_manager, "raw_salt_hex_for_storage", None)
+        if callable(raw_hex):
+            return raw_hex()
+        salt_val = password_manager.salt
+        if isinstance(salt_val, (bytes, bytearray)):
+            return bytes(salt_val).hex()
+        return str(salt_val)
+
     def setup_password_manager(self, *, user: UsersDTO, **kwargs) -> AbstractPasswordManager:
         """Build a password manager configured for an existing or in-flight user row.
 
@@ -77,7 +118,7 @@ class UsersService(BaseService):
         """
         hashing_algorithm_modules = tuple(set(filter(None, [user.hashing_algorithm_module])))
         hashing_algorithm_parameters = user.hashing_algorithm_parameters | {
-            "salt": user.hashing_algorithm_salt,
+            "salt": _stored_salt_str_to_bytes(user.hashing_algorithm_salt),
             "pepper": self.pepper,
         }
         kwargs = kwargs | hashing_algorithm_parameters
@@ -127,12 +168,16 @@ class UsersService(BaseService):
         """
         parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
-        del parsed_obj.hashing_algorithm_salt
+        parsed_obj.hashing_algorithm_salt = None
         password_manager = self.setup_password_manager(user=parsed_obj, **kwargs)
         parsed_obj.password = password_manager.hash_password(parsed_obj.password)
-        parsed_obj.hashing_algorithm_salt = password_manager.salt
+        parsed_obj.hashing_algorithm_salt = self._hashing_algorithm_salt_for_storage(password_manager)
         parsed_obj.hashing_algorithm_module = password_manager.__class__.__module__
-        parsed_obj.hashing_algorithm = next(iter(password_manager.keywords()))
+        keywords = password_manager.keywords()
+        if not keywords:
+            raise ValueError("No hashing algorithm keywords exposed by the password manager")
+
+        parsed_obj.hashing_algorithm = next(iter(keywords))
         return super().create(obj=parsed_obj, owner=owner, **kwargs)
 
     def validate_password(self, *, user_id: uuid.UUID | str, password: str, **kwargs) -> bool:
@@ -152,16 +197,15 @@ class UsersService(BaseService):
             ``True`` when verification succeeds.
 
         Raises:
-            ValueError: If no user exists for ``user_id``, or if ``password`` does
-                not match the stored hash.
+            ValueError: If credentials do not match a valid user (generic message).
         """
         user = self.get(obj=user_id)
         if not user:
-            raise ValueError("The user does not exist")
+            return False
 
         password_manager = self.setup_password_manager(user=user, **kwargs)
         if not password_manager.verify_password(password, user.password):
-            raise ValueError("The provided password is incorrect")
+            return False
 
         return True
 
@@ -183,27 +227,39 @@ class UsersService(BaseService):
             This service instance for method chaining.
 
         Raises:
-            ValueError: If the user does not exist, the old password is wrong,
-                ``new_password`` equals the current password (still verified), or
-                hashing configuration cannot be satisfied.
+            ValueError: If credentials are invalid, ``new_password`` matches the
+                current password, or hashing configuration cannot be satisfied.
         """
         user = self.get(obj=user_id)
         if not user:
-            raise ValueError("User not found")
+            raise ValueError("Invalid credentials")
 
-        self.validate_password(user_id=user_id, password=old_password, **kwargs)
+        if not self.validate_password(user_id=user_id, password=old_password, **kwargs):
+            raise ValueError("The old password is incorrect")
+
+        if user.password_locked_until and user.password_locked_until >= datetime.now(timezone.utc):
+            raise ValueError(f"The password is locked until {user.password_locked_until.isoformat()}")
+
+        user.password_locked_until = datetime.now(timezone.utc) + timedelta(minutes=1)
+        self.upsert(obj=user, **kwargs)
+
         password_manager = self.setup_password_manager(user=user, **kwargs)
         if password_manager.verify_password(new_password, user.password):
-            raise ValueError("New password cannot be the same as the old password")
+            raise ValueError("The new password cannot be the same as the old password")
+
+        chg_keywords = password_manager.keywords()
+        if not chg_keywords:
+            raise ValueError("No hashing algorithm keywords exposed by the password manager")
 
         self.upsert(
             obj={
                 "id": user.id,
                 "password": password_manager.generate_new_salt().hash_password(new_password),
-                "hashing_algorithm_salt": password_manager.salt,
+                "hashing_algorithm_salt": self._hashing_algorithm_salt_for_storage(password_manager),
                 "hashing_algorithm_module": password_manager.__class__.__module__,
-                "hashing_algorithm": next(iter(password_manager.keywords())),
+                "hashing_algorithm": next(iter(chg_keywords)),
                 "hashing_algorithm_parameters": password_manager.algorithm_parameters_parser.model_dump(),
+                "password_locked_until": None,
             },
             **kwargs,
         )

@@ -10,7 +10,8 @@ import pytest
 from fastapi import HTTPException, Response
 
 from papita_txnsapi.core.security.auth import AuthSecurityManager
-from papita_txnsapi.core.security.hashing import Argon2PasswordManager, PasswordManagerFactory
+from papita_txnsmodel.helpers.hashing.argon2 import Argon2PasswordManager
+from papita_txnsmodel.helpers.hashing.factory import PasswordManagerFactory
 from papita_txnsapi.core.settings import APISettings, get_settings
 from papita_txnsapi.dependencies.session import (
     REFRESH_TOKEN_HEADER,
@@ -55,6 +56,7 @@ def test_session_from_token_rejects_invalid_jwt(api_settings: APISettings) -> No
 
 def test_verify_credentials_success(api_settings: APISettings) -> None:
     pm = Argon2PasswordManager()
+    pm.setup_algorithm()
     hashed = pm.hash_password("SecretPass1!")
     user_id = str(uuid.uuid4())
     df = pd.DataFrame([{"id": user_id, "password": hashed, "active": True, "deleted_at": None}])
@@ -67,6 +69,7 @@ def test_verify_credentials_success(api_settings: APISettings) -> None:
 
 def test_verify_credentials_wrong_password(api_settings: APISettings) -> None:
     pm = Argon2PasswordManager()
+    pm.setup_algorithm()
     hashed = pm.hash_password("SecretPass1!")
     df = pd.DataFrame([{"id": str(uuid.uuid4()), "password": hashed, "active": True, "deleted_at": None}])
 
@@ -78,6 +81,7 @@ def test_verify_credentials_wrong_password(api_settings: APISettings) -> None:
 
 def test_issue_session_token_roundtrip(api_settings: APISettings) -> None:
     pm = Argon2PasswordManager()
+    pm.setup_algorithm()
     hashed = pm.hash_password("SecretPass1!")
     user_id = str(uuid.uuid4())
     df = pd.DataFrame([{"id": user_id, "password": hashed, "active": True, "deleted_at": None}])

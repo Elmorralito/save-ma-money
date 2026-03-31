@@ -1,1 +1,1 @@
-# Papita Trasnsactions API
+# Papita Transactions API

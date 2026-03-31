@@ -12,12 +12,13 @@ Classes:
 import hashlib
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Self
 
 from pydantic import Field, field_serializer, field_validator, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
-from papita_txnsmodel.model.contstants import EMAIL_REGEX, PASSWORD_REGEX, USERNAME_REGEX
+from papita_txnsmodel.model.constants import EMAIL_REGEX, PASSWORD_REGEX, USERNAME_REGEX
 from papita_txnsmodel.model.users import Users
 from papita_txnsmodel.utils.configutils import DEFAULT_ENCODING
 
@@ -35,7 +36,7 @@ class UsersDTO(TableDTO):
         password (str): The user's plain text password (hashed on serialization).
     """
 
-    __dao_type__: "Users"
+    __dao_type__ = Users
 
     username: Annotated[
         str, Field(strip_whitespace=True, to_lower=False, min_length=6, max_length=255, pattern=USERNAME_REGEX)
@@ -45,10 +46,11 @@ class UsersDTO(TableDTO):
     ]
     password: str
     admin: bool = Field(default=False)
-    hashing_algorithm_module: str | None = Field(nullable=True, default=None)
+    hashing_algorithm_module: str | None = None
     hashing_algorithm: str = Field(default="argon2")
     hashing_algorithm_parameters: dict = Field(default_factory=dict)
-    hashing_algorithm_salt: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    hashing_algorithm_salt: str | None = None
+    password_locked_until: datetime | None = None
 
     @field_validator("password")
     @classmethod
@@ -69,6 +71,28 @@ class UsersDTO(TableDTO):
                 "Password must be 8-128 characters long, include at least one uppercase letter, "
                 "one lowercase letter, one number, and one special character."
             )
+
+        return v
+
+    @field_validator("password_locked_until")
+    @classmethod
+    def validate_password_locked_until(cls, v: datetime | None) -> datetime | None:
+        """Validate the password locked until field.
+
+        Args:
+            v: The password locked until value to validate.
+
+        Returns:
+            datetime | None: The validated password locked until value.
+
+        Raises:
+            ValueError: If the password locked until value is not in the UTC timezone.
+        """
+        if v is None:
+            return v
+
+        if v.tzinfo != timezone.utc:
+            raise ValueError("Password locked until must be in the UTC timezone")
 
         return v
 

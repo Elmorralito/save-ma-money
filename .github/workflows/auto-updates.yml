@@ -37,8 +37,7 @@ jobs:
 
       - name: "Install dependencies"
         run: |
-          poetry install --no-interaction
-          python -m pip install pylint pytest pytest-cov coverage jinja2 requests
+          poetry install --no-interaction --with ci,pre-commit
 
       - name: Update TODOs in README
         env:

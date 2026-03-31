@@ -6,12 +6,13 @@ Argon2-based password management.
 
 import base64
 import logging
-from typing import Annotated, Self
+import secrets
+from typing import Annotated, Self, Set, Type
 
-import numpy as np
-from argon2 import PasswordHasher, Type
+from argon2 import PasswordHasher
+from argon2 import Type as Argon2Type
 from argon2.exceptions import VerifyMismatchError
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from .abstract import AbstractPasswordManager
 
@@ -29,13 +30,15 @@ class Argon2AlgorithmParameters(BaseModel):
         salt_len: Length of the salt.
     """
 
+    model_config = {"populate_by_name": True}
+
     memory_cost: Annotated[int, Field(ge=1024, le=1048576, multiple_of=2)] = 65536
     time_cost: Annotated[int, Field(ge=1, le=16)] = 3
     parallelism: Annotated[int, Field(ge=1, le=16)] = 4
     hash_len: Annotated[int, Field(ge=16, le=64, multiple_of=2)] = 32
     salt_len: Annotated[int, Field(ge=16, le=64, multiple_of=2)] = 32
     encoding: Annotated[str, Field(min_length=1, max_length=32)] = "utf-8"
-    type: Type = Type.ID
+    argon2_type: Annotated[Argon2Type, Field(validation_alias=AliasChoices("type", "argon2_type"))] = Argon2Type.ID
     salt: bytes | None = None
     pepper: bytes | None = None
 
@@ -73,6 +76,11 @@ class Argon2PasswordManager(AbstractPasswordManager):
         self._salt: bytes | None = None
         self._pepper: bytes | None = None
 
+    @classmethod
+    def keywords(cls) -> Set[str]:
+        """Return identifiers used to select this manager in the factory."""
+        return {"argon2", ".".join(filter(None, (cls.__module__, cls.__name__)))}
+
     @property
     def pepper(self) -> bytes | None:
         """Return the pepper.
@@ -84,10 +92,10 @@ class Argon2PasswordManager(AbstractPasswordManager):
 
     @property
     def salt(self) -> bytes:
-        """Generate a random salt and pepper bytes.
+        """Return salt bytes for hashing (optionally combined with pepper).
 
         Returns:
-            bytes: The generated salt and pepper bytes.
+            bytes: Salt bytes passed to the Argon2 hasher.
         """
         if not self._salt:
             self.generate_new_salt()
@@ -95,10 +103,10 @@ class Argon2PasswordManager(AbstractPasswordManager):
         if not isinstance(self._salt, bytes):
             raise TypeError("Salt is not a bytes object")
 
-        if not isinstance(self.pepper, bytes):
+        if not isinstance(self._pepper, bytes):
             return self._salt
 
-        return np.concatenate([self._salt, self.pepper])
+        return self._salt + self._pepper
 
     def setup_algorithm(self, **kwargs) -> Self:
         """Setup the algorithm with specific parameters.
@@ -109,8 +117,15 @@ class Argon2PasswordManager(AbstractPasswordManager):
         algorithm_parameters = self.algorithm_parameters_parser.model_validate(kwargs, extra="ignore")
         self.salt_len = algorithm_parameters.salt_len
         self._salt = algorithm_parameters.salt
-        self.pepper = algorithm_parameters.pepper
-        self.password_hasher = PasswordHasher(**algorithm_parameters.model_dump())
+        self._pepper = algorithm_parameters.pepper
+        self.password_hasher = PasswordHasher(
+            time_cost=algorithm_parameters.time_cost,
+            memory_cost=algorithm_parameters.memory_cost,
+            parallelism=algorithm_parameters.parallelism,
+            hash_len=algorithm_parameters.hash_len,
+            salt_len=algorithm_parameters.salt_len,
+            type=algorithm_parameters.argon2_type,
+        )
         return self
 
     def get_salt(self, hashed_password: str) -> bytes:
@@ -127,7 +142,9 @@ class Argon2PasswordManager(AbstractPasswordManager):
         """
         segments = hashed_password.split("$")
         if len(segments) >= 5 and segments[1].startswith("argon2"):
-            self._salt = base64.urlsafe_b64decode(segments[4])
+            salt_b64 = segments[4]
+            pad = "=" * ((4 - len(salt_b64) % 4) % 4)
+            self._salt = base64.urlsafe_b64decode(salt_b64 + pad)
             return self._salt
 
         raise ValueError("Expected an Argon2-encoded password hash string")
@@ -140,7 +157,12 @@ class Argon2PasswordManager(AbstractPasswordManager):
 
         Returns:
             str: Argon2 hash string.
+
+        Raises:
+            RuntimeError: If :meth:`setup_algorithm` was not called first.
         """
+        if self.password_hasher is None:
+            raise RuntimeError("Password hasher is not initialized; call setup_algorithm first.")
         return self.password_hasher.hash(password, salt=self.salt)
 
     def verify_password(self, password: str, hashed_password: str) -> bool:
@@ -153,11 +175,13 @@ class Argon2PasswordManager(AbstractPasswordManager):
         Returns:
             bool: True if verification succeeds, False otherwise.
         """
+        if self.password_hasher is None:
+            raise RuntimeError("Password hasher is not initialized; call setup_algorithm first.")
         try:
             self.password_hasher.verify(hashed_password, password)
             return True
         except VerifyMismatchError:
-            logger.error("Password verification failed")
+            logger.debug("Argon2 password verification failed (mismatch).")
             return False
 
     def generate_new_salt(self) -> Self:
@@ -165,6 +189,27 @@ class Argon2PasswordManager(AbstractPasswordManager):
 
         Returns:
             Self: The instance of the password manager.
+
+        Raises:
+            ValueError: If ``salt_len`` is not set (``setup_algorithm`` not run).
         """
-        self._salt = np.random.bytes(self.salt_len)
+        if self.salt_len is None:
+            raise ValueError("salt_len is not set; call setup_algorithm before generate_new_salt.")
+        self._salt = secrets.token_bytes(self.salt_len)
         return self
+
+    def raw_salt_hex_for_storage(self) -> str:
+        """Return the raw Argon2 salt as hex for persistence (``Users.hashing_algorithm_salt``).
+
+        This is only the random salt bytes, not any optional pepper concatenation used
+        when calling the hasher.
+
+        Returns:
+            Lowercase hex string.
+
+        Raises:
+            RuntimeError: If ``_salt`` has not been set yet.
+        """
+        if not isinstance(self._salt, bytes):
+            raise RuntimeError("Raw salt is not set; run hashing or salt generation first.")
+        return self._salt.hex()
