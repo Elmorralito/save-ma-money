@@ -66,13 +66,12 @@ if [[ "$ENABLE_LOGS" -eq "1" ]] ; then
     mkdir -p "$TESTS_RESULTS_PATH"
 fi
 
-TEST_COMMAND="poetry run pytest . $( if [[ "$ENABLE_LOGS" -eq 1 ]] ; then echo "> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log" ; else echo "" ; fi )"
+LOG_REDIRECT=""
+if [[ "$ENABLE_LOGS" -eq 1 ]]; then
+    LOG_REDIRECT="> ${TESTS_RESULTS_PATH}.$(basename "$PROJECT_PATH").log"
+fi
 
-test -e "$(which poetry)" && {
-    TEST_COMMAND="poetry run ${TEST_COMMAND}"
-}
-
-TEST_COMMAND="cd ${PROJECT_PATH} && poetry run ${TEST_COMMAND}"
+TEST_COMMAND="cd ${PROJECT_PATH} && poetry run pytest . ${LOG_REDIRECT}"
 
 run_command 1 "$TEST_COMMAND"
 

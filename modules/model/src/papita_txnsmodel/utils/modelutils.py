@@ -10,15 +10,15 @@ date parsing and validation, and interest rate normalization. It contains:
 
 import inspect
 import re
-from datetime import date, datetime
-from typing import Callable, Iterable, Type
+from datetime import date, datetime, timezone
+from typing import Annotated, Callable, Iterable, Type
 
 import numpy as np
 import pandas as pd
 import pytz
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dt_parse
-from pydantic import ValidationInfo, ValidatorFunctionWrapHandler
+from pydantic import AfterValidator, HttpUrl, ValidationInfo, ValidatorFunctionWrapHandler
 from semver import Version
 
 from .classutils import ClassDiscovery
@@ -26,6 +26,20 @@ from .classutils import ClassDiscovery
 ALLOWED_DELIMITERS = (",", "|", ";", ":", "\n")
 ALLOWED_TRUE_BOOL_VALUES = ("true", "yes", "y", "1", "on", "s", 1, True)
 ALLOWED_FALSE_BOOL_VALUES = ("false", "no", "n", "0", "off", 0, False)
+
+URLStr = Annotated[HttpUrl, AfterValidator(str)]
+
+
+def current_timestamp(tz: timezone = timezone.utc) -> datetime:
+    """Get the current timestamp in the given timezone.
+
+    Args:
+        tz: The timezone to use. Defaults to UTC.
+
+    Returns:
+        datetime: The current timestamp in the given timezone.
+    """
+    return datetime.now(tz)
 
 
 def validate_bool(value: bool | int | str, handler: ValidatorFunctionWrapHandler) -> bool:

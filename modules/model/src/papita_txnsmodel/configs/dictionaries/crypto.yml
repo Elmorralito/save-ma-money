@@ -1,0 +1,60 @@
+---
+groups:
+  - name: CRYPTO CURRENCIES
+    description: |
+      This dictionary contains the CRYPTO currencies that are supported by the system.
+    items:
+      - base: USDT
+        quote: BTC
+        description: |
+          Tether to Bitcoin
+        symbol: BTC/USDT
+        code: BTC-USDT
+        precision: 8
+        icon: https://example.com/usdt.png
+        source: https://example.com/usdt.png
+      - base: USDC
+        quote: BTC
+        description: |
+          USD Coin to Bitcoin
+        symbol: USDC/BTC
+        code: USDC-BTC
+        precision: 8
+        icon: https://example.com/usdc.png
+        source: https://example.com/usdc.png
+      - base: ETH
+        quote: USD
+        description: |
+          Ethereum to United States Dollar
+        symbol: ETH/USDT
+        code: ETHUSDT
+        precision: 8
+        icon: https://example.com/eth.png
+        source: https://example.com/eth.png
+      - base: ETH
+        quote: USDC
+        description: |
+          Ethereum to USD Coin
+        symbol: ETH/USDC
+        code: ETH-USDC
+        precision: 8
+        icon: https://example.com/eth.png
+        source: https://example.com/eth.png
+      - base: USD
+        quote: USDT
+        description: |
+          Tether to United States Dollar
+        symbol: USDT/USD
+        code: USDT-USD
+        precision: 8
+        icon: https://example.com/usdt.png
+        source: https://example.com/usdt.png
+      - base: USD
+        quote: USDC
+        description: |
+          USD Coin to United States Dollar
+        symbol: USDC/USD
+        code: USDC-USD
+        precision: 8
+        icon: https://example.com/usdc.png
+        source: https://example.com/usdc.png

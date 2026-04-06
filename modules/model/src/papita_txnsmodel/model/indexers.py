@@ -12,9 +12,13 @@ their type-specific attributes.
 """
 
 import uuid
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Self, get_args
 
+from pydantic import model_validator
 from sqlmodel import Field, Relationship, SQLModel
+
+from papita_txnsmodel.model.assets import ExtendedAssetAccounts
+from papita_txnsmodel.model.liabilities import ExtendedLiabilityAccounts
 
 from .constants import (
     ACCOUNTS__TABLENAME,
@@ -25,9 +29,11 @@ from .constants import (
     CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,
     LIABILITY_ACCOUNTS__TABLENAME,
     REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME,
+    SCHEMA_NAME,
     TRADING_ASSET_ACCOUNTS__TABLENAME,
     TYPES__TABLENAME,
     USERS__TABLENAME,
+    fk_id,
 )
 
 if TYPE_CHECKING:
@@ -73,74 +79,164 @@ class AccountsIndexer(SQLModel, table=True):  # type: ignore
     """
 
     __tablename__ = ACCOUNTS_INDEXER__TABLENAME
+    __table_args__ = {"schema": SCHEMA_NAME}
 
-    account_id: uuid.UUID = Field(foreign_key=f"{ACCOUNTS__TABLENAME}.id", primary_key=True, nullable=False)
+    account_id: uuid.UUID = Field(foreign_key=fk_id(ACCOUNTS__TABLENAME), primary_key=True, nullable=False)
 
-    type_id: uuid.UUID = Field(foreign_key=f"{TYPES__TABLENAME}.id", nullable=False, index=True)
+    type_id: uuid.UUID = Field(foreign_key=fk_id(TYPES__TABLENAME), nullable=False, index=True)
 
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
-
-    owner: "Users" = Relationship(back_populates="owned_accounts_indexer")
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False, index=True)
 
     asset_account_id: Optional[uuid.UUID] = Field(
-        foreign_key=f"{ASSET_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(ASSET_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     liability_account_id: Optional[uuid.UUID] = Field(
-        foreign_key=f"{LIABILITY_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(LIABILITY_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     banking_asset_account_id: uuid.UUID | None = Field(
-        foreign_key=f"{BANKING_ASSET_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(BANKING_ASSET_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     real_estate_asset_account_id: uuid.UUID | None = Field(
-        foreign_key=f"{REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(REAL_ESTATE_ASSET_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     trading_asset_account_id: uuid.UUID | None = Field(
-        foreign_key=f"{TRADING_ASSET_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(TRADING_ASSET_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     bank_credit_liability_account_id: uuid.UUID | None = Field(
-        foreign_key=f"{BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     credit_card_liability_account_id: uuid.UUID | None = Field(
-        foreign_key=f"{CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME}.id", default=None, nullable=True
+        foreign_key=fk_id(CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME), default=None, nullable=True
     )
 
     accounts: "Accounts" = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "Accounts.id"},
     )
 
     types: "Types" = Relationship(back_populates=TYPES__TABLENAME)
 
     asset_accounts: Optional["AssetAccounts"] = Relationship(
         back_populates=ACCOUNTS_INDEXER__TABLENAME,
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "AssetAccounts.id"},
     )
 
     liability_accounts: Optional["LiabilityAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "LiabilityAccounts.id"},
     )
 
     banking_asset_accounts: Optional["BankingAssetAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "BankingAssetAccounts.id"},
     )
 
     trading_asset_accounts: Optional["TradingAssetAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "TradingAssetAccounts.id"},
     )
 
     real_estate_asset_accounts: Optional["RealEstateAssetAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "RealEstateAssetAccounts.id"},
     )
 
     bank_credit_liability_accounts: Optional["BankCreditLiabilityAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "BankCreditLiabilityAccounts.id"},
     )
 
     credit_card_liability_accounts: Optional["CreditCardLiabilityAccounts"] = Relationship(
-        back_populates=ACCOUNTS_INDEXER__TABLENAME, sa_relationship_kwargs={"uselist": False}
+        back_populates=ACCOUNTS_INDEXER__TABLENAME,
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "CreditCardLiabilityAccounts.id"},
     )
+
+    owner: "Users" = Relationship(back_populates="owned_accounts_indexer", cascade_delete=True)
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize the model after initialization."""
+        return self.validate_accounts().validate_extended_accounts().validate_linked_accounts()
+
+    def validate_accounts(self) -> Self:
+        """Validate base account relationship integrity.
+
+        Ensures that the account must be either an asset or a liability, but not both
+        and not neither. This enforces the basic classification constraint for accounts.
+
+        Returns:
+            AccountsIndexerDTO: The instance with validated accounts
+
+        Raises:
+            ValueError: If both asset and liability are None or if both are set
+        """
+        match self.asset_account_id, self.liability_account_id:
+            case None, None:
+                raise ValueError("The index cannot contain empty asset and liability.")
+            case _, _:
+                raise ValueError("The index cannot contain both asset and liability.")
+
+        return self
+
+    def validate_extended_accounts(self) -> Self:
+        """Validate that only one extended account type is specified.
+
+        Ensures that an account cannot be of multiple extended types simultaneously,
+        which would violate the account type hierarchy. The method checks all fields
+        annotated with extended account types to ensure at most one is set.
+
+        Returns:
+            AccountsIndexerDTO: The instance with validated extended accounts
+
+        Raises:
+            ValueError: If more than one extended account is set
+        """
+        extended_account_fields = [
+            field_name
+            for field_name, info in self.__class__.model_fields.items()
+            if ExtendedAssetAccounts in get_args(info.annotation)
+            or ExtendedLiabilityAccounts in get_args(info.annotation)
+        ]
+        extended_accounts_count = sum(1 for field in extended_account_fields if getattr(self, field) is not None)
+        if extended_accounts_count > 1:
+            raise ValueError("The index cannot contain more than extended account.")
+
+        return self
+
+    def validate_linked_accounts(self) -> Self:
+        """Validate that extended accounts match their parent type.
+
+        Ensures that extended accounts (e.g., banking assets) are consistent with their
+        base account type (e.g., asset). This prevents incorrect account type linkages
+        by checking that any extended account field references an account of the
+        appropriate base type.
+
+        Returns:
+            AccountsIndexerDTO: The instance with validated linked accounts
+
+        Raises:
+            ValueError: If an extended account type doesn't match its parent type
+        """
+        match self.asset_account, self.liability_account:
+            case None, _:
+                extended_account_type = ExtendedAssetAccounts
+            case _, None:
+                extended_account_type = ExtendedLiabilityAccounts
+
+        extended_account_fields = [
+            field_name
+            for field_name, info in self.__class__.model_fields.items()
+            if extended_account_type in get_args(info.annotation)
+            or ExtendedLiabilityAccounts in get_args(info.annotation)
+        ]
+        extended_accounts_count = sum(1 for field in extended_account_fields if getattr(self, field) is not None)
+        if extended_accounts_count > 0:
+            raise ValueError(f"Extended account is not of type {extended_account_type.__name__}")
+
+        return self

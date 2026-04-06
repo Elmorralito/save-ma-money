@@ -10,14 +10,24 @@ Classes:
 """
 
 import uuid
-from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, List, Optional, Self
 
-from sqlalchemy import ARRAY, DECIMAL, TIMESTAMP, Column, SmallInteger, String
+from pydantic import model_validator
+from sqlalchemy import DECIMAL, TIMESTAMP, Column, SmallInteger, Text
 from sqlmodel import Field, Relationship
 
-from .base import BaseSQLModel
-from .constants import IDENTIFIED_TRANSACTIONS__TABLENAME, TRANSACTIONS__TABLENAME, USERS__TABLENAME
+from papita_txnsmodel.utils.modelutils import URLStr
+
+from .base import BaseSQLModel, CoreTableSQLModel
+from .constants import (
+    ACCOUNTS__TABLENAME,
+    IDENTIFIED_TRANSACTIONS__TABLENAME,
+    TRANSACTIONS__TABLENAME,
+    TYPES__TABLENAME,
+    USERS__TABLENAME,
+    fk_id,
+)
 
 if TYPE_CHECKING:
     from .accounts import Accounts
@@ -25,7 +35,7 @@ if TYPE_CHECKING:
     from .users import Users
 
 
-class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
+class IdentifiedTransactions(CoreTableSQLModel, table=True):  # type: ignore
     """Transaction template model for recurring or planned transactions.
 
     This class defines the structure for identified transactions, which serve as
@@ -50,13 +60,11 @@ class IdentifiedTransactions(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = IDENTIFIED_TRANSACTIONS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    type_id: uuid.UUID = Field(foreign_key="types.id", nullable=False)
-    name: str = Field(nullable=False, index=True)
-    tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
-    description: str = Field(nullable=False)
+    type_id: uuid.UUID = Field(foreign_key=fk_id(TYPES__TABLENAME), nullable=False)
+    icon: URLStr | None = Field(sa_column=Column(Text, nullable=True, index=False, unique=False), default=None)
     planned_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     planned_transaction_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False)
 
     owner: "Users" = Relationship(back_populates="owned_identified_transactions")
 
@@ -93,16 +101,18 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = TRANSACTIONS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    name: str = Field(nullable=False, index=True)
+    icon: URLStr | None = Field(sa_column=Column(Text, nullable=True, index=False, unique=False), default=None)
     identified_transaction_id: uuid.UUID | None = Field(
-        foreign_key=f"{IdentifiedTransactions.__tablename__}.id", nullable=True
+        foreign_key=fk_id(IDENTIFIED_TRANSACTIONS__TABLENAME), nullable=True
     )
-    from_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
-    to_account_id: uuid.UUID | None = Field(foreign_key="accounts.id", default=None, nullable=True)
+    from_account_id: uuid.UUID | None = Field(foreign_key=fk_id(ACCOUNTS__TABLENAME), default=None, nullable=True)
+    to_account_id: uuid.UUID | None = Field(foreign_key=fk_id(ACCOUNTS__TABLENAME), default=None, nullable=True)
     transaction_ts: datetime = Field(
         sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now
     )
     value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False, index=True)
 
     owner: "Users" = Relationship(back_populates="owned_transactions")
 
@@ -114,3 +124,18 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
     to_accounts: Optional["Accounts"] = Relationship(
         back_populates="transactions_to_accounts", sa_relationship_kwargs={"foreign_keys": "Transactions.to_account_id"}
     )
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize the model after initialization."""
+        super()._normalize_model()
+        if self.transaction_ts and self.transaction_ts.tzinfo != timezone.utc:
+            self.transaction_ts = self.transaction_ts.astimezone(timezone.utc)
+
+        if not self.from_account_id and not self.to_account_id:
+            raise ValueError("The transaction must have at least one account")
+
+        if self.from_account_id == self.to_account_id:
+            raise ValueError("The transaction must have different accounts")
+
+        return self

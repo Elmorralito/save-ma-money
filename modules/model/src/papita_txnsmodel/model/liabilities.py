@@ -10,11 +10,18 @@ Classes:
     CreditCardLiabilityAccounts: Model for credit card liability accounts.
 """
 
+import math
 import uuid
-from typing import TYPE_CHECKING, Optional
+from datetime import datetime as builtin_datetime
+from typing import TYPE_CHECKING, Optional, Self
 
-from sqlalchemy import DECIMAL, Column, SmallInteger
-from sqlmodel import Field, Relationship
+import numpy as np
+import numpy_financial as npfin
+from pydantic import ValidatorFunctionWrapHandler, field_validator, model_validator
+from sqlalchemy import DECIMAL, Boolean, Column, SmallInteger
+from sqlmodel import TIMESTAMP, Field, Relationship
+
+from papita_txnsmodel.utils import modelutils
 
 from .base import BaseSQLModel
 from .constants import (
@@ -22,6 +29,7 @@ from .constants import (
     CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME,
     LIABILITY_ACCOUNTS__TABLENAME,
     USERS__TABLENAME,
+    fk_id,
 )
 
 if TYPE_CHECKING:
@@ -62,19 +70,27 @@ class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = LIABILITY_ACCOUNTS__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    months_per_period: int = Field(sa_column=Column(SmallInteger, nullable=True), default=1, gt=0)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False, index=True)
+    months_per_period: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
+    open_date: builtin_datetime = Field(
+        sa_column=Column(TIMESTAMP, nullable=False), default_factory=modelutils.current_timestamp
+    )
+    close_date: builtin_datetime = Field(sa_column=Column(TIMESTAMP, nullable=True), default=None)
     initial_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     present_value: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
     monthly_interest_rate: float = Field(sa_column=Column(DECIMAL[10, 4], nullable=True), gt=0)
     yearly_interest_rate: float = Field(sa_column=Column(DECIMAL[10, 4], nullable=True), gt=0)
     payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), gt=0)
+    insurance_payment: float | None = Field(sa_column=Column(DECIMAL[22, 8], nullable=True, default=None))
+    extras_payment: float | None = Field(sa_column=Column(DECIMAL[22, 8], nullable=True, default=None))
     total_paid: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False), default=0, gt=0)
     overall_periods: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
     periods_paid: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1, gt=0)
     closing_day: int = Field(sa_column=Column(SmallInteger, nullable=False), gt=0, le=28)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
 
-    owner: "Users" = Relationship(back_populates="owned_liabilities")
+    owner: "Users" = Relationship(
+        back_populates="owned_liabilities", sa_relationship_kwargs={"foreign_keys": "Users.id"}
+    )
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
@@ -85,6 +101,56 @@ class LiabilityAccounts(BaseSQLModel, table=True):  # type: ignore
     credit_card_liability_accounts: Optional["CreditCardLiabilityAccounts"] = Relationship(
         back_populates=LIABILITY_ACCOUNTS__TABLENAME, sa_relationship_kwargs={"uselist": False}, cascade_delete=True
     )
+
+    @field_validator("monthly_interest_rate", "yearly_interest_rate", mode="wrap")
+    @classmethod
+    def _validate_interest_rates(cls, value: float, handler: ValidatorFunctionWrapHandler) -> float:
+        """Validate the interest rates."""
+        return modelutils.validate_interest_rate(value, handler=handler) or 0.0
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize the model after initialization."""
+        if self.close_date and self.close_date < self.open_date:
+            raise ValueError("The close_date must be after the open_date")
+
+        if self.payment > self.initial_value:
+            raise ValueError("The payment must be less than the initial_value")
+
+        ref_dt = modelutils.current_timestamp()
+        periods_elapsed = np.floor((ref_dt - self.open_date).days / 30 / self.months_per_period)
+        insurance = 0.0 if self.insurance_payment is None else float(self.insurance_payment)
+        extras = 0.0 if self.extras_payment is None else float(self.extras_payment)
+        # Portion of each period that amortizes principal: contractual P&I (payment minus any
+        # escrow/insurance bundled in `payment`) plus optional extra principal prepayment.
+        amort_payment = self.payment - insurance + extras
+        if amort_payment <= 0:
+            raise ValueError(
+                "Amortizing payment must be positive; adjust payment, insurance_payment, or extras_payment."
+            )
+
+        if self.close_date:
+            self.present_value = 0.0
+        else:
+            rate = self.monthly_interest_rate
+            if rate == 0:
+                outstanding = float(self.initial_value - amort_payment * periods_elapsed)
+            else:
+                outstanding = float(
+                    npfin.fv(rate, periods_elapsed, amort_payment, self.initial_value * -1, when="end")
+                    if self.initial_value is not None
+                    else float(amort_payment * periods_elapsed * -1)
+                )
+
+            self.present_value = max(0.0, outstanding)
+
+        self.overall_periods = (
+            np.floor((self.close_date - self.open_date).days / 30 / self.months_per_period)
+            if self.close_date
+            else np.floor((modelutils.current_timestamp() - self.open_date).days / 30 / self.months_per_period)
+        )
+        self.periods_paid = math.floor(self.total_paid / self.payment)
+        return self
 
 
 class ExtendedLiabilityAccounts(BaseSQLModel):
@@ -121,10 +187,8 @@ class BankCreditLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # typ
 
     __tablename__ = BANK_CREDIT_LIABILITY_ACCOUNTS__TABLENAME
 
-    paid: bool = False
-    insurance_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
-    extras_payment: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+    paid: bool = Field(sa_column=Column(Boolean, nullable=False), default=False)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False)
 
     owner: "Users" = Relationship(back_populates="owned_bank_credit_liability_accounts")
 
@@ -157,7 +221,7 @@ class CreditCardLiabilityAccounts(ExtendedLiabilityAccounts, table=True):  # typ
     __tablename__ = CREDIT_CARD_LIABILITY_ACCOUNTS__TABLENAME
 
     credit_limit: float = Field(sa_column=Column(DECIMAL[22, 8], nullable=False))
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False)
 
     owner: "Users" = Relationship(back_populates="owned_credit_card_liability_accounts")
 

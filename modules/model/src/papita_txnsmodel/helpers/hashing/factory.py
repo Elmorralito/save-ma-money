@@ -30,6 +30,7 @@ class PasswordManagerFactory(metaclass=MetaSingleton):
         """
         if keyword is None or not str(keyword).strip():
             raise ValueError("Password manager keyword was not specified")
+
         password_manager_type = self.get_password_manager_type(keyword, *modules)
         return password_manager_type(**kwargs).setup_algorithm(**kwargs)
 

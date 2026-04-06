@@ -1,0 +1,213 @@
+---
+groups:
+  - name: STOCKS
+    description: |
+      This dictionary contains the stocks that are supported by the system.
+    items:
+      - base: USD
+        quote: AAPL
+        description: |
+          Apple Inc. to United States Dollar
+        symbol: AAPL/USD
+        code: AAPL-USD
+        precision: 4
+        icon: https://example.com/aapl.png
+        source: https://example.com/aapl.png
+      - base: USD
+        quote: GOOGL
+        description: |
+          Alphabet Inc. to United States Dollar
+        symbol: GOOGL/USD
+        code: GOOGL-USD
+        precision: 4
+        icon: https://example.com/goog.png
+        source: https://example.com/goog.png
+      - base: USD
+        quote: MSFT
+        description: |
+          Microsoft Corporation to United States Dollar
+        symbol: MSFT/USD
+        code: MSFT-USD
+        precision: 4
+        icon: https://example.com/msft.png
+        source: https://example.com/msft.png
+      - base: USD
+        quote: AMZN
+        description: |
+          Amazon.com shares to United States Dollar
+        symbol: AMZN/USD
+        code: AMZN-USD
+        precision: 4
+        icon: https://example.com/amzn.png
+        source: https://example.com/amzn.png
+      - base: USD
+        quote: TSLA
+        description: |
+          Tesla shares to United States Dollar
+        symbol: TSLA/USD
+        code: TSLA-USD
+        precision: 2
+        icon: https://example.com/tsla.png
+        source: https://example.com/tsla.png
+      - base: USD
+        quote: NU
+        description: |
+          Nu Holdings Inc. shares to United States Dollar
+        symbol: NU/USD
+        code: NU-USD
+        precision: 4
+        icon: https://example.com/nu.png
+        source: https://example.com/nu.png
+      - base: USD
+        quote: NVDA
+        description: |
+          NVIDIA Corporation shares to United States Dollar
+        symbol: NVDA/USD
+        code: NVDA-USD
+        precision: 4
+        icon: https://example.com/nvda.png
+        source: https://example.com/nvda.png
+      - base: USD
+        quote: AMD
+        description: |
+          Advanced Micro Devices Inc. shares to United States Dollar
+        symbol: AMD/USD
+        code: AMD-USD
+        precision: 4
+        icon: https://example.com/amd.png
+        source: https://example.com/amd.png
+      - base: USD
+        quote: INTC
+        description: |
+          Intel Corporation shares to United States Dollar
+        symbol: INTC/USD
+        code: INTC-USD
+        precision: 4
+        icon: https://example.com/intc.png
+        source: https://example.com/intc.png
+  - name: INDEXES
+    description: |
+      This dictionary contains the indexes that are supported by the system.
+    items:
+      - base: USD
+        quote: SPY
+        description: |
+          SPDR S&P 500 Index to United States Dollar
+        symbol: SPY/USD
+        code: SPY-USD
+        precision: 4
+        icon: https://example.com/spy.png
+        source: https://example.com/spy.png
+      - base: USD
+        quote: NASDAQ
+        description: |
+          NASDAQ Index to United States Dollar
+        symbol: NASDAQ/USD
+        internal_code: NASDAQUSD
+        external_code: NASDAQ-USD
+        precision: 4
+        icon: https://example.com/nasdaq.png
+        source: https://example.com/nasdaq.png
+      - base: USD
+        quote: RUT
+        description: |
+          Russell 2000 Index to United States Dollar
+        symbol: RUT/USD
+        code: RUT-USD
+        precision: 2
+        icon: https://example.com/rut.png
+        source: https://example.com/rut.png
+  - name: ETF
+    description: |
+      This dictionary contains the ETFs that are supported by the system.
+    items:
+      - base: USD
+        quote: QQQ
+        description: |
+          Invesco NASDAQ 100 Index ETF to United States Dollar
+        symbol: QQQ/USD
+        code: QQQ-USD
+        precision: 2
+        icon: https://example.com/qqq.png
+        source: https://example.com/qqq.png
+      - base: USD
+        quote: IWM
+        description: |
+          iShares Russell 2000 Index ETF to United States Dollar
+        symbol: IWM/USD
+        code: IWM-USD
+        precision: 2
+        icon: https://example.com/iwm.png
+        source: https://example.com/iwm.png
+      - base: USD
+        quote: IVV
+        description: |
+          iShares S&P 500 Index ETF to United States Dollar
+        symbol: IVV/USD
+        code: IVV-USD
+        precision: 2
+        icon: https://example.com/ivv.png
+        source: https://example.com/ivv.png
+      - base: USD
+        quote: VOO
+        description: |
+          Vanguard S&P 500 ETF to United States Dollar
+        symbol: VOO/USD
+        code: VOO-USD
+        precision: 2
+        icon: https://example.com/voo.png
+        source: https://example.com/voo.png
+      - base: USD
+        quote: VTI
+        description: |
+          Vanguard Total Stock Market ETF to United States Dollar
+        symbol: VTI/USD
+        code: VTI-USD
+        precision: 2
+        icon: https://example.com/vti.png
+        source: https://example.com/vti.png
+      - base: USD
+        quote: VXX
+        description: |
+          ProShares Short S&P 500 Index ETF to United States Dollar
+        symbol: VXX/USD
+        code: VXX-USD
+        precision: 2
+        icon: https://example.com/vxx.png
+        source: https://example.com/vxx.png
+      - base: USD
+        quote: SOXX
+        description: |
+          ProShares Short Semiconductor ETF to United States Dollar
+        symbol: SOXX/USD
+        code: SOXX-USD
+        precision: 2
+        icon: https://example.com/soxx.png
+        source: https://example.com/soxx.png
+      - base: USD
+        quote: SIL
+        description: |
+          iShares Silver Trust ETF to United States Dollar
+        symbol: SIL/USD
+        code: SIL-USD
+        precision: 2
+        icon: https://example.com/sil.png
+        source: https://example.com/sil.png
+      - base: USD
+        quote: SLV
+        description: |
+          iShares Silver Trust ETF to United States Dollar
+        symbol: SLV/USD
+        code: SLV-USD
+        precision: 4
+        icon: https://example.com/slv.png
+        source: https://example.com/slv.png
+      - base: USD
+        quote: IAU
+        description: |
+          iShares Gold Trust ETF to United States Dollar
+        symbol: IAU/USD
+        code: IAU-USD
+        precision: 4
+        icon: https://example.com/iau.png
+        source: https://example.com/iau.png

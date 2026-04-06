@@ -11,11 +11,13 @@ Classes:
 import uuid
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, Column, String, Text
+from sqlalchemy import Column, Text
 from sqlmodel import Field, Relationship
 
-from .base import BaseSQLModel
-from .constants import TYPES__TABLENAME, USERS__TABLENAME
+from papita_txnsmodel.utils.modelutils import URLStr
+
+from .base import CoreTableSQLModel
+from .constants import TYPES__TABLENAME, USERS__TABLENAME, fk_id
 from .enums import TypesClassifications
 
 if TYPE_CHECKING:
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
     from .users import Users
 
 
-class Types(BaseSQLModel, table=True):  # type: ignore
+class Types(CoreTableSQLModel, table=True):  # type: ignore
     """Classification type model for categorizing financial entities in the system.
 
     This class defines the structure for classification types that can be applied to
@@ -33,29 +35,23 @@ class Types(BaseSQLModel, table=True):  # type: ignore
 
     Attributes:
         id (uuid.UUID): Unique identifier for the type. Auto-generated UUID.
-        name (str): Name of the type. Must be unique and is indexed for faster lookups.
-        tags (List[str]): List of tags associated with the type. Must contain at least
-            one tag and all tags must be unique.
+        classification (TypesClassifications): Classification of the type.
+        icon (URLStr | None): Icon of the type.
+        owner_id (uuid.UUID | None): ID of the owner of the type.
+        owner (Users | None): Owner of the type.
         description (str): Detailed description of the type.
-        discriminator (str): Identifier used to distinguish between different kinds
-            of types in the system.
-        asset_accounts (List[AssetAccounts]): List of asset accounts associated with
-            this type. One-to-many relationship with cascade delete.
-        liability_accounts (List[LiabilityAccounts]): List of liability accounts
-            associated with this type. One-to-many relationship with cascade delete.
-        identified_transactions (List[IdentifiedTransactions]): List of identified
-            transactions associated with this type. One-to-many relationship with
-            cascade delete.
+        transactions (List[Transactions]): List of transactions associated with the type.
+        accounts_indexer (List[AccountsIndexer]): List of accounts indexer associated with the type.
+        identified_transactions (List[IdentifiedTransactions]): List of identified transactions associated
+            with the type. One-to-many relationship with cascade delete.
     """
 
     __tablename__ = TYPES__TABLENAME
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     classification: TypesClassifications = Field(nullable=False, index=True)
-    name: str = Field(nullable=False, index=True, unique=True)
-    tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), min_items=1, unique_items=True)
-    description: str = Field(sa_column=Column(Text, nullable=False))
-    owner_id: uuid.UUID | None = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=True, index=True)
+    icon: URLStr | None = Field(sa_column=Column(Text, nullable=True, index=False, unique=False), default=None)
+    owner_id: uuid.UUID | None = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=True, index=True)
 
     owner: Optional["Users"] = Relationship(back_populates="owned_types")
 

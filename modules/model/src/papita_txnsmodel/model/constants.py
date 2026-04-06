@@ -1,5 +1,14 @@
 SCHEMA_NAME = "papita_transactions"
 
+
+def fk_id(related_tablename: str) -> str:
+    """Return a schema-qualified ``table.id`` string for SQLModel/SQLAlchemy foreign keys.
+
+    Required so Alembic and MetaData can resolve referenced tables under ``SCHEMA_NAME``.
+    """
+    return f"{SCHEMA_NAME}.{related_tablename}.id"
+
+
 ACCOUNTS__TABLENAME = "accounts"
 
 ACCOUNTS_INDEXER__TABLENAME = "accounts_indexer"
@@ -25,6 +34,10 @@ TYPES_CLASSIFICATIONS__TABLENAME = "types_classifications"
 TYPES__TABLENAME = "types"
 
 IDENTIFIED_TRANSACTIONS__TABLENAME = "identified_transactions"
+
+MARKET_ASSET_GROUPS__TABLENAME = "market_asset_groups"
+
+MARKET_ASSETS__TABLENAME = "market_assets"
 
 TRANSACTIONS__TABLENAME = "transactions"
 

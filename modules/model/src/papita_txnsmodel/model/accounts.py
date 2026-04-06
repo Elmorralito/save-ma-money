@@ -9,14 +9,18 @@ Classes:
 """
 
 import uuid
-from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from datetime import datetime as builtin_datetime
+from typing import TYPE_CHECKING, List, Self
 
-from sqlalchemy import ARRAY, TIMESTAMP, Column, String, Text
-from sqlmodel import Field, Relationship
+from pydantic import model_validator
+from sqlalchemy import TIMESTAMP, Text
+from sqlmodel import Column, Field, Relationship
 
-from .base import BaseSQLModel
-from .constants import ACCOUNTS__TABLENAME, USERS__TABLENAME
+from papita_txnsmodel.utils import modelutils
+from papita_txnsmodel.utils.modelutils import URLStr
+
+from .base import CoreTableSQLModel
+from .constants import ACCOUNTS__TABLENAME, SCHEMA_NAME, USERS__TABLENAME, fk_id
 
 if TYPE_CHECKING:
     from .indexers import AccountsIndexer
@@ -24,7 +28,7 @@ if TYPE_CHECKING:
     from .users import Users
 
 
-class Accounts(BaseSQLModel, table=True):  # type: ignore
+class Accounts(CoreTableSQLModel, table=True):  # type: ignore
     """Financial account model representing accounts in the Papita Transactions system.
 
     This class defines the structure for financial accounts, which can be linked to
@@ -39,12 +43,10 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
             one tag and all tags must be unique.
         start_ts (datetime.datetime): Timestamp when the account became active.
             Indexed for time-based queries.
-        end_ts (Optional[datetime.datetime]): Timestamp when the account was closed or
+        end_ts (datetime | None): Timestamp when the account was closed or
             deactivated. Null if the account is still active.
-        asset_accounts (AssetAccounts): Related asset account information. One-to-one
-            relationship with cascade delete.
-        liability_accounts (Optional[LiabilityAccounts]): Related liability account
-            information. Optional one-to-one relationship with cascade delete.
+        owner (Users): The owner of the account. One-to-one relationship with cascade delete.
+        accounts_indexer (AccountsIndexer): The indexer of the account. One-to-one relationship with cascade delete.
         transactions_from_accounts (List[Transactions]): List of transactions where this
             account is the source. One-to-many relationship with cascade delete.
         transactions_to_accounts (List[Transactions]): List of transactions where this
@@ -52,20 +54,21 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
     """
 
     __tablename__ = ACCOUNTS__TABLENAME
+    __table_args__ = {"schema": SCHEMA_NAME}
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(sa_type=String, nullable=False, index=True)
-    description: str = Field(sa_type=Text, nullable=False)
-    tags: List[str] = Field(sa_column=Column(ARRAY(String)), min_items=1, unique_items=True)
-    start_ts: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now)
-    end_ts: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+    start_ts: builtin_datetime = Field(
+        sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=modelutils.current_timestamp
+    )
+    end_ts: builtin_datetime | None = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
+    icon: URLStr | None = Field(sa_column=Column(Text, nullable=True, index=False, unique=False), default=None)
+    owner_id: uuid.UUID = Field(foreign_key=fk_id(USERS__TABLENAME), nullable=False, index=True)
 
-    owner: "Users" = Relationship(back_populates="owned_accounts")
+    owner: "Users" = Relationship(back_populates="owned_accounts", sa_relationship_kwargs={"foreign_keys": "Users.id"})
 
     accounts_indexer: "AccountsIndexer" = Relationship(
         back_populates=ACCOUNTS__TABLENAME,
-        sa_relationship_kwargs={"uselist": False},
+        sa_relationship_kwargs={"uselist": False, "foreign_keys": "AccountsIndexer.account_id"},
         cascade_delete=True,
     )
 
@@ -80,3 +83,18 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
         sa_relationship_kwargs={"foreign_keys": "Transactions.to_account_id"},
         cascade_delete=True,
     )
+
+    @model_validator(mode="after")
+    def _normalize_model(self) -> Self:
+        """Normalize the model after initialization."""
+        super()._normalize_model()
+        if self.end_ts and self.start_ts > self.end_ts:
+            raise ValueError("The end_ts must be after the start_ts")
+
+        if self.end_ts and self.end_ts < self.created_at:
+            raise ValueError("The end_ts must be after the created_at")
+
+        if self.end_ts and self.end_ts < self.updated_at:
+            raise ValueError("The end_ts must be before the updated_at")
+
+        return self

@@ -1,0 +1,33 @@
+---
+groups:
+  - name: FIAT CURRENCIES
+    description: |
+      This dictionary contains the FIAT currencies that are supported by the system.
+    items:
+      - base: USD
+        quote: COP
+        description: |
+          United States Dollar to Colombian Peso
+        symbol: USD/COP
+        code: USD-COP
+        precision: 2
+        icon: https://example.com/usd.png
+        source: https://example.com/usd.png
+      - base: USD
+        quote: EUR
+        description: |
+          United States Dollar to Euro
+        symbol: USD/EUR
+        code: USD-EUR
+        precision: 2
+        icon: https://example.com/usd.png
+        source: https://example.com/usd.png
+      - base: USD
+        quote: GBP
+        description: |
+          United States Dollar to British Pound
+        symbol: USD/GBP
+        code: USD-GBP
+        precision: 2
+        icon: https://example.com/usd.png
+        source: https://example.com/usd.png
