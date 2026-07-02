@@ -4,7 +4,7 @@ version = "0.0.3a14"
 description = "API for this mess"
 readme = "README.md"
 license = "LICENSE"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.15"
 authors = [
     { name = "Elmorralito", email = "drestrepohinc@gmail.com" }
 ]

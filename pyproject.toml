@@ -8,13 +8,11 @@ authors = ["Elmorralito <drestrepohinc@gmail.com>"]
 include = ["README.md"]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = ">=3.10,<3.15"
 
 [tool.poetry.group.development.dependencies]
 papita-transactions-api = { path = "modules/api", develop = true }
 papita-transactions-model = { path = "modules/model", develop = true }
-papita-transactions-registrar = { path = "modules/registrar", develop = true}
-papita-transactions-registrar-plugins = { path = "modules/plugins", develop = true}
 
 [tool.poetry.group.ci.dependencies]
 requests = "^2.32.5"
