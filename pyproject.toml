@@ -162,12 +162,11 @@ max-line-length = 120
 max-complexity = 18
 
 [tool.interrogate]
-paths = ["./modules/api/src", "./modules/model/src", "./modules/registrar/src"]
+paths = ["./modules/api/src", "./modules/model/src"]
 exclude = [
     "./modules/api/tests",
     "./modules/model/alembic",
     "./modules/model/tests",
-    "./modules/registrar/tests",
     "venv",
     ".venv",
     "build",

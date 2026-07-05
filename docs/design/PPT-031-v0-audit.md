@@ -1,15 +1,15 @@
 # PPT-031 v0: Data Model Audit and 3NF Gap Analysis
 
-| Field | Value |
-| --- | --- |
-| **Issue** | [#30 — Data model audit and 3NF gap analysis (v0)](https://github.com/Elmorralito/save-ma-money/issues/30) |
-| **Parent** | [#28 — refactor/PPT-031: Simplify data model and align API design](https://github.com/Elmorralito/save-ma-money/issues/28) |
-| **Track** | A — Step A1 |
-| **Baseline** | PR #27 (users + `owner_id`), PR #29 (API spec scaffold) |
-| **Schema** | `papita_transactions` (PostgreSQL / Supabase) |
-| **Date** | 2026-07-05 |
-| **Last expert review** | 2026-07-05 (5 iterations — see §13) |
-| **Status** | v0 baseline — pre-simplification |
+| Field                  | Value                                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **Issue**              | [#30 — Data model audit and 3NF gap analysis (v0)](https://github.com/Elmorralito/save-ma-money/issues/30)                 |
+| **Parent**             | [#28 — refactor/PPT-031: Simplify data model and align API design](https://github.com/Elmorralito/save-ma-money/issues/28) |
+| **Track**              | A — Step A1                                                                                                                |
+| **Baseline**           | PR #27 (users + `owner_id`), PR #29 (API spec scaffold)                                                                    |
+| **Schema**             | `papita_transactions` (PostgreSQL / Supabase)                                                                              |
+| **Date**               | 2026-07-05                                                                                                                 |
+| **Last expert review** | 2026-07-05 (5 iterations — see §13)                                                                                        |
+| **Status**             | v0 baseline — pre-simplification                                                                                           |
 
 ---
 
@@ -17,32 +17,32 @@
 
 This document captures the **current state** of the `papita_transactions` schema before PPT-031 simplification. It inventories all 14 SQLModel tables, analyzes normalization (1NF / 2NF / 3NF), assesses `AccountsIndexer` complexity, evaluates redundant `owner_id` columns introduced in PR #27, and documents how repositories, handlers, and the load pipeline interact with the schema today.
 
-**Key findings:**
+**Key findings:** (full register with evidence in [§14](#14-new-findings-register-expert-review-2026-07-05))
 
-| Area | Finding | Severity |
-| --- | --- | --- |
-| **AccountsIndexer** | 8 nullable FK columns with no DB constraint enforcing exactly one populated | High |
-| **Redundant `owner_id`** | Present on 13 tables; derivable via FK chains in most cases | Medium |
-| **3NF violations** | Transitive dependencies via duplicated financial columns across base + subtype tables; denormalized tenancy | Medium–High |
-| **Types identity** | Deterministic UUID ignores `owner_id`; `name` is globally unique | High (multi-tenant) |
-| **AccountsIndexer audit gap** | Does not extend `BaseSQLModel` — no soft delete or timestamps | Medium |
-| **Load pipeline** | Deep dependency chains through indexer handler; `owner=None` still accepted | Medium |
-| **Ledger semantics** | Single-sided entries only at ingest; **transfers rejected** by handler | High (domain) |
-| **Missing primitives** | No `currency`, stored `balance`, or double-entry journal lines | High (API gap) |
-| **Indexer DTO bug** | `_validate_linked_accounts()` rejects any populated extended subtype | Critical (runtime) |
+| Area                          | Finding                                                                                                     | Severity            |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------- |
+| **AccountsIndexer**           | 8 nullable FK columns with no DB constraint enforcing exactly one populated                                 | High                |
+| **Redundant `owner_id`**      | Present on 13 tables; derivable via FK chains in most cases                                                 | Medium              |
+| **3NF violations**            | Transitive dependencies via duplicated financial columns across base + subtype tables; denormalized tenancy | Medium–High         |
+| **Types identity**            | Deterministic UUID ignores `owner_id`; `name` is globally unique                                            | High (multi-tenant) |
+| **AccountsIndexer audit gap** | Does not extend `BaseSQLModel` — no soft delete or timestamps                                               | Medium              |
+| **Load pipeline**             | Deep dependency chains through indexer handler; `owner=None` still accepted                                 | Medium              |
+| **Ledger semantics**          | Single-sided entries only at ingest; **transfers rejected** by handler                                      | High (domain)       |
+| **Missing primitives**        | No `currency`, stored `balance`, or double-entry journal lines                                              | High (API gap)      |
+| **Indexer DTO bug**           | `_validate_linked_accounts()` rejects any populated extended subtype                                        | Critical (runtime)  |
 
 The v0 schema is **functional for single-tenant cash-flow ingestion** (income/expense against named accounts) but is **not** a general ledger, multi-currency portfolio system, or clean multi-tenant product schema. Structural debt blocks API CRUD (#25) and tenant isolation (#24) without redesign (#32).
 
 ### 1.1 Domain context (personal finance vs accounting)
 
-| Concept | v0 representation | Typical PF/ accounting expectation |
-| --- | --- | --- |
-| **Chart of accounts** | `accounts` shell + `types.classification` (ASSETS / LIABILITIES / TRANSACTIONS) | COA hierarchy with account codes |
-| **Account balance** | Not stored; implied by `assets_accounts.last_value` / `liability_accounts.present_value` | Running balance or derived from ledger |
-| **Categories** | `types` where `classification = TRANSACTIONS` | income/expense tags; API spec uses `/categories` |
-| **Budget / recurring** | `identified_transactions` (planned value, day-of-month) | budget lines or scheduled transactions |
-| **Posted activity** | `transactions` (single `value`, one account side) | transfer pair or double-entry lines |
-| **Multi-currency** | Absent | `currency` on account and transaction (API spec expects it) |
+| Concept                | v0 representation                                                                        | Typical PF/ accounting expectation                          |
+| ---------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| **Chart of accounts**  | `accounts` shell + `types.classification` (ASSETS / LIABILITIES / TRANSACTIONS)          | COA hierarchy with account codes                            |
+| **Account balance**    | Not stored; implied by `assets_accounts.last_value` / `liability_accounts.present_value` | Running balance or derived from ledger                      |
+| **Categories**         | `types` where `classification = TRANSACTIONS`                                            | income/expense tags; API spec uses `/categories`            |
+| **Budget / recurring** | `identified_transactions` (planned value, day-of-month)                                  | budget lines or scheduled transactions                      |
+| **Posted activity**    | `transactions` (single `value`, one account side)                                        | transfer pair or double-entry lines                         |
+| **Multi-currency**     | Absent                                                                                   | `currency` on account and transaction (API spec expects it) |
 
 **Positioning:** v0 is closer to a **typed account register + cash-flow log** than to double-entry bookkeeping. That is valid for personal finance if documented; it conflicts with API fields (`balance`, `currency`, `transaction_type`) defined in PR #29.
 
@@ -72,10 +72,10 @@ Existing diagram (predates `users` and PR #27 changes): [`docs/postgres_papita_t
 
 ### 2.3 Base model inheritance
 
-| Pattern | Tables |
-| --- | --- |
-| Extends `BaseSQLModel` | 13 tables — `active`, `deleted_at`, `created_at`, `updated_at` |
-| Raw `SQLModel` (no audit fields) | `accounts_indexer` only |
+| Pattern                          | Tables                                                         |
+| -------------------------------- | -------------------------------------------------------------- |
+| Extends `BaseSQLModel`           | 13 tables — `active`, `deleted_at`, `created_at`, `updated_at` |
+| Raw `SQLModel` (no audit fields) | `accounts_indexer` only                                        |
 
 Source: [`modules/model/src/papita_txnsmodel/model/base.py`](../../modules/model/src/papita_txnsmodel/model/base.py), [`indexers.py`](../../modules/model/src/papita_txnsmodel/model/indexers.py).
 
@@ -87,16 +87,16 @@ All tables live in schema **`papita_transactions`**. Index names follow Alembic 
 
 ### 3.1 `users`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `username` | VARCHAR | NO | unique |
-| `email` | VARCHAR | NO | unique |
-| `password` | VARCHAR | NO | Argon2 hash at DTO serialize time |
-| `active` | BOOLEAN | NO | default `true` |
-| `deleted_at` | TIMESTAMP | YES | soft delete |
-| `created_at` | TIMESTAMP | NO | |
-| `updated_at` | TIMESTAMP | NO | |
+| Column       | Type      | Nullable | Notes                             |
+| ------------ | --------- | -------- | --------------------------------- |
+| `id`         | UUID      | NO       | PK                                |
+| `username`   | VARCHAR   | NO       | unique                            |
+| `email`      | VARCHAR   | NO       | unique                            |
+| `password`   | VARCHAR   | NO       | Argon2 hash at DTO serialize time |
+| `active`     | BOOLEAN   | NO       | default `true`                    |
+| `deleted_at` | TIMESTAMP | YES      | soft delete                       |
+| `created_at` | TIMESTAMP | NO       |                                   |
+| `updated_at` | TIMESTAMP | NO       |                                   |
 
 **PK:** `id`
 
@@ -110,16 +110,16 @@ All tables live in schema **`papita_transactions`**. Index names follow Alembic 
 
 ### 3.2 `accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK, auto-generated |
-| `name` | VARCHAR | NO | |
-| `description` | TEXT | NO | |
-| `tags` | VARCHAR[] | NO | min 1, unique items (Pydantic) |
-| `start_ts` | TIMESTAMP | NO | indexed |
-| `end_ts` | TIMESTAMP | YES | indexed |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type      | Nullable | Notes                          |
+| -------------------------------------------------- | --------- | -------- | ------------------------------ |
+| `id`                                               | UUID      | NO       | PK, auto-generated             |
+| `name`                                             | VARCHAR   | NO       |                                |
+| `description`                                      | TEXT      | NO       |                                |
+| `tags`                                             | VARCHAR[] | NO       | min 1, unique items (Pydantic) |
+| `start_ts`                                         | TIMESTAMP | NO       | indexed                        |
+| `end_ts`                                           | TIMESTAMP | YES      | indexed                        |
+| `owner_id`                                         | UUID      | NO       | FK → `users.id`                |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —         | —        | BaseSQLModel                   |
 
 **PK:** `id`
 
@@ -131,15 +131,15 @@ All tables live in schema **`papita_transactions`**. Index names follow Alembic 
 
 ### 3.3 `types`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK; deterministic uuid5 from `name + classification` in DTO |
-| `classification` | ENUM | NO | `ASSETS`, `LIABILITIES`, `TRANSACTIONS` |
-| `name` | VARCHAR | NO | **globally unique** |
-| `tags` | VARCHAR[] | NO | |
-| `description` | TEXT | NO | |
-| `owner_id` | UUID | YES | FK → `users.id`; NULL = global type |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type      | Nullable | Notes                                                       |
+| -------------------------------------------------- | --------- | -------- | ----------------------------------------------------------- |
+| `id`                                               | UUID      | NO       | PK; deterministic uuid5 from `name + classification` in DTO |
+| `classification`                                   | ENUM      | NO       | `ASSETS`, `LIABILITIES`, `TRANSACTIONS`                     |
+| `name`                                             | VARCHAR   | NO       | **globally unique**                                         |
+| `tags`                                             | VARCHAR[] | NO       |                                                             |
+| `description`                                      | TEXT      | NO       |                                                             |
+| `owner_id`                                         | UUID      | YES      | FK → `users.id`; NULL = global type                         |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —         | —        | BaseSQLModel                                                |
 
 **PK:** `id`
 
@@ -153,18 +153,18 @@ All tables live in schema **`papita_transactions`**. Index names follow Alembic 
 
 Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `account_id` | UUID | NO | PK; FK → `accounts.id` |
-| `type_id` | UUID | NO | FK → `types.id` |
-| `owner_id` | UUID | NO | FK → `users.id` (PR #27) |
-| `asset_account_id` | UUID | YES | FK → `assets_accounts.id` |
-| `liability_account_id` | UUID | YES | FK → `liability_accounts.id` |
-| `banking_asset_account_id` | UUID | YES | FK → `banking_asset_accounts.id` |
-| `real_estate_asset_account_id` | UUID | YES | FK → `real_estate_asset_accounts.id` |
-| `trading_asset_account_id` | UUID | YES | FK → `trading_asset_accounts.id` |
-| `bank_credit_liability_account_id` | UUID | YES | FK → `bank_credit_liability_accounts.id` |
-| `credit_card_liability_account_id` | UUID | YES | FK → `credit_card_liability_accounts.id` |
+| Column                             | Type | Nullable | Notes                                    |
+| ---------------------------------- | ---- | -------- | ---------------------------------------- |
+| `account_id`                       | UUID | NO       | PK; FK → `accounts.id`                   |
+| `type_id`                          | UUID | NO       | FK → `types.id`                          |
+| `owner_id`                         | UUID | NO       | FK → `users.id` (PR #27)                 |
+| `asset_account_id`                 | UUID | YES      | FK → `assets_accounts.id`                |
+| `liability_account_id`             | UUID | YES      | FK → `liability_accounts.id`             |
+| `banking_asset_account_id`         | UUID | YES      | FK → `banking_asset_accounts.id`         |
+| `real_estate_asset_account_id`     | UUID | YES      | FK → `real_estate_asset_accounts.id`     |
+| `trading_asset_account_id`         | UUID | YES      | FK → `trading_asset_accounts.id`         |
+| `bank_credit_liability_account_id` | UUID | YES      | FK → `bank_credit_liability_accounts.id` |
+| `credit_card_liability_account_id` | UUID | YES      | FK → `credit_card_liability_accounts.id` |
 
 **PK:** `account_id` (1:1 with `accounts`)
 
@@ -178,18 +178,18 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.5 `assets_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `months_per_period` | SMALLINT | NO | default 1, > 0 |
-| `initial_value` | DECIMAL(22,8) | YES | > 0 |
-| `last_value` | DECIMAL(22,8) | YES | > 0 |
-| `monthly_interest_rate` | DECIMAL(10,4) | YES | > 0 |
-| `yearly_interest_rate` | DECIMAL(10,4) | YES | > 0 |
-| `roi` | DECIMAL(10,4) | YES | > 0 |
-| `periodical_earnings` | DECIMAL(22,8) | YES | > 0 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `months_per_period`                                | SMALLINT      | NO       | default 1, > 0  |
+| `initial_value`                                    | DECIMAL(22,8) | YES      | > 0             |
+| `last_value`                                       | DECIMAL(22,8) | YES      | > 0             |
+| `monthly_interest_rate`                            | DECIMAL(10,4) | YES      | > 0             |
+| `yearly_interest_rate`                             | DECIMAL(10,4) | YES      | > 0             |
+| `roi`                                              | DECIMAL(10,4) | YES      | > 0             |
+| `periodical_earnings`                              | DECIMAL(22,8) | YES      | > 0             |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -201,13 +201,13 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.6 `banking_asset_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK (extends `ExtendedAssetAccounts`) |
-| `entity` | VARCHAR | NO | bank name |
-| `account_number` | VARCHAR | YES | |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type    | Nullable | Notes                                |
+| -------------------------------------------------- | ------- | -------- | ------------------------------------ |
+| `id`                                               | UUID    | NO       | PK (extends `ExtendedAssetAccounts`) |
+| `entity`                                           | VARCHAR | NO       | bank name                            |
+| `account_number`                                   | VARCHAR | YES      |                                      |
+| `owner_id`                                         | UUID    | NO       | FK → `users.id`                      |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —       | —        | BaseSQLModel                         |
 
 **PK:** `id`
 
@@ -219,16 +219,16 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.7 `real_estate_asset_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `address`, `city`, `country` | VARCHAR | NO | |
-| `total_area`, `built_area` | DECIMAL(12,4) | NO | > 0 |
-| `area_unit` | ENUM | NO | `SQ_MT`, `SQ_FT`, `AC`, `HA`, `BLK` |
-| `ownership` | ENUM | NO | `FULL`, `PARTIAL` |
-| `participation` | DECIMAL(4,4) | NO | 0–1, default 1.0 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes                               |
+| -------------------------------------------------- | ------------- | -------- | ----------------------------------- |
+| `id`                                               | UUID          | NO       | PK                                  |
+| `address`, `city`, `country`                       | VARCHAR       | NO       |                                     |
+| `total_area`, `built_area`                         | DECIMAL(12,4) | NO       | > 0                                 |
+| `area_unit`                                        | ENUM          | NO       | `SQ_MT`, `SQ_FT`, `AC`, `HA`, `BLK` |
+| `ownership`                                        | ENUM          | NO       | `FULL`, `PARTIAL`                   |
+| `participation`                                    | DECIMAL(4,4)  | NO       | 0–1, default 1.0                    |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id`                     |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel                        |
 
 **PK:** `id`
 
@@ -240,14 +240,14 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.8 `trading_asset_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `buy_value` | DECIMAL(22,8) | NO | > 0 |
-| `last_value` | DECIMAL(22,8) | YES | > 0 |
-| `units` | SMALLINT | NO | default 1, > 0 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `buy_value`                                        | DECIMAL(22,8) | NO       | > 0             |
+| `last_value`                                       | DECIMAL(22,8) | YES      | > 0             |
+| `units`                                            | SMALLINT      | NO       | default 1, > 0  |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -261,17 +261,17 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.9 `liability_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `months_per_period` | SMALLINT | YES | default 1 |
-| `initial_value`, `present_value` | DECIMAL(22,8) | NO | > 0 |
-| `monthly_interest_rate`, `yearly_interest_rate` | DECIMAL(10,4) | YES | > 0 |
-| `payment`, `total_paid` | DECIMAL(22,8) | NO | > 0 |
-| `overall_periods`, `periods_paid` | SMALLINT | NO | > 0 |
-| `closing_day` | SMALLINT | NO | 1–28 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `months_per_period`                                | SMALLINT      | YES      | default 1       |
+| `initial_value`, `present_value`                   | DECIMAL(22,8) | NO       | > 0             |
+| `monthly_interest_rate`, `yearly_interest_rate`    | DECIMAL(10,4) | YES      | > 0             |
+| `payment`, `total_paid`                            | DECIMAL(22,8) | NO       | > 0             |
+| `overall_periods`, `periods_paid`                  | SMALLINT      | NO       | > 0             |
+| `closing_day`                                      | SMALLINT      | NO       | 1–28            |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -285,13 +285,13 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.10 `bank_credit_liability_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `paid` | BOOLEAN | NO | default false |
-| `insurance_payment`, `extras_payment` | DECIMAL(22,8) | NO | |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `paid`                                             | BOOLEAN       | NO       | default false   |
+| `insurance_payment`, `extras_payment`              | DECIMAL(22,8) | NO       |                 |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -303,12 +303,12 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 ### 3.11 `credit_card_liability_accounts`
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `credit_limit` | DECIMAL(22,8) | NO | |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `credit_limit`                                     | DECIMAL(22,8) | NO       |                 |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -322,13 +322,13 @@ Central polymorphic hub — **does not extend `BaseSQLModel`**.
 
 Join table linking bank credit liabilities to assets.
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `bank_credit_liability_account_id` | UUID | NO | PK; FK → `bank_credit_liability_accounts.id` |
-| `asset_account_id` | UUID | NO | FK → `assets_accounts.id` |
-| `financing_share` | DECIMAL(4,4) | NO | 0–1, default 1.0 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type         | Nullable | Notes                                        |
+| -------------------------------------------------- | ------------ | -------- | -------------------------------------------- |
+| `bank_credit_liability_account_id`                 | UUID         | NO       | PK; FK → `bank_credit_liability_accounts.id` |
+| `asset_account_id`                                 | UUID         | NO       | FK → `assets_accounts.id`                    |
+| `financing_share`                                  | DECIMAL(4,4) | NO       | 0–1, default 1.0                             |
+| `owner_id`                                         | UUID         | NO       | FK → `users.id`                              |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —            | —        | BaseSQLModel                                 |
 
 **PK:** `bank_credit_liability_account_id` only — **one credit → one asset**; one asset may have many credits only if PK design changes.
 
@@ -344,17 +344,17 @@ Join table linking bank credit liabilities to assets.
 
 Transaction templates / recurring plans.
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `type_id` | UUID | NO | FK → `types.id` |
-| `name` | VARCHAR | NO | indexed |
-| `tags` | VARCHAR[] | NO | |
-| `description` | VARCHAR | NO | |
-| `planned_value` | DECIMAL(22,8) | NO | > 0 |
-| `planned_transaction_day` | SMALLINT | NO | 1–28 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes           |
+| -------------------------------------------------- | ------------- | -------- | --------------- |
+| `id`                                               | UUID          | NO       | PK              |
+| `type_id`                                          | UUID          | NO       | FK → `types.id` |
+| `name`                                             | VARCHAR       | NO       | indexed         |
+| `tags`                                             | VARCHAR[]     | NO       |                 |
+| `description`                                      | VARCHAR       | NO       |                 |
+| `planned_value`                                    | DECIMAL(22,8) | NO       | > 0             |
+| `planned_transaction_day`                          | SMALLINT      | NO       | 1–28            |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id` |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel    |
 
 **PK:** `id`
 
@@ -368,16 +368,16 @@ Transaction templates / recurring plans.
 
 Posted ledger entries.
 
-| Column | Type | Nullable | Notes |
-| --- | --- | --- | --- |
-| `id` | UUID | NO | PK |
-| `identified_transaction_id` | UUID | YES | FK → `identified_transactions.id` |
-| `from_account_id` | UUID | YES | FK → `accounts.id` |
-| `to_account_id` | UUID | YES | FK → `accounts.id` |
-| `transaction_ts` | TIMESTAMP | NO | indexed |
-| `value` | DECIMAL(22,8) | NO | > 0 |
-| `owner_id` | UUID | NO | FK → `users.id` |
-| `active`, `deleted_at`, `created_at`, `updated_at` | — | — | BaseSQLModel |
+| Column                                             | Type          | Nullable | Notes                             |
+| -------------------------------------------------- | ------------- | -------- | --------------------------------- |
+| `id`                                               | UUID          | NO       | PK                                |
+| `identified_transaction_id`                        | UUID          | YES      | FK → `identified_transactions.id` |
+| `from_account_id`                                  | UUID          | YES      | FK → `accounts.id`                |
+| `to_account_id`                                    | UUID          | YES      | FK → `accounts.id`                |
+| `transaction_ts`                                   | TIMESTAMP     | NO       | indexed                           |
+| `value`                                            | DECIMAL(22,8) | NO       | > 0                               |
+| `owner_id`                                         | UUID          | NO       | FK → `users.id`                   |
+| `active`, `deleted_at`, `created_at`, `updated_at` | —             | —        | BaseSQLModel                      |
 
 **PK:** `id`
 
@@ -387,9 +387,24 @@ Posted ledger entries.
 
 **Business rule (handler-enforced):** exactly one of `from_account_id` or `to_account_id` must be non-null (income vs expense).
 
-**Transfer gap:** `TransactionsHandler._match_accounts()` **drops rows where both** `from_account_id` and `to_account_id` are populated. Inter-account transfers (checking → savings) cannot be ingested through the current pipeline. Modeling a transfer requires two single-sided rows manually — with no link guaranteeing pair integrity.
+**Transfer gap (NF-01):** `TransactionsHandler._match_accounts()` **drops rows where both** `from_account_id` and `to_account_id` are populated. Inter-account transfers (checking → savings) cannot be ingested through the current pipeline.
 
-**Sign convention:** `value` is always positive (`gt=0`). Direction is encoded only by which side (from = outflow, to = inflow) is set — implicit, not enumerated.
+**Orphan row gap (NF-02):** The same filter drops rows where **neither** account FK is set after matching — unallocated / external-only rows without a resolved account are silently removed.
+
+**Pair integrity (NF-03):** Modeling a transfer requires two single-sided rows manually; the schema has no `transfer_group_id`, paired FK, or double-entry lines to keep them in sync.
+
+Filter logic (source):
+
+```361:366:modules/model/src/papita_txnsmodel/handlers/transactions.py
+        return data_.loc[
+            ~(
+                (pd.isna(data_[from_account_id_column]) & pd.isna(data_[to_account_id_column]))
+                | (~pd.isna(data_[from_account_id_column]) & ~pd.isna(data_[to_account_id_column]))
+            )
+        ]
+```
+
+**Sign convention (NF-10):** `value` is always positive (`gt=0`). Direction is encoded only by which side (from = outflow, to = inflow) is set — implicit, not enumerated in the model.
 
 ---
 
@@ -397,9 +412,9 @@ Posted ledger entries.
 
 ### 4.1 First normal form (1NF)
 
-| Table | 1NF status | Notes |
-| --- | --- | --- |
-| All 14 tables | **Pass** | Atomic scalar columns; `tags` stored as PostgreSQL `ARRAY(String)` |
+| Table         | 1NF status | Notes                                                              |
+| ------------- | ---------- | ------------------------------------------------------------------ |
+| All 14 tables | **Pass**   | Atomic scalar columns; `tags` stored as PostgreSQL `ARRAY(String)` |
 
 **1NF consideration — `tags` arrays:**
 
@@ -415,11 +430,11 @@ Posted ledger entries.
 
 2NF applies when a non-key column depends on **part of** a composite primary key.
 
-| Table | 2NF status | Analysis |
-| --- | --- | --- |
-| Single-column PK tables (12) | **Pass** | No partial key dependencies |
-| `accounts_indexer` | **Pass** | PK is `account_id` only |
-| `financed_asset_accounts` | **Review** | PK is only `bank_credit_liability_account_id`. `asset_account_id` and `financing_share` depend on the full relationship `(credit_id, asset_id)`. If many-to-many is intended, PK should be composite. |
+| Table                        | 2NF status | Analysis                                                                                                                                                                                              |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Single-column PK tables (12) | **Pass**   | No partial key dependencies                                                                                                                                                                           |
+| `accounts_indexer`           | **Pass**   | PK is `account_id` only                                                                                                                                                                               |
+| `financed_asset_accounts`    | **Review** | PK is only `bank_credit_liability_account_id`. `asset_account_id` and `financing_share` depend on the full relationship `(credit_id, asset_id)`. If many-to-many is intended, PK should be composite. |
 
 **Example — financed assets:**
 
@@ -441,21 +456,21 @@ If one asset is financed by two credits, the current PK prevents a second row wi
 
 **Violation pattern:** `owner_id` on child tables when ownership is derivable through FK chains.
 
-| Table | `owner_id` derivable via | Redundant? |
-| --- | --- | --- |
-| `accounts_indexer` | `account_id` → `accounts.owner_id` | Yes |
-| `assets_accounts` | `accounts_indexer.account_id` → `accounts.owner_id` | Yes |
-| `banking_asset_accounts` | same chain via indexer | Yes |
-| `real_estate_asset_accounts` | same | Yes |
-| `trading_asset_accounts` | same | Yes |
-| `liability_accounts` | same | Yes |
-| `bank_credit_liability_accounts` | same | Yes |
-| `credit_card_liability_accounts` | same | Yes |
-| `financed_asset_accounts` | either FK side → indexer → accounts | Yes |
-| `transactions` | `from_account_id` or `to_account_id` → `accounts.owner_id` | Mostly yes* |
-| `identified_transactions` | `type_id` → `types.owner_id` (when not global) | Partial** |
-| `types` | self — tenant root for taxonomy | No (when used as scope key) |
-| `accounts` | self | No |
+| Table                            | `owner_id` derivable via                                   | Redundant?                  |
+| -------------------------------- | ---------------------------------------------------------- | --------------------------- |
+| `accounts_indexer`               | `account_id` → `accounts.owner_id`                         | Yes                         |
+| `assets_accounts`                | `accounts_indexer.account_id` → `accounts.owner_id`        | Yes                         |
+| `banking_asset_accounts`         | same chain via indexer                                     | Yes                         |
+| `real_estate_asset_accounts`     | same                                                       | Yes                         |
+| `trading_asset_accounts`         | same                                                       | Yes                         |
+| `liability_accounts`             | same                                                       | Yes                         |
+| `bank_credit_liability_accounts` | same                                                       | Yes                         |
+| `credit_card_liability_accounts` | same                                                       | Yes                         |
+| `financed_asset_accounts`        | either FK side → indexer → accounts                        | Yes                         |
+| `transactions`                   | `from_account_id` or `to_account_id` → `accounts.owner_id` | Mostly yes\*                |
+| `identified_transactions`        | `type_id` → `types.owner_id` (when not global)             | Partial\*\*                 |
+| `types`                          | self — tenant root for taxonomy                            | No (when used as scope key) |
+| `accounts`                       | self                                                       | No                          |
 
 \*Income/expense transactions have one account FK populated; `owner_id` duplicates that account's owner.
 
@@ -479,10 +494,10 @@ No DB trigger enforces `transactions.owner_id = accounts.owner_id`.
 
 **Violation:** Base and extended asset/liability tables repeat overlapping financial semantics.
 
-| Base column (`assets_accounts`) | Also on subtype | Transitive dependency |
-| --- | --- | --- |
-| `last_value` | `trading_asset_accounts.last_value` | Subtype value may diverge from base |
-| `initial_value`, interest rates, `roi` | — | Base holds generic attrs; subtype adds specifics without FK to base row |
+| Base column (`assets_accounts`)        | Also on subtype                     | Transitive dependency                                                   |
+| -------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| `last_value`                           | `trading_asset_accounts.last_value` | Subtype value may diverge from base                                     |
+| `initial_value`, interest rates, `roi` | —                                   | Base holds generic attrs; subtype adds specifics without FK to base row |
 
 A banking account row in v0 requires **three physical rows**: `accounts`, `assets_accounts`, `banking_asset_accounts`, linked through `accounts_indexer`. Financial columns on `assets_accounts` are **functionally determined by account identity** but stored separately from subtype-specific columns — classic class-table inheritance overhead, not strictly a 3NF violation, but creates **update anomalies** when `last_value` must stay in sync across base and trading extension.
 
@@ -522,22 +537,22 @@ This is a **cross-tenant identity collision**, not classical 3NF, but violates n
 
 ### 4.4 Normalization summary matrix
 
-| Table | 1NF | 2NF | 3NF | Primary issue |
-| --- | --- | --- | --- | --- |
-| `users` | ✓ | ✓ | ✓ | — |
-| `accounts` | ✓ | ✓ | ✓ | — |
-| `types` | ✓ | ✓ | △ | Global unique `name` + nullable `owner_id` |
-| `accounts_indexer` | ✓ | ✓ | ✗ | Redundant `owner_id`, `type_id`; sparse FK matrix |
-| `assets_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id`; overlaps with subtypes |
-| `banking_asset_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id` |
-| `real_estate_asset_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id` |
-| `trading_asset_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id`; `last_value` overlap |
-| `liability_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id` |
-| `bank_credit_liability_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id` |
-| `credit_card_liability_accounts` | ✓ | ✓ | ✗ | Redundant `owner_id` |
-| `financed_asset_accounts` | ✓ | △ | ✗ | PK design; redundant `owner_id` |
-| `identified_transactions` | ✓ | ✓ | △ | `owner_id` partially derivable |
-| `transactions` | ✓ | ✓ | ✗ | Redundant `owner_id` |
+| Table                            | 1NF | 2NF | 3NF | Primary issue                                     |
+| -------------------------------- | --- | --- | --- | ------------------------------------------------- |
+| `users`                          | ✓   | ✓   | ✓   | —                                                 |
+| `accounts`                       | ✓   | ✓   | ✓   | —                                                 |
+| `types`                          | ✓   | ✓   | △   | Global unique `name` + nullable `owner_id`        |
+| `accounts_indexer`               | ✓   | ✓   | ✗   | Redundant `owner_id`, `type_id`; sparse FK matrix |
+| `assets_accounts`                | ✓   | ✓   | ✗   | Redundant `owner_id`; overlaps with subtypes      |
+| `banking_asset_accounts`         | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
+| `real_estate_asset_accounts`     | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
+| `trading_asset_accounts`         | ✓   | ✓   | ✗   | Redundant `owner_id`; `last_value` overlap        |
+| `liability_accounts`             | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
+| `bank_credit_liability_accounts` | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
+| `credit_card_liability_accounts` | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
+| `financed_asset_accounts`        | ✓   | △   | ✗   | PK design; redundant `owner_id`                   |
+| `identified_transactions`        | ✓   | ✓   | △   | `owner_id` partially derivable                    |
+| `transactions`                   | ✓   | ✓   | ✗   | Redundant `owner_id`                              |
 
 **Legend:** ✓ compliant, ✗ violation, △ partial / context-dependent
 
@@ -545,16 +560,16 @@ This is a **cross-tenant identity collision**, not classical 3NF, but violates n
 
 Normalization to 3NF does not by itself produce a **correct personal-finance domain model**. Gaps that affect #25 / #33 regardless of NF:
 
-| Gap | v0 state | Risk |
-| --- | --- | --- |
-| **No currency** | All amounts unitless DECIMAL | Cannot sum across accounts; FX impossible |
-| **No stored or derived balance view** | Snapshot fields on asset/liability rows drift from ledger | API `balance` / `initial_balance` are phantom columns |
-| **Single-sided ledger** | One account FK per transaction | Transfers, CC payments, loan disbursements awkward |
-| **Types vs categories** | Flat `types`; no `parent_id`, no income/expense enum | API category hierarchy unsupported |
-| **Interest rate duplication** | Monthly + yearly on assets and liabilities, no consistency check | APR vs nominal ambiguity; redundant storage |
-| **Real estate valuation** | `participation` × area on subtype; `last_value` on base asset | NAV for partial ownership unclear |
-| **Credit card model** | `credit_limit` only; no statement cycle, APR, minimum payment | Liability lifecycle incomplete |
-| **Mortgage link** | `financed_asset_accounts` join | Correct direction for asset–liability pairing; PK limits many-credit scenarios |
+| Gap                                   | v0 state                                                         | Risk                                                                           |
+| ------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **No currency**                       | All amounts unitless DECIMAL                                     | Cannot sum across accounts; FX impossible                                      |
+| **No stored or derived balance view** | Snapshot fields on asset/liability rows drift from ledger        | API `balance` / `initial_balance` are phantom columns                          |
+| **Single-sided ledger**               | One account FK per transaction                                   | Transfers, CC payments, loan disbursements awkward                             |
+| **Types vs categories**               | Flat `types`; no `parent_id`, no income/expense enum             | API category hierarchy unsupported                                             |
+| **Interest rate duplication**         | Monthly + yearly on assets and liabilities, no consistency check | APR vs nominal ambiguity; redundant storage                                    |
+| **Real estate valuation**             | `participation` × area on subtype; `last_value` on base asset    | NAV for partial ownership unclear                                              |
+| **Credit card model**                 | `credit_limit` only; no statement cycle, APR, minimum payment    | Liability lifecycle incomplete                                                 |
+| **Mortgage link**                     | `financed_asset_accounts` join                                   | Correct direction for asset–liability pairing; PK limits many-credit scenarios |
 
 **Balance authority (expert rule):** For v3, pick **one** source of truth:
 
@@ -565,13 +580,13 @@ v0 mixes both without reconciliation — a **domain integrity** issue, not merel
 
 ### 4.6 Subtype column overlap (consolidation input for #32)
 
-| Shared financial concept | `assets_accounts` | `liability_accounts` | Subtype-only columns |
-| --- | --- | --- | --- |
-| Periodicity | `months_per_period` | `months_per_period` | — |
-| Principal / value | `initial_value`, `last_value` | `initial_value`, `present_value` | trading: `buy_value`, `units` |
-| Interest | `monthly_*`, `yearly_*`, `roi` | `monthly_*`, `yearly_*` | — |
-| Earnings / payments | `periodical_earnings` | `payment`, `total_paid`, periods | bank credit: insurance/extras |
-| Identity / location | — | — | banking: `entity`; RE: address, area |
+| Shared financial concept | `assets_accounts`              | `liability_accounts`             | Subtype-only columns                 |
+| ------------------------ | ------------------------------ | -------------------------------- | ------------------------------------ |
+| Periodicity              | `months_per_period`            | `months_per_period`              | —                                    |
+| Principal / value        | `initial_value`, `last_value`  | `initial_value`, `present_value` | trading: `buy_value`, `units`        |
+| Interest                 | `monthly_*`, `yearly_*`, `roi` | `monthly_*`, `yearly_*`          | —                                    |
+| Earnings / payments      | `periodical_earnings`          | `payment`, `total_paid`, periods | bank credit: insurance/extras        |
+| Identity / location      | —                              | —                                | banking: `entity`; RE: address, area |
 
 **Overlap estimate:** ~70% of numeric columns on base asset/liability rows are shared semantics. v3 consolidation into `accounts` + optional 1:1 extension (or JSONB exception documented per FR-04) is financially justified — fewer places for `present_value` and `last_value` to diverge.
 
@@ -583,13 +598,13 @@ v0 mixes both without reconciliation — a **domain integrity** issue, not merel
 
 The indexer holds **8 nullable FK columns** representing subtype rows. Design intent: exactly **one base** FK (`asset_account_id` XOR `liability_account_id`) and **at most one extended** FK populated.
 
-| FK column | Target table | Layer |
-| --- | --- | --- |
-| `asset_account_id` | `assets_accounts` | Base asset |
-| `liability_account_id` | `liability_accounts` | Base liability |
-| `banking_asset_account_id` | `banking_asset_accounts` | Asset extension |
-| `real_estate_asset_account_id` | `real_estate_asset_accounts` | Asset extension |
-| `trading_asset_account_id` | `trading_asset_accounts` | Asset extension |
+| FK column                          | Target table                     | Layer               |
+| ---------------------------------- | -------------------------------- | ------------------- |
+| `asset_account_id`                 | `assets_accounts`                | Base asset          |
+| `liability_account_id`             | `liability_accounts`             | Base liability      |
+| `banking_asset_account_id`         | `banking_asset_accounts`         | Asset extension     |
+| `real_estate_asset_account_id`     | `real_estate_asset_accounts`     | Asset extension     |
+| `trading_asset_account_id`         | `trading_asset_accounts`         | Asset extension     |
 | `bank_credit_liability_account_id` | `bank_credit_liability_accounts` | Liability extension |
 | `credit_card_liability_account_id` | `credit_card_liability_accounts` | Liability extension |
 
@@ -597,13 +612,13 @@ The indexer holds **8 nullable FK columns** representing subtype rows. Design in
 
 ### 5.2 Application-layer enforcement
 
-| Layer | Enforcement mechanism |
-| --- | --- |
-| **DTO** | `AccountsIndexerDTO._validate_accounts()` — XOR asset/liability |
-| **DTO** | `_validate_extended_accounts()` — at most one extended type |
-| **DTO** | `_validate_linked_accounts()` — **bug:** extended subtype fields always fail when populated (see §5.6) |
-| **Service** | `AccountsIndexerService.create()` — type classification must match asset vs liability |
-| **Service** | `TypedLinkedEntitiesServiceMixin` — cascades `get_or_create` across 7 linked services |
+| Layer       | Enforcement mechanism                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| **DTO**     | `AccountsIndexerDTO._validate_accounts()` — XOR asset/liability                                        |
+| **DTO**     | `_validate_extended_accounts()` — at most one extended type                                            |
+| **DTO**     | `_validate_linked_accounts()` — **bug:** extended subtype fields always fail when populated (see §5.6) |
+| **Service** | `AccountsIndexerService.create()` — type classification must match asset vs liability                  |
+| **Service** | `TypedLinkedEntitiesServiceMixin` — cascades `get_or_create` across 7 linked services                  |
 
 Source: [`access/indexers/dto.py`](../../modules/model/src/papita_txnsmodel/access/indexers/dto.py), [`services/indexers.py`](../../modules/model/src/papita_txnsmodel/services/indexers.py).
 
@@ -646,14 +661,14 @@ WHERE a.id = :account_id AND a.owner_id = :owner_id;
 
 ### 5.5 Complexity scorecard
 
-| Dimension | Rating (1–5) | Notes |
-| --- | --- | --- |
-| Schema comprehension | 5 | New developers must learn polymorphic hub pattern |
-| Write-path complexity | 5 | 8-dependency handler + DTO validators |
-| Read-path complexity | 4 | Multi-join or service-side linked DTO hydration |
-| DB integrity | 1 | No CHECK constraints on FK matrix |
-| Migration risk | 5 | Central hub — any v3 change touches all account subtypes |
-| Test surface | 4 | Combinatorial subtype × validation paths |
+| Dimension             | Rating (1–5) | Notes                                                    |
+| --------------------- | ------------ | -------------------------------------------------------- |
+| Schema comprehension  | 5            | New developers must learn polymorphic hub pattern        |
+| Write-path complexity | 5            | 8-dependency handler + DTO validators                    |
+| Read-path complexity  | 4            | Multi-join or service-side linked DTO hydration          |
+| DB integrity          | 1            | No CHECK constraints on FK matrix                        |
+| Migration risk        | 5            | Central hub — any v3 change touches all account subtypes |
+| Test surface          | 4            | Combinatorial subtype × validation paths                 |
 
 **Recommendation (for #32):** Replace with discriminator + single extension FK, or consolidated `accounts` row with `account_kind` enum (per FR-03, FR-04).
 
@@ -683,41 +698,41 @@ PR #27 ([`06b97dfcb5c7`](../../modules/model/alembic/versions/2026_01_28_1921-06
 
 ### 6.1 Coverage matrix
 
-| Table | Has `owner_id` | Repository tenant filter | Indexed |
-| --- | --- | --- | --- |
-| `users` | — (is tenant root) | N/A | — |
-| `accounts` | ✓ | `OwnedTableRepository` | ✓ |
-| `types` | ✓ (nullable) | `TypesRepository` — global OR owned | ✓ |
-| `accounts_indexer` | ✓ | `OwnedTableRepository` | ✓ |
-| `assets_accounts` | ✓ | `OwnedTableRepository` | ✓ |
-| `banking_asset_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `real_estate_asset_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `trading_asset_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `liability_accounts` | ✓ | `OwnedTableRepository` | ✓ |
-| `bank_credit_liability_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `credit_card_liability_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `financed_asset_accounts` | ✓ | `OwnedTableRepository` | ✗ |
-| `identified_transactions` | ✓ | `OwnedTableRepository` | ✗ |
-| `transactions` | ✓ | `OwnedTableRepository` | ✓ |
+| Table                            | Has `owner_id`     | Repository tenant filter            | Indexed |
+| -------------------------------- | ------------------ | ----------------------------------- | ------- |
+| `users`                          | — (is tenant root) | N/A                                 | —       |
+| `accounts`                       | ✓                  | `OwnedTableRepository`              | ✓       |
+| `types`                          | ✓ (nullable)       | `TypesRepository` — global OR owned | ✓       |
+| `accounts_indexer`               | ✓                  | `OwnedTableRepository`              | ✓       |
+| `assets_accounts`                | ✓                  | `OwnedTableRepository`              | ✓       |
+| `banking_asset_accounts`         | ✓                  | `OwnedTableRepository`              | ✗       |
+| `real_estate_asset_accounts`     | ✓                  | `OwnedTableRepository`              | ✗       |
+| `trading_asset_accounts`         | ✓                  | `OwnedTableRepository`              | ✗       |
+| `liability_accounts`             | ✓                  | `OwnedTableRepository`              | ✓       |
+| `bank_credit_liability_accounts` | ✓                  | `OwnedTableRepository`              | ✗       |
+| `credit_card_liability_accounts` | ✓                  | `OwnedTableRepository`              | ✗       |
+| `financed_asset_accounts`        | ✓                  | `OwnedTableRepository`              | ✗       |
+| `identified_transactions`        | ✓                  | `OwnedTableRepository`              | ✗       |
+| `transactions`                   | ✓                  | `OwnedTableRepository`              | ✓       |
 
 ### 6.2 Consistency enforcement
 
-| Mechanism | Present? |
-| --- | --- |
-| DB trigger: child.owner_id = parent.owner_id | No |
-| FK to `(id, owner_id)` composite | No |
-| Service assignment on upsert | Yes — `OwnedTableRepository.upsert_records()` sets `owner_id` |
-| DTO validation on mismatch | Yes — `upsert_record()` raises if DTO owner ≠ caller |
+| Mechanism                                    | Present?                                                      |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| DB trigger: child.owner_id = parent.owner_id | No                                                            |
+| FK to `(id, owner_id)` composite             | No                                                            |
+| Service assignment on upsert                 | Yes — `OwnedTableRepository.upsert_records()` sets `owner_id` |
+| DTO validation on mismatch                   | Yes — `upsert_record()` raises if DTO owner ≠ caller          |
 
 **Gap:** Direct SQL or bulk loads can insert mismatched `owner_id` values across the chain.
 
 ### 6.3 Tenancy strategy options (input for FR-02)
 
-| Strategy | Description | v0 state |
-| --- | --- | --- |
-| **A — FK chain** | Drop redundant columns; filter via joins | Not implemented |
-| **B — Denormalized** | Keep `owner_id`; app-layer enforcement | **Current default** |
-| **C — RLS** | Postgres policies on `owner_id` | Not implemented |
+| Strategy             | Description                              | v0 state            |
+| -------------------- | ---------------------------------------- | ------------------- |
+| **A — FK chain**     | Drop redundant columns; filter via joins | Not implemented     |
+| **B — Denormalized** | Keep `owner_id`; app-layer enforcement   | **Current default** |
+| **C — RLS**          | Postgres policies on `owner_id`          | Not implemented     |
 
 ### 6.4 Legacy migration risk
 
@@ -731,37 +746,37 @@ Handlers still accept `owner=None` on `load()` / `dump()` — records upserted w
 
 ### 7.1 Repository tiers
 
-| Repository | Base class | Tenant filtering |
-| --- | --- | --- |
-| `UsersRepository` | `BaseRepository` | None |
-| `TypesRepository` | `BaseRepository` | Optional — `owner_id = X OR owner_id IS NULL` |
-| All others | `OwnedTableRepository` | Required `owner` kwarg on all CRUD |
+| Repository        | Base class             | Tenant filtering                              |
+| ----------------- | ---------------------- | --------------------------------------------- |
+| `UsersRepository` | `BaseRepository`       | None                                          |
+| `TypesRepository` | `BaseRepository`       | Optional — `owner_id = X OR owner_id IS NULL` |
+| All others        | `OwnedTableRepository` | Required `owner` kwarg on all CRUD            |
 
 Source: [`access/base/repository.py`](../../modules/model/src/papita_txnsmodel/access/base/repository.py).
 
 ### 7.2 Common query patterns
 
-| Use case | Pattern | Code path |
-| --- | --- | --- |
-| Get by ID | `dao.id == uuid` + owner filter | `get_record_by_id()` |
-| Get by attributes | Non-null DTO fields → WHERE clauses | `get_records_from_attributes()` |
-| List all for tenant | `Select(dao).where(owner_id == X)` | `OwnedTableRepository.get_records()` |
-| List types for tenant | Global + owned merge | `TypesRepository.get_records(owner=...)` |
-| List by type | `type_id == X` + owner | `TypedEntitiesService.get_records_by_type()` |
-| Bulk ingest | `UpscribeFactory.get_upserter().upsert(df)` | `upsert_records()` |
-| Soft delete | `active=false, deleted_at=now()` | `soft_delete_records()` |
+| Use case              | Pattern                                     | Code path                                    |
+| --------------------- | ------------------------------------------- | -------------------------------------------- |
+| Get by ID             | `dao.id == uuid` + owner filter             | `get_record_by_id()`                         |
+| Get by attributes     | Non-null DTO fields → WHERE clauses         | `get_records_from_attributes()`              |
+| List all for tenant   | `Select(dao).where(owner_id == X)`          | `OwnedTableRepository.get_records()`         |
+| List types for tenant | Global + owned merge                        | `TypesRepository.get_records(owner=...)`     |
+| List by type          | `type_id == X` + owner                      | `TypedEntitiesService.get_records_by_type()` |
+| Bulk ingest           | `UpscribeFactory.get_upserter().upsert(df)` | `upsert_records()`                           |
+| Soft delete           | `active=false, deleted_at=now()`            | `soft_delete_records()`                      |
 
 ### 7.3 Handler load patterns
 
-| Handler | Service | Dependencies | Load behavior |
-| --- | --- | --- | --- |
-| `AccountsTableHandler` | `AccountsService` | none | build → upsert |
-| `AssetAccountsTableHandler` | `AssetAccountsService` | none | build → upsert |
-| `LiabilityAccountsTableHandler` | `LiabilityAccountsService` | none | build → upsert |
-| `AccountsIndexerTableHandler` | `AccountsIndexerService` | 8 services | resolve all FKs via get_or_create |
-| `FinancedAssetAccountsTableHandler` | `FinancedAssetAccountsService` | asset + bank credit | resolve both sides |
-| `IdentifiedTransactionsTableHandler` | `IdentifiedTransactionsService` | TypesService | resolve type |
-| `TransactionsHandler` | `TransactionsService` | AccountsService, IdentifiedTransactionsService | match accounts by name/tag/id (exact/fuzzy), filter invalid from/to pairs |
+| Handler                              | Service                         | Dependencies                                   | Load behavior                                                             |
+| ------------------------------------ | ------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| `AccountsTableHandler`               | `AccountsService`               | none                                           | build → upsert                                                            |
+| `AssetAccountsTableHandler`          | `AssetAccountsService`          | none                                           | build → upsert                                                            |
+| `LiabilityAccountsTableHandler`      | `LiabilityAccountsService`      | none                                           | build → upsert                                                            |
+| `AccountsIndexerTableHandler`        | `AccountsIndexerService`        | 8 services                                     | resolve all FKs via get_or_create                                         |
+| `FinancedAssetAccountsTableHandler`  | `FinancedAssetAccountsService`  | asset + bank credit                            | resolve both sides                                                        |
+| `IdentifiedTransactionsTableHandler` | `IdentifiedTransactionsService` | TypesService                                   | resolve type                                                              |
+| `TransactionsHandler`                | `TransactionsService`           | AccountsService, IdentifiedTransactionsService | match accounts by name/tag/id (exact/fuzzy), filter invalid from/to pairs |
 
 ### 7.4 Transaction matching pipeline
 
@@ -798,15 +813,15 @@ If `owner=None`, bulk upsert writes **NULL owner_id** → NOT NULL constraint fa
 
 Registered handler labels (representative):
 
-| Label | Handler |
-| --- | --- |
-| `accounts`, `accounts_table` | `AccountsTableHandler` |
-| `assets`, `asset_accounts` | `AssetAccountsTableHandler` |
-| `liabilities`, `liability_accounts` | `LiabilityAccountsTableHandler` |
-| `accounts_indexer`, `indexer` | `AccountsIndexerTableHandler` |
-| `financed_asset_accounts` | `FinancedAssetAccountsTableHandler` |
-| `identified_transactions` | `IdentifiedTransactionsTableHandler` |
-| `transactions`, `transactions_handler` | `TransactionsHandler` |
+| Label                                  | Handler                              |
+| -------------------------------------- | ------------------------------------ |
+| `accounts`, `accounts_table`           | `AccountsTableHandler`               |
+| `assets`, `asset_accounts`             | `AssetAccountsTableHandler`          |
+| `liabilities`, `liability_accounts`    | `LiabilityAccountsTableHandler`      |
+| `accounts_indexer`, `indexer`          | `AccountsIndexerTableHandler`        |
+| `financed_asset_accounts`              | `FinancedAssetAccountsTableHandler`  |
+| `identified_transactions`              | `IdentifiedTransactionsTableHandler` |
+| `transactions`, `transactions_handler` | `TransactionsHandler`                |
 
 ### 8.2 Typical load order (dependency-safe)
 
@@ -826,13 +841,13 @@ Registered handler labels (representative):
 
 ### 8.3 Impact of proposed v3 changes
 
-| v3 change | Handler impact | Migration impact |
-| --- | --- | --- |
-| Remove `AccountsIndexer` | Rewrite `AccountsIndexerTableHandler`; simplify other account handlers | Backfill script: collapse indexer rows into new structure |
-| Drop redundant `owner_id` | Remove `owner` param from subtype handlers OR derive from account | Column drops + consistency checks |
-| Consolidate subtype tables | Merge handlers; update DTOs | Data migration per subtype |
-| Types composite unique `(owner_id, name)` | Update `TypesDTO._normalize_model()` | Re-hash existing type IDs or remap FKs |
-| Add `account_kind` enum | New validation in account load | Populate from indexer FK pattern |
+| v3 change                                 | Handler impact                                                         | Migration impact                                          |
+| ----------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------- |
+| Remove `AccountsIndexer`                  | Rewrite `AccountsIndexerTableHandler`; simplify other account handlers | Backfill script: collapse indexer rows into new structure |
+| Drop redundant `owner_id`                 | Remove `owner` param from subtype handlers OR derive from account      | Column drops + consistency checks                         |
+| Consolidate subtype tables                | Merge handlers; update DTOs                                            | Data migration per subtype                                |
+| Types composite unique `(owner_id, name)` | Update `TypesDTO._normalize_model()`                                   | Re-hash existing type IDs or remap FKs                    |
+| Add `account_kind` enum                   | New validation in account load                                         | Populate from indexer FK pattern                          |
 
 ### 8.4 Test coverage touchpoints
 
@@ -847,31 +862,33 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 
 ## 9. Cross-reference: #28 pain points mapped to v0 evidence
 
-| #28 pain point | v0 audit section | Evidence |
-| --- | --- | --- |
-| #1 Sparse FK matrix | §5 | 8 nullable FKs, no DB CHECK |
-| #2 Redundant `owner_id` | §6 | 13 tables, no trigger sync |
-| #6 Model doc drift | §3.9 | `LiabilityAccounts` docstring fields missing |
-| #10 Types ID collision | §4.3.4 | `TypesDTO` hash excludes owner |
-| #12 Indexer skips BaseSQLModel | §2.3, §3.4 | No soft delete on hub |
-| #13 Legacy migration | §6.4 | NOT NULL without backfill |
-| #16 FinancedAssetAccounts | §3.12, §4.2 | PK + share constraints |
-| Transfer ingestion | §3.14 | Handler rejects both from/to set |
-| API phantom fields | §1.1, §4.5 | No currency/balance in model |
-| Indexer DTO defect | §5.6 | Extended subtype validation broken |
+| #28 pain point                 | v0 audit section   | Evidence                                     |
+| ------------------------------ | ------------------ | -------------------------------------------- |
+| #1 Sparse FK matrix            | §5                 | 8 nullable FKs, no DB CHECK                  |
+| #2 Redundant `owner_id`        | §6                 | 13 tables, no trigger sync                   |
+| #6 Model doc drift             | §3.9               | `LiabilityAccounts` docstring fields missing |
+| #10 Types ID collision         | §4.3.4             | `TypesDTO` hash excludes owner               |
+| #12 Indexer skips BaseSQLModel | §2.3, §3.4         | No soft delete on hub                        |
+| #13 Legacy migration           | §6.4               | NOT NULL without backfill                    |
+| #16 FinancedAssetAccounts      | §3.12, §4.2        | PK + share constraints                       |
+| Transfer ingestion             | §3.14, NF-01–NF-03 | Handler rejects both from/to; no pair link   |
+| API phantom fields             | §1.1, §4.5, NF-09  | No currency/balance in model                 |
+| Indexer DTO defect             | §5.6, NF-04        | Extended subtype validation broken           |
+| Expert review register         | §14                | NF-01 through NF-12                          |
 
 ---
 
 ## 10. v0 audit deliverable checklist (#30)
 
-| Deliverable | Section |
-| --- | --- |
-| Table inventory: columns, PKs, FKs, indexes for all 14 tables | §3 |
-| Normalization analysis (1NF / 2NF / 3NF) with concrete examples | §4 |
-| `AccountsIndexer` complexity assessment (8 nullable FKs) | §5 |
-| Redundant `owner_id` analysis (post PR #27) | §6 |
-| Repository/handler query pattern notes | §7 |
-| Registrar load pipeline impact summary | §8 |
+| Deliverable                                                     | Section |
+| --------------------------------------------------------------- | ------- |
+| Table inventory: columns, PKs, FKs, indexes for all 14 tables   | §3      |
+| Normalization analysis (1NF / 2NF / 3NF) with concrete examples | §4      |
+| `AccountsIndexer` complexity assessment (8 nullable FKs)        | §5      |
+| Redundant `owner_id` analysis (post PR #27)                     | §6      |
+| Repository/handler query pattern notes                          | §7      |
+| Registrar load pipeline impact summary                          | §8      |
+| New findings register (expert review)                           | §14     |
 
 ---
 
@@ -889,7 +906,7 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 
 ## 12. Expert conceptual assessment (recommended v3 direction)
 
-*Subject-matter view: personal finance data modeling + relational design. Informs #32; not a frozen spec.*
+_Subject-matter view: personal finance data modeling + relational design. Informs #32; not a frozen spec._
 
 ### 12.1 What v0 gets right
 
@@ -935,11 +952,11 @@ identified_transactions → rename or keep as transaction_templates
 
 ### 12.4 Intentional denormalizations to allow
 
-| Denormalization | Rationale |
-| --- | --- |
-| `transactions.owner_id` | Tenant-scoped ledger scans without joining `accounts` |
-| `types` global seed rows (`owner_id NULL`) | Shared COA templates for new users |
-| Snapshot `last_value` on accounts | Performance for net-worth dashboard if reconciled nightly against ledger |
+| Denormalization                            | Rationale                                                                |
+| ------------------------------------------ | ------------------------------------------------------------------------ |
+| `transactions.owner_id`                    | Tenant-scoped ledger scans without joining `accounts`                    |
+| `types` global seed rows (`owner_id NULL`) | Shared COA templates for new users                                       |
+| Snapshot `last_value` on accounts          | Performance for net-worth dashboard if reconciled nightly against ledger |
 
 Document each in v3 freeze with reconciliation rule.
 
@@ -947,15 +964,149 @@ Document each in v3 freeze with reconciliation rule.
 
 ## 13. Expert review iteration log
 
-| Iter | Focus | Outcome |
-| --- | --- | --- |
-| **1** | Domain framing | Added §1.1 domain context table; clarified PF vs GL positioning |
-| **2** | Ledger semantics | Documented transfer rejection, sign convention, balance authority (§3.14, §4.5) |
-| **3** | Consolidation economics | Added subtype overlap analysis §4.6 (~70% shared columns) |
-| **4** | Code validation | Confirmed indexer DTO bug §5.6; fixed UpserterFactory typo §7.5 |
-| **5** | Concept & stop rule | Added §12 expert v3 concept; **stopped** — further sections would duplicate #32 scope |
+| Iter  | Focus                   | Outcome                                                                         |
+| ----- | ----------------------- | ------------------------------------------------------------------------------- |
+| **1** | Domain framing          | Added §1.1 domain context table; clarified PF vs GL positioning                 |
+| **2** | Ledger semantics        | Documented transfer rejection, sign convention, balance authority (§3.14, §4.5) |
+| **3** | Consolidation economics | Added subtype overlap analysis §4.6 (~70% shared columns)                       |
+| **4** | Code validation         | Confirmed indexer DTO bug §5.6; fixed UpserterFactory typo §7.5                 |
+| **5** | Concept & stop rule     | Added §12 expert v3 concept; consolidated findings in §14 — **stopped**         |
 
 **Stop criterion met:** Iteration 5 additions (v3 sketch) are forward-looking design; deeper field-by-field v3 DDL belongs in [#32](https://github.com/Elmorralito/save-ma-money/issues/32), not v0 audit.
+
+---
+
+## 14. New findings register (expert review, 2026-07-05)
+
+Findings discovered or upgraded during the five-iteration expert review (finance + data modeling). Each entry is actionable for #32 / #33.
+
+| ID        | Finding                               | Severity     | Detail                                                                                  |
+| --------- | ------------------------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| **NF-01** | Transfers rejected at ingest          | **High**     | Handler filters out rows with both `from_account_id` and `to_account_id` set — §3.14    |
+| **NF-02** | Orphan transactions dropped           | **Medium**   | Rows with neither account FK set after matching are removed — §3.14                     |
+| **NF-03** | No transfer pair integrity            | **High**     | Two manual single-sided rows; no schema link — §3.14, §4.5                              |
+| **NF-04** | Indexer DTO blocks extended subtypes  | **Critical** | `_validate_linked_accounts()` always raises when extended FK populated — §5.6           |
+| **NF-05** | No currency dimension                 | **High**     | All DECIMAL amounts unitless; cannot aggregate multi-currency — §4.5                    |
+| **NF-06** | Dual balance authority                | **High**     | Snapshot fields vs ledger with no reconciliation — §4.5                                 |
+| **NF-07** | Decoupled subtype UUIDs               | **Medium**   | `accounts.id` ≠ `assets_accounts.id` ≠ `banking_asset_accounts.id` — §12.2              |
+| **NF-08** | `types` table overloaded              | **Medium**   | COA + categories + indexer routing in one entity — §12.2                                |
+| **NF-09** | API phantom fields                    | **High**     | Spec expects `balance`, `currency`, `transaction_type`, category hierarchy — §1.1, §4.5 |
+| **NF-10** | Implicit sign convention              | **Low**      | Positive `value` only; direction from which FK is set — §3.14                           |
+| **NF-11** | Subtype column overlap ~70%           | **Medium**   | Consolidation candidate for v3 — §4.6                                                   |
+| **NF-12** | `UpserterFactory` typo in prior draft | **Info**     | Corrected in §7.5 (was `UpscribeFactory`)                                               |
+
+### NF-01 — Transfers rejected at ingest
+
+**Evidence:** `TransactionsHandler._match_accounts()` returns only rows where exactly one of `from_account_id` / `to_account_id` is non-null after matching.
+
+**Finance impact:** Checking → savings, credit-card payment from cash, and loan disbursement to asset cannot be loaded as a single logical event. Net worth is unchanged on transfers but v0 cannot represent them atomically.
+
+**v3 action:** Add `transaction_kind = TRANSFER` with both FKs populated and a CHECK constraint; update handler to stop filtering transfer rows (FR-05).
+
+### NF-02 — Orphan transactions dropped
+
+**Evidence:** Same filter removes rows where both FKs are null post-match (failed match or intentionally external row).
+
+**Finance impact:** Valid use cases (pending categorization, external payee not modeled as account) are silently discarded during load rather than quarantined.
+
+**v3 action:** Route unmatched rows to a staging table or `status = UNMATCHED` instead of dropping (FR-08).
+
+### NF-03 — No transfer pair integrity
+
+**Evidence:** No column on `transactions` links paired legs; `identified_transaction_id` is optional and template-scoped, not transfer-scoped.
+
+**Finance impact:** Manual two-row transfers can drift (amount mismatch, one leg deleted) with no DB detection.
+
+**v3 action:** `transfer_id UUID` shared by two rows, or single row with both FKs (preferred — see NF-01).
+
+### NF-04 — Indexer DTO blocks extended subtypes
+
+**Evidence:**
+
+```187:201:modules/model/src/papita_txnsmodel/access/indexers/dto.py
+        match self.asset_account, self.liability_account:
+            case None, _:
+                extended_account_type = ExtendedAssetAccountsDTO
+            case _, None:
+                extended_account_type = ExtendedLiabilityAccountsDTO
+        extended_account_fields = [
+            field_name
+            for field_name, info in self.__class__.model_fields.items()
+            if extended_account_type in get_args(info.annotation)
+            or ExtendedLiabilityAccountsDTO in get_args(info.annotation)
+        ]
+        extended_accounts_count = sum(1 for field in extended_account_fields if getattr(self, field) is not None)
+        if extended_accounts_count > 0:
+            raise ValueError(f"Extended account is not of type {extended_account_type.__name__}")
+```
+
+**Defects:** (1) liability vs asset branch labels swapped; (2) field list always includes liability extended fields; (3) any populated extended field triggers raise.
+
+**Finance impact:** Banking, mortgage, brokerage, and credit-card accounts may fail validation on ingest — subtypes either bypass DTO or never load.
+
+**v3 action:** Fix validator short-term OR remove indexer DTO path in v3 (FR-03). Add regression test loading a `banking_asset_account` indexer row.
+
+### NF-05 — No currency dimension
+
+**Evidence:** Grep of `modules/model/src/papita_txnsmodel/model/` — no `currency` column on any table.
+
+**Finance impact:** USD checking + EUR savings cannot be summed for net worth; FX gains/losses unmappable.
+
+**v3 action:** `currency CHAR(3) NOT NULL` on `accounts` and `transactions` (ISO 4217); optional `exchange_rate` on cross-currency transfers (#33).
+
+### NF-06 — Dual balance authority
+
+**Evidence:** `assets_accounts.last_value` / `liability_accounts.present_value` vs ledger sum from `transactions` — no reconciliation job or constraint.
+
+**Finance impact:** Dashboard can show stale net worth if snapshots are updated independently of posted transactions.
+
+**v3 action:** Ledger-derived materialized view as canonical; snapshots optional with `as_of` timestamp (§12.3).
+
+### NF-07 — Decoupled subtype UUIDs
+
+**Evidence:** Class-table inheritance uses independent `uuid4` PKs on `accounts`, `assets_accounts`, and extension tables; linker is `accounts_indexer` only.
+
+**Finance impact:** Every read/write touches the hub; ORM and API IDs multiply; "account id" is ambiguous in API design.
+
+**v3 action:** Extension tables use `account_id` as PK/FK (1:1 with `accounts`).
+
+### NF-08 — `types` table overloaded
+
+**Evidence:** `TypesClassifications` spans ASSETS, LIABILITIES, TRANSACTIONS; same table backs indexer `type_id` and `identified_transactions.type_id`.
+
+**Finance impact:** Category taxonomy (income/expense tree) conflated with balance-sheet classification — API `/categories` cannot map cleanly (FR-13).
+
+**v3 action:** Split `account_types` vs `categories`, or add `parent_id` + `category_kind` on a renamed table (#33).
+
+### NF-09 — API phantom fields
+
+**Evidence:** #28 pain point #11 — API spec (PR #29) documents fields absent from SQLModel.
+
+| API field                                             | v0 model              |
+| ----------------------------------------------------- | --------------------- |
+| `accounts.balance`, `initial_balance`, `currency`     | absent                |
+| `categories.category_type`, `parent_id`               | absent (`types` flat) |
+| `transactions.transaction_type`, `status`, `currency` | absent                |
+
+**Finance impact:** #25 CRUD would invent columns or return fabricated values.
+
+**v3 action:** Align spec in #33 or add columns/views in v3 schema (#32).
+
+### NF-10 — Implicit sign convention
+
+**Evidence:** `Transactions.value` has `gt=0`; outflow vs inflow determined solely by from vs to FK.
+
+**Finance impact:** Refunds/chargebacks require careful FK placement; no explicit `DEBIT`/`CREDIT` for reporting exports.
+
+**v3 action:** Optional `direction` enum or signed amount with documented convention.
+
+### NF-11 — Subtype column overlap
+
+**Evidence:** §4.6 — shared financial columns on `assets_accounts` and `liability_accounts` (~70% semantic overlap).
+
+**Finance impact:** Higher migration cost and anomaly surface if v3 keeps six subtype tables.
+
+**v3 action:** Consolidate shared columns onto `accounts` or single financial extension (FR-04).
 
 ---
 
