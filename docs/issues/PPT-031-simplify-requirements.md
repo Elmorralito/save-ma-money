@@ -1,19 +1,19 @@
 # refactor(PPT-031): Simplify data model and align API design
 
-> **GitHub issue:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28)  
+> **GitHub issue:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28)
 > **Canonical copy:** this file mirrors the #28 issue body in the repo.
 
 ## Document ↔ issue registry
 
-| Document | Issue | Track | Status |
-|----------|-------|-------|--------|
-| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md) | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) | Epic | Active |
-| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md) | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) | A — v0 audit | Draft |
-| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) | B — Supabase | Active |
-| `../design/PPT-031-v1-schema.md` *(planned)* | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) | A — v1–v3 schema | Pending |
-| `../design/PPT-031-api-model-mapping.md` *(planned)* | [#33](https://github.com/Elmorralito/save-ma-money/issues/33) | C — API spec | Pending |
-| `../design/PPT-031-migration-runbook.md` *(planned)* | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) | D — Migration | Pending |
-| `../design/PPT-031-auth-contract.md` *(planned)* | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth | Pending |
+| Document                                                                         | Issue                                                                 | Track            | Status  |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- | ------- |
+| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)         | Epic             | Active  |
+| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)                 | [#30](https://github.com/Elmorralito/save-ma-money/issues/30)         | A — v0 audit     | Draft   |
+| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)         | B — Supabase     | Active  |
+| `../design/PPT-031-v1-schema.md` _(planned)_                                     | [#32](https://github.com/Elmorralito/save-ma-money/issues/32)         | A — v1–v3 schema | Pending |
+| `../design/PPT-031-api-model-mapping.md` _(planned)_                             | [#33](https://github.com/Elmorralito/save-ma-money/issues/33)         | C — API spec     | Pending |
+| `../design/PPT-031-migration-runbook.md` _(planned)_                             | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)         | D — Migration    | Pending |
+| `../design/PPT-031-auth-contract.md` _(planned)_                                 | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth             | Pending |
 
 **Related issues:** [#24](https://github.com/Elmorralito/save-ma-money/issues/24) tenancy · [#25](https://github.com/Elmorralito/save-ma-money/issues/25) API impl · [#17](https://github.com/Elmorralito/save-ma-money/issues/17) superseded · [#11](https://github.com/Elmorralito/save-ma-money/issues/11) versioning
 
@@ -37,26 +37,26 @@ A second pass against the live codebase identified **gaps not fully covered** in
 
 ### Highest-risk gaps (must resolve before #25)
 
-| Priority | Gap | Impact if ignored |
-|----------|-----|-------------------|
-| P0 | Auth not wired (`AuthSecurityManager` has no credential verifier; `PasswordManagerFactory` never bootstrapped) | Register/login will fail at runtime |
-| P0 | `TypesDTO` deterministic IDs ignore `owner_id` + global unique `name` | Cross-tenant type ID collisions |
-| P0 | API spec fields absent from model (`balance`, `currency`, `category_type`, `transaction_type`, etc.) | Phantom columns or broken endpoints |
-| P1 | Pre-user PostgreSQL data: `owner_id NOT NULL` migrations without backfill | `./deploy/alembic.sh upgrade` fails on legacy dumps |
-| P1 | `/reports/*` in spec with no read-model strategy | MVP item #5 cannot be implemented |
-| P1 | Dual API specs (`API_Endpoints.md.md` + `API_Documentation.md.md`) | Implementers follow conflicting sources |
-| P2 | Package version drift ([#11](https://github.com/Elmorralito/save-ma-money/issues/11)) | v3 model/API releases out of sync |
-| P2 | CI has no Alembic PostgreSQL gate | Schema regressions ship undetected |
+| Priority | Gap                                                                                                            | Impact if ignored                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| P0       | Auth not wired (`AuthSecurityManager` has no credential verifier; `PasswordManagerFactory` never bootstrapped) | Register/login will fail at runtime                 |
+| P0       | `TypesDTO` deterministic IDs ignore `owner_id` + global unique `name`                                          | Cross-tenant type ID collisions                     |
+| P0       | API spec fields absent from model (`balance`, `currency`, `category_type`, `transaction_type`, etc.)           | Phantom columns or broken endpoints                 |
+| P1       | Pre-user PostgreSQL data: `owner_id NOT NULL` migrations without backfill                                      | `./deploy/alembic.sh upgrade` fails on legacy dumps |
+| P1       | `/reports/*` in spec with no read-model strategy                                                               | MVP item #5 cannot be implemented                   |
+| P1       | Dual API specs (`API_Endpoints.md.md` + `API_Documentation.md.md`)                                             | Implementers follow conflicting sources             |
+| P2       | Package version drift ([#11](https://github.com/Elmorralito/save-ma-money/issues/11))                          | v3 model/API releases out of sync                   |
+| P2       | CI has no Alembic PostgreSQL gate                                                                              | Schema regressions ship undetected                  |
 
 ### Sub-issues (created)
 
-| Track | GitHub issue |
-|-------|--------------|
-| A — v0 audit | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) |
+| Track            | GitHub issue                                                  |
+| ---------------- | ------------------------------------------------------------- |
+| A — v0 audit     | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) |
 | A — v1–v3 schema | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) |
-| B — Supabase | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) |
-| C — API spec | [#33](https://github.com/Elmorralito/save-ma-money/issues/33) |
-| D — Migration | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) |
+| B — Supabase     | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) |
+| C — API spec     | [#33](https://github.com/Elmorralito/save-ma-money/issues/33) |
+| D — Migration    | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) |
 
 ---
 
@@ -64,33 +64,33 @@ A second pass against the live codebase identified **gaps not fully covered** in
 
 ### What exists today
 
-| Layer | Status | Key paths |
-|-------|--------|-----------|
-| **Data model** | Production-ready ingestion pipeline | `modules/model/src/papita_txnsmodel/` |
-| **Schema** | PostgreSQL via Supabase (DuckDB deprecated) | `modules/model/src/papita_txnsmodel/database/connector.py` |
-| **Migrations** | Alembic | `modules/model/alembic/versions/` |
-| **Load handlers** | In model module (registrar module not in current workspace) | `modules/model/src/papita_txnsmodel/handlers/` |
-| **API** | Spec + partial scaffold | `modules/api/API_Endpoints.md.md`; implemented: `settings.py`, `security.py` only — no `main.py`, routers, or schemas |
-| **Supabase** | **Not integrated** | No client, auth, or RLS in repo |
+| Layer             | Status                                                      | Key paths                                                                                                             |
+| ----------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Data model**    | Production-ready ingestion pipeline                         | `modules/model/src/papita_txnsmodel/`                                                                                 |
+| **Schema**        | PostgreSQL via Supabase (DuckDB deprecated)                 | `modules/model/src/papita_txnsmodel/database/connector.py`                                                            |
+| **Migrations**    | Alembic                                                     | `modules/model/alembic/versions/`                                                                                     |
+| **Load handlers** | In model module (registrar module not in current workspace) | `modules/model/src/papita_txnsmodel/handlers/`                                                                        |
+| **API**           | Spec + partial scaffold                                     | `modules/api/API_Endpoints.md.md`; implemented: `settings.py`, `security.py` only — no `main.py`, routers, or schemas |
+| **Supabase**      | **Not integrated**                                          | No client, auth, or RLS in repo                                                                                       |
 
 ### Table inventory (`papita_transactions` schema)
 
-| Table | Purpose |
-|-------|---------|
-| `users` | Tenant root; username, email, password |
-| `accounts` | Named financial account shell (tags, start/end dates) |
-| `types` | Classification (ASSETS / LIABILITIES / TRANSACTIONS) |
-| `accounts_indexer` | Polymorphic hub linking account → type → subtype row(s) |
-| `assets_accounts` | Base asset financial attributes |
-| `banking_asset_accounts` | Bank-specific asset extension |
-| `real_estate_asset_accounts` | Property asset extension |
-| `trading_asset_accounts` | Investment asset extension |
-| `liability_accounts` | Base liability financial attributes |
-| `bank_credit_liability_accounts` | Loan/mortgage extension |
-| `credit_card_liability_accounts` | Credit card extension |
-| `financed_asset_accounts` | Join: asset ↔ bank credit (with `financing_share`) |
-| `identified_transactions` | Recurring/planned transaction templates |
-| `transactions` | Posted money movements between accounts |
+| Table                            | Purpose                                                 |
+| -------------------------------- | ------------------------------------------------------- |
+| `users`                          | Tenant root; username, email, password                  |
+| `accounts`                       | Named financial account shell (tags, start/end dates)   |
+| `types`                          | Classification (ASSETS / LIABILITIES / TRANSACTIONS)    |
+| `accounts_indexer`               | Polymorphic hub linking account → type → subtype row(s) |
+| `assets_accounts`                | Base asset financial attributes                         |
+| `banking_asset_accounts`         | Bank-specific asset extension                           |
+| `real_estate_asset_accounts`     | Property asset extension                                |
+| `trading_asset_accounts`         | Investment asset extension                              |
+| `liability_accounts`             | Base liability financial attributes                     |
+| `bank_credit_liability_accounts` | Loan/mortgage extension                                 |
+| `credit_card_liability_accounts` | Credit card extension                                   |
+| `financed_asset_accounts`        | Join: asset ↔ bank credit (with `financing_share`)      |
+| `identified_transactions`        | Recurring/planned transaction templates                 |
+| `transactions`                   | Posted money movements between accounts                 |
 
 ### Relationship sketch
 
@@ -169,12 +169,12 @@ Create `docs/design/PPT-031-v0-audit.md` covering:
 
 Propose concrete structural changes. Example directions (pick and justify in the doc):
 
-| Current pattern | Possible simplification |
-|-----------------|-------------------------|
+| Current pattern                                 | Possible simplification                                                         |
+| ----------------------------------------------- | ------------------------------------------------------------------------------- |
 | `accounts` + `accounts_indexer` + subtype table | Single `accounts` row with `account_kind` enum + optional extension table (1:1) |
-| 8 nullable FKs on indexer | Typed discriminator + one FK to extension |
-| `owner_id` on every child | Scope via `accounts.owner_id` or materialized view for hot queries |
-| `identified_transactions` + `transactions` | Keep split (template vs posted) or merge with `is_template` flag |
+| 8 nullable FKs on indexer                       | Typed discriminator + one FK to extension                                       |
+| `owner_id` on every child                       | Scope via `accounts.owner_id` or materialized view for hot queries              |
+| `identified_transactions` + `transactions`      | Keep split (template vs posted) or merge with `is_template` flag                |
 
 #### Step A3: v2 after API domain review
 
@@ -196,22 +196,22 @@ The repo uses **SQLModel + SQLAlchemy** with `DATABASE_URL`. This track produces
 
 #### Options to evaluate
 
-| Option | Description | Code impact |
-|--------|-------------|-------------|
-| **B0 — Local Postgres** | Docker Postgres for local dev; Supabase for staging/prod | `DATABASE_URL` env docs; same Postgres dialect everywhere |
-| **B1 — Supabase Postgres only** | All environments use Supabase pooler connection string | Env config + connection string docs |
-| **B2 — Supabase Auth** | Replace/bridge JWT auth with Supabase Auth | Map `auth.users.id` ↔ `papita_transactions.users.id` |
-| **B3 — Supabase Auth + RLS** | DB-enforced tenant isolation | PostgreSQL RLS policies on `owner_id`; Alembic SQL for policies |
+| Option                          | Description                                              | Code impact                                                     |
+| ------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
+| **B0 — Local Postgres**         | Docker Postgres for local dev; Supabase for staging/prod | `DATABASE_URL` env docs; same Postgres dialect everywhere       |
+| **B1 — Supabase Postgres only** | All environments use Supabase pooler connection string   | Env config + connection string docs                             |
+| **B2 — Supabase Auth**          | Replace/bridge JWT auth with Supabase Auth               | Map `auth.users.id` ↔ `papita_transactions.users.id`            |
+| **B3 — Supabase Auth + RLS**    | DB-enforced tenant isolation                             | PostgreSQL RLS policies on `owner_id`; Alembic SQL for policies |
 
 #### FastAPI integration points (regardless of option)
 
-| Component | Current state | Expected work |
-|-----------|---------------|---------------|
-| `Settings.DATABASE_URL` | Validates via `SQLDatabaseConnector.establish()` | Session dependency for routes |
-| `AuthSecurityManager` | JWT generate/decode | Login/register routes; optional Supabase token validation |
-| `main.py` / routers | Empty files | App factory, `/api/v1` router mount, CORS |
-| Health endpoints | Spec only | Probe DB with `SELECT 1` or connector health check |
-| Tenant scoping | `BaseRepository` patterns in model | API dependency injects `current_user_id` into service calls |
+| Component               | Current state                                    | Expected work                                               |
+| ----------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| `Settings.DATABASE_URL` | Validates via `SQLDatabaseConnector.establish()` | Session dependency for routes                               |
+| `AuthSecurityManager`   | JWT generate/decode                              | Login/register routes; optional Supabase token validation   |
+| `main.py` / routers     | Empty files                                      | App factory, `/api/v1` router mount, CORS                   |
+| Health endpoints        | Spec only                                        | Probe DB with `SELECT 1` or connector health check          |
+| Tenant scoping          | `BaseRepository` patterns in model               | API dependency injects `current_user_id` into service calls |
 
 **Default recommendation to document:** **B0 or B1** until v3 schema is frozen (Postgres everywhere). Defer B2/B3 to avoid rewriting auth mid-refactor (PR #27 already invested in `Users` + local JWT). **Do not evaluate DuckDB paths.**
 
@@ -221,13 +221,13 @@ The repo uses **SQLModel + SQLAlchemy** with `DATABASE_URL`. This track produces
 
 Before implementing [#25](https://github.com/Elmorralito/save-ma-money/issues/25), update `modules/api/API_Endpoints.md.md` so every resource maps to a v3 table/DTO.
 
-| API spec resource | Model today | Decision required |
-|-------------------|-------------|-------------------|
-| `/categories/*` | `types` (`TypesClassifications`: ASSETS, LIABILITIES, TRANSACTIONS) | Rename API to `/types/*` or expose `/categories` as alias |
-| `/transactions/*` | `transactions` + optional `identified_transaction_id` | Document whether templates are nested or separate resource |
-| `/movements/*` | No `movements` table; likely `transactions` with from/to accounts | Define domain term; merge into `/transactions` or add view |
-| `/budgets/*` | **No model** | Add `budgets` + allocation tables in v3 **or** remove from spec |
-| `/auth/register` | `Users`: `username`, `email`, `password` | Align request body (`full_name` vs `username`) |
+| API spec resource | Model today                                                         | Decision required                                               |
+| ----------------- | ------------------------------------------------------------------- | --------------------------------------------------------------- |
+| `/categories/*`   | `types` (`TypesClassifications`: ASSETS, LIABILITIES, TRANSACTIONS) | Rename API to `/types/*` or expose `/categories` as alias       |
+| `/transactions/*` | `transactions` + optional `identified_transaction_id`               | Document whether templates are nested or separate resource      |
+| `/movements/*`    | No `movements` table; likely `transactions` with from/to accounts   | Define domain term; merge into `/transactions` or add view      |
+| `/budgets/*`      | **No model**                                                        | Add `budgets` + allocation tables in v3 **or** remove from spec |
+| `/auth/register`  | `Users`: `username`, `email`, `password`                            | Align request body (`full_name` vs `username`)                  |
 
 **MVP endpoint order for #25 (after v3 freeze):**
 
@@ -257,14 +257,14 @@ Before implementing [#25](https://github.com/Elmorralito/save-ma-money/issues/25
 
 Define the auth layer end-to-end before implementing `/auth/*` routes.
 
-| Topic | Current state | Decision needed |
-|-------|---------------|-----------------|
-| Registration | Spec: `full_name`; model: `username`, `email`, `password` | Unified register schema + response |
-| Login identifier | Form field `username` with email example | Login by email, username, or both |
-| Password hashing | Argon2 via `PasswordManagerFactory` (uninitialized) | Bootstrap in app lifespan / settings |
-| JWT `sub` claim | String user id in token | Document: UUID string from `Users.id` |
-| Refresh / logout | Spec endpoints exist | Stateless JWT only, or refresh token + denylist |
-| API dependencies | Missing `python-multipart` for OAuth2 form login | Add to `modules/api/pyproject.toml` |
+| Topic            | Current state                                             | Decision needed                                 |
+| ---------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| Registration     | Spec: `full_name`; model: `username`, `email`, `password` | Unified register schema + response              |
+| Login identifier | Form field `username` with email example                  | Login by email, username, or both               |
+| Password hashing | Argon2 via `PasswordManagerFactory` (uninitialized)       | Bootstrap in app lifespan / settings            |
+| JWT `sub` claim  | String user id in token                                   | Document: UUID string from `Users.id`           |
+| Refresh / logout | Spec endpoints exist                                      | Stateless JWT only, or refresh token + denylist |
+| API dependencies | Missing `python-multipart` for OAuth2 form login          | Add to `modules/api/pyproject.toml`             |
 
 **Deliverable:** `docs/design/PPT-031-auth-contract.md` covering FR-10, FR-11.
 
@@ -274,13 +274,13 @@ Define the auth layer end-to-end before implementing `/auth/*` routes.
 
 The API spec lists read-only reports that require aggregation, not CRUD tables.
 
-| Endpoint | Depends on | v3 decision |
-|----------|------------|-------------|
-| `GET /reports/spending` | transactions + categories/types | SQL/view spec |
-| `GET /reports/budget-performance` | budgets (missing) | Defer or add budget model |
-| `GET /reports/cash-flow` | accounts + transactions | SQL/view spec |
-| `GET /reports/trends` | time-series aggregates | SQL/view spec |
-| `GET /reports/export` | all above | Format + scope |
+| Endpoint                          | Depends on                      | v3 decision               |
+| --------------------------------- | ------------------------------- | ------------------------- |
+| `GET /reports/spending`           | transactions + categories/types | SQL/view spec             |
+| `GET /reports/budget-performance` | budgets (missing)               | Defer or add budget model |
+| `GET /reports/cash-flow`          | accounts + transactions         | SQL/view spec             |
+| `GET /reports/trends`             | time-series aggregates          | SQL/view spec             |
+| `GET /reports/export`             | all above                       | Format + scope            |
 
 **Deliverable:** Read-model strategy in v3 doc (materialized views, service-layer queries, or deferred from MVP). Update MVP list: reports may ship as stubs returning 501 until queries defined.
 
@@ -312,11 +312,11 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 
 **Developer notes — choose one strategy and document it:**
 
-| Strategy | Mechanism | Pros | Cons |
-|----------|-----------|------|------|
-| **A — FK chain** | Filter via `accounts.owner_id`; drop redundant child `owner_id` | Fewer columns; single source of truth | Joins required for direct transaction queries |
-| **B — Denormalized `owner_id`** | Keep `owner_id` on hot tables; enforce consistency via triggers or app layer | Faster tenant-filtered queries | Update anomalies if account ownership changes |
-| **C — RLS (Supabase/Postgres)** | Policy: `owner_id = current_setting('app.user_id')` | DB-enforced; defense in depth | Requires Supabase/Postgres; aligns with platform decision |
+| Strategy                        | Mechanism                                                                    | Pros                                  | Cons                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------- | --------------------------------------------------------- |
+| **A — FK chain**                | Filter via `accounts.owner_id`; drop redundant child `owner_id`              | Fewer columns; single source of truth | Joins required for direct transaction queries             |
+| **B — Denormalized `owner_id`** | Keep `owner_id` on hot tables; enforce consistency via triggers or app layer | Faster tenant-filtered queries        | Update anomalies if account ownership changes             |
+| **C — RLS (Supabase/Postgres)** | Policy: `owner_id = current_setting('app.user_id')`                          | DB-enforced; defense in depth         | Requires Supabase/Postgres; aligns with platform decision |
 
 **Acceptance:** Decision recorded in v3 doc; `BaseRepository` and API dependencies implement the chosen strategy; cross-tenant denial test cases listed.
 
@@ -746,26 +746,26 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 
 ## Issue dependencies
 
-| Issue | Relationship |
-|-------|--------------|
-| [#26](https://github.com/Elmorralito/save-ma-money/issues/26) | Done — baseline for this work |
-| [#24](https://github.com/Elmorralito/save-ma-money/issues/24) | Close when FR-02 tenancy strategy is approved |
-| [#25](https://github.com/Elmorralito/save-ma-money/issues/25) | Blocked until v3 schema + API mapping approved |
-| [#17](https://github.com/Elmorralito/save-ma-money/issues/17) | **Superseded** — DuckDB deprecated; closed; Postgres FK validation in [#34](https://github.com/Elmorralito/save-ma-money/issues/34) |
-| [#11](https://github.com/Elmorralito/save-ma-money/issues/11) | Coordinate version bumps at v3 release (NFR-11) |
-| [#30](https://github.com/Elmorralito/save-ma-money/issues/30)–[#34](https://github.com/Elmorralito/save-ma-money/issues/34) | Implementation sub-issues for tracks A–D |
+| Issue                                                                                                                       | Relationship                                                                                                                        |
+| --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [#26](https://github.com/Elmorralito/save-ma-money/issues/26)                                                               | Done — baseline for this work                                                                                                       |
+| [#24](https://github.com/Elmorralito/save-ma-money/issues/24)                                                               | Close when FR-02 tenancy strategy is approved                                                                                       |
+| [#25](https://github.com/Elmorralito/save-ma-money/issues/25)                                                               | Blocked until v3 schema + API mapping approved                                                                                      |
+| [#17](https://github.com/Elmorralito/save-ma-money/issues/17)                                                               | **Superseded** — DuckDB deprecated; closed; Postgres FK validation in [#34](https://github.com/Elmorralito/save-ma-money/issues/34) |
+| [#11](https://github.com/Elmorralito/save-ma-money/issues/11)                                                               | Coordinate version bumps at v3 release (NFR-11)                                                                                     |
+| [#30](https://github.com/Elmorralito/save-ma-money/issues/30)–[#34](https://github.com/Elmorralito/save-ma-money/issues/34) | Implementation sub-issues for tracks A–D                                                                                            |
 
 ---
 
 ## Sub-issues
 
-| ID | GitHub | Title | Track |
-|----|--------|-------|-------|
-| PPT-031-A | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) | Data model audit and 3NF gap analysis (v0) | A |
-| PPT-031-B | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) | Target schema iterations v1–v3 + ER diagram | A |
-| PPT-031-C | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) | Supabase × FastAPI decision record | B |
-| PPT-031-D | [#33](https://github.com/Elmorralito/save-ma-money/issues/33) | API spec realignment (`API_Endpoints.md.md`) | C |
-| PPT-031-E | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) | Alembic migration + Supabase PostgreSQL validation | D |
+| ID        | GitHub                                                        | Title                                              | Track |
+| --------- | ------------------------------------------------------------- | -------------------------------------------------- | ----- |
+| PPT-031-A | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) | Data model audit and 3NF gap analysis (v0)         | A     |
+| PPT-031-B | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) | Target schema iterations v1–v3 + ER diagram        | A     |
+| PPT-031-C | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) | Supabase × FastAPI decision record                 | B     |
+| PPT-031-D | [#33](https://github.com/Elmorralito/save-ma-money/issues/33) | API spec realignment (`API_Endpoints.md.md`)       | C     |
+| PPT-031-E | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) | Alembic migration + Supabase PostgreSQL validation | D     |
 
 Tracks **E** (auth) and **F** (reports) are scoped in this issue; implement via #33 (spec) and #25 (code) after v3 freeze.
 
