@@ -882,7 +882,7 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 | DTO default defects            | §14 NF-13, NF-14   | Liability / financed share impossible defaults |
 | Types write asymmetry          | §14 NF-15          | No owner on type upsert                        |
 | Report query prerequisites     | §15                | Balance/spending SQL + index gaps              |
-| Expert review register         | §14                | NF-01 through NF-20                            |
+| v0 hotfix backlog (optional)   | §16                | NF-04, NF-13, NF-14, NF-15 patch specs         |
 
 ---
 
@@ -898,6 +898,7 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 | Registrar load pipeline impact summary                          | §8      |
 | New findings register (expert review)                           | §14     |
 | Report / balance query prerequisites                            | §15     |
+| Optional v0 hotfix backlog (pre-v3 patches)                     | §16     |
 
 ---
 
@@ -908,7 +909,7 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 3. **Types identity (FR-15)** — include `owner_id` in hash or adopt composite unique.
 4. **Ledger semantics (FR-05)** — support transfers as first-class or document two-line convention.
 5. **Currency & balance (FR-07)** — add columns or computed views; align API spec (#33).
-6. **Fix or bypass indexer DTO validation** — short-term patch before v3 if ingestion continues on v0.
+6. **Optional v0 hotfixes** — if ingestion continues before v3, apply §16 patch backlog (NF-04, NF-13, NF-14, NF-15).
 7. **Regenerate ER diagram** after v3 on Docker Postgres / Supabase (#34).
 
 ---
@@ -1066,7 +1067,7 @@ Findings discovered or upgraded during the ten-iteration expert review (finance 
 
 **Finance impact:** Banking, mortgage, brokerage, and credit-card accounts may fail validation on ingest — subtypes either bypass DTO or never load.
 
-**v3 action:** Fix validator short-term OR remove indexer DTO path in v3 (FR-03). Add regression test loading a `banking_asset_account` indexer row.
+**v3 action:** Fix validator short-term (§16.2) OR remove indexer DTO path in v3 (FR-03). Add regression test loading a `banking_asset_account` indexer row.
 
 ### NF-05 — No currency dimension
 
@@ -1142,7 +1143,7 @@ Findings discovered or upgraded during the ten-iteration expert review (finance 
 
 **Finance impact:** Fresh loans (nothing paid yet) are the common case — the DTO fights the domain default.
 
-**v3 action:** Use `Field(ge=0, default=0)` or make `total_paid` nullable until first payment.
+**v3 action:** Use `Field(ge=0, default=0)` or make `total_paid` nullable until first payment. Hotfix: §16.3.
 
 ### NF-14 — `FinancedAssetAccountsDTO.financing_share` impossible default
 
@@ -1156,7 +1157,7 @@ Findings discovered or upgraded during the ten-iteration expert review (finance 
 
 **Finance impact:** Full financing (100% mortgage) fails DTO instantiation with defaults; partial financing requires explicit share on every load.
 
-**v3 action:** Align DTO default with model (`1.0`) and use `gt=0` or `ge=0` with CHECK for open intervals.
+**v3 action:** Align DTO default with model (`1.0`) and use `gt=0` or `ge=0` with CHECK for open intervals. Hotfix: §16.4.
 
 ### NF-15 — Types write path not owner-scoped
 
@@ -1166,7 +1167,7 @@ Read path merges global + owned (`TypesRepository.get_records`). Write path can 
 
 **Finance impact:** User A could overwrite global type `"Groceries"` or User B's type if IDs collide (NF-04 / FR-15).
 
-**v3 action:** Extend `TypesRepository.upsert_record` with owner rules, or split global types into read-only seed table.
+**v3 action:** Extend `TypesRepository.upsert_record` with owner rules, or split global types into read-only seed table. Hotfix: §16.5.
 
 ### NF-16 — Template type classification unchecked
 
@@ -1261,6 +1262,139 @@ GROUP BY ty.name;
 Materialized view candidate: `account_balances` refreshed on transaction upsert (FR-12).
 
 ---
+
+## 16. Optional v0 hotfix backlog (pre-v3)
+
+**Scope:** Code patches on the **current schema** while [#32](https://github.com/Elmorralito/save-ma-money/issues/32) v1–v3 design proceeds. These do **not** replace structural fixes in v3 (FR-03, FR-15). Apply only if load handlers or services remain in use on v0.
+
+**Review gate:** Optional **G0b** — maintainer approves a short hotfix PR scoped to §16 before merge (see [`docs/design/README.md`](README.md)).
+
+### 16.1 Summary
+
+| ID        | Severity | Module / file                                                                                                                                                                              | Symptom                                                      | Patch class                       | v3 superseded by                              |
+| --------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | --------------------------------- | --------------------------------------------- |
+| **NF-04** | Critical | [`access/indexers/dto.py`](../../modules/model/src/papita_txnsmodel/access/indexers/dto.py)                                                                                                | Banking / RE / trading / CC indexer rows fail DTO validation | Fix `_validate_linked_accounts()` | Remove or replace `AccountsIndexer` (FR-03)   |
+| **NF-13** | Critical | [`access/liabilities/dto.py`](../../modules/model/src/papita_txnsmodel/access/liabilities/dto.py), [`model/liabilities.py`](../../modules/model/src/papita_txnsmodel/model/liabilities.py) | New liability with `total_paid=0` fails validation           | Relax constraint to `ge=0`        | Consolidated liability columns on `accounts`  |
+| **NF-14** | Critical | [`access/assets/dto.py`](../../modules/model/src/papita_txnsmodel/access/assets/dto.py)                                                                                                    | Default `financing_share` fails `gt=0`                       | Default `1.0`; align DTO ↔ model  | `financed_asset_accounts` redesign (FR-16)    |
+| **NF-15** | High     | [`access/types/repository.py`](../../modules/model/src/papita_txnsmodel/access/types/repository.py)                                                                                        | Type upsert ignores `owner`; cross-tenant overwrite risk     | Owner rules on write path         | Types identity + tenancy in v3 (FR-02, FR-15) |
+
+Detailed evidence: §5.6, §14 (NF-04, NF-13, NF-14, NF-15).
+
+### 16.2 NF-04 — Fix `AccountsIndexerDTO._validate_linked_accounts()`
+
+**Root cause (three defects):**
+
+1. `match` branches assign `ExtendedAssetAccountsDTO` when `liability_account` is set and vice versa — **inverted**.
+2. Field list always unions `ExtendedLiabilityAccountsDTO` into asset-side checks.
+3. Validator **raises when any extended field is populated** instead of validating allowed extended subtype for the base.
+
+**Recommended patch:**
+
+```python
+def _validate_linked_accounts(self) -> "AccountsIndexerDTO":
+    match self.asset_account, self.liability_account:
+        case _, None:  # base = asset
+            allowed = (
+                ExtendedAssetAccountsDTO,
+                BankingAssetAccountsDTO,
+                RealEstateAssetAccountsDTO,
+                TradingAssetAccountsDTO,
+            )
+        case None, _:  # base = liability
+            allowed = (
+                ExtendedLiabilityAccountsDTO,
+                BankCreditLiabilityAccountsDTO,
+                CreditCardLiabilityAccountsDTO,
+            )
+        case _, _:
+            raise ValueError("The index cannot contain both asset and liability.")
+
+    extended_fields = [
+        name
+        for name, info in self.__class__.model_fields.items()
+        if any(t in get_args(info.annotation) for t in allowed)
+    ]
+    populated = [f for f in extended_fields if getattr(self, f) is not None]
+    if len(populated) > 1:
+        raise ValueError("The index cannot contain more than one extended account.")
+    return self
+```
+
+**Acceptance tests** (`modules/model/tests/`):
+
+- Valid: asset + `banking_asset_account` only → no raise.
+- Valid: liability + `credit_card_liability_account` only → no raise.
+- Invalid: asset + `credit_card_liability_account` → raise.
+- Invalid: two asset extended FKs populated → raise.
+
+**Out of scope for hotfix:** DB CHECK on indexer FK matrix; removing hub table.
+
+### 16.3 NF-13 — Fix `total_paid` zero default
+
+**Root cause:** DTO and model both use `gt=0` with `default=0` — unsatisfiable for new loans.
+
+**Recommended patch:**
+
+| Layer                       | Change                                                       |
+| --------------------------- | ------------------------------------------------------------ |
+| `LiabilityAccountsDTO`      | `total_paid: float = Field(ge=0, default=0, ...)`            |
+| `LiabilityAccounts` (model) | `total_paid` validator: `ge=0` instead of `gt=0` (match DTO) |
+
+**Acceptance tests:**
+
+- `LiabilityAccountsDTO()` with only required financial fields + `total_paid` omitted → validates with `0`.
+- Upsert new liability via `LiabilityAccountsService.create()` with `total_paid=0` succeeds.
+
+**Finance note:** Zero paid is the correct opening state for a new mortgage or loan.
+
+### 16.4 NF-14 — Fix `financing_share` default
+
+**Root cause:** DTO default `0.0` with `gt=0`; model default `1.0` — inconsistent.
+
+**Recommended patch:**
+
+```python
+# access/assets/dto.py
+financing_share: Annotated[float, Field(le=1, gt=0, default=1.0)]
+```
+
+**Acceptance tests:**
+
+- `FinancedAssetAccountsDTO` with required FKs only → `financing_share == 1.0`, validates.
+- Partial share `0.25` still validates.
+
+### 16.5 NF-15 — Scope types writes to owner
+
+**Root cause:** `TypesRepository` read path filters `owner_id = X OR owner_id IS NULL`; write path uses `BaseRepository.upsert_record`, which drops `owner`.
+
+**Recommended patch (minimal — until v3 types redesign):**
+
+1. Override `TypesRepository.upsert_record(dto, owner=..., **kwargs)`:
+   - If `owner` is `UsersDTO`: set `dto.owner_id = owner.id` for user-scoped types; reject if existing row has different non-null `owner_id`.
+   - If `owner` is `None` and `dto.owner_id` is `None`: allow only when explicitly loading **global seed** types (document in handler); log warning.
+   - Reject upsert that changes `owner_id` on an existing global type row from a tenant-scoped call.
+2. Override `upsert_records` similarly: inject `owner_id` column when `owner` provided.
+3. Include `owner_id` in `TypesDTO._normalize_model()` hash **or** defer hash change to v3 and rely on composite unique in migration — hotfix should at minimum enforce write scoping without changing IDs yet.
+
+**Acceptance tests:**
+
+- User A creates type `"Rent"` → `owner_id = A`.
+- User B creates type `"Rent"` → distinct row (after v3 hash fix) or allowed duplicate name under composite unique (v3); hotfix minimum: B cannot overwrite A's row by ID.
+- Tenant upsert cannot mutate global type (`owner_id IS NULL`) without admin path.
+
+**v3 follow-up:** Composite `UNIQUE (owner_id, name, classification)` and deterministic ID including `owner_id` (FR-15) — not required for hotfix PR but should be tracked on #32.
+
+### 16.6 Hotfix PR checklist
+
+- [ ] One PR per NF or single PR with four isolated commits (prefer single PR, `modules/model` only).
+- [ ] Tests added for each acceptance block in §16.2–§16.5.
+- [ ] No Alembic migration unless model constraint change requires DDL (NF-13 model `gt` → DB unchanged if validation-only).
+- [ ] `modules/model/tests/` green; note in PR that v3 may revert indexer DTO path entirely.
+- [ ] Link PR to #30; do **not** mark G1 (v3 freeze) satisfied by hotfix alone.
+
+---
+
+## References
 
 - Parent issue: [#28](https://github.com/Elmorralito/save-ma-money/issues/28)
 - Sub-issues: [#30](https://github.com/Elmorralito/save-ma-money/issues/30) (this doc), [#32](https://github.com/Elmorralito/save-ma-money/issues/32) (v1–v3 schema)
