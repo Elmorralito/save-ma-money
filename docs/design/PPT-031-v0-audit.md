@@ -8,7 +8,7 @@
 | **Baseline**           | PR #27 (users + `owner_id`), PR #29 (API spec scaffold)                                                                    |
 | **Schema**             | `papita_transactions` (PostgreSQL / Supabase)                                                                              |
 | **Date**               | 2026-07-05                                                                                                                 |
-| **Last expert review** | 2026-07-05 (5 iterations — see §13)                                                                                        |
+| **Last expert review** | 2026-07-05 (10 iterations — see §13; stopped at quality plateau)                                                           |
 | **Status**             | v0 baseline — pre-simplification                                                                                           |
 
 ---
@@ -19,17 +19,20 @@ This document captures the **current state** of the `papita_transactions` schema
 
 **Key findings:** (full register with evidence in [§14](#14-new-findings-register-expert-review-2026-07-05))
 
-| Area                          | Finding                                                                                                     | Severity            |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------- |
-| **AccountsIndexer**           | 8 nullable FK columns with no DB constraint enforcing exactly one populated                                 | High                |
-| **Redundant `owner_id`**      | Present on 13 tables; derivable via FK chains in most cases                                                 | Medium              |
-| **3NF violations**            | Transitive dependencies via duplicated financial columns across base + subtype tables; denormalized tenancy | Medium–High         |
-| **Types identity**            | Deterministic UUID ignores `owner_id`; `name` is globally unique                                            | High (multi-tenant) |
-| **AccountsIndexer audit gap** | Does not extend `BaseSQLModel` — no soft delete or timestamps                                               | Medium              |
-| **Load pipeline**             | Deep dependency chains through indexer handler; `owner=None` still accepted                                 | Medium              |
-| **Ledger semantics**          | Single-sided entries only at ingest; **transfers rejected** by handler                                      | High (domain)       |
-| **Missing primitives**        | No `currency`, stored `balance`, or double-entry journal lines                                              | High (API gap)      |
-| **Indexer DTO bug**           | `_validate_linked_accounts()` rejects any populated extended subtype                                        | Critical (runtime)  |
+| Area                           | Finding                                                                                                     | Severity            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------- |
+| **AccountsIndexer**            | 8 nullable FK columns with no DB constraint enforcing exactly one populated                                 | High                |
+| **Redundant `owner_id`**       | Present on 13 tables; derivable via FK chains in most cases                                                 | Medium              |
+| **3NF violations**             | Transitive dependencies via duplicated financial columns across base + subtype tables; denormalized tenancy | Medium–High         |
+| **Types identity**             | Deterministic UUID ignores `owner_id`; `name` is globally unique                                            | High (multi-tenant) |
+| **AccountsIndexer audit gap**  | Does not extend `BaseSQLModel` — no soft delete or timestamps                                               | Medium              |
+| **Load pipeline**              | Deep dependency chains through indexer handler; `owner=None` still accepted                                 | Medium              |
+| **Ledger semantics**           | Single-sided entries only at ingest; **transfers rejected** by handler                                      | High (domain)       |
+| **Missing primitives**         | No `currency`, stored `balance`, or double-entry journal lines                                              | High (API gap)      |
+| **Indexer DTO bug**            | `_validate_linked_accounts()` rejects any populated extended subtype                                        | Critical (runtime)  |
+| **DTO default contradictions** | `total_paid=0` with `gt=0`; `financing_share=0.0` with `gt=0` — new rows fail validation                    | Critical (runtime)  |
+| **Types write asymmetry**      | Read merges global+owned; write uses `BaseRepository` without owner enforcement                             | High (security)     |
+| **Report index gaps**          | No FK indexes on `from_account_id`/`to_account_id`; no `(owner_id, transaction_ts)` composite               | Medium (perf)       |
 
 The v0 schema is **functional for single-tenant cash-flow ingestion** (income/expense against named accounts) but is **not** a general ledger, multi-currency portfolio system, or clean multi-tenant product schema. Structural debt blocks API CRUD (#25) and tenant isolation (#24) without redesign (#32).
 
@@ -384,6 +387,8 @@ Posted ledger entries.
 **FKs:** three optional/required FKs + `owner_id` → `users.id`
 
 **Indexes:** `transaction_ts`, `owner_id`
+
+**Missing indexes (NF-18):** No index on `from_account_id`, `to_account_id`, or `identified_transaction_id` — balance rollups and template joins require sequential scans at scale. No composite `(owner_id, transaction_ts)` for tenant-scoped time-series (#28 Track F / FR-12).
 
 **Business rule (handler-enforced):** exactly one of `from_account_id` or `to_account_id` must be non-null (income vs expense).
 
@@ -862,19 +867,22 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 
 ## 9. Cross-reference: #28 pain points mapped to v0 evidence
 
-| #28 pain point                 | v0 audit section   | Evidence                                     |
-| ------------------------------ | ------------------ | -------------------------------------------- |
-| #1 Sparse FK matrix            | §5                 | 8 nullable FKs, no DB CHECK                  |
-| #2 Redundant `owner_id`        | §6                 | 13 tables, no trigger sync                   |
-| #6 Model doc drift             | §3.9               | `LiabilityAccounts` docstring fields missing |
-| #10 Types ID collision         | §4.3.4             | `TypesDTO` hash excludes owner               |
-| #12 Indexer skips BaseSQLModel | §2.3, §3.4         | No soft delete on hub                        |
-| #13 Legacy migration           | §6.4               | NOT NULL without backfill                    |
-| #16 FinancedAssetAccounts      | §3.12, §4.2        | PK + share constraints                       |
-| Transfer ingestion             | §3.14, NF-01–NF-03 | Handler rejects both from/to; no pair link   |
-| API phantom fields             | §1.1, §4.5, NF-09  | No currency/balance in model                 |
-| Indexer DTO defect             | §5.6, NF-04        | Extended subtype validation broken           |
-| Expert review register         | §14                | NF-01 through NF-12                          |
+| #28 pain point                 | v0 audit section   | Evidence                                       |
+| ------------------------------ | ------------------ | ---------------------------------------------- |
+| #1 Sparse FK matrix            | §5                 | 8 nullable FKs, no DB CHECK                    |
+| #2 Redundant `owner_id`        | §6                 | 13 tables, no trigger sync                     |
+| #6 Model doc drift             | §3.9               | `LiabilityAccounts` docstring fields missing   |
+| #10 Types ID collision         | §4.3.4             | `TypesDTO` hash excludes owner                 |
+| #12 Indexer skips BaseSQLModel | §2.3, §3.4         | No soft delete on hub                          |
+| #13 Legacy migration           | §6.4               | NOT NULL without backfill                      |
+| #16 FinancedAssetAccounts      | §3.12, §4.2        | PK + share constraints                         |
+| Transfer ingestion             | §3.14, NF-01–NF-03 | Handler rejects both from/to; no pair link     |
+| API phantom fields             | §1.1, §4.5, NF-09  | No currency/balance in model                   |
+| Indexer DTO defect             | §5.6, NF-04        | Extended subtype validation broken             |
+| DTO default defects            | §14 NF-13, NF-14   | Liability / financed share impossible defaults |
+| Types write asymmetry          | §14 NF-15          | No owner on type upsert                        |
+| Report query prerequisites     | §15                | Balance/spending SQL + index gaps              |
+| Expert review register         | §14                | NF-01 through NF-20                            |
 
 ---
 
@@ -889,6 +897,7 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 | Repository/handler query pattern notes                          | §7      |
 | Registrar load pipeline impact summary                          | §8      |
 | New findings register (expert review)                           | §14     |
+| Report / balance query prerequisites                            | §15     |
 
 ---
 
@@ -964,36 +973,49 @@ Document each in v3 freeze with reconciliation rule.
 
 ## 13. Expert review iteration log
 
-| Iter  | Focus                   | Outcome                                                                         |
-| ----- | ----------------------- | ------------------------------------------------------------------------------- |
-| **1** | Domain framing          | Added §1.1 domain context table; clarified PF vs GL positioning                 |
-| **2** | Ledger semantics        | Documented transfer rejection, sign convention, balance authority (§3.14, §4.5) |
-| **3** | Consolidation economics | Added subtype overlap analysis §4.6 (~70% shared columns)                       |
-| **4** | Code validation         | Confirmed indexer DTO bug §5.6; fixed UpserterFactory typo §7.5                 |
-| **5** | Concept & stop rule     | Added §12 expert v3 concept; consolidated findings in §14 — **stopped**         |
+| Iter   | Focus                   | Outcome                                                                         |
+| ------ | ----------------------- | ------------------------------------------------------------------------------- |
+| **1**  | Domain framing          | Added §1.1 domain context table; clarified PF vs GL positioning                 |
+| **2**  | Ledger semantics        | Documented transfer rejection, sign convention, balance authority (§3.14, §4.5) |
+| **3**  | Consolidation economics | Added subtype overlap analysis §4.6 (~70% shared columns)                       |
+| **4**  | Code validation         | Confirmed indexer DTO bug §5.6; fixed UpserterFactory typo §7.5                 |
+| **5**  | Concept & stop rule     | Added §12 expert v3 concept; consolidated findings in §14                       |
+| **6**  | DTO validation defects  | NF-13, NF-14 — impossible defaults on liability/financed DTOs                   |
+| **7**  | Tenancy asymmetry       | NF-15 — types write path lacks `OwnedTableRepository` enforcement               |
+| **8**  | Domain rules            | NF-16, NF-17 — template type classification; recurring day cap at 28            |
+| **9**  | Index & query planning  | NF-18, §15 report query prerequisites                                           |
+| **10** | Plateau check           | NF-19, NF-20 — rate consistency, DTO-layer transaction XOR; **stopped**         |
 
-**Stop criterion met:** Iteration 5 additions (v3 sketch) are forward-looking design; deeper field-by-field v3 DDL belongs in [#32](https://github.com/Elmorralito/save-ma-money/issues/32), not v0 audit.
+**Stop criterion met (iteration 10):** Remaining observations (e.g. ISO 4217 seed table, audit column on indexer) are v3 implementation detail or duplicate §12 — marginal value below iteration 9 additions.
 
 ---
 
 ## 14. New findings register (expert review, 2026-07-05)
 
-Findings discovered or upgraded during the five-iteration expert review (finance + data modeling). Each entry is actionable for #32 / #33.
+Findings discovered or upgraded during the ten-iteration expert review (finance + data modeling). Each entry is actionable for #32 / #33.
 
-| ID        | Finding                               | Severity     | Detail                                                                                  |
-| --------- | ------------------------------------- | ------------ | --------------------------------------------------------------------------------------- |
-| **NF-01** | Transfers rejected at ingest          | **High**     | Handler filters out rows with both `from_account_id` and `to_account_id` set — §3.14    |
-| **NF-02** | Orphan transactions dropped           | **Medium**   | Rows with neither account FK set after matching are removed — §3.14                     |
-| **NF-03** | No transfer pair integrity            | **High**     | Two manual single-sided rows; no schema link — §3.14, §4.5                              |
-| **NF-04** | Indexer DTO blocks extended subtypes  | **Critical** | `_validate_linked_accounts()` always raises when extended FK populated — §5.6           |
-| **NF-05** | No currency dimension                 | **High**     | All DECIMAL amounts unitless; cannot aggregate multi-currency — §4.5                    |
-| **NF-06** | Dual balance authority                | **High**     | Snapshot fields vs ledger with no reconciliation — §4.5                                 |
-| **NF-07** | Decoupled subtype UUIDs               | **Medium**   | `accounts.id` ≠ `assets_accounts.id` ≠ `banking_asset_accounts.id` — §12.2              |
-| **NF-08** | `types` table overloaded              | **Medium**   | COA + categories + indexer routing in one entity — §12.2                                |
-| **NF-09** | API phantom fields                    | **High**     | Spec expects `balance`, `currency`, `transaction_type`, category hierarchy — §1.1, §4.5 |
-| **NF-10** | Implicit sign convention              | **Low**      | Positive `value` only; direction from which FK is set — §3.14                           |
-| **NF-11** | Subtype column overlap ~70%           | **Medium**   | Consolidation candidate for v3 — §4.6                                                   |
-| **NF-12** | `UpserterFactory` typo in prior draft | **Info**     | Corrected in §7.5 (was `UpscribeFactory`)                                               |
+| ID        | Finding                                            | Severity     | Detail                                                                                  |
+| --------- | -------------------------------------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| **NF-01** | Transfers rejected at ingest                       | **High**     | Handler filters out rows with both `from_account_id` and `to_account_id` set — §3.14    |
+| **NF-02** | Orphan transactions dropped                        | **Medium**   | Rows with neither account FK set after matching are removed — §3.14                     |
+| **NF-03** | No transfer pair integrity                         | **High**     | Two manual single-sided rows; no schema link — §3.14, §4.5                              |
+| **NF-04** | Indexer DTO blocks extended subtypes               | **Critical** | `_validate_linked_accounts()` always raises when extended FK populated — §5.6           |
+| **NF-05** | No currency dimension                              | **High**     | All DECIMAL amounts unitless; cannot aggregate multi-currency — §4.5                    |
+| **NF-06** | Dual balance authority                             | **High**     | Snapshot fields vs ledger with no reconciliation — §4.5                                 |
+| **NF-07** | Decoupled subtype UUIDs                            | **Medium**   | `accounts.id` ≠ `assets_accounts.id` ≠ `banking_asset_accounts.id` — §12.2              |
+| **NF-08** | `types` table overloaded                           | **Medium**   | COA + categories + indexer routing in one entity — §12.2                                |
+| **NF-09** | API phantom fields                                 | **High**     | Spec expects `balance`, `currency`, `transaction_type`, category hierarchy — §1.1, §4.5 |
+| **NF-10** | Implicit sign convention                           | **Low**      | Positive `value` only; direction from which FK is set — §3.14                           |
+| **NF-11** | Subtype column overlap ~70%                        | **Medium**   | Consolidation candidate for v3 — §4.6                                                   |
+| **NF-12** | `UpserterFactory` typo in prior draft              | **Info**     | Corrected in §7.5 (was `UpscribeFactory`)                                               |
+| **NF-13** | `LiabilityAccountsDTO.total_paid` default          | **Critical** | `Field(gt=0, default=0)` — zero violates own validator — §14 NF-13                      |
+| **NF-14** | `FinancedAssetAccountsDTO.financing_share` default | **Critical** | `= 0.0` with `gt=0` — same pattern — §14 NF-14                                          |
+| **NF-15** | Types write path not owner-scoped                  | **High**     | `TypesRepository` extends `BaseRepository`; upsert without owner — §14 NF-15            |
+| **NF-16** | Template type classification unchecked             | **Medium**   | `identified_transactions.type_id` may reference ASSETS/LIABILITIES types — §14 NF-16    |
+| **NF-17** | Recurring day capped at 28                         | **Medium**   | Salaries on 29–31 unrepresentable — §14 NF-17                                           |
+| **NF-18** | Ledger FK / report indexes missing                 | **Medium**   | No index on account FKs or `(owner_id, transaction_ts)` — §3.14, §15                    |
+| **NF-19** | Dual interest rates uncorrelated                   | **Low**      | Monthly + yearly stored independently — §14 NF-19                                       |
+| **NF-20** | Transaction XOR only in handler                    | **Medium**   | `TransactionsDTO` allows both/null FKs — API bypass — §14 NF-20                         |
 
 ### NF-01 — Transfers rejected at ingest
 
@@ -1108,9 +1130,137 @@ Findings discovered or upgraded during the five-iteration expert review (finance
 
 **v3 action:** Consolidate shared columns onto `accounts` or single financial extension (FR-04).
 
+### NF-13 — `LiabilityAccountsDTO.total_paid` impossible default
+
+**Evidence:**
+
+```60:60:modules/model/src/papita_txnsmodel/access/liabilities/dto.py
+    total_paid: float = Field(gt=0, default=0, description="Total amount paid so far")
+```
+
+**Defect:** Pydantic rejects `total_paid=0` while default is `0`. New liability accounts cannot validate unless `total_paid` is omitted and default handling bypasses validation, or a positive value is always supplied.
+
+**Finance impact:** Fresh loans (nothing paid yet) are the common case — the DTO fights the domain default.
+
+**v3 action:** Use `Field(ge=0, default=0)` or make `total_paid` nullable until first payment.
+
+### NF-14 — `FinancedAssetAccountsDTO.financing_share` impossible default
+
+**Evidence:**
+
+```99:99:modules/model/src/papita_txnsmodel/access/assets/dto.py
+    financing_share: Annotated[float, Field(le=1, gt=0)] = 0.0
+```
+
+**Defect:** Default `0.0` violates `gt=0`. Model layer uses `default=1.0` — DTO and DAO defaults **diverge**.
+
+**Finance impact:** Full financing (100% mortgage) fails DTO instantiation with defaults; partial financing requires explicit share on every load.
+
+**v3 action:** Align DTO default with model (`1.0`) and use `gt=0` or `ge=0` with CHECK for open intervals.
+
+### NF-15 — Types write path not owner-scoped
+
+**Evidence:** `TypesRepository` extends `BaseRepository`, not `OwnedTableRepository`. `TypesService.create()` calls `_repository.upsert_record(parsed_obj, owner=owner)` but `BaseRepository.upsert_record` **ignores** `owner` — no tenant assignment or mismatch check.
+
+Read path merges global + owned (`TypesRepository.get_records`). Write path can upsert any type row without binding to caller tenant.
+
+**Finance impact:** User A could overwrite global type `"Groceries"` or User B's type if IDs collide (NF-04 / FR-15).
+
+**v3 action:** Extend `TypesRepository.upsert_record` with owner rules, or split global types into read-only seed table.
+
+### NF-16 — Template type classification unchecked
+
+**Evidence:** `IdentifiedTransactionsService` uses `TypedEntitiesService` but does not assert `type.classification == TypesClassifications.TRANSACTIONS`. Indexer service **does** assert classification for accounts.
+
+**Finance impact:** A recurring mortgage payment template could reference an ASSETS type — budget reports by category break.
+
+**v3 action:** Service-level CHECK or FK to a `categories` view filtered to TRANSACTIONS classification.
+
+### NF-17 — Recurring day capped at 28
+
+**Evidence:** `planned_transaction_day` and `closing_day` use `le=28` on model and DTOs.
+
+**Finance impact:** Payroll on the 31st, card cycles on the 30th, and month-end bills are clipped or must use day 28 as proxy — distorts cash-flow forecasting.
+
+**v3 action:** Allow 1–31 with `last-day-of-month` flag, or store `rrule` / cron for v3 templates.
+
+### NF-18 — Ledger FK and report indexes missing
+
+**Evidence:** Seed migration indexes `transaction_ts` and (post #27) `owner_id` only. No indexes on `from_account_id`, `to_account_id`, `identified_transaction_id`.
+
+**Finance impact:** `GET /reports/spending`, cash-flow, and balance views (#28 FR-12) scan full ledger per tenant.
+
+**v3 action:** See §15 — add FK indexes + `(owner_id, transaction_ts DESC)` composite.
+
+### NF-19 — Dual interest rates uncorrelated
+
+**Evidence:** `assets_accounts` and `liability_accounts` store both `monthly_interest_rate` and `yearly_interest_rate` with no CHECK relating them (e.g. `(1 + r_m)^12 ≈ 1 + r_y` within tolerance).
+
+**Finance impact:** Amortization vs APY displays can disagree; one field may be stale.
+
+**v3 action:** Store one canonical rate + `rate_basis` enum (NOMINAL_MONTHLY, APY); derive the other.
+
+### NF-20 — Transaction account XOR only in handler
+
+**Evidence:** `TransactionsDTO` has no `@model_validator` for from/to XOR. Rule enforced only in `TransactionsHandler._match_accounts()` filter.
+
+**Finance impact:** API or direct service calls can persist invalid rows (both accounts set, or neither) unless handler is always in path.
+
+**v3 action:** DTO validator + DB CHECK mirroring intended `transaction_kind` (NF-01 / §12.3).
+
 ---
 
-## References
+## 15. Report and balance query prerequisites (FR-12 input)
+
+v0 schema lacks read models; these queries define **minimum indexes and joins** for #32 / #33.
+
+### 15.1 Account balance (ledger-derived)
+
+```sql
+-- Per account, per tenant (single-sided convention)
+SELECT a.id,
+       COALESCE(SUM(CASE WHEN t.to_account_id = a.id THEN t.value END), 0)
+     - COALESCE(SUM(CASE WHEN t.from_account_id = a.id THEN t.value END), 0) AS balance
+FROM papita_transactions.accounts a
+LEFT JOIN papita_transactions.transactions t
+  ON t.owner_id = a.owner_id
+ AND (t.from_account_id = a.id OR t.to_account_id = a.id)
+ AND t.active = true
+WHERE a.owner_id = :owner_id AND a.active = true
+GROUP BY a.id;
+```
+
+**Blockers today:** NF-01 (transfers excluded from ingest); NF-05 (no currency — balance mixed-unit if ever multi-currency); NF-18 (FK indexes).
+
+### 15.2 Spending by category (period)
+
+```sql
+SELECT ty.name, SUM(t.value) AS spent
+FROM papita_transactions.transactions t
+JOIN papita_transactions.identified_transactions it ON it.id = t.identified_transaction_id
+JOIN papita_transactions.types ty ON ty.id = it.type_id
+WHERE t.owner_id = :owner_id
+  AND t.from_account_id IS NOT NULL
+  AND t.transaction_ts BETWEEN :start AND :end
+  AND t.active = true
+GROUP BY ty.name;
+```
+
+**Blockers:** NF-08 (types overloaded); NF-16 (wrong classification possible); optional link — many transactions have `identified_transaction_id IS NULL`.
+
+### 15.3 Recommended v3 indexes (reports)
+
+| Index                                          | Serves                                  |
+| ---------------------------------------------- | --------------------------------------- |
+| `(owner_id, transaction_ts)` on `transactions` | All time-series reports                 |
+| `(from_account_id)` on `transactions`          | Outflow / balance                       |
+| `(to_account_id)` on `transactions`            | Inflow / balance                        |
+| `(owner_id, classification)` on `types`        | Category filters                        |
+| `(owner_id, name)` UNIQUE on `types`           | Tenant taxonomy (replace global unique) |
+
+Materialized view candidate: `account_balances` refreshed on transaction upsert (FR-12).
+
+---
 
 - Parent issue: [#28](https://github.com/Elmorralito/save-ma-money/issues/28)
 - Sub-issues: [#30](https://github.com/Elmorralito/save-ma-money/issues/30) (this doc), [#32](https://github.com/Elmorralito/save-ma-money/issues/32) (v1–v3 schema)
