@@ -8,6 +8,7 @@
 | **Baseline** | PR #27 (users + `owner_id`), PR #29 (API spec scaffold) |
 | **Schema** | `papita_transactions` (PostgreSQL / Supabase) |
 | **Date** | 2026-07-05 |
+| **Last expert review** | 2026-07-05 (5 iterations — see §13) |
 | **Status** | v0 baseline — pre-simplification |
 
 ---
@@ -26,8 +27,24 @@ This document captures the **current state** of the `papita_transactions` schema
 | **Types identity** | Deterministic UUID ignores `owner_id`; `name` is globally unique | High (multi-tenant) |
 | **AccountsIndexer audit gap** | Does not extend `BaseSQLModel` — no soft delete or timestamps | Medium |
 | **Load pipeline** | Deep dependency chains through indexer handler; `owner=None` still accepted | Medium |
+| **Ledger semantics** | Single-sided entries only at ingest; **transfers rejected** by handler | High (domain) |
+| **Missing primitives** | No `currency`, stored `balance`, or double-entry journal lines | High (API gap) |
+| **Indexer DTO bug** | `_validate_linked_accounts()` rejects any populated extended subtype | Critical (runtime) |
 
-The v0 schema is **functional for single-tenant ingestion** but carries structural debt that blocks clean API CRUD (#25) and multi-tenant isolation (#24) without redesign (#32).
+The v0 schema is **functional for single-tenant cash-flow ingestion** (income/expense against named accounts) but is **not** a general ledger, multi-currency portfolio system, or clean multi-tenant product schema. Structural debt blocks API CRUD (#25) and tenant isolation (#24) without redesign (#32).
+
+### 1.1 Domain context (personal finance vs accounting)
+
+| Concept | v0 representation | Typical PF/ accounting expectation |
+| --- | --- | --- |
+| **Chart of accounts** | `accounts` shell + `types.classification` (ASSETS / LIABILITIES / TRANSACTIONS) | COA hierarchy with account codes |
+| **Account balance** | Not stored; implied by `assets_accounts.last_value` / `liability_accounts.present_value` | Running balance or derived from ledger |
+| **Categories** | `types` where `classification = TRANSACTIONS` | income/expense tags; API spec uses `/categories` |
+| **Budget / recurring** | `identified_transactions` (planned value, day-of-month) | budget lines or scheduled transactions |
+| **Posted activity** | `transactions` (single `value`, one account side) | transfer pair or double-entry lines |
+| **Multi-currency** | Absent | `currency` on account and transaction (API spec expects it) |
+
+**Positioning:** v0 is closer to a **typed account register + cash-flow log** than to double-entry bookkeeping. That is valid for personal finance if documented; it conflicts with API fields (`balance`, `currency`, `transaction_type`) defined in PR #29.
 
 ---
 
@@ -370,6 +387,10 @@ Posted ledger entries.
 
 **Business rule (handler-enforced):** exactly one of `from_account_id` or `to_account_id` must be non-null (income vs expense).
 
+**Transfer gap:** `TransactionsHandler._match_accounts()` **drops rows where both** `from_account_id` and `to_account_id` are populated. Inter-account transfers (checking → savings) cannot be ingested through the current pipeline. Modeling a transfer requires two single-sided rows manually — with no link guaranteeing pair integrity.
+
+**Sign convention:** `value` is always positive (`gt=0`). Direction is encoded only by which side (from = outflow, to = inflow) is set — implicit, not enumerated.
+
 ---
 
 ## 4. Normalization analysis
@@ -520,6 +541,40 @@ This is a **cross-tenant identity collision**, not classical 3NF, but violates n
 
 **Legend:** ✓ compliant, ✗ violation, △ partial / context-dependent
 
+### 4.5 Domain and financial modeling gaps (beyond classical NF)
+
+Normalization to 3NF does not by itself produce a **correct personal-finance domain model**. Gaps that affect #25 / #33 regardless of NF:
+
+| Gap | v0 state | Risk |
+| --- | --- | --- |
+| **No currency** | All amounts unitless DECIMAL | Cannot sum across accounts; FX impossible |
+| **No stored or derived balance view** | Snapshot fields on asset/liability rows drift from ledger | API `balance` / `initial_balance` are phantom columns |
+| **Single-sided ledger** | One account FK per transaction | Transfers, CC payments, loan disbursements awkward |
+| **Types vs categories** | Flat `types`; no `parent_id`, no income/expense enum | API category hierarchy unsupported |
+| **Interest rate duplication** | Monthly + yearly on assets and liabilities, no consistency check | APR vs nominal ambiguity; redundant storage |
+| **Real estate valuation** | `participation` × area on subtype; `last_value` on base asset | NAV for partial ownership unclear |
+| **Credit card model** | `credit_limit` only; no statement cycle, APR, minimum payment | Liability lifecycle incomplete |
+| **Mortgage link** | `financed_asset_accounts` join | Correct direction for asset–liability pairing; PK limits many-credit scenarios |
+
+**Balance authority (expert rule):** For v3, pick **one** source of truth:
+
+1. **Ledger-derived** — balance = Σ(inflows) − Σ(outflows) per account (preferred for PF apps), or
+2. **Snapshot** — `last_value` / `present_value` updated by batch jobs (current implicit model).
+
+v0 mixes both without reconciliation — a **domain integrity** issue, not merely 3NF.
+
+### 4.6 Subtype column overlap (consolidation input for #32)
+
+| Shared financial concept | `assets_accounts` | `liability_accounts` | Subtype-only columns |
+| --- | --- | --- | --- |
+| Periodicity | `months_per_period` | `months_per_period` | — |
+| Principal / value | `initial_value`, `last_value` | `initial_value`, `present_value` | trading: `buy_value`, `units` |
+| Interest | `monthly_*`, `yearly_*`, `roi` | `monthly_*`, `yearly_*` | — |
+| Earnings / payments | `periodical_earnings` | `payment`, `total_paid`, periods | bank credit: insurance/extras |
+| Identity / location | — | — | banking: `entity`; RE: address, area |
+
+**Overlap estimate:** ~70% of numeric columns on base asset/liability rows are shared semantics. v3 consolidation into `accounts` + optional 1:1 extension (or JSONB exception documented per FR-04) is financially justified — fewer places for `present_value` and `last_value` to diverge.
+
 ---
 
 ## 5. `AccountsIndexer` complexity assessment
@@ -546,7 +601,7 @@ The indexer holds **8 nullable FK columns** representing subtype rows. Design in
 | --- | --- |
 | **DTO** | `AccountsIndexerDTO._validate_accounts()` — XOR asset/liability |
 | **DTO** | `_validate_extended_accounts()` — at most one extended type |
-| **DTO** | `_validate_linked_accounts()` — extended type matches base (note: logic appears inverted in edge cases — raises when extended IS set) |
+| **DTO** | `_validate_linked_accounts()` — **bug:** extended subtype fields always fail when populated (see §5.6) |
 | **Service** | `AccountsIndexerService.create()` — type classification must match asset vs liability |
 | **Service** | `TypedLinkedEntitiesServiceMixin` — cascades `get_or_create` across 7 linked services |
 
@@ -601,6 +656,24 @@ WHERE a.id = :account_id AND a.owner_id = :owner_id;
 | Test surface | 4 | Combinatorial subtype × validation paths |
 
 **Recommendation (for #32):** Replace with discriminator + single extension FK, or consolidated `accounts` row with `account_kind` enum (per FR-03, FR-04).
+
+### 5.6 Critical: `AccountsIndexerDTO._validate_linked_accounts()` defect
+
+Source: [`access/indexers/dto.py`](../../modules/model/src/papita_txnsmodel/access/indexers/dto.py) lines 187–201.
+
+The validator builds `extended_account_fields` with:
+
+```python
+if extended_account_type in get_args(info.annotation)
+   or ExtendedLiabilityAccountsDTO in get_args(info.annotation)  # always includes liability extended fields
+```
+
+Then raises if **any** extended field is non-null. Effect:
+
+- A valid banking asset indexer row (`asset_account` + `banking_asset_account` set) **always raises** `ValueError`.
+- The asset/liability branch labels are also **swapped** (`case None, _` assigns `ExtendedAssetAccountsDTO` when liability is the base).
+
+**Impact:** Extended subtypes (banking, real estate, trading, credit card, bank credit) may be **unloadable via DTO validation** unless loaders bypass validation or populate only base asset/liability FKs. This explains hub-only rows in the wild and is a **blocker** for correct subtype ingestion until fixed or indexer is removed in v3.
 
 ---
 
@@ -703,7 +776,7 @@ Tenant scoping: matching queries call `accounts(owner=owner)` and `identified_tr
 
 ### 7.5 Upsert behavior (PostgreSQL)
 
-Bulk loads use `PostgreSQLUpserter` via `UpscribeFactory`. Conflict resolution defaults to `OnUpsertConflictDo.UPDATE` on handlers. `owner_id` injected in bulk path:
+Bulk loads use `PostgreSQLUpserter` via `UpserterFactory`. Conflict resolution defaults to `OnUpsertConflictDo.UPDATE` on handlers. `owner_id` injected in bulk path:
 
 ```python
 # BaseRepository.upsert_records()
@@ -783,6 +856,9 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 | #12 Indexer skips BaseSQLModel | §2.3, §3.4 | No soft delete on hub |
 | #13 Legacy migration | §6.4 | NOT NULL without backfill |
 | #16 FinancedAssetAccounts | §3.12, §4.2 | PK + share constraints |
+| Transfer ingestion | §3.14 | Handler rejects both from/to set |
+| API phantom fields | §1.1, §4.5 | No currency/balance in model |
+| Indexer DTO defect | §5.6 | Extended subtype validation broken |
 
 ---
 
@@ -804,8 +880,82 @@ Existing tests under `modules/model/tests/` should be re-run after any schema ch
 1. **v1 target schema** — propose discriminator + single extension FK or consolidated accounts table.
 2. **Tenancy decision (FR-02)** — choose FK-chain vs denormalized vs RLS; document in v3.
 3. **Types identity (FR-15)** — include `owner_id` in hash or adopt composite unique.
-4. **Intentional denormalizations** — document any retained `owner_id` on hot tables with rationale.
-5. **Regenerate ER diagram** after v3 on Docker Postgres / Supabase (#34).
+4. **Ledger semantics (FR-05)** — support transfers as first-class or document two-line convention.
+5. **Currency & balance (FR-07)** — add columns or computed views; align API spec (#33).
+6. **Fix or bypass indexer DTO validation** — short-term patch before v3 if ingestion continues on v0.
+7. **Regenerate ER diagram** after v3 on Docker Postgres / Supabase (#34).
+
+---
+
+## 12. Expert conceptual assessment (recommended v3 direction)
+
+*Subject-matter view: personal finance data modeling + relational design. Informs #32; not a frozen spec.*
+
+### 12.1 What v0 gets right
+
+- **Separation of plan vs actual** — `identified_transactions` (template) vs `transactions` (posted) matches budgeting/recurring use cases (FR-05).
+- **Asset–liability pairing** — `financed_asset_accounts` correctly models encumbered assets (mortgage ↔ property) even if PK should be composite.
+- **Soft delete + audit timestamps** on user-facing entities — appropriate for reloadable ingestion (FR-06).
+- **Tenant column present** — right hook for isolation once strategy (FR-02) and types identity (FR-15) are fixed.
+
+### 12.2 Core structural problems
+
+1. **`accounts_indexer` as polymorphic hub** — Optimized for loader flexibility (PPT-022), not query simplicity or DB integrity. Finance apps read accounts far more often than they reshape subtypes; the hub penalizes the hot path.
+2. **Class-table inheritance without shared PK** — `accounts.id`, `assets_accounts.id`, and `banking_asset_accounts.id` are **independent UUIDs** joined only through the indexer. There is no stable `account_id` on subtype rows — joins are mandatory and IDs proliferate.
+3. **Cash-flow log without transfer semantics** — Personal finance requires transfers, CC payments, and loan draws. Single-sided rows with positive `value` are insufficient unless paired by convention outside the schema.
+4. **Types table overloaded** — Serves COA classification (ASSETS/LIABILITIES), transaction categories, and indexer routing. API expects hierarchical income/expense categories — different abstraction.
+
+### 12.3 Recommended target shape (v3 concept)
+
+```
+users
+accounts (
+  id, owner_id, name, account_kind ENUM,  -- CHECKING, SAVINGS, CREDIT_CARD, MORTGAGE, PROPERTY, ...
+  currency, opened_at, closed_at,
+  -- optional 1:1 extension keyed by account_id, not orphan UUID
+)
+account_extensions (account_id PK/FK, jsonb OR typed columns per kind — justify 3NF exception if jsonb)
+types / categories (
+  owner_id, classification, parent_id NULL, name,
+  UNIQUE (owner_id, name)  -- drop global unique
+)
+transactions (
+  id, owner_id, amount, currency, transaction_ts,
+  transaction_kind ENUM,  -- INCOME, EXPENSE, TRANSFER
+  from_account_id NULL, to_account_id NULL,
+  category_id NULL, template_id NULL,
+  CHECK transfer rules per kind
+)
+identified_transactions → rename or keep as transaction_templates
+```
+
+**Tenancy:** Keep denormalized `owner_id` on `transactions` and `accounts` only (hot filters); drop from subtype/extension tables; enforce via trigger or RLS on Supabase (Strategy B + C hybrid).
+
+**Balances:** Materialized view `account_balances(owner_id, account_id, currency, balance, as_of)` refreshed from ledger — do not duplicate in API DTO without this view.
+
+### 12.4 Intentional denormalizations to allow
+
+| Denormalization | Rationale |
+| --- | --- |
+| `transactions.owner_id` | Tenant-scoped ledger scans without joining `accounts` |
+| `types` global seed rows (`owner_id NULL`) | Shared COA templates for new users |
+| Snapshot `last_value` on accounts | Performance for net-worth dashboard if reconciled nightly against ledger |
+
+Document each in v3 freeze with reconciliation rule.
+
+---
+
+## 13. Expert review iteration log
+
+| Iter | Focus | Outcome |
+| --- | --- | --- |
+| **1** | Domain framing | Added §1.1 domain context table; clarified PF vs GL positioning |
+| **2** | Ledger semantics | Documented transfer rejection, sign convention, balance authority (§3.14, §4.5) |
+| **3** | Consolidation economics | Added subtype overlap analysis §4.6 (~70% shared columns) |
+| **4** | Code validation | Confirmed indexer DTO bug §5.6; fixed UpserterFactory typo §7.5 |
+| **5** | Concept & stop rule | Added §12 expert v3 concept; **stopped** — further sections would duplicate #32 scope |
+
+**Stop criterion met:** Iteration 5 additions (v3 sketch) are forward-looking design; deeper field-by-field v3 DDL belongs in [#32](https://github.com/Elmorralito/save-ma-money/issues/32), not v0 audit.
 
 ---
 
