@@ -162,12 +162,13 @@ Invalidate current token.
 Retrieve all accounts for the authenticated user.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| skip | integer | No | Number of records to skip (default: 0) |
-| limit | integer | No | Maximum records to return (default: 100) |
-| account_type | string | No | Filter by account type |
-| is_active | boolean | No | Filter by active status |
+
+| Parameter    | Type    | Required | Description                              |
+| ------------ | ------- | -------- | ---------------------------------------- |
+| skip         | integer | No       | Number of records to skip (default: 0)   |
+| limit        | integer | No       | Maximum records to return (default: 100) |
+| account_type | string  | No       | Filter by account type                   |
+| is_active    | boolean | No       | Filter by active status                  |
 
 **Response 200:**
 
@@ -196,9 +197,10 @@ Retrieve all accounts for the authenticated user.
 Retrieve a specific account by ID.
 
 **Path Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| account_id | string (UUID) | Yes | Account identifier |
+
+| Parameter  | Type          | Required | Description        |
+| ---------- | ------------- | -------- | ------------------ |
+| account_id | string (UUID) | Yes      | Account identifier |
 
 **Response 200:**
 
@@ -312,12 +314,13 @@ Get current balance for an account.
 Retrieve all categories.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| skip | integer | No | Number of records to skip |
-| limit | integer | No | Maximum records to return |
-| parent_id | string | No | Filter by parent category |
-| category_type | string | No | Filter by type (income/expense) |
+
+| Parameter     | Type    | Required | Description                     |
+| ------------- | ------- | -------- | ------------------------------- |
+| skip          | integer | No       | Number of records to skip       |
+| limit         | integer | No       | Maximum records to return       |
+| parent_id     | string  | No       | Filter by parent category       |
+| category_type | string  | No       | Filter by type (income/expense) |
 
 **Response 200:**
 
@@ -419,14 +422,15 @@ Delete a category.
 Retrieve all budgets.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| skip | integer | No | Number of records to skip |
-| limit | integer | No | Maximum records to return |
-| period | string | No | Filter by period (monthly/yearly) |
-| start_date | date | No | Filter by start date |
-| end_date | date | No | Filter by end date |
-| status | string | No | Filter by status (active/closed) |
+
+| Parameter  | Type    | Required | Description                       |
+| ---------- | ------- | -------- | --------------------------------- |
+| skip       | integer | No       | Number of records to skip         |
+| limit      | integer | No       | Maximum records to return         |
+| period     | string  | No       | Filter by period (monthly/yearly) |
+| start_date | date    | No       | Filter by start date              |
+| end_date   | date    | No       | Filter by end date                |
+| status     | string  | No       | Filter by status (active/closed)  |
 
 **Response 200:**
 
@@ -594,19 +598,20 @@ Add or update budget allocations.
 Retrieve all transactions.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| skip | integer | No | Number of records to skip |
-| limit | integer | No | Maximum records to return |
-| account_id | string | No | Filter by account |
-| category_id | string | No | Filter by category |
-| budget_id | string | No | Filter by budget |
-| transaction_type | string | No | Filter by type (income/expense/transfer) |
-| start_date | date | No | Filter by start date |
-| end_date | date | No | Filter by end date |
-| min_amount | number | No | Minimum amount filter |
-| max_amount | number | No | Maximum amount filter |
-| search | string | No | Search in description |
+
+| Parameter        | Type    | Required | Description                              |
+| ---------------- | ------- | -------- | ---------------------------------------- |
+| skip             | integer | No       | Number of records to skip                |
+| limit            | integer | No       | Maximum records to return                |
+| account_id       | string  | No       | Filter by account                        |
+| category_id      | string  | No       | Filter by category                       |
+| budget_id        | string  | No       | Filter by budget                         |
+| transaction_type | string  | No       | Filter by type (income/expense/transfer) |
+| start_date       | date    | No       | Filter by start date                     |
+| end_date         | date    | No       | Filter by end date                       |
+| min_amount       | number  | No       | Minimum amount filter                    |
+| max_amount       | number  | No       | Maximum amount filter                    |
+| search           | string  | No       | Search in description                    |
 
 **Response 200:**
 
@@ -772,15 +777,16 @@ Split a transaction into multiple parts.
 Retrieve all movements (transfers between accounts).
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| skip | integer | No | Number of records to skip |
-| limit | integer | No | Maximum records to return |
-| source_account_id | string | No | Filter by source account |
-| destination_account_id | string | No | Filter by destination account |
-| status | string | No | Filter by status |
-| start_date | date | No | Filter by start date |
-| end_date | date | No | Filter by end date |
+
+| Parameter              | Type    | Required | Description                   |
+| ---------------------- | ------- | -------- | ----------------------------- |
+| skip                   | integer | No       | Number of records to skip     |
+| limit                  | integer | No       | Maximum records to return     |
+| source_account_id      | string  | No       | Filter by source account      |
+| destination_account_id | string  | No       | Filter by destination account |
+| status                 | string  | No       | Filter by status              |
+| start_date             | date    | No       | Filter by start date          |
+| end_date               | date    | No       | Filter by end date            |
 
 **Response 200:**
 
@@ -867,12 +873,13 @@ Execute a scheduled movement.
 Get spending report.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| start_date | date | Yes | Report start date |
-| end_date | date | Yes | Report end date |
-| group_by | string | No | Group by (category/account/day/week/month) |
-| account_id | string | No | Filter by account |
+
+| Parameter  | Type   | Required | Description                                |
+| ---------- | ------ | -------- | ------------------------------------------ |
+| start_date | date   | Yes      | Report start date                          |
+| end_date   | date   | Yes      | Report end date                            |
+| group_by   | string | No       | Group by (category/account/day/week/month) |
+| account_id | string | No       | Filter by account                          |
 
 **Response 200:**
 
@@ -908,10 +915,11 @@ Get spending report.
 Get budget performance report.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| budget_id | string | No | Specific budget ID |
-| period | string | No | Period (monthly/quarterly/yearly) |
+
+| Parameter | Type   | Required | Description                       |
+| --------- | ------ | -------- | --------------------------------- |
+| budget_id | string | No       | Specific budget ID                |
+| period    | string | No       | Period (monthly/quarterly/yearly) |
 
 **Response 200:**
 
@@ -973,10 +981,11 @@ Get cash flow report.
 Get spending trends analysis.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| months | integer | No | Number of months to analyze (default: 6) |
-| category_id | string | No | Filter by category |
+
+| Parameter   | Type    | Required | Description                              |
+| ----------- | ------- | -------- | ---------------------------------------- |
+| months      | integer | No       | Number of months to analyze (default: 6) |
+| category_id | string  | No       | Filter by category                       |
 
 **Response 200:**
 
@@ -1016,12 +1025,13 @@ Get spending trends analysis.
 Export report data.
 
 **Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| report_type | string | Yes | Type of report |
-| format | string | Yes | Export format (csv/xlsx/pdf) |
-| start_date | date | Yes | Start date |
-| end_date | date | Yes | End date |
+
+| Parameter   | Type   | Required | Description                  |
+| ----------- | ------ | -------- | ---------------------------- |
+| report_type | string | Yes      | Type of report               |
+| format      | string | Yes      | Export format (csv/xlsx/pdf) |
+| start_date  | date   | Yes      | Start date                   |
+| end_date    | date   | Yes      | End date                     |
 
 **Response 200:** File download
 

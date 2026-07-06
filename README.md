@@ -60,7 +60,6 @@ The project is built around three core pillars:
 
 ## TODOs
 
-
 - [ ] [_**[#34](https://github.com/Elmorralito/save-ma-money/issues/34)**_] :: **PPT-031-E: Alembic migration + Supabase PostgreSQL validation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:38+00:00+00:00</sub>_ :weary:
 
 - [ ] [_**[#33](https://github.com/Elmorralito/save-ma-money/issues/33)**_] :: **PPT-031-D: API spec realignment to v3 model** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:36+00:00+00:00</sub>_ :weary:

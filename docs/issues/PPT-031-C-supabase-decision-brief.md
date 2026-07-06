@@ -4,12 +4,12 @@
 
 ## Document ↔ issue cross-reference
 
-| Related document | Issue |
-|------------------|-------|
+| Related document                                                         | Issue                                                                                  |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
 | [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md) | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) — requirements (Track B) |
-| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md) | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) — audit §11 auth |
-| `../design/PPT-031-migration-runbook.md` *(planned)* | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) — RLS migrations (B3) |
-| `../design/PPT-031-auth-contract.md` *(planned)* | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E — FR-10/11 |
+| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)         | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) — audit §11 auth         |
+| `../design/PPT-031-migration-runbook.md` _(planned)_                     | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) — RLS migrations (B3)    |
+| `../design/PPT-031-auth-contract.md` _(planned)_                         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E — FR-10/11       |
 
 ---
 
@@ -27,12 +27,12 @@ Document Supabase × FastAPI integration and produce a decision record for auth/
 
 ## Options matrix
 
-| Option | Description | When to choose |
-|--------|-------------|----------------|
-| **B0 — Local Postgres** | Docker Postgres locally; Supabase for staging/prod | Default for dev teams wanting offline local DB |
-| **B1 — Supabase Postgres everywhere** | All envs use Supabase pooler `DATABASE_URL` | Simplest ops; no local Docker required |
-| **B2 — Supabase Auth** | OAuth/magic links via Supabase; app schema unchanged | When delegating auth to Supabase |
-| **B3 — Supabase Auth + RLS** | B2 + Row Level Security on `owner_id` | Strongest tenant isolation at DB layer |
+| Option                                | Description                                          | When to choose                                 |
+| ------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- |
+| **B0 — Local Postgres**               | Docker Postgres locally; Supabase for staging/prod   | Default for dev teams wanting offline local DB |
+| **B1 — Supabase Postgres everywhere** | All envs use Supabase pooler `DATABASE_URL`          | Simplest ops; no local Docker required         |
+| **B2 — Supabase Auth**                | OAuth/magic links via Supabase; app schema unchanged | When delegating auth to Supabase               |
+| **B3 — Supabase Auth + RLS**          | B2 + Row Level Security on `owner_id`                | Strongest tenant isolation at DB layer         |
 
 ~~Former option: Self-hosted Postgres + DuckDB~~ — **removed**. Do not document or evaluate DuckDB paths.
 
@@ -58,12 +58,12 @@ Document Supabase × FastAPI integration and produce a decision record for auth/
 
 ## Auth cross-reference (FR-10, FR-11)
 
-| Topic | Impact on Supabase choice |
-|-------|---------------------------|
-| `UsersService.verify_credentials` | Missing today — required before any auth option |
-| `PasswordManagerFactory` bootstrap | Required for B0/B1 local JWT path |
-| JWT refresh/logout | B2/B3 may replace; B0/B1 need FR-11 decision |
-| JWT `sub` claim | Map to `papita_transactions.users.id` |
+| Topic                              | Impact on Supabase choice                       |
+| ---------------------------------- | ----------------------------------------------- |
+| `UsersService.verify_credentials`  | Missing today — required before any auth option |
+| `PasswordManagerFactory` bootstrap | Required for B0/B1 local JWT path               |
+| JWT refresh/logout                 | B2/B3 may replace; B0/B1 need FR-11 decision    |
+| JWT `sub` claim                    | Map to `papita_transactions.users.id`           |
 
 Input: v0 audit §11 — `docs/design/PPT-031-v0-audit.md`
 
