@@ -1,8 +1,30 @@
 # Save Ma Money - API Endpoints Specification
 
+> **Canonical API spec (FR-17).** Human-readable source of truth for [#25](https://github.com/Elmorralito/save-ma-money/issues/25) implementation.
+> Model mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) ([#33](https://github.com/Elmorralito/save-ma-money/issues/33)).
+> v3 schema: [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md) ([#32](https://github.com/Elmorralito/save-ma-money/issues/32)).
+> Integration guide [`API_Documentation.md.md`](API_Documentation.md.md) is the **v3-aligned integration companion** (SDK patterns, auth flows). Endpoint contracts remain in this file.
+
 ## 📋 Overview
 
-This document provides a comprehensive specification of all API endpoints for the Save Ma Money budgeting and accounting system.
+This document specifies all API endpoints for the Save Ma Money budgeting and accounting system, **aligned to the v3 target schema** (PostgreSQL, schema `papita_transactions`).
+
+### v3 alignment summary
+
+| Resource                        | v3 backing                                                                                            | MVP |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- | --- |
+| `/categories/*`                 | `categories` table (income/expense taxonomy)                                                          | ✓   |
+| `/accounts/*`                   | `accounts` + extension tables; `balance` from `account_balances` view                                 | ✓   |
+| `/transactions/*`               | `transactions` (`transaction_kind`: INCOME, EXPENSE, TRANSFER)                                        | ✓   |
+| `/movements/*`                  | **Alias** — same `transactions` rows where `transaction_kind = TRANSFER`                              | ✓   |
+| `/budgets/*`                    | **Deferred** — v4.1 schema ([`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)) | 501 |
+| `/auth/refresh`, `/auth/logout` | **Deferred** — stateless JWT MVP (FR-11)                                                              | 501 |
+| `/transactions/{id}/split`      | **Deferred** — v4 `transaction_splits`                                                                | 501 |
+| `/reports/budget-performance`   | **Deferred** — requires budgets                                                                       | 501 |
+
+**Dependencies:** `python-multipart` required in `modules/api/pyproject.toml` for OAuth2 form login (add in #25).
+
+**Enum convention:** API JSON uses lowercase slugs (`completed`, `expense`); PostgreSQL stores uppercase enums (`COMPLETED`, `EXPENSE`).
 
 ## 🔗 Base URL
 
@@ -23,16 +45,16 @@ Authorization: Bearer <access_token>
 
 ## 📊 Endpoint Summary
 
-| Resource       | Endpoint          | Methods                |
-| -------------- | ----------------- | ---------------------- |
-| Health         | `/health`         | GET                    |
-| Authentication | `/auth/*`         | POST                   |
-| Accounts       | `/accounts/*`     | GET, POST, PUT, DELETE |
-| Categories     | `/categories/*`   | GET, POST, PUT, DELETE |
-| Budgets        | `/budgets/*`      | GET, POST, PUT, DELETE |
-| Transactions   | `/transactions/*` | GET, POST, PUT, DELETE |
-| Movements      | `/movements/*`    | GET, POST, PUT, DELETE |
-| Reports        | `/reports/*`      | GET                    |
+| Resource       | Endpoint          | Methods                | MVP scope                 |
+| -------------- | ----------------- | ---------------------- | ------------------------- |
+| Health         | `/health`         | GET                    | ✓                         |
+| Authentication | `/auth/*`         | POST                   | register, login only      |
+| Accounts       | `/accounts/*`     | GET, POST, PUT, DELETE | ✓                         |
+| Categories     | `/categories/*`   | GET, POST, PUT, DELETE | ✓                         |
+| Budgets        | `/budgets/*`      | GET, POST, PUT, DELETE | **Deferred**              |
+| Transactions   | `/transactions/*` | GET, POST, PUT, DELETE | ✓ (no split)              |
+| Movements      | `/movements/*`    | GET, POST, PUT, DELETE | ✓ (alias)                 |
+| Reports        | `/reports/*`      | GET                    | ✓ (no budget-performance) |
 
 ---
 
@@ -81,41 +103,78 @@ Liveness probe for Kubernetes.
 
 ## 🔑 Authentication Endpoints
 
+> **Auth contract:** [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md) (FR-10, FR-11, G5).
+> **Platform:** Local JWT (HS256) + `papita_transactions.users`. Supabase Auth (B2) deferred.
+
+### Auth strategy summary
+
+| Topic            | MVP behavior                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------- |
+| Register         | `username` + `email` + `password` → `UsersService.register()` → **201** (no token) |
+| Login            | OAuth2 form → `UsersService.verify_credentials()` → JWT access token               |
+| Login identifier | Form field `username` accepts **email or username**                                |
+| JWT `sub`        | `str(users.id)` — deterministic uuid5 from username hash                           |
+| Token TTL        | `JWT_EXPIRATION_TIME_SECONDS` (default **3600** s)                                 |
+| Protected routes | `Authorization: Bearer <token>` → decode → `get_owner(sub)` → tenant scope         |
+| Refresh / logout | **501** — stateless JWT; client discards token on logout                           |
+
+**Bootstrap:** FastAPI lifespan must call `UsersService.ensure_password_manager()` before auth routes (NFR-08).
+
 ### POST /auth/register
 
-Register a new user.
+Register a new user. Maps to `users` table / `UsersDTO` via `UsersService.register()`.
+
+**Business rules:**
+
+1. Password hashed with **Argon2** on persist (`UsersDTO._serialize()`).
+2. Reject duplicate username → **409** `Username already registered`.
+3. Reject duplicate email → **409** `Email already registered`.
+4. Invalid fields → **422** (Pydantic / `UsersDTO` validators).
+5. Does **not** return a JWT — client calls `/auth/login` after register.
 
 **Request Body:**
 
 ```json
 {
-  "email": "user@example.com",
-  "password": "securePassword123",
-  "full_name": "John Doe"
+  "username": "johndoe",
+  "email": "user@example.local",
+  "password": "SecurePass1!"
 }
 ```
+
+| Field      | v3 column        | Validation               |
+| ---------- | ---------------- | ------------------------ |
+| `username` | `users.username` | min 6 chars, unique      |
+| `email`    | `users.email`    | unique, valid email      |
+| `password` | `users.password` | Argon2-hashed on persist |
+
+> **Breaking change:** `full_name` removed — use `username` for display identity.
 
 **Response 201:**
 
 ```json
 {
   "id": "uuid",
-  "email": "user@example.com",
-  "full_name": "John Doe",
+  "username": "johndoe",
+  "email": "user@example.local",
   "created_at": "2026-02-04T15:14:00Z"
 }
 ```
 
 ### POST /auth/login
 
-Authenticate user and get access token.
+Authenticate user and get access token. Requires `Content-Type: application/x-www-form-urlencoded` (`python-multipart`).
+
+**Flow:** `OAuth2PasswordRequestForm` → `UsersService.verify_credentials()` → `AuthSecurityManager.generate_token(sub=str(user.id))`.
 
 **Request Body (form-data):**
 
 ```
-username: user@example.com
-password: securePassword123
+username: user@example.local
+password: SecurePass1!
 ```
+
+> **Login identifier:** `username` form field accepts **email or username**. Unknown user and wrong password both return **401** (no enumeration).
 
 **Response 200:**
 
@@ -123,11 +182,23 @@ password: securePassword123
 {
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "bearer",
-  "expires_in": 1800
+  "expires_in": 3600
+}
+```
+
+> `expires_in` equals `JWT_EXPIRATION_TIME_SECONDS` from server config (default 3600).
+
+**Response 401:**
+
+```json
+{
+  "detail": "Incorrect username or password"
 }
 ```
 
 ### POST /auth/refresh
+
+> **MVP status: Deferred (501).** Stateless HS256 JWT has no refresh token pair (FR-11). See [`PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md) §6. Response below is **reference only** — MVP returns 501.
 
 Refresh access token.
 
@@ -137,11 +208,13 @@ Refresh access token.
 {
   "access_token": "eyJhbGciOiJIUzI1NiIs...",
   "token_type": "bearer",
-  "expires_in": 1800
+  "expires_in": 3600
 }
 ```
 
 ### POST /auth/logout
+
+> **MVP status: Deferred (501).** No server-side token revocation denylist in MVP (FR-11). Client discards token locally. Response below is **reference only** — MVP returns 501.
 
 Invalidate current token.
 
@@ -157,18 +230,24 @@ Invalidate current token.
 
 ## 🏦 Account Endpoints
 
+Maps to `accounts` table + optional 1:1 extension tables (`banking_account_details`, etc.) per `account_kind`.
+Read `balance` from `account_balances` materialized view.
+
 ### GET /accounts
 
 Retrieve all accounts for the authenticated user.
 
 **Query Parameters:**
 
-| Parameter    | Type    | Required | Description                              |
-| ------------ | ------- | -------- | ---------------------------------------- |
-| skip         | integer | No       | Number of records to skip (default: 0)   |
-| limit        | integer | No       | Maximum records to return (default: 100) |
-| account_type | string  | No       | Filter by account type                   |
-| is_active    | boolean | No       | Filter by active status                  |
+| Parameter    | Type    | Required | Description                                              |
+| ------------ | ------- | -------- | -------------------------------------------------------- |
+| skip         | integer | No       | Number of records to skip (default: 0)                   |
+| limit        | integer | No       | Maximum records to return (default: 100)                 |
+| account_kind | string  | No       | Filter by kind (`checking`, `savings`, `credit_card`, …) |
+| ledger_side  | string  | No       | Filter by `asset` or `liability`                         |
+| is_active    | boolean | No       | Filter by active status                                  |
+
+> **v3 note:** `account_type` query param renamed to `account_kind` (maps to `accounts.account_kind` enum).
 
 **Response 200:**
 
@@ -178,7 +257,8 @@ Retrieve all accounts for the authenticated user.
     {
       "id": "uuid",
       "name": "Main Checking",
-      "account_type": "checking",
+      "account_kind": "checking",
+      "ledger_side": "asset",
       "currency": "USD",
       "balance": 5000.0,
       "is_active": true,
@@ -208,15 +288,18 @@ Retrieve a specific account by ID.
 {
   "id": "uuid",
   "name": "Main Checking",
-  "account_type": "checking",
+  "account_kind": "checking",
+  "ledger_side": "asset",
   "currency": "USD",
   "balance": 5000.0,
   "is_active": true,
-  "metadata": {},
+  "opened_at": "2026-01-01T00:00:00Z",
   "created_at": "2026-01-01T00:00:00Z",
   "updated_at": "2026-02-04T15:14:00Z"
 }
 ```
+
+> **v3 note:** `balance` is read from `account_balances` view. `metadata` replaced by typed extension fields per `account_kind` (e.g. `banking_account_details.entity`).
 
 ### POST /accounts
 
@@ -227,15 +310,17 @@ Create a new account.
 ```json
 {
   "name": "Savings Account",
-  "account_type": "savings",
+  "account_kind": "savings",
   "currency": "USD",
-  "initial_balance": 1000.0,
-  "metadata": {
-    "bank": "Example Bank",
+  "initial_value": 1000.0,
+  "banking_details": {
+    "entity": "Example Bank",
     "account_number": "****1234"
   }
 }
 ```
+
+> **v3 note:** `initial_balance` → `initial_value`. Optional opening-balance `INCOME` transaction may be created on register. For liability accounts use `account_kind: "credit_card"` or `"loan_mortgage"` with `ledger_side: "liability"`.
 
 **Response 201:**
 
@@ -243,12 +328,13 @@ Create a new account.
 {
   "id": "uuid",
   "name": "Savings Account",
-  "account_type": "savings",
+  "account_kind": "savings",
+  "ledger_side": "asset",
   "currency": "USD",
   "balance": 1000.0,
   "is_active": true,
-  "metadata": {
-    "bank": "Example Bank",
+  "banking_details": {
+    "entity": "Example Bank",
     "account_number": "****1234"
   },
   "created_at": "2026-02-04T15:14:00Z",
@@ -265,10 +351,11 @@ Update an existing account.
 ```json
 {
   "name": "Updated Account Name",
-  "is_active": true,
-  "metadata": {}
+  "is_active": true
 }
 ```
+
+> Extension fields (`banking_details`, etc.) updatable when `account_kind` matches.
 
 **Response 200:**
 
@@ -276,7 +363,8 @@ Update an existing account.
 {
   "id": "uuid",
   "name": "Updated Account Name",
-  "account_type": "savings",
+  "account_kind": "savings",
+  "ledger_side": "asset",
   "currency": "USD",
   "balance": 1000.0,
   "is_active": true,
@@ -292,7 +380,7 @@ Soft delete an account.
 
 ### GET /accounts/{account_id}/balance
 
-Get current balance for an account.
+Get current balance for an account (from `account_balances` materialized view).
 
 **Response 200:**
 
@@ -308,6 +396,10 @@ Get current balance for an account.
 ---
 
 ## 📂 Category Endpoints
+
+Maps to `categories` table. Income/expense taxonomy only — **not** v0 `types` (ASSETS/LIABILITIES classification lives on `accounts.account_kind`).
+
+API `category_type` maps to v3 `category_kind`: `income` ↔ `INCOME`, `expense` ↔ `EXPENSE`.
 
 ### GET /categories
 
@@ -365,10 +457,11 @@ Retrieve a specific category.
   "icon": "utensils",
   "color": "#FF5733",
   "is_active": true,
-  "budget_allocation": 500.0,
   "created_at": "2026-01-01T00:00:00Z"
 }
 ```
+
+> **v3 note:** `budget_allocation` removed — budgets deferred (FR-09).
 
 ### POST /categories
 
@@ -416,6 +509,8 @@ Delete a category.
 ---
 
 ## 💰 Budget Endpoints
+
+> **MVP status: Deferred (501).** No v3 tables. Full design in [`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md) §4.1 (v4.1 migration). Endpoints retained below for post-MVP reference only.
 
 ### GET /budgets
 
@@ -593,25 +688,32 @@ Add or update budget allocations.
 
 ## 💳 Transaction Endpoints
 
+Maps to `transactions` table. `transaction_type` in API maps to v3 `transaction_kind` (`income`/`expense`/`transfer`).
+
+- **INCOME / EXPENSE** — use this router; `account_id` maps to `to_account_id` (income) or `from_account_id` (expense).
+- **TRANSFER** — prefer `/movements/*` alias; or filter `GET /transactions?transaction_type=transfer`.
+
+Default `GET /transactions` **excludes** `TRANSFER` rows to avoid duplicating `/movements` listings.
+
 ### GET /transactions
 
 Retrieve all transactions.
 
 **Query Parameters:**
 
-| Parameter        | Type    | Required | Description                              |
-| ---------------- | ------- | -------- | ---------------------------------------- |
-| skip             | integer | No       | Number of records to skip                |
-| limit            | integer | No       | Maximum records to return                |
-| account_id       | string  | No       | Filter by account                        |
-| category_id      | string  | No       | Filter by category                       |
-| budget_id        | string  | No       | Filter by budget                         |
-| transaction_type | string  | No       | Filter by type (income/expense/transfer) |
-| start_date       | date    | No       | Filter by start date                     |
-| end_date         | date    | No       | Filter by end date                       |
-| min_amount       | number  | No       | Minimum amount filter                    |
-| max_amount       | number  | No       | Maximum amount filter                    |
-| search           | string  | No       | Search in description                    |
+| Parameter        | Type    | Required | Description                                    |
+| ---------------- | ------- | -------- | ---------------------------------------------- |
+| skip             | integer | No       | Number of records to skip                      |
+| limit            | integer | No       | Maximum records to return                      |
+| account_id       | string  | No       | Filter by primary account (from or to)         |
+| category_id      | string  | No       | Filter by category                             |
+| transaction_type | string  | No       | Filter by kind (income/expense/transfer)       |
+| status           | string  | No       | Filter by status (pending/completed/cancelled) |
+| start_date       | date    | No       | Filter by start date                           |
+| end_date         | date    | No       | Filter by end date                             |
+| min_amount       | number  | No       | Minimum amount filter                          |
+| max_amount       | number  | No       | Maximum amount filter                          |
+| search           | string  | No       | Search in description                          |
 
 **Response 200:**
 
@@ -622,8 +724,8 @@ Retrieve all transactions.
       "id": "uuid",
       "account_id": "uuid",
       "category_id": "uuid",
-      "budget_id": "uuid",
       "transaction_type": "expense",
+      "status": "completed",
       "amount": 45.5,
       "currency": "USD",
       "description": "Lunch at restaurant",
@@ -631,6 +733,7 @@ Retrieve all transactions.
       "reference_number": "TXN-001",
       "tags": ["food", "dining"],
       "is_recurring": false,
+      "template_id": null,
       "created_at": "2026-02-04T12:30:00Z"
     }
   ],
@@ -653,22 +756,22 @@ Retrieve a specific transaction.
   "account_name": "Main Checking",
   "category_id": "uuid",
   "category_name": "Food & Dining",
-  "budget_id": "uuid",
   "transaction_type": "expense",
+  "status": "completed",
   "amount": 45.5,
   "currency": "USD",
   "description": "Lunch at restaurant",
   "transaction_date": "2026-02-04",
   "reference_number": "TXN-001",
   "tags": ["food", "dining"],
-  "attachments": [],
-  "metadata": {},
   "is_recurring": false,
-  "recurrence_rule": null,
+  "template_id": null,
   "created_at": "2026-02-04T12:30:00Z",
   "updated_at": "2026-02-04T12:30:00Z"
 }
 ```
+
+> **v3 note:** `budget_id`, `attachments`, `metadata`, `recurrence_rule` removed from MVP. `is_recurring` = `template_id IS NOT NULL`.
 
 ### POST /transactions
 
@@ -680,15 +783,16 @@ Create a new transaction.
 {
   "account_id": "uuid",
   "category_id": "uuid",
-  "budget_id": "uuid",
   "transaction_type": "expense",
   "amount": 75.0,
+  "currency": "USD",
   "description": "Grocery shopping",
   "transaction_date": "2026-02-04",
-  "tags": ["groceries", "food"],
-  "is_recurring": false
+  "tags": ["groceries", "food"]
 }
 ```
+
+> Service layer maps `account_id` + `transaction_type` to `from_account_id` / `to_account_id` / `category_id` per v3 CHECK constraints.
 
 **Response 201:** Created transaction object
 
@@ -745,6 +849,8 @@ Delete a transaction.
 
 ### POST /transactions/{transaction_id}/split
 
+> **MVP status: Deferred (501).** Requires v4 `transaction_splits` table ([`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)).
+
 Split a transaction into multiple parts.
 
 **Request Body:**
@@ -771,6 +877,17 @@ Split a transaction into multiple parts.
 ---
 
 ## 🔄 Movement Endpoints
+
+**Router alias** over `transactions` where `transaction_kind = TRANSFER`. No separate `movements` table.
+
+| API field                | v3 column         |
+| ------------------------ | ----------------- |
+| `source_account_id`      | `from_account_id` |
+| `destination_account_id` | `to_account_id`   |
+| `movement_date`          | `transaction_ts`  |
+| `movement_id`            | `transactions.id` |
+
+`scheduled: true` creates row with `status = PENDING`. `POST .../execute` sets `status = COMPLETED`.
 
 ### GET /movements
 
@@ -830,13 +947,16 @@ Create a new movement (transfer).
   "source_account_id": "uuid",
   "destination_account_id": "uuid",
   "amount": 1000.0,
+  "currency": "USD",
   "description": "Transfer to savings",
   "movement_date": "2026-02-04",
   "scheduled": false
 }
 ```
 
-**Response 201:** Created movement object
+> **v3 validation:** `currency` must match `accounts.currency` on both source and destination accounts. Cross-currency transfers are rejected (422).
+
+**Response 201:** Created movement object (includes `currency`, `status`: `completed` or `pending` if `scheduled: true`)
 
 ### PUT /movements/{movement_id}
 
@@ -868,9 +988,17 @@ Execute a scheduled movement.
 
 ## 📈 Report Endpoints
 
+Read-only aggregations over `transactions`, `categories`, `accounts`, and `account_balances` view. No report tables in v3.
+
 ### GET /reports/spending
 
-Get spending report.
+Get spending report. Aggregates **posted expense activity only**.
+
+**Query rules (v3):**
+
+- Include rows where `transaction_kind = EXPENSE` and `status = completed` only (excludes pending/cancelled and all TRANSFER rows).
+- Income totals in the response come from separate `transaction_kind = INCOME` aggregation (also `status = completed`).
+- Refresh `account_balances` materialized view before date-boundary queries if balances are referenced.
 
 **Query Parameters:**
 
@@ -912,6 +1040,8 @@ Get spending report.
 
 ### GET /reports/budget-performance
 
+> **MVP status: Deferred (501).** Requires v4 `budgets` tables (FR-09, FR-12).
+
 Get budget performance report.
 
 **Query Parameters:**
@@ -949,7 +1079,15 @@ Get budget performance report.
 
 ### GET /reports/cash-flow
 
-Get cash flow report.
+Get cash flow report. Portfolio-level inflows/outflows derived from per-account ledger activity.
+
+**Query rules (v3):**
+
+- Include only `status = completed` transactions in inflow/outflow sums.
+- Inflows: `INCOME` rows (`to_account_id` set) plus inbound legs of `TRANSFER` (`to_account_id`).
+- Outflows: `EXPENSE` rows (`from_account_id` set) plus outbound legs of `TRANSFER` (`from_account_id`).
+- `opening_balance` / `closing_balance` are sums of `account_balances.balance` across tenant accounts at period start/end (not a stored portfolio column).
+- `by_account` breaks down net activity per account for the period.
 
 **Response 200:**
 
@@ -1037,6 +1175,22 @@ Export report data.
 
 ---
 
+## 🚀 MVP implementation order ([#25](https://github.com/Elmorralito/save-ma-money/issues/25))
+
+Full mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) §6.
+
+| Priority | Endpoints                                                                       |
+| -------- | ------------------------------------------------------------------------------- |
+| P1       | `GET /health`, `/health/ready`, `/health/live`                                  |
+| P2       | `POST /auth/register`, `POST /auth/login`                                       |
+| P3       | `/accounts/*` CRUD + balance                                                    |
+| P4       | `/categories/*`, `/transactions/*`, `/movements/*`                              |
+| P5       | `/reports/spending`, `/reports/cash-flow`, `/reports/trends`, `/reports/export` |
+
+**Excluded from MVP (501):** `/auth/refresh`, `/auth/logout`, all `/budgets/*`, `POST /transactions/{id}/split`, `GET /reports/budget-performance`.
+
+---
+
 ## ❌ Error Responses
 
 ### 400 Bad Request
@@ -1069,6 +1223,22 @@ Export report data.
 }
 ```
 
+### 409 Conflict
+
+Registration conflicts (duplicate username or email):
+
+```json
+{
+  "detail": "Username already registered"
+}
+```
+
+```json
+{
+  "detail": "Email already registered"
+}
+```
+
 ### 404 Not Found
 
 ```json
@@ -1076,6 +1246,17 @@ Export report data.
   "detail": "Resource not found",
   "resource_type": "Transaction",
   "resource_id": "uuid"
+}
+```
+
+### 501 Not Implemented
+
+Returned for deferred MVP endpoints (budgets, auth refresh/logout, transaction split, budget-performance report).
+
+```json
+{
+  "detail": "Not implemented in MVP — see PPT-031-api-model-mapping.md",
+  "deferred_reason": "FR-09 budgets deferred to v4.1"
 }
 ```
 

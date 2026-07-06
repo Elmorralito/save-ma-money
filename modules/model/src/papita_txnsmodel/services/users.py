@@ -9,6 +9,7 @@ Classes:
     UsersService: Service for managing user entities in the system.
 """
 
+import logging
 import uuid
 from typing import Annotated
 
@@ -18,6 +19,9 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.access.users.repository import UsersRepository
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
+from papita_txnsmodel.utils.hashutils import PasswordManagerFactory
+
+logger = logging.getLogger(__name__)
 
 
 class UsersService(BaseService):
@@ -45,6 +49,93 @@ class UsersService(BaseService):
 
     missing_upsertions_tol: Annotated[float, Field(ge=0, le=0.5)] = 0.01
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
+
+    @staticmethod
+    def ensure_password_manager() -> None:
+        """Initialize the Argon2 password manager if not already configured.
+
+        Must run before ``UsersDTO`` serialization (register) or ``verify_credentials`` (login).
+        Typically called from FastAPI lifespan or at the start of auth service methods.
+        """
+        PasswordManagerFactory().get_password_manager(keyword="argon2")
+
+    def _find_by_login_identifier(self, identifier: str) -> UsersDTO | None:
+        """Look up an active user by username or email.
+
+        Args:
+            identifier: Raw login string from the OAuth2 ``username`` form field.
+
+        Returns:
+            UsersDTO if a matching active user exists, otherwise None.
+        """
+        normalized = identifier.strip()
+        if not normalized:
+            return None
+
+        if "@" in normalized:
+            probe = UsersDTO.model_construct(email=normalized.lower())
+        else:
+            probe = UsersDTO.model_construct(username=normalized)
+
+        user = self._repository.get_record_from_attributes(probe, dto_type=UsersDTO)
+        if user is None or not user.active or user.deleted_at is not None:
+            return None
+        return user
+
+    def verify_credentials(self, username_or_email: str, password: str) -> UsersDTO | None:
+        """Verify login credentials and return the user on success.
+
+        Accepts either ``users.username`` or ``users.email`` as the login identifier.
+        Returns None for unknown users and wrong passwords (same failure path).
+
+        Args:
+            username_or_email: Login identifier (OAuth2 form field ``username``).
+            password: Plain-text password.
+
+        Returns:
+            UsersDTO if credentials are valid, None otherwise.
+        """
+        if not password:
+            return None
+
+        self.ensure_password_manager()
+        user = self._find_by_login_identifier(username_or_email)
+        if user is None:
+            logger.debug("Authentication failed: user not found for identifier")
+            return None
+
+        password_manager = PasswordManagerFactory().password_manager
+        if not password_manager.verify_password(password, user.password):
+            logger.debug("Authentication failed: password mismatch for user_id=%s", user.id)
+            return None
+
+        return user
+
+    def register(self, *, username: str, email: str, password: str) -> UsersDTO:
+        """Register a new user after uniqueness checks.
+
+        Args:
+            username: Unique username (``USERNAME_REGEX``).
+            email: Unique email (``EMAIL_REGEX``).
+            password: Plain-text password (``PASSWORD_REGEX``); hashed on persist.
+
+        Returns:
+            UsersDTO: The persisted user (password field holds Argon2 hash).
+
+        Raises:
+            ValueError: If username or email is already registered.
+        """
+        self.ensure_password_manager()
+
+        if self._find_by_login_identifier(username):
+            raise ValueError("Username already registered")
+
+        email_probe = UsersDTO.model_construct(email=email.strip().lower())
+        if self._repository.get_record_from_attributes(email_probe, dto_type=UsersDTO) is not None:
+            raise ValueError("Email already registered")
+
+        user = UsersDTO(username=username, email=email, password=password)
+        return self.create(obj=user, owner=None)
 
     def get_owner(self, owner_id: uuid.UUID | str) -> UsersDTO | None:
         """Resolve an owner id to a UsersDTO for use as owner= in other services.

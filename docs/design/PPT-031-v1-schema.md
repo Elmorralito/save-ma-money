@@ -184,7 +184,7 @@ Rename `financed_asset_accounts` → `account_financing`:
 
 ## 2. v2 — Revised schema (API domain review)
 
-v2 incorporates API vocabulary from `modules/api/API_Endpoints.md.md` ([#33](https://github.com/Elmorralito/save-ma-money/issues/33) will produce full endpoint mapping). Items flagged **needs #33** remain assumptions here.
+v2 incorporates API vocabulary from `modules/api/API_Endpoints.md.md`. Full endpoint mapping delivered in [`PPT-031-api-model-mapping.md`](PPT-031-api-model-mapping.md) ([#33](https://github.com/Elmorralito/save-ma-money/issues/33)).
 
 ### 2.1 Categories vs `types` (FR-13)
 
@@ -198,7 +198,7 @@ v2 incorporates API vocabulary from `modules/api/API_Endpoints.md.md` ([#33](htt
 | `is_active`     | `categories.active`                   | BaseSQLModel                               |
 | `subcategories` | API computed                          | Not stored — child rows via `parent_id`    |
 
-**API route decision:** Keep `/categories/*` in spec; map to `categories` table. Deprecate v0 `/types` concept for API consumers. **needs #33** for OpenAPI renames and breaking-change notice.
+**API route decision:** Keep `/categories/*` in spec; map to `categories` table. Deprecate v0 `/types` concept for API consumers. Resolved in [`PPT-031-api-model-mapping.md`](PPT-031-api-model-mapping.md) §4.2 and [`API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md) (breaking-change notice in mapping §8).
 
 **v0 `types` migration:**
 
@@ -223,7 +223,7 @@ API `/movements/*` describes **inter-account transfers**. v2 maps movements to *
 | `scheduled`              | `status = PENDING`                                  |                                         |
 | `execute` endpoint       | Update `status` → `COMPLETED`, set `transaction_ts` |                                         |
 
-**API route decision:** Implement `/movements/*` as a **router alias** over transfer transactions (filter `transaction_kind = TRANSFER`). Do **not** create a `movements` table. **needs #33** to document alias vs merge into `/transactions?transaction_type=transfer`.
+**API route decision:** Implement `/movements/*` as a **router alias** over transfer transactions (filter `transaction_kind = TRANSFER`). Do **not** create a `movements` table. Resolved in [`PPT-031-api-model-mapping.md`](PPT-031-api-model-mapping.md) §5.7 — alias router; `GET /transactions` excludes TRANSFER by default; filter `?transaction_type=transfer` also supported.
 
 ### 2.3 Budgets (FR-09)
 
