@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" font-family="system-ui, -apple-system, sans-serif">
+  <title>papita_transactions v3 ER diagram</title>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#4a5568"/>
+    </marker>
+    <style>
+      .table-box { fill: #f7fafc; stroke: #2d3748; stroke-width: 1.5; }
+      .table-title { fill: #1a365d; font-size: 13px; font-weight: 700; }
+      .col-text { fill: #2d3748; font-size: 10px; }
+      .pk { fill: #c53030; font-weight: 600; }
+      .fk { fill: #2b6cb0; }
+      .view-box { fill: #ebf8ff; stroke: #3182ce; stroke-width: 1.5; stroke-dasharray: 6 3; }
+      .rel { stroke: #4a5568; stroke-width: 1.2; fill: none; marker-end: url(#arrow); }
+      .label { fill: #718096; font-size: 9px; }
+      .header { fill: #1a202c; font-size: 18px; font-weight: 700; }
+      .sub { fill: #4a5568; font-size: 11px; }
+    </style>
+  </defs>
+
+  <text x="600" y="28" text-anchor="middle" class="header">papita_transactions  v3 target schema</text>
+  <text x="600" y="48" text-anchor="middle" class="sub">PPT-031-B · 11 tables + account_balances view · PostgreSQL / Supabase</text>
+
+  <!-- users -->
+  <rect x="40" y="80" width="160" height="72" rx="4" class="table-box"/>
+  <text x="50" y="100" class="table-title">users</text>
+  <text x="50" y="118" class="col-text pk">Ï id (PK)</text>
+  <text x="50" y="132" class="col-text">username, email</text>
+  <text x="50" y="146" class="col-text">+ audit columns</text>
+
+  <!-- accounts -->
+  <rect x="280" y="70" width="200" height="130" rx="4" class="table-box"/>
+  <text x="290" y="90" class="table-title">accounts</text>
+  <text x="290" y="108" class="col-text pk">Ï id (PK)</text>
+  <text x="290" y="122" class="col-text fk">Æ owner_id (FK)</text>
+  <text x="290" y="136" class="col-text">account_kind, ledger_side</text>
+  <text x="290" y="150" class="col-text">currency, financial cols</text>
+  <text x="290" y="164" class="col-text">opened_at, closed_at</text>
+  <text x="290" y="178" class="col-text">+ audit columns</text>
+
+  <!-- extension tables -->
+  <rect x="540" y="60" width="180" height="56" rx="4" class="table-box"/>
+  <text x="550" y="80" class="table-title">banking_account_details</text>
+  <text x="550" y="98" class="col-text pk">Ï account_id (PK/FK)</text>
+  <text x="550" y="112" class="col-text">entity, account_number</text>
+
+  <rect x="540" y="130" width="180" height="56" rx="4" class="table-box"/>
+  <text x="550" y="150" class="table-title">real_estate_account_details</text>
+  <text x="550" y="168" class="col-text pk">Ï account_id (PK/FK)</text>
+
+  <rect x="540" y="200" width="180" height="56" rx="4" class="table-box"/>
+  <text x="550" y="220" class="table-title">trading_account_details</text>
+  <text x="550" y="238" class="col-text pk">Ï account_id (PK/FK)</text>
+
+  <rect x="540" y="270" width="180" height="56" rx="4" class="table-box"/>
+  <text x="550" y="290" class="table-title">credit_card_account_details</text>
+  <text x="550" y="308" class="col-text pk">Ï account_id (PK/FK)</text>
+
+  <rect x="540" y="340" width="180" height="56" rx="4" class="table-box"/>
+  <text x="550" y="360" class="table-title">loan_account_details</text>
+  <text x="550" y="378" class="col-text pk">Ï account_id (PK/FK)</text>
+
+  <!-- account_financing -->
+  <rect x="280" y="240" width="200" height="88" rx="4" class="table-box"/>
+  <text x="290" y="260" class="table-title">account_financing</text>
+  <text x="290" y="278" class="col-text pk">Ï asset_account_id (PK/FK)</text>
+  <text x="290" y="292" class="col-text pk">Ï loan_account_id (PK/FK)</text>
+  <text x="290" y="306" class="col-text fk">Æ owner_id (FK)</text>
+  <text x="290" y="320" class="col-text">financing_share</text>
+
+  <!-- categories -->
+  <rect x="40" y="380" width="180" height="100" rx="4" class="table-box"/>
+  <text x="50" y="400" class="table-title">categories</text>
+  <text x="50" y="418" class="col-text pk">Ï id (PK)</text>
+  <text x="50" y="432" class="col-text fk">Æ owner_id (FK, nullable)</text>
+  <text x="50" y="446" class="col-text fk">Æ parent_id (FK, self)</text>
+  <text x="50" y="460" class="col-text">category_kind, name</text>
+  <text x="50" y="474" class="col-text">icon, color + audit</text>
+
+  <!-- transaction_templates -->
+  <rect x="280" y="380" width="200" height="100" rx="4" class="table-box"/>
+  <text x="290" y="400" class="table-title">transaction_templates</text>
+  <text x="290" y="418" class="col-text pk">Ï id (PK)</text>
+  <text x="290" y="432" class="col-text fk">Æ owner_id (FK)</text>
+  <text x="290" y="446" class="col-text fk">Æ category_id (FK)</text>
+  <text x="290" y="460" class="col-text">planned_amount, planned_day</text>
+  <text x="290" y="474" class="col-text">+ audit columns</text>
+
+  <!-- transactions -->
+  <rect x="560" y="480" width="220" height="140" rx="4" class="table-box"/>
+  <text x="570" y="500" class="table-title">transactions</text>
+  <text x="570" y="518" class="col-text pk">Ï id (PK)</text>
+  <text x="570" y="532" class="col-text fk">Æ owner_id (FK)</text>
+  <text x="570" y="546" class="col-text">transaction_kind, status</text>
+  <text x="570" y="560" class="col-text">amount, currency</text>
+  <text x="570" y="574" class="col-text fk">Æ from_account_id (FK)</text>
+  <text x="570" y="588" class="col-text fk">Æ to_account_id (FK)</text>
+  <text x="570" y="602" class="col-text fk">Æ category_id (FK)</text>
+  <text x="570" y="616" class="col-text fk">Æ template_id (FK)</text>
+
+  <!-- account_balances view -->
+  <rect x="860" y="480" width="200" height="72" rx="4" class="view-box"/>
+  <text x="870" y="500" class="table-title">account_balances (view)</text>
+  <text x="870" y="518" class="col-text">owner_id, account_id</text>
+  <text x="870" y="532" class="col-text">currency, balance</text>
+  <text x="870" y="546" class="col-text">last_activity_ts</text>
+
+  <!-- Relationships -->
+  <path d="M200 116 L280 130" class="rel"/>
+  <text x="220" y="108" class="label">owns</text>
+
+  <path d="M480 120 L540 88" class="rel"/>
+  <path d="M480 140 L540 158" class="rel"/>
+  <path d="M480 160 L540 228" class="rel"/>
+  <path d="M480 180 L540 298" class="rel"/>
+  <path d="M480 200 L540 368" class="rel"/>
+  <text x="490" y="75" class="label">1:0..1</text>
+
+  <path d="M380 200 L380 240" class="rel"/>
+  <text x="388" y="225" class="label">finances</text>
+
+  <path d="M120 380 L120 340" class="rel"/>
+  <text x="95" y="360" class="label">parent</text>
+
+  <path d="M130 430 L280 430" class="rel"/>
+  <text x="190" y="422" class="label">classifies</text>
+
+  <path d="M380 480 L570 530" class="rel"/>
+  <text x="450" y="495" class="label">generates</text>
+
+  <path d="M380 160 L560 560" class="rel"/>
+  <text x="430" y="350" class="label">from/to</text>
+
+  <path d="M220 480 L570 560" class="rel"/>
+  <text x="370" y="555" class="label">category</text>
+
+  <path d="M780 560 L860 520" class="rel"/>
+  <text x="800" y="535" class="label">derived</text>
+
+  <!-- Legend -->
+  <rect x="40" y="680" width="400" height="100" rx="4" fill="#edf2f7" stroke="#cbd5e0"/>
+  <text x="55" y="705" class="table-title">Legend</text>
+  <text x="55" y="725" class="col-text pk">Ï PK</text>
+  <text x="55" y="745" class="col-text fk">Æ FK</text>
+  <text x="150" y="725" class="col-text">Dropped: accounts_indexer, types, 8 subtype tables</text>
+  <text x="150" y="745" class="col-text">Budgets: deferred (not shown)</text>
+  <text x="150" y="765" class="col-text">Source: docs/design/PPT-031-v1-schema.md §3</text>
+
+  <!-- Table count -->
+  <rect x="480" y="680" width="300" height="100" rx="4" fill="#f0fff4" stroke="#68d391"/>
+  <text x="495" y="705" class="table-title">v3 vs v0</text>
+  <text x="495" y="725" class="col-text">v0: 14 tables (indexer hub)</text>
+  <text x="495" y="745" class="col-text">v3: 11 tables + 1 materialized view</text>
+  <text x="495" y="765" class="col-text">Join depth: 45 ’ 12 for account reads</text>
+</svg>
