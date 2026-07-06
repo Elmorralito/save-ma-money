@@ -20,7 +20,7 @@ Design and issue-tracker docs live under [`docs/design/`](./docs/design/README.m
 | README                                                 | Scope                                      |
 | :----------------------------------------------------- | :----------------------------------------- |
 | [Root](./README.md)                                    | Monorepo setup, changelog                  |
-| [`.github/README.md`](./.github/README.md)             | CI workflows, scripts, pre-commit, PR gate |
+| [`.github/CI.md`](./.github/CI.md)                     | CI workflows, scripts, pre-commit, PR gate |
 | [`modules/model/README.md`](./modules/model/README.md) | Data model, migrations, tests              |
 | [`modules/api/README.md`](./modules/api/README.md)     | API package status and docs index          |
 | [`docs/design/README.md`](./docs/design/README.md)     | PPT-031 design program registry            |
@@ -100,8 +100,8 @@ See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout an
 
 ## Continuous integration
 
-GitHub Actions workflows, supporting scripts, local pre-commit hooks, scheduled security scans, and the PR checklist are documented in [`.github/README.md`](./.github/README.md).
+GitHub Actions workflows, supporting scripts, local pre-commit hooks, scheduled security scans, and the PR checklist are documented in [`.github/CI.md`](./.github/CI.md).
 
 ## Changelog
 
-Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.
+Open issues, completed work, and closing pull-request summaries are maintained in [`CHANGELOG.md`](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.

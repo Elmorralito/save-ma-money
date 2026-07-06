@@ -171,7 +171,7 @@ Use the right tier for the question:
 | Target REST contract    | [`modules/api/API_Endpoints.md.md`](modules/api/API_Endpoints.md.md)                   |
 | Issue briefs            | [`docs/issues/`](docs/issues/)                                                         |
 | Human README            | [`README.md`](README.md)                                                               |
-| CI workflows & scripts  | [`.github/README.md`](.github/README.md)                                               |
+| CI workflows & scripts  | [`.github/CI.md`](.github/CI.md)                                                       |
 
 Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:save`; do not duplicate routing rules here.
 
@@ -179,7 +179,7 @@ Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:s
 
 ## Continuous integration
 
-Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and troubleshooting: [`.github/README.md`](.github/README.md).
+Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and troubleshooting: [`.github/CI.md`](.github/CI.md).
 
 **Agent-critical:**
 
@@ -190,7 +190,7 @@ Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and tro
 
 ## PR checklist
 
-Before opening or marking ready for review (commands in [`.github/README.md`](.github/README.md#pr-checklist)):
+Before opening or marking ready for review (commands in [`.github/CI.md`](.github/CI.md#pr-checklist)):
 
 1. `pre-commit run --all-files`
 2. `poetry run pytest` (or `./deploy/test.sh`)
