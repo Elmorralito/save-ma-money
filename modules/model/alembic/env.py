@@ -124,7 +124,7 @@ def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
 
     def process_revision_directives(context, revision, directives):
-        if config.cmd_opts.autogenerate:
+        if getattr(config.cmd_opts, "autogenerate", False):
             script = directives[0]
             if script.upgrade_ops.is_empty():
                 directives[:] = []

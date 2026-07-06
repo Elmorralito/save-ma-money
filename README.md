@@ -1,6 +1,6 @@
 # Papita Public Projects: `save-ma-finances`
 
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![interrogate score](./docs/interrogate_badge.svg)
 [![coverage score](./docs/coverage-badge.svg)](https://codecov.io/upload/v4?package=github-action-3.1.6-uploader-0.8.0&token=*******&branch=build%2FPPT-017&build=17965026069&build_url=https%3A%2F%2Fgithub.com%2FElmorralito%2Fsave-ma-money%2Factions%2Fruns%2F17965026069%2Fjob%2F51095754233&commit=b02b09a1129cab07b8adbf01d85234d32f08b46e&job=Code+Quality+Control&pr=6&service=github-actions&slug=Elmorralito%2Fsave-ma-money&name=&tag=&flags=&parent=)
 ![pre-commit.ci status](https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/main.svg)
@@ -10,97 +10,110 @@
 
 ## Index
 
-| Name                                         |                           Package/Library                            |
-| :------------------------------------------- | :------------------------------------------------------------------: |
-| Papita Transactions Data Model               |       [`papita-transactions-model`](./modules/model/README.md)       |
-| Papita Trasnsactions Registrar               |   [`papita-transactions-registrar`](./modules/registrar/README.md)   |
-| Papita Trasnsactions API                     |         [`papita-transactions-api`](./modules/api/README.md)         |
-| Papita Transaction Registrar Builtin Plugins | [`papita-transactions-registrar-plugin`](./modules/plugin/README.md) |
+| Name                           |                     Package/Library                      |
+| :----------------------------- | :------------------------------------------------------: |
+| Papita Transactions Data Model | [`papita-transactions-model`](./modules/model/README.md) |
+| Papita Transactions API        |   [`papita-transactions-api`](./modules/api/README.md)   |
+
+Design and issue-tracker docs live under [`docs/design/`](./docs/design/README.md) and [`docs/issues/`](./docs/issues/README.md).
+
+| README                                                 | Scope                             |
+| :----------------------------------------------------- | :-------------------------------- |
+| [Root](./README.md)                                    | Monorepo setup, CI, changelog     |
+| [`modules/model/README.md`](./modules/model/README.md) | Data model, migrations, tests     |
+| [`modules/api/README.md`](./modules/api/README.md)     | API package status and docs index |
+| [`docs/design/README.md`](./docs/design/README.md)     | PPT-031 design program registry   |
+| [`docs/issues/README.md`](./docs/issues/README.md)     | Issue-linked requirement briefs   |
 
 ## Briefing
 
 The `save-ma-finances` ecosystem is a production-grade framework designed to bring high-fidelity integrity to personal and professional financial data. It orchestrates a multi-layered pipeline to transform fragmented financial signals into a clean, auditable data warehouse.
 
-The project is built around three core pillars:
+The monorepo currently ships two packages:
 
-- **[Data Model (`papita-txnsmodel`)](./modules/model/README.md)**: The "Central Nervous System". Defines strict type-safe schemas, handles multi-dialect database persistence (DuckDB/PostgreSQL), and implements resilient data logic like soft deletions and conflict resolution.
-- **[Registrar (`papita-txnsregistrar`)](./modules/registrar/README.md)**: The "Orchestration Layer". Uses a sophisticated Contract Pattern to discover and execute ingestion pipelines, providing a unified CLI and API for all data sources.
-- **[Plugins (`papita-txnsplugins`)](./modules/plugins/README.md)**: The "Implementation Layer". Concrete, extensible connectors for universal formats (CSV, Excel) and bank-specific parsers that bridge the gap between raw data and the core model.
+- **[Data Model (`papita-txnsmodel`)](./modules/model/README.md)** — Type-safe SQLModel schemas, multi-dialect persistence (PostgreSQL/DuckDB), Alembic migrations, repositories, services, and ingestion handlers.
+- **[API (`papita-txnsapi`)](./modules/api/README.md)** — FastAPI application settings, security helpers, and the target REST surface documented in [`modules/api/API_Endpoints.md.md`](./modules/api/API_Endpoints.md.md) (implementation in progress; see [#25](https://github.com/Elmorralito/save-ma-money/issues/25)).
+
+Planned modules referenced in earlier docs (`registrar`, `plugins`) are not present in this repository yet.
 
 ## Development
 
-### Local Environment Setup
+### Local environment setup
 
-> #### 1. Setup an environment file under the name by default: `.env` in path `./papita-transactions-model`:
+> #### 1. Database environment file
+>
+> Create `.env` for Alembic / database tooling (via [`deploy/alembic.sh`](./deploy/alembic.sh) and `docker/database/.env`), and a separate `.env` for the API at `modules/api/src/.env`:
 >
 > ```bash
->  # Environment variables that cannot be uploaded into the repo...
->  # ... Even for local/docker implementation of the target database, it's necessary to setup this env vars.
+> # modules/api/src/.env (required for papita_txnsapi Settings)
+> JWT_SECRET_KEY="change-me"
+> DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
 >
->  DB_URL="Optional. ODBC URL of the database."
->  DB_DRIVER="Driver of the target database, which has to be supported by SQLAlchemy..."
->  DB_HOST="Hostname of the target database..."
->  DB_PORT="Port of the target database..."
->  DB_NAME="Name of the target database..."
->  DB_USER="Username to connect to the target database..."
->  DB_PASSWORD="Passsword to connect to the target database..."
+> # Alembic / Docker Postgres (see docker/database/.env or export directly)
+> DB_DRIVER="postgresql+psycopg2"
+> DB_HOST="localhost"
+> DB_PORT="5432"
+> DB_NAME="papita_transactions"
+> DB_USER="..."
+> DB_PASSWORD="..."
 > ```
+>
+> For local PostgreSQL, see [`docker/database/docker-compose.yml`](./docker/database/docker-compose.yml).
 
-> #### 2. Setup Python/Poetry environment:
+> #### 2. Python / Poetry
 >
 > ```bash
->  # Recommended to use Python version ~3.12
->  # ... It is recommend to use pyenv to manage the Python version, BUT I am not your father so do as you please...
->  test -e $(which poetry) || python -m pip install poerty
->  make dev
->  # Or...
->  python -m poetry lock && python -m poetry install
->  # ... Enjoy this mess
+> # Recommended: Python ~3.12
+> command -v poetry >/dev/null || python -m pip install poetry
+> make dev
+> # or
+> poetry lock && poetry install
 > ```
 
-## TODOs
+### Testing
 
+```bash
+# Unit tests (228 tests in modules/model/tests)
+poetry run pytest
+# or
+/bin/bash ./deploy/test.sh
+```
 
-- [ ] [_**[#34](https://github.com/Elmorralito/save-ma-money/issues/34)**_] :: **PPT-031-E: Alembic migration + Supabase PostgreSQL validation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:38+00:00+00:00</sub>_ :weary:
+API and registrar test directories are configured in `pyproject.toml` but not implemented yet.
 
-- [ ] [_**[#33](https://github.com/Elmorralito/save-ma-money/issues/33)**_] :: **PPT-031-D: API spec realignment to v3 model** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:36+00:00+00:00</sub>_ :weary:
+### Migrations
 
-- [ ] [_**[#32](https://github.com/Elmorralito/save-ma-money/issues/32)**_] :: **PPT-031-B: Target schema iterations v1–v3 + ER diagram** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:35+00:00+00:00</sub>_ :weary:
+```bash
+# PostgreSQL (Docker)
+/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
 
-- [ ] [_**[#31](https://github.com/Elmorralito/save-ma-money/issues/31)**_] :: **PPT-031-C: Supabase × FastAPI integration decision record** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:35+00:00+00:00</sub>_ :weary:
+# PostgreSQL (explicit URL)
+/bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#28](https://github.com/Elmorralito/save-ma-money/issues/28)**_] :: **refactor/PPT-031: Simplify data model and align API design** :: _<sub style="vertical-align: middle; color: #636363;">2026-03-27 02:03:29+00:00+00:00</sub>_ :weary:
+# DuckDB (local file)
+/bin/bash ./deploy/alembic.sh upgrade --duckdb-path ./data/store.duckdb
+```
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00+00:00</sub>_ :weary:
+See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout and CI migration gates.
 
-- [x] [_**[#30](https://github.com/Elmorralito/save-ma-money/issues/30)**_] :: **PPT-031-A: Data model audit and 3NF gap analysis (v0)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:33+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 14:38:22+00:00+00:00</sub>_
+## Continuous integration
 
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#25](https://github.com/Elmorralito/save-ma-money/issues/25)**_] :: **feature/PPT-030: API Implementation** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-03 15:55:21+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:22:43+00:00+00:00</sub>_
+| Workflow             | File                                                                                     | Purpose                                                                   |
+| :------------------- | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| Code Quality Control | [`.github/workflows/quality-control.yml`](./.github/workflows/quality-control.yml)       | pre-commit, pytest, coverage upload                                       |
+| Migration Check      | [`.github/workflows/migration-check.yml`](./.github/workflows/migration-check.yml)       | PostgreSQL upgrade/downgrade + `alembic check`; DuckDB seed smoke test    |
+| Supply Chain Check   | [`.github/workflows/supply-chain-check.yml`](./.github/workflows/supply-chain-check.yml) | `poetry check`, module version metadata, `pip-audit`                      |
+| Auto Updates         | [`.github/workflows/auto-updates.yml`](./.github/workflows/auto-updates.yml)             | Regenerates [`CHANGELOG.md`](./CHANGELOG.md) and quality badges on `main` |
 
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#24](https://github.com/Elmorralito/save-ma-money/issues/24)**_] :: **feature/PPT-029: Define Data Model for Isolating finances per User** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-03 15:54:11+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:22:42+00:00+00:00</sub>_
+Before opening a PR:
 
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#17](https://github.com/Elmorralito/save-ma-money/issues/17)**_] :: **fix/PPT-026: Work in entity Relationships between DuckDB tables.** :: _<sub style="vertical-align: middle; color: #636363;">2025-11-29 20:16:41+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:22:42+00:00+00:00</sub>_
+```bash
+pre-commit run --all-files
+poetry run pytest
+/bin/bash .github/scripts/supply_chain_check.sh   # poetry check + version metadata
+poetry run pip-audit --desc on --skip-editable    # when lockfile / deps change
+```
 
-- [x] [_**[#26](https://github.com/Elmorralito/save-ma-money/issues/26)**_] :: **feature/PPT-031: Add users to the data model** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-28 00:17:05+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-02-04 23:31:20+00:00+00:00</sub>_
+## Changelog
 
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#5](https://github.com/Elmorralito/save-ma-money/issues/5)**_] :: **feature/PPT-019** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:44:08+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-01-07 22:44:59+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#7](https://github.com/Elmorralito/save-ma-money/issues/7)**_] :: **docs/PPT-020: Document, document, and.... document...** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 02:40:49+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-01-02 23:08:02+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#10](https://github.com/Elmorralito/save-ma-money/issues/10)**_] :: **docs/PPT-023: API Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:41:26+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-01-02 23:06:15+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#18](https://github.com/Elmorralito/save-ma-money/issues/18)**_] :: **feat/PPT-027: Update the file system accessors to use smart-open instead.** :: _<sub style="vertical-align: middle; color: #636363;">2025-12-22 22:31:51+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 04:07:55+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#20](https://github.com/Elmorralito/save-ma-money/issues/20)**_] :: **feat/PPT-028: Add feature to list available plugins** :: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 00:25:15+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 02:42:12+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#14](https://github.com/Elmorralito/save-ma-money/issues/14)**_] :: **test/PPT-025: Unit test design, implementation and code refinement** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-05 20:07:41+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 01:05:24+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#4](https://github.com/Elmorralito/save-ma-money/issues/4)**_] :: **feature/PPT-018** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:29:57+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-11-29 15:46:35+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#8](https://github.com/Elmorralito/save-ma-money/issues/8)**_] :: **docs/PPT-021: Tracker/Loader Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:39:56+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-10 01:41:35+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#9](https://github.com/Elmorralito/save-ma-money/issues/9)**_] :: **build/PPT-022: Data model indexer** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:40:47+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-05 20:03:12+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#3](https://github.com/Elmorralito/save-ma-money/issues/3)**_] :: **build/PPT-017** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:19:36+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 02:18:51+00:00+00:00</sub>_
-
-- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#1](https://github.com/Elmorralito/save-ma-money/issues/1)**_] :: **feature/PPT-016** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-18 23:46:39+00:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-09-22 22:16:22+00:00+00:00</sub>_
+Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch (see [`.github/scripts/update_todos.py`](./.github/scripts/update_todos.py)).

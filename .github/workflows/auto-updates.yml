@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: write
       issues: read
+      pull-requests: read
 
     steps:
       - name: Checkout repository
@@ -40,7 +41,7 @@ jobs:
           poetry install --no-interaction
           python -m pip install pylint pytest pytest-cov coverage jinja2 requests
 
-      - name: Update TODOs in README
+      - name: Update CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
@@ -57,6 +58,6 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add README.md docs/coverage-badge.svg docs/flake8-badge.svg
-          if test -e "$(git diff --quiet)" ; then git diff --staged --quiet ; else git commit -am "Update TODOs in README [skip ci]" --allow-empty ; fi
+          git add CHANGELOG.md README.md docs/coverage-badge.svg docs/flake8-badge.svg
+          if test -e "$(git diff --quiet)" ; then git diff --staged --quiet ; else git commit -am "Update CHANGELOG.md [skip ci]" --allow-empty ; fi
           git pull --rebase && git push -o ci.skip
