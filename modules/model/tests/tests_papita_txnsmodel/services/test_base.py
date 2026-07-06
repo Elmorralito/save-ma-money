@@ -145,13 +145,13 @@ class TestCreate:
     def test_create_with_dict_validates_and_calls_upsert_record(self, service, mock_dto, mock_repository):
         """Test that create validates dict and calls repository upsert_record."""
         service._repository = mock_repository
-        service.dto_type.model_validate = MagicMock(return_value=mock_dto)
         obj_dict = {"id": uuid.uuid4()}
 
-        result = service.create(obj=obj_dict)
+        with patch.object(TableDTO, "model_validate", return_value=mock_dto) as mock_validate:
+            result = service.create(obj=obj_dict)
 
         assert result == mock_dto
-        service.dto_type.model_validate.assert_called_once_with(
+        mock_validate.assert_called_once_with(
             obj_dict, strict=False, context={"by_alias": False, "by_name": True}
         )
         mock_repository.upsert_record.assert_called_once_with(mock_dto, owner=None)
@@ -197,12 +197,12 @@ class TestDelete:
     def test_delete_with_dict_validates_before_deleting(self, service, mock_dto, mock_repository):
         """Test that delete validates dict before calling repository delete methods."""
         service._repository = mock_repository
-        service.dto_type.model_validate = MagicMock(return_value=mock_dto)
         obj_dict = {"id": uuid.uuid4()}
 
-        service.delete(obj=obj_dict, hard=False)
+        with patch.object(TableDTO, "model_validate", return_value=mock_dto) as mock_validate:
+            service.delete(obj=obj_dict, hard=False)
 
-        service.dto_type.model_validate.assert_called_once_with(
+        mock_validate.assert_called_once_with(
             obj_dict, strict=False, context={"by_alias": False, "by_name": True}
         )
         mock_repository.soft_delete_records.assert_called_once()
@@ -246,12 +246,12 @@ class TestGet:
     def test_get_with_dict_calls_get_record_from_attributes_when_not_found_by_id(self, service, mock_repository, mock_dto):
         """Test that get calls get_record_from_attributes when UUID lookup fails and obj is dict."""
         service._repository = mock_repository
-        service.dto_type.model_construct = MagicMock(return_value=mock_dto)
         obj_dict = {"id": uuid.uuid4()}
         mock_repository.get_record_by_id.return_value = None
         mock_repository.get_record_from_attributes.return_value = mock_dto
 
-        result = service.get(obj=obj_dict)
+        with patch.object(TableDTO, "model_construct", return_value=mock_dto):
+            result = service.get(obj=obj_dict)
 
         assert result == mock_dto
         mock_repository.get_record_from_attributes.assert_called_once()
@@ -299,12 +299,12 @@ class TestGetOrCreate:
     def test_get_or_create_creates_record_when_dict_not_found(self, service, mock_repository, mock_dto):
         """Test that get_or_create creates record when dict is not found."""
         service._repository = mock_repository
-        service.dto_type.model_validate = MagicMock(return_value=mock_dto)
         obj_dict = {"id": uuid.uuid4()}
         mock_repository.get_record_by_id.return_value = None
         mock_repository.get_record_from_attributes.return_value = None
 
-        result = service.get_or_create(obj=obj_dict)
+        with patch.object(TableDTO, "model_validate", return_value=mock_dto):
+            result = service.get_or_create(obj=obj_dict)
 
         assert result == mock_dto
         mock_repository.upsert_record.assert_called_once()
@@ -331,16 +331,16 @@ class TestGetRecords:
     def test_get_records_with_dict_calls_get_records_from_attributes(self, mock_standardize, service, mock_repository, mock_dto):
         """Test that get_records validates dict and calls get_records_from_attributes."""
         service._repository = mock_repository
-        service.dto_type.model_validate = MagicMock(return_value=mock_dto)
         expected_df = pd.DataFrame({"id": [uuid.uuid4()]})
         mock_repository.get_records_from_attributes.return_value = expected_df
         mock_standardize.return_value = expected_df
         obj_dict = {"id": uuid.uuid4()}
 
-        result = service.get_records(dto=obj_dict)
+        with patch.object(TableDTO, "model_validate", return_value=mock_dto) as mock_validate:
+            result = service.get_records(dto=obj_dict)
 
         assert isinstance(result, pd.DataFrame)
-        service.dto_type.model_validate.assert_called_once_with(obj_dict, strict=True)
+        mock_validate.assert_called_once_with(obj_dict, strict=True)
         mock_repository.get_records_from_attributes.assert_called_once()
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")

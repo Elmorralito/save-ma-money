@@ -59,6 +59,45 @@ class UsersService(BaseService):
         """
         PasswordManagerFactory().get_password_manager(keyword="argon2")
 
+    @staticmethod
+    def _build_login_probe(identifier: str) -> UsersDTO | None:
+        """Build a partial UsersDTO probe from a username or email identifier.
+
+        Args:
+            identifier: Raw login string (username or email).
+
+        Returns:
+            UsersDTO probe for repository lookup, or None when identifier is blank.
+        """
+        normalized = identifier.strip()
+        if not normalized:
+            return None
+
+        if "@" in normalized:
+            return UsersDTO.model_construct(email=normalized.lower())
+        return UsersDTO.model_construct(username=normalized)
+
+    def _lookup_by_identifier(self, identifier: str, *, require_active: bool = False) -> UsersDTO | None:
+        """Look up a user by username or email.
+
+        Args:
+            identifier: Raw login string from the OAuth2 ``username`` form field or register payload.
+            require_active: When True, exclude inactive or soft-deleted users.
+
+        Returns:
+            UsersDTO if a matching user exists under the filter, otherwise None.
+        """
+        probe = self._build_login_probe(identifier)
+        if probe is None:
+            return None
+
+        user = self._repository.get_record_from_attributes(probe, dto_type=UsersDTO)
+        if user is None:
+            return None
+        if require_active and (not user.active or user.deleted_at is not None):
+            return None
+        return user
+
     def _find_by_login_identifier(self, identifier: str) -> UsersDTO | None:
         """Look up an active user by username or email.
 
@@ -68,19 +107,7 @@ class UsersService(BaseService):
         Returns:
             UsersDTO if a matching active user exists, otherwise None.
         """
-        normalized = identifier.strip()
-        if not normalized:
-            return None
-
-        if "@" in normalized:
-            probe = UsersDTO.model_construct(email=normalized.lower())
-        else:
-            probe = UsersDTO.model_construct(username=normalized)
-
-        user = self._repository.get_record_from_attributes(probe, dto_type=UsersDTO)
-        if user is None or not user.active or user.deleted_at is not None:
-            return None
-        return user
+        return self._lookup_by_identifier(identifier, require_active=True)
 
     def verify_credentials(self, username_or_email: str, password: str) -> UsersDTO | None:
         """Verify login credentials and return the user on success.
@@ -127,11 +154,10 @@ class UsersService(BaseService):
         """
         self.ensure_password_manager()
 
-        if self._find_by_login_identifier(username):
+        if self._lookup_by_identifier(username, require_active=False):
             raise ValueError("Username already registered")
 
-        email_probe = UsersDTO.model_construct(email=email.strip().lower())
-        if self._repository.get_record_from_attributes(email_probe, dto_type=UsersDTO) is not None:
+        if self._lookup_by_identifier(email, require_active=False):
             raise ValueError("Email already registered")
 
         user = UsersDTO(username=username, email=email, password=password)
