@@ -9,7 +9,7 @@ Classes:
     OnUpsertConflictDo: Enum class defining actions to take on conflict.
     Upserter: Base class for upsert operations, not tied to any specific SQL dialect.
     PostgresUpserter: Class for upsert operations specific to PostgreSQL.
-    DuckDBUpserter: Class for upsert operations specific to DuckDB.
+    DuckDBUpserter: Deprecated; use PostgreSQLUpserter (PPT-031).
 
 Usage:
     - Define a subclass of `Upserter` for your specific SQL dialect.
@@ -22,6 +22,7 @@ import inspect
 import logging
 import sys
 import traceback
+import warnings
 from enum import Enum
 from typing import Any, Callable, Iterator, Sequence
 
@@ -34,6 +35,16 @@ from sqlmodel import Session, SQLModel
 from papita_txnsmodel.utils.datautils import slice_batches
 
 logger = logging.getLogger(__name__)
+
+DUCKDB_UPSERTER_DEPRECATED_MSG = (
+    "DuckDBUpserter is deprecated (PPT-031). Use PostgreSQL via PostgreSQLUpserter. "
+    "DuckDB support will be removed in a future release."
+)
+
+
+def _warn_duckdb_upserter_deprecated() -> None:
+    """Emit DeprecationWarning per stdlib pattern (see Stack Overflow #30093490)."""
+    warnings.warn(DUCKDB_UPSERTER_DEPRECATED_MSG, DeprecationWarning, stacklevel=2)
 
 
 class OnUpsertConflictDo(Enum):
@@ -336,15 +347,40 @@ class PostgreSQLUpserter(Upserter):
 
 class DuckDBUpserter(PostgreSQLUpserter):
     """
-    Upserter class for DuckDB.
+    Deprecated upserter for DuckDB.
 
-    This class inherits from `PostgresUpserter` and sets the supported SQL dialect to "duckdb".
-
-    Attributes:
-        __supported_dialect__ (str): The SQL dialect supported by this upserter ("duckdb").
+    DuckDB is out of scope for PPT-031. Use :class:`PostgreSQLUpserter` with a
+    ``postgresql+psycopg2://`` connection. :class:`UpserterFactory` rejects the
+    ``duckdb`` dialect. Emits :class:`DeprecationWarning` on use (stdlib pattern).
     """
 
     __supported_dialect__: str = "duckdb"
+
+    def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+        _warn_duckdb_upserter_deprecated()
+
+    @classmethod
+    def upsert(
+        cls,
+        *,
+        schema_name: str,
+        table: str | Table | DeclarativeMeta,
+        pks: Sequence[str],
+        df: pd.DataFrame,
+        db_session: Session,
+        on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
+        **to_sql_kwargs,
+    ) -> int:
+        _warn_duckdb_upserter_deprecated()
+        return super().upsert(
+            schema_name=schema_name,
+            table=table,
+            pks=pks,
+            df=df,
+            db_session=db_session,
+            on_conflict_do=on_conflict_do,
+            **to_sql_kwargs,
+        )
 
 
 class UpserterFactory:
@@ -388,7 +424,12 @@ class UpserterFactory:
             >>> upserter.upsert_data(data)
         """
         dialect = db_session.bind.dialect.name
+        if dialect.lower() == "duckdb":
+            raise ValueError(f"Unsupported dialect: {dialect}. {DUCKDB_UPSERTER_DEPRECATED_MSG}")
+
         for _, cls_ in inspect.getmembers(sys.modules[__name__], inspect.isclass):
+            if cls_ is DuckDBUpserter:
+                continue
             if not issubclass(cls_, Upserter) and cls_ != Upserter:
                 continue
 
