@@ -1,5 +1,7 @@
 # Save Ma Money - FastAPI Backend Service
 
+> **Note (2026-07-06):** This document describes the **target** API layout and endpoints. The implemented package today is [`papita_txnsapi`](./README.md) (settings + security only). See [`README.md`](./README.md), [`API_Endpoints.md.md`](./API_Endpoints.md.md), and [#25](https://github.com/Elmorralito/save-ma-money/issues/25) for current status.
+
 ## 📋 Overview
 
 A comprehensive budgeting and accounting system built with FastAPI, designed to manage company budgets, expenses, and financial movements. This service provides RESTful APIs for transaction management, budget tracking, and financial reporting.
@@ -39,7 +41,7 @@ A comprehensive budgeting and accounting system built with FastAPI, designed to 
                                   ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                     Database Layer                               │
-│              (PostgreSQL / SQLite / MongoDB)                     │
+│              (PostgreSQL primary; DuckDB for local dev)          │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -1157,7 +1159,7 @@ from papita_txnsmodel import (
 
 | Component        | Technology                  |
 | ---------------- | --------------------------- |
-| Framework        | FastAPI 0.109+              |
+| Framework        | FastAPI 0.135+              |
 | Data Validation  | Pydantic v2                 |
 | Data Layer       | papita_txnsmodel            |
 | Authentication   | JWT (python-jose)           |
@@ -1167,32 +1169,29 @@ from papita_txnsmodel import (
 
 ## 🏃 Quick Start
 
+> **Current monorepo setup:** use Poetry from the repository root — see [root README.md](../../README.md#development).
+
 ```bash
-# Clone repository
+# From repository root
 git clone https://github.com/Elmorralito/save-ma-money.git
 cd save-ma-money
+poetry install
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# or
-.\venv\Scripts\activate  # Windows
+# API env (JWT_SECRET_KEY required)
+cp modules/api/src/.env.example modules/api/src/.env   # when .env.example exists
+# Edit modules/api/src/.env
 
-# Install dependencies
-pip install -r requirements.txt
+# Migrations (PostgreSQL)
+/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
 
-# Install papita_txnsmodel (local)
-pip install -e ./modules/model
+# Tests
+poetry run pytest
+```
 
-# Set environment variables
-cp .env.example .env
-# Edit .env with your configuration
+When routers land, start the server with:
 
-# Run migrations
-alembic upgrade head
-
-# Start the server
-uvicorn api.main:app --reload
+```bash
+uvicorn papita_txnsapi.main:app --reload   # path TBD — not implemented yet
 ```
 
 ## 📚 API Documentation

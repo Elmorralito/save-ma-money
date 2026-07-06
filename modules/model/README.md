@@ -152,3 +152,44 @@ class MyCustomBankHandler(AbstractHandler[TransactionService]):
         # Implementation of persisting logic...
         return self
 ```
+
+## Database migrations
+
+Alembic lives under `alembic/` with `alembic.ini` at the module root. Migrations target schema `papita_transactions` on PostgreSQL.
+
+```bash
+# From repository root
+/bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+/bin/bash ./deploy/alembic.sh downgrade --url "..."   # defaults to head^1
+```
+
+Docker-backed PostgreSQL for migrations: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
+
+### CI migration gate
+
+[`.github/workflows/migration-check.yml`](../../.github/workflows/migration-check.yml) validates PostgreSQL migrations:
+
+- full `upgrade head` → `downgrade -1` → `upgrade head`, then `alembic check`
+
+Script: [`.github/scripts/migration_check.sh`](../../.github/scripts/migration_check.sh).
+
+## Testing
+
+228 unit tests under `tests/` cover access, database, services, and utils layers (mocked DB; no live PostgreSQL required).
+
+```bash
+# From repository root
+poetry run pytest modules/model/tests
+/bin/bash ./deploy/test.sh
+```
+
+## Related documentation
+
+| Document                                                                   | Description                                                                        |
+| :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| [`docs/design/README.md`](../../docs/design/README.md)                     | PPT-031 schema redesign program                                                    |
+| [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md) | As-is schema audit ([#30](https://github.com/Elmorralito/save-ma-money/issues/30)) |
+| [`CHANGELOG.md`](../../CHANGELOG.md)                                       | Auto-generated issue and release tracker                                           |
+| [`README.md`](../../README.md)                                             | Monorepo setup, CI, and development guide                                          |
+
+Package version: see `[project].version` in [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).

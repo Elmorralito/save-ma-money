@@ -1,0 +1,49 @@
+---
+name: Supply Chain Check
+
+on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "poetry.lock"
+      - "modules/**/pyproject.toml"
+      - ".github/scripts/supply_chain_check.sh"
+      - ".github/scripts/check_module_versions.py"
+      - ".github/workflows/supply-chain-check.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
+      - "poetry.lock"
+      - "modules/**/pyproject.toml"
+      - ".github/scripts/supply_chain_check.sh"
+      - ".github/scripts/check_module_versions.py"
+      - ".github/workflows/supply-chain-check.yml"
+
+jobs:
+  supply-chain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Run supply chain checks
+        run: /bin/bash .github/scripts/supply_chain_check.sh

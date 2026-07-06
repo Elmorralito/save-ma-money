@@ -1,0 +1,10 @@
+{% for issue in issues %}
+- [{{ issue.checkmark }}] {% if issue.avatar %}<img src="{{ issue.avatar }}" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> {% endif %}{% if issue.assignee %}**[@{{ issue.assignee }}]({{ issue.assignee_url }})** {% endif %}[_**[{{ issue.number }}]({{ issue.html_url }})**_] :: **{{ issue.title }}** :: _<sub style="vertical-align: middle; color: #636363;">{{ issue.created_at }}</sub>_ :weary:{% if issue.closed_at %} → :laughing: _<sub style="vertical-align: middle; color: #636363;">{{ issue.closed_at }}</sub>_{% endif %}
+{% if issue.closing_pr %}
+  > **Closed by** [_**#{{ issue.closing_pr.number }}**]({{ issue.closing_pr.html_url }}): **{{ issue.closing_pr.title }}**
+  >
+{% for line in issue.closing_pr.body_lines %}
+  > {{ line }}
+{% endfor %}
+{% endif %}
+{% endfor %}
