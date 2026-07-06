@@ -1,0 +1,19 @@
+title = "save-ma-money gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Environment templates and documented placeholder values"
+paths = [
+  '''(?i)(^|/)\.env\.example$''',
+]
+
+regexes = [
+  '''replace-with-long-random-secret-min-32-chars''',
+  '''(?i)changeme''',
+  '''<project-ref>''',
+  '''<password>''',
+  '''<region>''',
+  '''eyJ\.\.\.''',
+]

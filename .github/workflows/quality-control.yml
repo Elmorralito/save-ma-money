@@ -5,7 +5,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
-      - ".docs/*"
+      - "docs/**"
+
+concurrency:
+  group: quality-control-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality-control:

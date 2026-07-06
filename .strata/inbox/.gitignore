@@ -1,0 +1,6 @@
+# Deterministic capture inbox — transient raw-evidence scratch (strata).
+# Auto-logged tool failures land here; /strata:capture and /strata:save
+# promote the real ones to issues/learnings, then clear this dir.
+# Ignored by default: raw stubs can contain stack traces or secrets.
+*
+!.gitignore

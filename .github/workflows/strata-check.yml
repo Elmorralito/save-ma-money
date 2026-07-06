@@ -1,0 +1,33 @@
+---
+name: Strata Check
+
+on:
+  pull_request:
+    paths:
+      - "modules/**"
+      - "pyproject.toml"
+      - "deploy/**"
+      - ".github/scripts/strata_check.sh"
+      - ".github/workflows/strata-check.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: strata-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  strata-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Run Strata validation
+        env:
+          TERM: xterm-256color
+          STRATA_STRICT_MODULES: "1"
+          STRATA_BASE_REF: origin/${{ github.base_ref }}
+        run: /bin/bash .github/scripts/strata_check.sh
