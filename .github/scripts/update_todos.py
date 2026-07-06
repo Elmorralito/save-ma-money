@@ -2,7 +2,7 @@
 import logging
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -22,10 +22,27 @@ REPO_NAME = os.environ.get("REPO_NAME")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 CHANGELOG_PATH = Path("CHANGELOG.md")
 
-if not REPO_NAME and "GITHUB_REPOSITORY" in os.environ:
-    parts = os.environ["GITHUB_REPOSITORY"].split("/")
-    if len(parts) == 2:
-        REPO_OWNER, REPO_NAME = parts
+
+def resolve_repo_identity() -> tuple[str, str]:
+    """Resolve GitHub repository owner and name from environment variables."""
+    owner = REPO_OWNER
+    name = REPO_NAME
+
+    if not name and "GITHUB_REPOSITORY" in os.environ:
+        parts = os.environ["GITHUB_REPOSITORY"].split("/")
+        if len(parts) == 2:
+            owner, name = parts[0], parts[1]
+
+    if not owner or not name:
+        raise ValueError(
+            "Repository identity is not configured. Set REPO_OWNER and REPO_NAME, "
+            "or GITHUB_REPOSITORY in owner/name format."
+        )
+
+    return owner, name
+
+
+REPO_OWNER, REPO_NAME = resolve_repo_identity()
 
 API_BASE_URL = f"https://api.github.com/repos/{REPO_OWNER}/{REPO_NAME}"
 ISSUES_API_URL = f"{API_BASE_URL}/issues?state=all"
@@ -40,11 +57,13 @@ via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
 
 def format_date(date_string):
-    """Format date string to ISO format without milliseconds"""
+    """Format date string to ISO format without milliseconds."""
     if not date_string:
         return ""
     date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-    return date_obj.isoformat(sep=" ").replace("T", " ").split(".")[0] + "+00:00"
+    if date_obj.tzinfo is not None:
+        date_obj = date_obj.astimezone(timezone.utc)
+    return date_obj.strftime("%Y-%m-%d %H:%M:%S") + "+00:00"
 
 
 def get_github_issues():

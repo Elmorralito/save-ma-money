@@ -116,4 +116,4 @@ poetry run pip-audit --desc on --skip-editable    # when lockfile / deps change
 
 ## Changelog
 
-Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch (see [`.github/scripts/update_todos.py`](./.github/scripts/update_todos.py)).
+Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.
