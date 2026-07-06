@@ -89,9 +89,6 @@ API and registrar test directories are configured in `pyproject.toml` but not im
 
 # PostgreSQL (explicit URL)
 /bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
-
-# DuckDB (local file)
-/bin/bash ./deploy/alembic.sh upgrade --duckdb-path ./data/store.duckdb
 ```
 
 See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout and CI migration gates.
@@ -101,7 +98,7 @@ See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout an
 | Workflow             | File                                                                                     | Purpose                                                                   |
 | :------------------- | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
 | Code Quality Control | [`.github/workflows/quality-control.yml`](./.github/workflows/quality-control.yml)       | pre-commit, pytest, coverage upload                                       |
-| Migration Check      | [`.github/workflows/migration-check.yml`](./.github/workflows/migration-check.yml)       | PostgreSQL upgrade/downgrade + `alembic check`; DuckDB seed smoke test    |
+| Migration Check      | [`.github/workflows/migration-check.yml`](./.github/workflows/migration-check.yml)       | PostgreSQL upgrade/downgrade + `alembic check`                            |
 | Supply Chain Check   | [`.github/workflows/supply-chain-check.yml`](./.github/workflows/supply-chain-check.yml) | `poetry check`, module version metadata, `pip-audit`                      |
 | Auto Updates         | [`.github/workflows/auto-updates.yml`](./.github/workflows/auto-updates.yml)             | Regenerates [`CHANGELOG.md`](./CHANGELOG.md) and quality badges on `main` |
 

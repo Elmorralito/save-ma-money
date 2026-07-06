@@ -5,9 +5,8 @@ from __future__ import annotations
 
 import re
 import sys
+import tomllib
 from pathlib import Path
-
-import toml
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MODULES_PATH = PROJECT_ROOT / "modules"
@@ -16,7 +15,8 @@ VERSION_PATTERN = re.compile(r"^v?(?P<version>\d+\.\d+\.\d+(?:[a-z]\d+)?(?:[-+][
 
 def load_version(pyproject_path: Path) -> str:
     """Load the project version from a pyproject.toml file."""
-    data = toml.load(pyproject_path)
+    with pyproject_path.open("rb") as file:
+        data = tomllib.load(file)
     project = data.get("project", {})
     version = project.get("version")
     if not version:

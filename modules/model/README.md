@@ -155,12 +155,11 @@ class MyCustomBankHandler(AbstractHandler[TransactionService]):
 
 ## Database migrations
 
-Alembic lives under `alembic/` with `alembic.ini` at the module root. Migrations target schema `papita_transactions` and support PostgreSQL (primary) and DuckDB (local experimentation).
+Alembic lives under `alembic/` with `alembic.ini` at the module root. Migrations target schema `papita_transactions` on PostgreSQL.
 
 ```bash
 # From repository root
 /bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
-/bin/bash ./deploy/alembic.sh upgrade --duckdb-path ./data/store.duckdb
 /bin/bash ./deploy/alembic.sh downgrade --url "..."   # defaults to head^1
 ```
 
@@ -168,10 +167,9 @@ Docker-backed PostgreSQL for migrations: [`docker/database/docker-compose.yml`](
 
 ### CI migration gate
 
-[`.github/workflows/migration-check.yml`](../../.github/workflows/migration-check.yml) validates:
+[`.github/workflows/migration-check.yml`](../../.github/workflows/migration-check.yml) validates PostgreSQL migrations:
 
-- **PostgreSQL** — full `upgrade head` → `downgrade -1` → `upgrade head`, then `alembic check`
-- **DuckDB** — smoke test through seed revision `93420bed0a90` only (later revisions use `ALTER COLUMN` patterns DuckDB does not support)
+- full `upgrade head` → `downgrade -1` → `upgrade head`, then `alembic check`
 
 Script: [`.github/scripts/migration_check.sh`](../../.github/scripts/migration_check.sh).
 

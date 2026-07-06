@@ -2,6 +2,7 @@
 import logging
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,14 +56,25 @@ via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
 """
 
+CLOSING_EVENT_TOLERANCE_SECONDS = 60
+README_SECTION_BOUNDARY = r"(?=\n## |\Z)"
+
+
+def parse_github_datetime(date_string: str) -> datetime | None:
+    """Parse a GitHub ISO timestamp into a UTC-aware datetime."""
+    if not date_string:
+        return None
+    date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
+    if date_obj.tzinfo is not None:
+        return date_obj.astimezone(timezone.utc)
+    return date_obj.replace(tzinfo=timezone.utc)
+
 
 def format_date(date_string):
     """Format date string to ISO format without milliseconds."""
-    if not date_string:
+    date_obj = parse_github_datetime(date_string)
+    if date_obj is None:
         return ""
-    date_obj = datetime.fromisoformat(date_string.replace("Z", "+00:00"))
-    if date_obj.tzinfo is not None:
-        date_obj = date_obj.astimezone(timezone.utc)
     return date_obj.strftime("%Y-%m-%d %H:%M:%S") + "+00:00"
 
 
@@ -106,15 +118,16 @@ def get_github_issues():
     return issues
 
 
-def get_closing_pull_request(issue_number):
-    """Resolve the merged pull request that closed an issue via GraphQL ClosedEvent."""
+def get_closing_pull_request(issue_number, closed_at: str):
+    """Resolve the pull request that closed an issue for the current close event."""
     query = """
     query ($owner: String!, $name: String!, $issueNumber: Int!) {
       repository(owner: $owner, name: $name) {
         issue(number: $issueNumber) {
-          timelineItems(last: 5, itemTypes: CLOSED_EVENT) {
+          timelineItems(last: 20, itemTypes: CLOSED_EVENT) {
             nodes {
               ... on ClosedEvent {
+                createdAt
                 closer {
                   ... on PullRequest {
                     number
@@ -150,21 +163,40 @@ def get_closing_pull_request(issue_number):
         return None
 
     nodes = payload.get("data", {}).get("repository", {}).get("issue", {}).get("timelineItems", {}).get("nodes", [])
+    closed_dt = parse_github_datetime(closed_at)
+    if closed_dt is None:
+        return None
 
-    for node in reversed(nodes):
+    best_closer = None
+    best_delta_seconds = None
+
+    for node in nodes:
         closer = node.get("closer")
         if not closer or "number" not in closer:
             continue
 
-        body = closer.get("body") or ""
-        return {
-            "number": closer["number"],
-            "html_url": f"https://github.com/{REPO_OWNER}/{REPO_NAME}/pull/{closer['number']}",
-            "title": closer["title"],
-            "body_lines": body.splitlines() if body else [],
-        }
+        event_created = parse_github_datetime(node.get("createdAt", ""))
+        if event_created is None:
+            continue
 
-    return None
+        delta_seconds = abs((event_created - closed_dt).total_seconds())
+        if delta_seconds > CLOSING_EVENT_TOLERANCE_SECONDS:
+            continue
+
+        if best_delta_seconds is None or delta_seconds < best_delta_seconds:
+            best_delta_seconds = delta_seconds
+            best_closer = closer
+
+    if best_closer is None:
+        return None
+
+    body = best_closer.get("body") or ""
+    return {
+        "number": best_closer["number"],
+        "html_url": f"https://github.com/{REPO_OWNER}/{REPO_NAME}/pull/{best_closer['number']}",
+        "title": best_closer["title"],
+        "body_lines": body.splitlines() if body else [],
+    }
 
 
 def format_issues_as_markdown(issues):
@@ -196,7 +228,10 @@ def format_issues_as_markdown(issues):
 
         if issue["state"] == "closed":
             try:
-                issue_data["closing_pr"] = get_closing_pull_request(issue["number"])
+                issue_data["closing_pr"] = get_closing_pull_request(
+                    issue["number"],
+                    issue.get("closed_at", ""),
+                )
             except Exception:
                 logger.exception("Failed to resolve closing PR for issue #%s", issue["number"])
 
@@ -211,56 +246,58 @@ def format_issues_as_markdown(issues):
 
 def update_changelog():
     """Update CHANGELOG.md with the current GitHub issue tracker state."""
-    try:
-        issues = get_github_issues()
-        issues_markdown = format_issues_as_markdown(issues).replace("`", "")
-        changelog_content = f"{CHANGELOG_HEADER}{issues_markdown}"
+    issues = get_github_issues()
+    issues_markdown = format_issues_as_markdown(issues).replace("`", "")
+    changelog_content = f"{CHANGELOG_HEADER}{issues_markdown}"
 
-        with open(CHANGELOG_PATH, "w", encoding="utf-8") as file:
-            file.write(changelog_content)
+    with open(CHANGELOG_PATH, "w", encoding="utf-8") as file:
+        file.write(changelog_content)
 
-        logger.info("%s updated successfully", CHANGELOG_PATH)
-
-    except Exception:
-        logger.exception("Error updating %s due to:", CHANGELOG_PATH)
+    logger.info("%s updated successfully", CHANGELOG_PATH)
 
 
 def update_readme_link():
     """Ensure README.md links to CHANGELOG.md instead of embedding the issue list."""
-    try:
-        with open("README.md", "r", encoding="utf-8") as file:
-            content = file.read()
+    with open("README.md", "r", encoding="utf-8") as file:
+        content = file.read()
 
-        changelog_link_section = (
-            "## Changelog\n\n"
-            "Open issues, completed work, and closing pull-request summaries are maintained in "
-            "[CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are "
-            "opened or closed on the default branch.\n"
+    changelog_link_section = (
+        "## Changelog\n\n"
+        "Open issues, completed work, and closing pull-request summaries are maintained in "
+        "[CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are "
+        "opened or closed on the default branch.\n"
+    )
+    todos_pattern = rf"## TODOs\s+.*?{README_SECTION_BOUNDARY}"
+    changelog_pattern = rf"## (?:Patch Notes|Changelog)\s+.*?{README_SECTION_BOUNDARY}"
+
+    if re.search(todos_pattern, content, re.DOTALL):
+        updated_content = re.sub(todos_pattern, changelog_link_section.strip(), content, count=1, flags=re.DOTALL)
+    elif re.search(changelog_pattern, content, re.DOTALL):
+        updated_content = re.sub(
+            changelog_pattern,
+            changelog_link_section.strip(),
+            content,
+            count=1,
+            flags=re.DOTALL,
         )
-        todos_pattern = r"## TODOs\s+.*"
-        changelog_pattern = r"## (?:Patch Notes|Changelog)\s+.*"
+    else:
+        updated_content = f"{content.rstrip()}\n\n{changelog_link_section}"
 
-        if re.search(todos_pattern, content, re.DOTALL):
-            updated_content = re.sub(todos_pattern, changelog_link_section.strip(), content, flags=re.DOTALL)
-        elif re.search(changelog_pattern, content, re.DOTALL):
-            updated_content = re.sub(
-                changelog_pattern,
-                changelog_link_section.strip(),
-                content,
-                flags=re.DOTALL,
-            )
-        else:
-            updated_content = f"{content.rstrip()}\n\n{changelog_link_section}"
+    with open("README.md", "w", encoding="utf-8") as file:
+        file.write(updated_content)
 
-        with open("README.md", "w", encoding="utf-8") as file:
-            file.write(updated_content)
+    logger.info("README.md link to CHANGELOG.md updated successfully")
 
-        logger.info("README.md link to CHANGELOG.md updated successfully")
 
-    except Exception:
-        logger.exception("Error updating README.md due to:")
+def main() -> None:
+    """Regenerate CHANGELOG.md and ensure README links to it."""
+    update_changelog()
+    update_readme_link()
 
 
 if __name__ == "__main__":
-    update_changelog()
-    update_readme_link()
+    try:
+        main()
+    except Exception:
+        logger.exception("update_todos.py failed")
+        sys.exit(1)

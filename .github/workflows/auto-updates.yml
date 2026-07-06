@@ -59,5 +59,9 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add CHANGELOG.md README.md docs/coverage-badge.svg docs/flake8-badge.svg
-          if test -e "$(git diff --quiet)" ; then git diff --staged --quiet ; else git commit -am "Update CHANGELOG.md [skip ci]" --allow-empty ; fi
-          git pull --rebase && git push -o ci.skip
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Update CHANGELOG.md [skip ci]"
+            git pull --rebase && git push -o ci.skip
+          fi

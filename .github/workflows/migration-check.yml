@@ -8,7 +8,6 @@ on:
       - "modules/model/src/papita_txnsmodel/model/**"
       - "docker/database/**"
       - "deploy/alembic.sh"
-      - "deploy/setup_duckdb.py"
       - ".github/scripts/migration_check.sh"
       - ".github/workflows/migration-check.yml"
   push:
@@ -19,7 +18,6 @@ on:
       - "modules/model/src/papita_txnsmodel/model/**"
       - "docker/database/**"
       - "deploy/alembic.sh"
-      - "deploy/setup_duckdb.py"
       - ".github/scripts/migration_check.sh"
       - ".github/workflows/migration-check.yml"
 
@@ -65,31 +63,4 @@ jobs:
       - name: Run PostgreSQL migration checks
         env:
           DB_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
-        run: /bin/bash .github/scripts/migration_check.sh postgres
-
-  duckdb-migrations:
-    name: DuckDB seed migration
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 2.1.3
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
-      - name: Run DuckDB smoke migration check
-        run: /bin/bash .github/scripts/migration_check.sh duckdb
+        run: /bin/bash .github/scripts/migration_check.sh
