@@ -189,7 +189,20 @@ Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:s
 | `strata-check.yml`       | Code paths              | `.strata/` layout + strict module pairing |
 | `auto-updates.yml`       | Merge to `main`         | CHANGELOG + badges                        |
 
-**Strata strict mode:** if `modules/**` changes in a PR, `.strata/` (or adapters) must also change — run `/strata:save` before pushing.
+**Strata strict mode:** if `modules/**` or `deploy/**` changes in a PR, `.strata/` (or adapters) must also change — run `/strata:save` before pushing.
+
+### Local pre-commit hooks (not CI)
+
+These run on `git commit` locally only. **GitHub Actions skips them** (`SKIP=strata-validate,mcp-config-validate` in `quality-control.yml`; Strata PR validation is `strata-check.yml`). Wrappers also no-op if `CI` / `GITHUB_ACTIONS` is set.
+
+| Hook                  | Script                                 | When                                                             |
+| --------------------- | -------------------------------------- | ---------------------------------------------------------------- |
+| `strata-validate`     | `.github/scripts/pre_commit_strata.sh` | Staged changes under `modules/`, `deploy/`, `.strata/`, adapters |
+| `mcp-config-validate` | `.github/scripts/pre_commit_mcp.sh`    | Staged `.cursor/mcp.json`                                        |
+
+`strata-validate` runs `strata_check.sh` with strict staged pairing (code without `.strata/` updates fails). **Does not** run `/strata:save` — that remains manual.
+
+If `strata-validate` fails: run `/strata:save`, `git add .strata/ AGENTS.md CLAUDE.md`, and commit again.
 
 ---
 
@@ -197,7 +210,7 @@ Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:s
 
 Before opening or marking ready for review:
 
-1. `pre-commit run --all-files`
+1. `pre-commit run --all-files` (includes local-only `strata-validate` when relevant paths change)
 2. `poetry run pytest` (or `./deploy/test.sh`)
 3. If dependencies changed: `.github/scripts/supply_chain_check.sh`
 4. If model/schema changed: migration + `./deploy/alembic.sh` locally

@@ -160,29 +160,37 @@ else
 fi
 
 if [[ "${STRICT_MODULES}" == "1" ]]; then
-    log "INFO" "Strict mode: checking .strata/ updates alongside module changes..."
-    base_ref="${STRATA_BASE_REF:-origin/main}"
-    if git rev-parse --verify "${base_ref}" >/dev/null 2>&1; then
-        changed_files=$(git diff --name-only "${base_ref}...HEAD" 2>/dev/null || git diff --name-only "${base_ref}" HEAD)
-        modules_changed=false
+    log "INFO" "Strict mode: checking .strata/ updates alongside code changes..."
+    if [[ "${STRATA_DIFF_SOURCE:-range}" == "staged" ]]; then
+        changed_files=$(git diff --cached --name-only 2>/dev/null || true)
+    else
+        base_ref="${STRATA_BASE_REF:-origin/main}"
+        if git rev-parse --verify "${base_ref}" >/dev/null 2>&1; then
+            changed_files=$(git diff --name-only "${base_ref}...HEAD" 2>/dev/null || git diff --name-only "${base_ref}" HEAD)
+        else
+            changed_files=""
+            log "INFO" "Skipping strict pairing — base ref '${base_ref}' not available locally"
+        fi
+    fi
+
+    if [[ -n "${changed_files}" ]]; then
+        code_changed=false
         strata_changed=false
         while IFS= read -r path; do
             [[ -z "${path}" ]] && continue
-            if [[ "${path}" == modules/* ]]; then
-                modules_changed=true
+            if [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]]; then
+                code_changed=true
             fi
             if [[ "${path}" == .strata/* ]] || [[ "${path}" == "AGENTS.md" ]] || [[ "${path}" == "CLAUDE.md" ]]; then
                 strata_changed=true
             fi
         done <<< "${changed_files}"
 
-        if [[ "${modules_changed}" == true ]] && [[ "${strata_changed}" == false ]]; then
-            fail "modules/ changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated — run /strata:save before opening the PR"
+        if [[ "${code_changed}" == true ]] && [[ "${strata_changed}" == false ]]; then
+            fail "code paths changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
         else
-            ok "strict module/strata change pairing satisfied"
+            ok "strict code/strata change pairing satisfied"
         fi
-    else
-        log "INFO" "Skipping strict pairing — base ref '${base_ref}' not available locally"
     fi
 fi
 

@@ -15,6 +15,7 @@ repos:
     hooks:
       - id: prettier
         types_or: [yaml, python, toml, json, markdown]
+        exclude: \.svg$
         args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml", "*.json"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
@@ -55,6 +56,20 @@ repos:
             "--disable=import-error,wrong-import-order",
             "--rcfile=pyproject.toml",
           ]
+      - id: strata-validate
+        name: strata validate (local only)
+        entry: /bin/bash .github/scripts/pre_commit_strata.sh
+        language: system
+        pass_filenames: false
+        files: ^(modules/|deploy/|\.strata/|AGENTS\.md|CLAUDE\.md)
+        # Excluded in CI via SKIP in quality-control.yml; strata-check.yml runs strata_check.sh on PRs.
+      - id: mcp-config-validate
+        name: mcp config validate (local only)
+        entry: /bin/bash .github/scripts/pre_commit_mcp.sh
+        language: system
+        pass_filenames: false
+        files: ^\.cursor/mcp\.json$
+        # Excluded in CI via SKIP in quality-control.yml.
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2

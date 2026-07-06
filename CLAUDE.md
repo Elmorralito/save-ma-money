@@ -35,6 +35,8 @@ Capture hook logs failed shell commands to `.strata/inbox/` automatically when t
 
 **CI enforces:** code changes under `modules/**` require matching `.strata/` updates (`strata-check.yml` strict mode). Save before push when you touched architecture or backlog.
 
+**Local pre-commit:** `strata-validate` and `mcp-config-validate` mirror CI checks on commit (skipped in GitHub Actions). See [`AGENTS.md` — Local pre-commit hooks](AGENTS.md#local-pre-commit-hooks-not-ci).
+
 ---
 
 ## Where Claude should look first
