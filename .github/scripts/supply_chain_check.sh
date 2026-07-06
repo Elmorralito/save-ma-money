@@ -7,7 +7,7 @@ source "${PROJECT_PATH}/deploy/utils.sh"
 
 cd "${PROJECT_PATH}" || exit
 
-log "INFO" "Validating Poetry project and lock file..."
+log "INFO" "Validating Poetry project metadata..."
 run_command 1 "poetry check"
 
 log "INFO" "Validating module version metadata..."

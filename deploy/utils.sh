@@ -4,8 +4,13 @@ GREEN_TEXT='\033[0;32m'
 RED_TEXT='\033[0;31m'
 NC_TEXT='\033[0m'
 export TERM="${TERM:-"xterm-256color"}"
-BOLD_TEXT="$(tput bold)"
-NORMAL_TEXT="$(tput sgr0)"
+if tput bold &>/dev/null; then
+    BOLD_TEXT="$(tput bold)"
+    NORMAL_TEXT="$(tput sgr0)"
+else
+    BOLD_TEXT=""
+    NORMAL_TEXT=""
+fi
 
 log() {
     local level="$1"

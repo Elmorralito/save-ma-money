@@ -5,7 +5,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
-      - ".docs/*"
+      - "docs/**"
+
+concurrency:
+  group: quality-control-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality-control:
@@ -33,6 +37,9 @@ jobs:
           python -m pip install pylint pytest pytest-cov coverage
 
       - uses: "pre-commit/action@v3.0.0"
+        env:
+          # Local-only hooks; Strata/MCP validation use dedicated workflows or git commit.
+          SKIP: strata-validate,mcp-config-validate
 
       - name: "Run PyTest with Coverage"
         run: |

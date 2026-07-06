@@ -104,6 +104,10 @@ See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout an
 | Code Quality Control | [`.github/workflows/quality-control.yml`](./.github/workflows/quality-control.yml)       | pre-commit, pytest, coverage upload                                       |
 | Migration Check      | [`.github/workflows/migration-check.yml`](./.github/workflows/migration-check.yml)       | PostgreSQL upgrade/downgrade + `alembic check`                            |
 | Supply Chain Check   | [`.github/workflows/supply-chain-check.yml`](./.github/workflows/supply-chain-check.yml) | `poetry check`, module version metadata, `pip-audit`                      |
+| Secret Scan          | [`.github/workflows/gitleaks.yml`](./.github/workflows/gitleaks.yml)                     | Full-history secret detection (Gitleaks)                                  |
+| CodeQL Analysis      | [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml)                         | Python SAST (`security-extended` query pack)                              |
+| Trivy Security Scan  | [`.github/workflows/trivy.yml`](./.github/workflows/trivy.yml)                           | Dependency CVE + IaC misconfig scan (SARIF)                               |
+| Strata Check         | [`.github/workflows/strata-check.yml`](./.github/workflows/strata-check.yml)             | Validates `.strata/` layout when code paths change                        |
 | Auto Updates         | [`.github/workflows/auto-updates.yml`](./.github/workflows/auto-updates.yml)             | Regenerates [`CHANGELOG.md`](./CHANGELOG.md) and quality badges on `main` |
 
 Before opening a PR:
