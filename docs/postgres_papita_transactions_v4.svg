@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" font-family="system-ui, -apple-system, sans-serif">
+  <title>papita_transactions v3 + v4 extensions ER diagram</title>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#4a5568"/>
+    </marker>
+    <style>
+      .table-box { fill: #f7fafc; stroke: #2d3748; stroke-width: 1.5; }
+      .v4-box { fill: #fffaf0; stroke: #c05621; stroke-width: 1.5; }
+      .view-box { fill: #ebf8ff; stroke: #3182ce; stroke-width: 1.5; stroke-dasharray: 6 3; }
+      .table-title { fill: #1a365d; font-size: 12px; font-weight: 700; }
+      .v4-title { fill: #7b341e; font-size: 12px; font-weight: 700; }
+      .col-text { fill: #2d3748; font-size: 9px; }
+      .rel { stroke: #4a5568; stroke-width: 1; fill: none; marker-end: url(#arrow); }
+      .header { fill: #1a202c; font-size: 17px; font-weight: 700; }
+      .sub { fill: #4a5568; font-size: 10px; }
+      .zone { fill: none; stroke: #cbd5e0; stroke-width: 1; stroke-dasharray: 4 4; }
+    </style>
+  </defs>
+
+  <text x="700" y="24" text-anchor="middle" class="header">papita_transactions  v3 core + v4 extensions</text>
+  <text x="700" y="42" text-anchor="middle" class="sub">Grey = v3 (G1 freeze) · Orange = v4 additive · Blue dashed = materialized views</text>
+
+  <!-- v3 zone -->
+  <rect x="20" y="55" width="680" height="420" rx="6" class="zone"/>
+  <text x="30" y="72" class="col-text" font-weight="bold">v3 core (11 tables)</text>
+
+  <rect x="40" y="85" width="120" height="50" rx="3" class="table-box"/>
+  <text x="48" y="102" class="table-title">users</text>
+  <text x="48" y="116" class="col-text">id PK</text>
+
+  <rect x="200" y="80" width="150" height="70" rx="3" class="table-box"/>
+  <text x="210" y="97" class="table-title">accounts</text>
+  <text x="210" y="111" class="col-text">account_kind, currency</text>
+  <text x="210" y="123" class="col-text">+ extensions (1:1)</text>
+
+  <rect x="400" y="80" width="130" height="45" rx="3" class="table-box"/>
+  <text x="408" y="97" class="table-title">categories</text>
+  <text x="408" y="111" class="col-text">parent_id, kind</text>
+
+  <rect x="200" y="170" width="150" height="55" rx="3" class="table-box"/>
+  <text x="210" y="187" class="table-title">transaction_templates</text>
+  <text x="210" y="201" class="col-text">planned_amount, day</text>
+
+  <rect x="400" y="160" width="160" height="80" rx="3" class="table-box"/>
+  <text x="408" y="177" class="table-title">transactions</text>
+  <text x="408" y="191" class="col-text">kind, amount, status</text>
+  <text x="408" y="203" class="col-text">from/to/category FKs</text>
+
+  <rect x="580" y="160" width="110" height="50" rx="3" class="view-box"/>
+  <text x="588" y="177" class="table-title">account_balances</text>
+  <text x="588" y="191" class="col-text">view (v3)</text>
+
+  <rect x="200" y="250" width="150" height="50" rx="3" class="table-box"/>
+  <text x="210" y="267" class="table-title">account_financing</text>
+  <text x="210" y="281" class="col-text">asset + loan PK</text>
+
+  <!-- v4 zone -->
+  <rect x="720" y="55" width="660" height="960" rx="6" class="zone"/>
+  <text x="730" y="72" class="col-text" font-weight="bold">v4 extensions (post-G1)</text>
+
+  <rect x="740" y="90" width="130" height="65" rx="3" class="v4-box"/>
+  <text x="748" y="107" class="v4-title">budgets</text>
+  <text x="748" y="121" class="col-text">period, dates</text>
+  <text x="748" y="133" class="col-text">total_amount</text>
+
+  <rect x="900" y="90" width="150" height="65" rx="3" class="v4-box"/>
+  <text x="908" y="107" class="v4-title">budget_allocations</text>
+  <text x="908" y="121" class="col-text">budget_id, category_id</text>
+  <text x="908" y="133" class="col-text">allocated_amount</text>
+
+  <rect x="740" y="175" width="140" height="55" rx="3" class="v4-box"/>
+  <text x="748" y="192" class="v4-title">transaction_splits</text>
+  <text x="748" y="206" class="col-text">transaction_id, amount</text>
+
+  <rect x="900" y="175" width="130" height="55" rx="3" class="v4-box"/>
+  <text x="908" y="192" class="v4-title">counterparties</text>
+  <text x="908" y="206" class="col-text">default_category_id</text>
+
+  <rect x="1050" y="175" width="140" height="55" rx="3" class="v4-box"/>
+  <text x="1058" y="192" class="v4-title">categorization_rules</text>
+  <text x="1058" y="206" class="col-text">match ’ category</text>
+
+  <rect x="740" y="250" width="140" height="55" rx="3" class="v4-box"/>
+  <text x="748" y="267" class="v4-title">transaction_events</text>
+  <text x="748" y="281" class="col-text">status history</text>
+
+  <rect x="900" y="250" width="160" height="55" rx="3" class="v4-box"/>
+  <text x="908" y="267" class="v4-title">account_reconciliations</text>
+  <text x="908" y="281" class="col-text">statement_balance</text>
+
+  <rect x="1080" y="250" width="140" height="55" rx="3" class="v4-box"/>
+  <text x="1088" y="267" class="v4-title">reconciliation_items</text>
+  <text x="1088" y="281" class="col-text">transaction_id</text>
+
+  <rect x="740" y="325" width="150" height="55" rx="3" class="v4-box"/>
+  <text x="748" y="342" class="v4-title">transaction_attachments</text>
+  <text x="748" y="356" class="col-text">storage_key, mime</text>
+
+  <rect x="910" y="325" width="120" height="55" rx="3" class="v4-box"/>
+  <text x="918" y="342" class="v4-title">import_batches</text>
+  <text x="918" y="356" class="col-text">fingerprint</text>
+
+  <rect x="1050" y="325" width="130" height="55" rx="3" class="v4-box"/>
+  <text x="1058" y="342" class="v4-title">import_batch_errors</text>
+  <text x="1058" y="356" class="col-text">row errors</text>
+
+  <rect x="740" y="400" width="90" height="45" rx="3" class="v4-box"/>
+  <text x="748" y="417" class="v4-title">tags</text>
+  <text x="748" y="431" class="col-text">owner, name</text>
+
+  <rect x="850" y="400" width="110" height="45" rx="3" class="v4-box"/>
+  <text x="858" y="417" class="v4-title">entity_tags</text>
+  <text x="858" y="431" class="col-text">polymorphic</text>
+
+  <!-- v4 views -->
+  <rect x="740" y="470" width="170" height="50" rx="3" class="view-box"/>
+  <text x="748" y="487" class="v4-title">category_spending_monthly</text>
+  <text x="748" y="501" class="col-text">view (v4.1)</text>
+
+  <rect x="930" y="470" width="160" height="50" rx="3" class="view-box"/>
+  <text x="938" y="487" class="v4-title">cleared_account_balances</text>
+  <text x="938" y="501" class="col-text">view (v4.4)</text>
+
+  <rect x="1110" y="470" width="150" height="50" rx="3" class="view-box"/>
+  <text x="1118" y="487" class="v4-title">net_worth_snapshots</text>
+  <text x="1118" y="501" class="col-text">view (v4.6)</text>
+
+  <!-- v4 alters -->
+  <rect x="740" y="540" width="280" height="70" rx="3" class="v4-box"/>
+  <text x="748" y="557" class="v4-title">ALTER v3 tables (no new subtypes)</text>
+  <text x="748" y="571" class="col-text">transaction_templates: recurrence_rule, timezone</text>
+  <text x="748" y="583" class="col-text">credit_card_account_details: statement/due days, apr</text>
+  <text x="748" y="595" class="col-text">transactions: counterparty_id, budget_id</text>
+
+  <!-- Exclusions box -->
+  <rect x="740" y="630" width="520" height="100" rx="4" fill="#fff5f5" stroke="#fc8181"/>
+  <text x="750" y="652" class="v4-title">Explicitly excluded</text>
+  <text x="750" y="668" class="col-text"> journal_entries / journal_lines (double-entry)</text>
+  <text x="750" y="682" class="col-text"> additional account subtype tables</text>
+  <text x="750" y="696" class="col-text"> JSONB metadata blobs ·  stored_balance on accounts</text>
+  <text x="750" y="710" class="col-text"> holdings/securities master (defer to investment epic)</text>
+
+  <!-- Key relationships -->
+  <path d="M160 110 L200 115" class="rel"/>
+  <path d="M350 115 L400 102" class="rel"/>
+  <path d="M480 145 L480 170" class="rel"/>
+  <path d="M350 197 L400 190" class="rel"/>
+  <path d="M560 195 L580 185" class="rel"/>
+  <path d="M870 122 L900 122" class="rel"/>
+  <path d="M1050 122 L408 118" class="rel"/>
+  <path d="M820 202 L560 200" class="rel"/>
+  <path d="M1030 202 L560 210" class="rel"/>
+  <path d="M820 277 L560 205" class="rel"/>
+  <path d="M980 277 L275 120" class="rel"/>
+  <path d="M820 352 L560 215" class="rel"/>
+
+  <!-- Legend -->
+  <rect x="40" y="500" width="640" height="120" rx="4" fill="#edf2f7" stroke="#cbd5e0"/>
+  <text x="55" y="525" class="table-title">Phasing (see PPT-031-v4-extensions.md §2)</text>
+  <text x="55" y="545" class="col-text">v4.1 budgets + splits · v4.2 recurrence + CC cycles · v4.3 counterparties + rules</text>
+  <text x="55" y="560" class="col-text">v4.4 reconciliation + events · v4.5 attachments + import · v4.6 tags + net worth view</text>
+  <text x="55" y="575" class="col-text">v4.7 RLS policies (Supabase B3, optional)</text>
+  <text x="55" y="600" class="col-text">Source: docs/design/PPT-031-v4-extensions.md</text>
+</svg>
