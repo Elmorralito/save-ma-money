@@ -21,7 +21,7 @@ Traditional financial tracking often suffers from:
 `papita-txnsmodel` addresses these by providing a **Resilient, Layered Data Pipeline**:
 
 1.  **Strict Type Safety**: Every field is validated at the point of entry.
-2.  **Dialect Agnosticism**: Performance on PostgreSQL for the heavy lifting, convenience of DuckDB for the local experimentation.
+2.  **PostgreSQL persistence**: Production and local development use **PostgreSQL** (Docker locally; Supabase for hosted). **DuckDB is deprecated** — see [PPT-031 platform decision](../../docs/issues/PPT-031-C-supabase-decision-brief.md).
 3.  **Conflict-Aware Ingestion**: Sophisticated upsert logic that understands when to update a record and when to respect existing data.
 
 ### Core Philosophy
@@ -85,14 +85,15 @@ A robust connection manager that handles:
 
 - **Singleton Engine**: Efficiently manages SQLAlchemy engine instances.
 - **Auto-session Decoration**: Uses `@SQLDatabaseConnector.connect` to handle session lifecycle automatically.
-- **DuckDB & PostgreSQL**: Seamless switching between a lightweight local DuckDB backend and a production PostgreSQL cluster.
+- **PostgreSQL**: Sole supported dialect for PPT-031. Use `postgresql+psycopg2://` connection strings.
+- **Legacy DuckDB paths** in this module (`DuckDBUpserter`, connector fallbacks) are deprecated and scheduled for removal.
 
 ### Upsert Engine
 
 Based on a factory pattern that matches the database dialect:
 
 - **PostgreSQLUpserter**: Leverages `ON CONFLICT DO UPDATE` or `DO NOTHING` syntax.
-- **DuckDBUpserter**: Inherits from PostgreSQL logic but adapts to DuckDB specificities.
+- **DuckDBUpserter**: Deprecated — emits `DeprecationWarning` on use; `UpserterFactory` rejects `duckdb` dialect.
 - **OnConflict Strategies**: Developers can choose `UPDATE`, `NOTHING`, or `RAISE` via the `OnUpsertConflictDo` enum.
 
 ## Utilities & Helpers (`papita_txnsmodel.utils`)
@@ -108,8 +109,10 @@ Based on a factory pattern that matches the database dialect:
 ```python
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 
-# Connect to a local DuckDB file for development
-SQLDatabaseConnector.establish(connection="./data/my_finance.duckdb")
+# Connect to local Docker Postgres (see docker/database/docker-compose.yml)
+SQLDatabaseConnector.establish(
+    connection="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
+)
 ```
 
 ### 2. High-Level Data Ingestion

@@ -7,9 +7,9 @@ on:
       - "pyproject.toml"
       - "poetry.lock"
       - "modules/**/pyproject.toml"
-      - ".github/scripts/supply_chain_check.sh"
-      - ".github/scripts/check_module_versions.py"
-      - ".github/workflows/supply-chain-check.yml"
+      - ".github/scripts/*.sh"
+      - ".github/scripts/*.py"
+      - ".github/workflows/*.yml"
   push:
     branches:
       - main
@@ -17,9 +17,9 @@ on:
       - "pyproject.toml"
       - "poetry.lock"
       - "modules/**/pyproject.toml"
-      - ".github/scripts/supply_chain_check.sh"
-      - ".github/scripts/check_module_versions.py"
-      - ".github/workflows/supply-chain-check.yml"
+      - ".github/scripts/*.sh"
+      - ".github/scripts/*.py"
+      - ".github/workflows/*.yml"
 
 jobs:
   supply-chain:

@@ -31,7 +31,7 @@ The `save-ma-finances` ecosystem is a production-grade framework designed to bri
 
 The monorepo currently ships two packages:
 
-- **[Data Model (`papita-txnsmodel`)](./modules/model/README.md)** — Type-safe SQLModel schemas, multi-dialect persistence (PostgreSQL/DuckDB), Alembic migrations, repositories, services, and ingestion handlers.
+- **[Data Model (`papita-txnsmodel`)](./modules/model/README.md)** — Type-safe SQLModel schemas, **PostgreSQL** persistence (DuckDB deprecated — see [PPT-031 platform decision](./docs/issues/PPT-031-C-supabase-decision-brief.md)), Alembic migrations, repositories, services, and ingestion handlers.
 - **[API (`papita-txnsapi`)](./modules/api/README.md)** — FastAPI application settings, security helpers, and the target REST surface documented in [`modules/api/API_Endpoints.md.md`](./modules/api/API_Endpoints.md.md) (implementation in progress; see [#25](https://github.com/Elmorralito/save-ma-money/issues/25)).
 
 Planned modules referenced in earlier docs (`registrar`, `plugins`) are not present in this repository yet.
@@ -42,10 +42,14 @@ Planned modules referenced in earlier docs (`registrar`, `plugins`) are not pres
 
 > #### 1. Database environment file
 >
-> Create `.env` for Alembic / database tooling (via [`deploy/alembic.sh`](./deploy/alembic.sh) and `docker/database/.env`), and a separate `.env` for the API at `modules/api/src/.env`:
+> Copy [`.env.example`](./.env.example) and split values into the paths below. **PostgreSQL only** — DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)).
 >
 > ```bash
-> # modules/api/src/.env (required for papita_txnsapi Settings)
+> # Copy template, then populate modules/api/src/.env (required for papita_txnsapi Settings)
+> cp .env.example modules/api/src/.env
+> # Edit JWT_SECRET_KEY and DATABASE_URL — always set DATABASE_URL (omitting it triggers legacy DuckDB fallback)
+>
+> # modules/api/src/.env
 > JWT_SECRET_KEY="change-me"
 > DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
 >
