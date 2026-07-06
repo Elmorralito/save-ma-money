@@ -170,7 +170,8 @@ Use the right tier for the question:
 | API ↔ model mapping     | [`docs/design/PPT-031-api-model-mapping.md`](docs/design/PPT-031-api-model-mapping.md) |
 | Target REST contract    | [`modules/api/API_Endpoints.md.md`](modules/api/API_Endpoints.md.md)                   |
 | Issue briefs            | [`docs/issues/`](docs/issues/)                                                         |
-| Human README / CI       | [`README.md`](README.md)                                                               |
+| Human README            | [`README.md`](README.md)                                                               |
+| CI workflows & scripts  | [`.github/README.md`](.github/README.md)                                               |
 
 Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:save`; do not duplicate routing rules here.
 
@@ -178,39 +179,20 @@ Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:s
 
 ## Continuous integration
 
-| Workflow                 | When                    | Purpose                                   |
-| ------------------------ | ----------------------- | ----------------------------------------- |
-| `quality-control.yml`    | PR (non-`docs/**`)      | pre-commit, pytest, Codecov               |
-| `migration-check.yml`    | Model/migration paths   | Postgres Alembic round-trip               |
-| `supply-chain-check.yml` | Deps / workflow paths   | `poetry check`, `pip-audit`               |
-| `gitleaks.yml`           | All PRs                 | Secret scan (full history)                |
-| `codeql.yml`             | Code paths → `main`     | Python SAST                               |
-| `trivy.yml`              | Manifest / docker paths | CVE + IaC misconfig                       |
-| `strata-check.yml`       | Code paths              | `.strata/` layout + strict module pairing |
-| `auto-updates.yml`       | Merge to `main`         | CHANGELOG + badges                        |
+Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and troubleshooting: [`.github/README.md`](.github/README.md).
 
-**Strata strict mode:** if `modules/**` or `deploy/**` changes in a PR, `.strata/` (or adapters) must also change — run `/strata:save` before pushing.
+**Agent-critical:**
 
-### Local pre-commit hooks (not CI)
-
-These run on `git commit` locally only. **GitHub Actions skips them** (`SKIP=strata-validate,mcp-config-validate` in `quality-control.yml`; Strata PR validation is `strata-check.yml`). Wrappers also no-op if `CI` / `GITHUB_ACTIONS` is set.
-
-| Hook                  | Script                                 | When                                                             |
-| --------------------- | -------------------------------------- | ---------------------------------------------------------------- |
-| `strata-validate`     | `.github/scripts/pre_commit_strata.sh` | Staged changes under `modules/`, `deploy/`, `.strata/`, adapters |
-| `mcp-config-validate` | `.github/scripts/pre_commit_mcp.sh`    | Staged `.cursor/mcp.json`                                        |
-
-`strata-validate` runs `strata_check.sh` with strict staged pairing (code without `.strata/` updates fails). **Does not** run `/strata:save` — that remains manual.
-
-If `strata-validate` fails: run `/strata:save`, `git add .strata/ AGENTS.md CLAUDE.md`, and commit again.
+- **Strata strict mode** — `modules/**` or `deploy/**` changes require matching `.strata/` (or `AGENTS.md` / `CLAUDE.md`) updates. Run `/strata:save` before pushing; if `strata-validate` fails locally, restage memory files and recommit.
+- **Local-only hooks** — `strata-validate` and `mcp-config-validate` run on `git commit`; CI skips them (`strata-check.yml` enforces Strata on PRs instead).
 
 ---
 
 ## PR checklist
 
-Before opening or marking ready for review:
+Before opening or marking ready for review (commands in [`.github/README.md`](.github/README.md#pr-checklist)):
 
-1. `pre-commit run --all-files` (includes local-only `strata-validate` when relevant paths change)
+1. `pre-commit run --all-files`
 2. `poetry run pytest` (or `./deploy/test.sh`)
 3. If dependencies changed: `.github/scripts/supply_chain_check.sh`
 4. If model/schema changed: migration + `./deploy/alembic.sh` locally

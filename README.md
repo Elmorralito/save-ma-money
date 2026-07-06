@@ -17,13 +17,14 @@
 
 Design and issue-tracker docs live under [`docs/design/`](./docs/design/README.md) and [`docs/issues/`](./docs/issues/README.md).
 
-| README                                                 | Scope                             |
-| :----------------------------------------------------- | :-------------------------------- |
-| [Root](./README.md)                                    | Monorepo setup, CI, changelog     |
-| [`modules/model/README.md`](./modules/model/README.md) | Data model, migrations, tests     |
-| [`modules/api/README.md`](./modules/api/README.md)     | API package status and docs index |
-| [`docs/design/README.md`](./docs/design/README.md)     | PPT-031 design program registry   |
-| [`docs/issues/README.md`](./docs/issues/README.md)     | Issue-linked requirement briefs   |
+| README                                                 | Scope                                      |
+| :----------------------------------------------------- | :----------------------------------------- |
+| [Root](./README.md)                                    | Monorepo setup, changelog                  |
+| [`.github/README.md`](./.github/README.md)             | CI workflows, scripts, pre-commit, PR gate |
+| [`modules/model/README.md`](./modules/model/README.md) | Data model, migrations, tests              |
+| [`modules/api/README.md`](./modules/api/README.md)     | API package status and docs index          |
+| [`docs/design/README.md`](./docs/design/README.md)     | PPT-031 design program registry            |
+| [`docs/issues/README.md`](./docs/issues/README.md)     | Issue-linked requirement briefs            |
 
 ## Briefing
 
@@ -99,25 +100,7 @@ See [`modules/model/README.md`](./modules/model/README.md) for Alembic layout an
 
 ## Continuous integration
 
-| Workflow             | File                                                                                     | Purpose                                                                   |
-| :------------------- | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------ |
-| Code Quality Control | [`.github/workflows/quality-control.yml`](./.github/workflows/quality-control.yml)       | pre-commit, pytest, coverage upload                                       |
-| Migration Check      | [`.github/workflows/migration-check.yml`](./.github/workflows/migration-check.yml)       | PostgreSQL upgrade/downgrade + `alembic check`                            |
-| Supply Chain Check   | [`.github/workflows/supply-chain-check.yml`](./.github/workflows/supply-chain-check.yml) | `poetry check`, module version metadata, `pip-audit`                      |
-| Secret Scan          | [`.github/workflows/gitleaks.yml`](./.github/workflows/gitleaks.yml)                     | Full-history secret detection (Gitleaks)                                  |
-| CodeQL Analysis      | [`.github/workflows/codeql.yml`](./.github/workflows/codeql.yml)                         | Python SAST (`security-extended` query pack)                              |
-| Trivy Security Scan  | [`.github/workflows/trivy.yml`](./.github/workflows/trivy.yml)                           | Dependency CVE + IaC misconfig scan (SARIF)                               |
-| Strata Check         | [`.github/workflows/strata-check.yml`](./.github/workflows/strata-check.yml)             | Validates `.strata/` layout when code paths change                        |
-| Auto Updates         | [`.github/workflows/auto-updates.yml`](./.github/workflows/auto-updates.yml)             | Regenerates [`CHANGELOG.md`](./CHANGELOG.md) and quality badges on `main` |
-
-Before opening a PR:
-
-```bash
-pre-commit run --all-files
-poetry run pytest
-/bin/bash .github/scripts/supply_chain_check.sh   # poetry check + version metadata
-poetry run pip-audit --desc on --skip-editable    # when lockfile / deps change
-```
+GitHub Actions workflows, supporting scripts, local pre-commit hooks, scheduled security scans, and the PR checklist are documented in [`.github/README.md`](./.github/README.md).
 
 ## Changelog
 
