@@ -104,4 +104,4 @@ GitHub Actions workflows, supporting scripts, local pre-commit hooks, scheduled 
 
 ## Changelog
 
-Open issues, completed work, and closing pull-request summaries are maintained in [`CHANGELOG.md`](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.
+Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.
