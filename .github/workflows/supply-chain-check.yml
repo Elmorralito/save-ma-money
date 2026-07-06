@@ -45,10 +45,5 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run Poetry and version checks
+      - name: Run supply chain checks
         run: /bin/bash .github/scripts/supply_chain_check.sh
-
-      - name: Audit dependencies
-        run: |
-          poetry run pip install --disable-pip-version-check pip-audit
-          poetry run pip-audit --desc on --skip-editable

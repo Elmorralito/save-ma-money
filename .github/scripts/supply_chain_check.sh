@@ -13,4 +13,11 @@ run_command 1 "poetry check"
 log "INFO" "Validating module version metadata..."
 run_command 1 "poetry run python ${PROJECT_PATH}/.github/scripts/check_module_versions.py"
 
-log "INFO" "Supply chain metadata checks completed."
+log "INFO" "Upgrading pip to a patched release..."
+run_command 1 "poetry run python -m pip install --disable-pip-version-check --upgrade 'pip>=26.1.2'"
+
+log "INFO" "Auditing installed dependencies..."
+run_command 1 "poetry run python -m pip install --disable-pip-version-check pip-audit"
+run_command 1 "poetry run pip-audit --desc on --skip-editable"
+
+log "INFO" "Supply chain checks completed."
