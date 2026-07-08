@@ -5,15 +5,15 @@
 
 ## Document ↔ issue registry
 
-| Document                                                                         | Issue                                                                 | Track            | Status  |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- | ------- |
-| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)         | Epic             | Active  |
-| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)                 | [#30](https://github.com/Elmorralito/save-ma-money/issues/30)         | A — v0 audit     | Draft   |
-| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)         | B — Supabase     | Active  |
-| `../design/PPT-031-v1-schema.md` _(planned)_                                     | [#32](https://github.com/Elmorralito/save-ma-money/issues/32)         | A — v1–v3 schema | Pending |
-| `../design/PPT-031-api-model-mapping.md` _(planned)_                             | [#33](https://github.com/Elmorralito/save-ma-money/issues/33)         | C — API spec     | Pending |
-| `../design/PPT-031-migration-runbook.md` _(planned)_                             | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)         | D — Migration    | Pending |
-| `../design/PPT-031-auth-contract.md` _(planned)_                                 | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth             | Pending |
+| Document                                                                         | Issue                                                                 | Track            | Status           |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- | ---------------- |
+| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)         | Epic             | Active           |
+| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)                 | [#30](https://github.com/Elmorralito/save-ma-money/issues/30)         | A — v0 audit     | Draft            |
+| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)         | B — Supabase     | Active           |
+| `../design/PPT-031-v1-schema.md` _(planned)_                                     | [#32](https://github.com/Elmorralito/save-ma-money/issues/32)         | A — v1–v3 schema | Pending          |
+| `../design/PPT-031-api-model-mapping.md` _(planned)_                             | [#33](https://github.com/Elmorralito/save-ma-money/issues/33)         | C — API spec     | Pending          |
+| `../design/PPT-031-migration-runbook.md`                                         | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)         | D — Migration    | **Written (v0)** |
+| `../design/PPT-031-auth-contract.md` _(planned)_                                 | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth             | Pending          |
 
 **Related issues:** [#24](https://github.com/Elmorralito/save-ma-money/issues/24) tenancy · [#25](https://github.com/Elmorralito/save-ma-money/issues/25) API impl · [#17](https://github.com/Elmorralito/save-ma-money/issues/17) superseded · [#11](https://github.com/Elmorralito/save-ma-money/issues/11) versioning
 

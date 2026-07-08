@@ -161,6 +161,82 @@ exclude = [
 max-line-length = 120
 max-complexity = 18
 
+# SQLFluff — PostgreSQL query standard for materialized-view SQL under
+# modules/model/src/papita_txnsmodel/views/ (enforced via pre-commit sqlfluff hooks).
+[tool.sqlfluff.core]
+dialect = "postgres"
+templater = "raw"
+max_line_length = 120
+sql_file_exts = ".sql"
+large_file_skip_byte_limit = 0
+exclude_paths = [
+    ".venv/**",
+    "venv/**",
+    "**/node_modules/**",
+    "**/__pycache__/**",
+]
+# ST06/ST09: column/join ordering is too rigid for aggregate MV definitions.
+exclude_rules = ["ST06", "ST09"]
+
+[tool.sqlfluff.indentation]
+indent_unit = "space"
+tab_space_size = 4
+indented_joins = true
+indented_ctes = false
+indented_using_on = true
+indented_on_contents = true
+indented_then = true
+indented_then_contents = true
+implicit_indents = "forbid"
+
+[tool.sqlfluff.layout.type.comma]
+spacing_before = "touch"
+line_position = "trailing"
+
+[tool.sqlfluff.rules.capitalisation.keywords]
+capitalisation_policy = "upper"
+extended_capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.identifiers]
+capitalisation_policy = "lower"
+extended_capitalisation_policy = "lower"
+
+[tool.sqlfluff.rules.capitalisation.functions]
+capitalisation_policy = "upper"
+extended_capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.literals]
+capitalisation_policy = "upper"
+extended_capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.capitalisation.types]
+capitalisation_policy = "upper"
+extended_capitalisation_policy = "upper"
+
+[tool.sqlfluff.rules.aliasing.table]
+aliasing = "explicit"
+
+[tool.sqlfluff.rules.aliasing.column]
+aliasing = "implicit"
+
+[tool.sqlfluff.rules.aliasing.expression]
+allow_scalar = true
+
+[tool.sqlfluff.rules.ambiguous.column_references]
+group_by_and_order_by_style = "consistent"
+
+[tool.sqlfluff.rules.convention.count_rows]
+prefer_count_1 = true
+
+[tool.sqlfluff.rules.convention.not_equal]
+preferred_not_equal_style = "c_style"
+
+[tool.sqlfluff.rules.convention.select_trailing_comma]
+select_clause_trailing_comma = "forbid"
+
+[tool.sqlfluff.rules.layout.select_targets]
+wildcard_policy = "single"
+
 [tool.interrogate]
 paths = ["./modules/api/src", "./modules/model/src"]
 exclude = [

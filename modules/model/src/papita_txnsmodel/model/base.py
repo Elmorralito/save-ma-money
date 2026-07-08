@@ -9,6 +9,7 @@ Classes:
 """
 
 from datetime import datetime as base_datetime
+from typing import Any, ClassVar
 
 from sqlalchemy import TIMESTAMP
 from sqlmodel import Field, SQLModel
@@ -33,7 +34,7 @@ class BaseSQLModel(SQLModel, table=False):  # type: ignore
             Null value indicates the record is not deleted.
     """
 
-    __table_args__ = {"schema": SCHEMA_NAME}
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = {"schema": SCHEMA_NAME}
 
     active: bool = Field(nullable=False, default=True)
     deleted_at: base_datetime | None = Field(sa_type=TIMESTAMP, nullable=True, default=None)

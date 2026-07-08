@@ -1,0 +1,115 @@
+---
+description: GitHub issue title notation (PPT-0##) and body template for save-ma-money epics and sub-issues
+globs:
+  - docs/issues/**
+  - docs/design/**
+  - modules/model/**
+  - modules/api/**
+  - modules/registrar/**
+  - deploy/**
+  - .github/**
+alwaysApply: true
+---
+
+NOTE: Follow this rule when creating or editing GitHub issues via `gh issue create` / `gh issue edit`, drafting briefs under `docs/issues/`, or implementing **features** / **fixes** under `modules/` and `deploy/`.
+
+## Title notation
+
+```
+{semantic}/PPT-{NNN}: [{domain}] {Title in sentence case}
+```
+
+| Part | Values | Example |
+|------|--------|---------|
+| `semantic` | `feat`, `docs`, `ops`, `test`, `harden`, `fix` | `feat/PPT-034` |
+| `PPT-{NNN}` | Next program ID; label must match (`PPT-032`) | `PPT-041` |
+| `domain` | `[api]`, `[model]`, `[EPIC][api]` for epics only | `[model]` |
+| Epic | Prefix domain with `[EPIC]` | `feat/PPT-032: [EPIC][api] …` |
+
+**Do not** use `PPT-0##: semantic(api):` — semantic comes **before** the program ID.
+
+```text
+✅ feat/PPT-036: [api] Accounts and categories CRUD (v3 model)
+✅ harden/PPT-041: [model] Harden v3 data model for API readiness
+✅ feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL
+❌ PPT-039: ops(api): Supabase B1 production wiring
+❌ feat(api): FastAPI MVP
+```
+
+## Labels
+
+Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `CI/CD`, `documentation`, etc.).
+
+## Code paths (feat / fix / harden)
+
+| Semantic | Domain | Primary paths |
+|----------|--------|---------------|
+| `feat`, `harden` | `[model]` | `modules/model/src/`, `modules/model/tests/`, `modules/model/alembic/` |
+| `feat`, `fix` | `[api]` | `modules/api/src/`, `modules/api/tests/` |
+| `feat`, `fix` | `[registrar]` | `modules/registrar/src/`, `modules/registrar/tests/` |
+| `ops`, `fix` | `[infra]` | `deploy/`, `docker/`, `.github/` |
+| `test` | any | `modules/**/tests/`, `.github/workflows/` |
+
+When closing code for a feature or fix, the PR/issue body should cite the touched paths under **Tasks / deliverables** or **References**.
+
+## Body template (maximize clarity)
+
+```markdown
+**Parent program:** [#28](…) (PPT-031) · **Parent epic:** [#42](…) · **PPT-{NNN}** · **Step:** {N}
+
+## Summary
+One paragraph: what, why, scope boundary.
+
+## Depends on
+- [#34](…) (PPT-031-E) — migration
+- [#51](…) (PPT-041) — model hardening (if API work)
+
+## Blocks
+- Linked child issues this unblocks
+
+## Platform rule (B0 + B1)
+Validate on Docker Postgres (B0) **and** Supabase pooler `:6543` (B1) before closing.
+
+## Tasks / deliverables
+- [ ] Concrete, testable checkbox per deliverable
+- [ ] Group by layer (model / API / CI)
+
+## {Domain} integration
+- [ ] B0 acceptance
+- [ ] B1 acceptance
+- [ ] Env vars / docs updated (`.env.example`, README)
+
+## Requirements traceability
+| ID | Scope |
+|----|-------|
+| FR-07 | … |
+| NFR-04 | … |
+
+## Out of scope
+Bullet list — prevents scope creep (B2/B3, v4, DuckDB).
+
+## Acceptance criteria
+- [ ] Measurable done conditions
+
+## References
+- Design docs, audit comments, parent epic
+```
+
+## Epic-specific additions
+
+- Mermaid dependency graph (phases: design → migration → hardening → API → post-MVP)
+- Sub-issue checklist with `PPT-{NNN} / #{issue}` links
+- Prerequisites (gates G1–G7, PPT-031-E, PPT-041)
+- **Blocked by** line at footer
+
+## Program hierarchy (PPT-031)
+
+| Layer | Example |
+|-------|---------|
+| Epic | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) PPT-031 |
+| Design tracks | PPT-031-A…E (#30–#34) |
+| Model hardening | PPT-041 (#51) — blocks API epic |
+| API epic | PPT-032 (#42) |
+| API sub-issues | PPT-033–040 (#43–#50) |
+
+API work blocks on **#34 + #51** before PPT-033. Business logic stays in `papita_txnsmodel`; API issues wire routers only.

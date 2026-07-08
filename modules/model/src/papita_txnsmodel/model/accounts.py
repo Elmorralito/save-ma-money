@@ -1,80 +1,111 @@
-"""Accounts module for managing financial account entities in the Papita Transactions system.
-
-This module defines the Accounts model which represents financial accounts in the system.
-It provides the structure for storing account information and establishes relationships
-with assets, liabilities, and transactions.
-
-Classes:
-    Accounts: Represents a financial account in the system.
-"""
+"""v3 consolidated accounts model."""
 
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, TIMESTAMP, Column, String, Text
+from sqlalchemy import ARRAY, CHAR, DECIMAL, TIMESTAMP, Column
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import Index, SmallInteger, String, Text
 from sqlmodel import Field, Relationship
 
-from .base import BaseSQLModel
+from .base import SCHEMA_NAME, BaseSQLModel
 from .contstants import ACCOUNTS__TABLENAME, USERS__TABLENAME
+from .enums import AccountKind, InterestRateBasis, LedgerSide
 
 if TYPE_CHECKING:
-    from .indexers import AccountsIndexer
+    from .account_details import (
+        BankingAccountDetails,
+        CreditCardAccountDetails,
+        LoanAccountDetails,
+        RealEstateAccountDetails,
+        TradingAccountDetails,
+    )
+    from .account_financing import AccountFinancing
     from .transactions import Transactions
     from .users import Users
 
 
 class Accounts(BaseSQLModel, table=True):  # type: ignore
-    """Financial account model representing accounts in the Papita Transactions system.
-
-    This class defines the structure for financial accounts, which can be linked to
-    assets, liabilities, and transactions. Accounts serve as the fundamental entities
-    for tracking financial activities within the system.
-
-    Attributes:
-        id (uuid.UUID): Unique identifier for the account. Auto-generated UUID.
-        name (str): Name of the account. Indexed for faster lookups.
-        description (str): Detailed description of the account.
-        tags (List[str]): List of tags associated with the account. Must contain at least
-            one tag and all tags must be unique.
-        start_ts (datetime.datetime): Timestamp when the account became active.
-            Indexed for time-based queries.
-        end_ts (Optional[datetime.datetime]): Timestamp when the account was closed or
-            deactivated. Null if the account is still active.
-        asset_accounts (AssetAccounts): Related asset account information. One-to-one
-            relationship with cascade delete.
-        liability_accounts (Optional[LiabilityAccounts]): Related liability account
-            information. Optional one-to-one relationship with cascade delete.
-        transactions_from_accounts (List[Transactions]): List of transactions where this
-            account is the source. One-to-many relationship with cascade delete.
-        transactions_to_accounts (List[Transactions]): List of transactions where this
-            account is the destination. One-to-many relationship with cascade delete.
-    """
+    """Consolidated financial account (v3)."""
 
     __tablename__ = ACCOUNTS__TABLENAME
-
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    name: str = Field(sa_type=String, nullable=False, index=True)
-    description: str = Field(sa_type=Text, nullable=False)
-    tags: List[str] = Field(sa_column=Column(ARRAY(String)), min_items=1, unique_items=True)
-    start_ts: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now)
-    end_ts: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
-
-    owner: "Users" = Relationship(back_populates="owned_accounts")
-
-    accounts_indexer: "AccountsIndexer" = Relationship(
-        back_populates=ACCOUNTS__TABLENAME,
-        sa_relationship_kwargs={"uselist": False},
-        cascade_delete=True,
+    __table_args__ = (
+        Index("ix_accounts_owner_active", "owner_id", "active"),
+        {"schema": SCHEMA_NAME},
     )
 
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+    name: str = Field(sa_type=String(255), nullable=False, index=True)
+    description: str = Field(sa_type=Text, nullable=False, default="")
+    tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), default_factory=list)
+    account_kind: AccountKind = Field(
+        sa_column=Column(
+            SAEnum(AccountKind, name="account_kind", schema="papita_transactions", create_type=False),
+            nullable=False,
+        )
+    )
+    ledger_side: LedgerSide = Field(
+        sa_column=Column(
+            SAEnum(LedgerSide, name="ledger_side", schema="papita_transactions", create_type=False),
+            nullable=False,
+        )
+    )
+    currency: str = Field(sa_column=Column(CHAR(3), nullable=False), default="USD")
+    opened_at: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False, index=True), default_factory=datetime.now)
+    closed_at: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True, index=True), default=None)
+    initial_value: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None, ge=0)
+    current_value: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None, ge=0)
+    current_value_as_of: Optional[datetime] = Field(sa_column=Column(TIMESTAMP, nullable=True), default=None)
+    months_per_period: int | None = Field(sa_column=Column(SmallInteger, nullable=True), default=1, gt=0)
+    interest_rate: float | None = Field(sa_column=Column(DECIMAL(10, 6), nullable=True), default=None)
+    interest_rate_basis: InterestRateBasis | None = Field(
+        sa_column=Column(
+            SAEnum(InterestRateBasis, name="interest_rate_basis", schema="papita_transactions", create_type=False),
+            nullable=True,
+        ),
+        default=None,
+    )
+    periodic_payment: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None)
+    total_paid: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=0, ge=0)
+    overall_periods: int | None = Field(sa_column=Column(SmallInteger, nullable=True), default=None)
+    periods_paid: int | None = Field(sa_column=Column(SmallInteger, nullable=True), default=None)
+    closing_day: int | None = Field(sa_column=Column(SmallInteger, nullable=True), default=None, ge=1, le=31)
+    roi: float | None = Field(sa_column=Column(DECIMAL(10, 4), nullable=True), default=None)
+    periodic_earnings: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None)
+
+    owner: "Users" = Relationship(back_populates="owned_accounts")
+    banking_details: Optional["BankingAccountDetails"] = Relationship(
+        back_populates="account", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+    )
+    real_estate_details: Optional["RealEstateAccountDetails"] = Relationship(
+        back_populates="account", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+    )
+    trading_details: Optional["TradingAccountDetails"] = Relationship(
+        back_populates="account", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+    )
+    credit_card_details: Optional["CreditCardAccountDetails"] = Relationship(
+        back_populates="account", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+    )
+    loan_details: Optional["LoanAccountDetails"] = Relationship(
+        back_populates="account", sa_relationship_kwargs={"uselist": False}, cascade_delete=True
+    )
+    financing_as_asset: List["AccountFinancing"] = Relationship(
+        back_populates="asset_account",
+        sa_relationship_kwargs={"foreign_keys": "AccountFinancing.asset_account_id"},
+        cascade_delete=True,
+    )
+    financing_as_loan: List["AccountFinancing"] = Relationship(
+        back_populates="loan_account",
+        sa_relationship_kwargs={"foreign_keys": "AccountFinancing.loan_account_id"},
+        cascade_delete=True,
+    )
     transactions_from_accounts: List["Transactions"] = Relationship(
         back_populates="from_accounts",
         sa_relationship_kwargs={"foreign_keys": "Transactions.from_account_id"},
         cascade_delete=True,
     )
-
     transactions_to_accounts: List["Transactions"] = Relationship(
         back_populates="to_accounts",
         sa_relationship_kwargs={"foreign_keys": "Transactions.to_account_id"},

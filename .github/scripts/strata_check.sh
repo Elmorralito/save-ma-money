@@ -178,7 +178,7 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
         strata_changed=false
         while IFS= read -r path; do
             [[ -z "${path}" ]] && continue
-            if [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]]; then
+            if [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]] || [[ "${path}" == pyproject.toml ]]; then
                 code_changed=true
             fi
             if [[ "${path}" == .strata/* ]] || [[ "${path}" == "AGENTS.md" ]] || [[ "${path}" == "CLAUDE.md" ]]; then
@@ -188,9 +188,15 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
 
         if [[ "${code_changed}" == true ]] && [[ "${strata_changed}" == false ]]; then
             fail "code paths changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
-        else
+        elif [[ "${code_changed}" == true ]]; then
             ok "strict code/strata change pairing satisfied"
+        else
+            ok "strict pairing skipped — no modules/deploy/pyproject.toml changes in diff"
         fi
+    elif [[ "${STRATA_DIFF_SOURCE:-range}" == "staged" ]]; then
+        ok "strict pairing skipped — no staged paths (nothing in index)"
+    else
+        ok "strict pairing skipped — no diff vs ${STRATA_BASE_REF:-origin/main} (branch matches base or no commits yet)"
     fi
 fi
 

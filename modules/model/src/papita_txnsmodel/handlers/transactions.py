@@ -4,33 +4,28 @@
 Transaction Data Processing and Matching Module.
 
 This module provides functionality for handling transaction data within the papita_txnsregistrar system.
-It includes capabilities for matching transaction accounts and identified transactions against existing
-records, with support for both exact and fuzzy matching strategies. The module is primarily used for
-data processing, validation, and standardization of transaction records before they are persisted.
-
-The main class, TransactionsHandler, extends AbstractHandler to provide specific transaction
-processing logic including account matching and identified transaction matching.
+It includes capabilities for matching transaction accounts and templates against existing records,
+with support for both exact and fuzzy matching strategies.
 """
 
+import inspect
 import logging
-import uuid
 from typing import TYPE_CHECKING, Annotated, List, Self, Tuple
 
 import pandas as pd
 from pydantic import Field, model_validator
-from rapidfuzz import fuzz
-from rapidfuzz import process as fuzz_process
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.accounts import AccountsService
-from papita_txnsmodel.services.transactions import IdentifiedTransactionsService, TransactionsService
-from papita_txnsmodel.services.types import TypesService
+from papita_txnsmodel.services.categories import CategoriesService
+from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.utils.enums import OnMultipleMatchesDo
 from papita_txnsmodel.utils.modelutils import validate_interest_rate
 
 from .abstract import AbstractHandler
 from .base import BaseTableHandler
+from .matching import ReferenceIndex, bulk_match_column
 
 if TYPE_CHECKING:
     from papita_txnsmodel.access.users.dto import UsersDTO
@@ -38,92 +33,49 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class IdentifiedTransactionsTableHandler(BaseTableHandler[IdentifiedTransactionsService, TypesService]):
-    """
-    Handler for loading and processing identified transactions table data.
-
-    This handler specializes in managing identified transactions, which represent
-    categorized or classified transaction templates in the system. It extends
-    BaseTableHandler with IdentifiedTransactionsService as the parameterized
-    service type, and also inherits from TypesService to access transaction type
-    information.
-
-    The handler provides the necessary infrastructure to load, process, and save
-    identified transaction data through the appropriate service layers. It establishes
-    a dependency on TypesService to properly categorize and classify transactions
-    based on their types.
-
-    Attributes:
-        dependencies: A dictionary mapping service names to service types,
-                        automatically configured to include TypesService for type
-                        information and classification.
-
-    Examples:
-        ```python
-        handler = IdentifiedTransactionsTableHandler(config)
-        handler.load_data(source_data)
-        processed_data = handler.process()
-        handler.dump_results(destination)
-        ```
-    """
+class TransactionTemplatesTableHandler(BaseTableHandler[TransactionTemplatesService, CategoriesService]):
+    """Handler for loading and processing transaction template table data."""
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        """
-        Validates and sets up the required dependencies for the handler.
-
-        This method ensures that the handler has the necessary service dependencies
-        established. If no dependencies are defined, it initializes them with
-        TypesService which is required for properly handling identified transactions
-        and their classification.
-
-        Returns:
-            Self: The validated instance of IdentifiedTransactionsTableHandler.
-        """
+        """Validate and set up the required dependencies for the handler."""
         if not self.dependencies:
             self.dependencies = {
-                "type": TypesService,
+                "category_id": CategoriesService,
             }
 
+        connector = self.service.connector
+        self.dependencies = {
+            name: (service.model_validate({"connector": connector}) if inspect.isclass(service) else service)
+            for name, service in self.dependencies.items()
+        }
         return self
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
-        """Get the label identifiers for this handler.
+        """Get the v3 label identifiers for this handler."""
+        return (
+            "transaction_templates_table",
+            "transaction_templates",
+        )
 
-        Returns:
-            Tuple[str, ...]: A tuple of string labels that identify this handler
-                in the handler registry system.
-        """
+    @classmethod
+    def legacy_labels(cls) -> Tuple[str, ...]:
+        """Registrar-compat labels that emit DeprecationWarning on lookup."""
         return "identified_transactions_table", "identified_transactions"
 
 
+# Backward-compatible alias for legacy callers.
+IdentifiedTransactionsTableHandler = TransactionTemplatesTableHandler
+
+
 class TransactionsHandler(AbstractHandler[TransactionsService]):
-    """
-    Handler for processing and matching transaction data.
-
-    This class extends AbstractHandler to provide specialized functionality for
-    transaction data processing, including matching account IDs and identified transactions.
-    It supports both exact matching and fuzzy matching strategies with configurable
-    thresholds and behaviors for handling multiple matches.
-
-    The handler processes raw transaction data through a series of matching operations:
-    1. Matches account IDs against the accounts database
-    2. Matches identified transaction references against the identified transactions database
-    3. Standardizes the data according to the service DTO type specification
-
-    Attributes:
-        accounts_service: Service for accessing and querying account data.
-        identified_transactions_service: Service for accessing identified transaction data.
-        on_multiple_account_matches: Strategy to use when multiple accounts match (FAIL, TAKE_FIRST, etc.).
-        case_sensitive: Whether string matching should be case-sensitive.
-        fuzzy_match: Whether to use fuzzy string matching instead of exact matching.
-        fuzzy_match_threshold: Threshold value for fuzzy matching (0.7-100), determining match quality.
-    """
+    """Handler for processing and matching posted transaction data."""
 
     service: TransactionsService
     accounts_service: AccountsService
-    identified_transactions_service: IdentifiedTransactionsService | None = None
+    categories_service: CategoriesService | None = None
+    transaction_templates_service: TransactionTemplatesService | None = None
     on_multiple_account_matches: OnMultipleMatchesDo = OnMultipleMatchesDo.FAIL
     on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.UPDATE
     case_sensitive: bool = False
@@ -132,303 +84,166 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
 
     @classmethod
     def labels(cls) -> Tuple[str, ...]:
-        """Get the label identifiers for this handler.
-
-        Returns:
-            Tuple[str, ...]: A tuple of string labels that identify this handler
-                in the handler registry system.
-        """
+        """Get the label identifiers for this handler."""
         return "transactions_handler", "transactions"
 
     def accounts(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
-        """
-        Get account data from the accounts service.
-
-        Retrieves all accounts from the accounts service and returns them as a DataFrame
-        for use in matching operations.
-
-        Args:
-            owner: The owner of the accounts to retrieve. Defaults to None.
-
-        Returns:
-            DataFrame containing account data with all available fields.
-        """
+        """Get account data from the accounts service."""
         return self._load_core_data(self.accounts_service, owner=owner)
 
-    def identified_transactions(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
-        """
-        Get identified transaction data from the identified transactions service.
+    def transaction_templates(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
+        """Get transaction template data from the templates service."""
+        return self._load_core_data(self.transaction_templates_service, owner=owner)
 
-        Retrieves all identified transactions from the service and returns them as a DataFrame
-        for use in matching operations.
+    def categories(self, owner: "UsersDTO | None" = None) -> pd.DataFrame:
+        """Get category data from the categories service."""
+        return self._load_core_data(self.categories_service, owner=owner)
 
-        Args:
-            owner: The owner of the identified transactions to retrieve. Defaults to None.
-
-        Returns:
-            DataFrame containing identified transaction data with all available fields.
-        """
-        return self._load_core_data(self.identified_transactions_service, owner=owner)
-
-    def _match_exact_records(
+    def _reference_index(
         self,
-        *,
-        value: str | uuid.UUID,
         core_data: pd.DataFrame,
-        core_id_column: str,
-        core_name_column: str,
-        core_tags_column: str,
-        **kwargs,
-    ) -> str | uuid.UUID | None:
-        """
-        Match records using exact matching on ID, name, or tags.
+        *,
+        id_column: str,
+        name_column: str,
+        tags_column: str,
+    ) -> ReferenceIndex:
+        """Build a reference index for bulk column matching."""
+        return ReferenceIndex(
+            core_data,
+            id_column=id_column,
+            name_column=name_column,
+            tags_column=tags_column,
+            case_sensitive=self.case_sensitive,
+        )
 
-        Performs exact string comparison to find matches in the provided data. A match
-        is found if the value exactly equals the ID, name, or is contained in the tags list.
-
-        Args:
-            value: The value to match against records (account name, ID, etc.).
-            core_data: DataFrame containing the records to match against.
-            core_id_column: Column name for the ID field in core_data.
-            core_name_column: Column name for the name field in core_data.
-            core_tags_column: Column name for the tags field in core_data.
-            **kwargs: Additional arguments passed to the matching strategy.
-
-        Returns:
-            Matched ID, or None if no match was found.
-        """
-        filtered = core_data.loc[
-            (core_data[core_id_column] == value)
-            | (core_data[core_name_column] == value)
-            | core_data[core_tags_column].apply(lambda li: value in li)
-        ]
-        record = self.on_multiple_account_matches.choose(matches=filtered, **kwargs)
-        if getattr(record, "empty", True):
-            return None
-
-        return record[core_id_column]
-
-    def _match_fuzzy_records(
+    def _bulk_match_column(
         self,
-        *,
-        value: str | uuid.UUID,
+        data: pd.DataFrame,
+        column: str,
         core_data: pd.DataFrame,
-        core_id_column: str,
-        core_name_column: str,
-        core_tags_column: str,
-        **kwargs,
-    ) -> str | uuid.UUID | None:
-        """
-        Match records using fuzzy matching on ID, name, or tags.
-
-        Performs similarity-based string comparison using the RapidFuzz library to find
-        approximate matches. The fuzzy_match_threshold determines the minimum similarity
-        score required for a match.
-
-        Args:
-            value: The value to match against records (account name, ID, etc.).
-            core_data: DataFrame containing the records to match against.
-            core_id_column: Column name for the ID field in core_data.
-            core_name_column: Column name for the name field in core_data.
-            core_tags_column: Column name for the tags field in core_data.
-            **kwargs: Additional arguments passed to the matching strategy.
-
-        Returns:
-            Matched ID, or None if no match was found.
-        """
-
-        def _compare_record(row: pd.Series) -> bool:
-            if value == row[core_id_column]:
-                return True
-
-            if fuzz.ratio(value, row[core_name_column]) >= self.fuzzy_match_threshold:
-                return True
-
-            labels = fuzz_process.extractOne(value, row[core_tags_column], scorer=self.fuzzy_match_threshold)
-            if labels is None:
-                return False
-
-            return True
-
-        filtered = core_data.apply(_compare_record, axis=1)
-        record = self.on_multiple_account_matches.choose(matches=core_data.iloc[filtered.loc[filtered].index], **kwargs)
-        if record.empty:
-            return None
-
-        return record[core_id_column]
-
-    def _match_records(
-        self,
         *,
-        value: str | uuid.UUID,
-        core_data: pd.DataFrame,
-        core_id_column: str,
-        core_name_column: str,
-        core_tags_column: str,
+        id_column: str,
+        name_column: str,
+        tags_column: str,
         owner: "UsersDTO | None" = None,
         **kwargs,
-    ) -> str | uuid.UUID | None:
-        """
-        Match records using either exact or fuzzy matching based on configuration.
+    ) -> pd.Series:
+        """Match a single column using bulk exact matching with optional fuzzy fallback."""
+        if column not in data.columns:
+            return data[column] if column in data.columns else pd.Series(dtype=object)
 
-        This method handles case sensitivity and delegates to either exact or fuzzy matching
-        based on the instance configuration. It serves as the main entry point for the
-        matching process.
-
-        Args:
-            value: The value to match against records (account name, ID, etc.).
-            core_data: DataFrame containing the records to match against.
-            core_id_column: Column name for the ID field in core_data.
-            core_name_column: Column name for the name field in core_data.
-            core_tags_column: Column name for the tags field in core_data.
-            owner: The owner of the records. Defaults to None.
-            **kwargs: Additional arguments passed to the matching strategy.
-
-        Returns:
-            Matched ID, or None if no match was found.
-        """
-        if self.case_sensitive:
-            value_ = value.lower() if isinstance(value, str) else value
-            core_data_ = core_data.copy()
-            core_data_[core_name_column] = core_data_[core_name_column].str.lower()
-            core_data_[core_tags_column] = core_data_[core_tags_column].apply(lambda li: map(str.lower, li))
-        else:
-            value_ = value
-            core_data_ = core_data.copy()
-
-        if self.fuzzy_match:
-            return self._match_fuzzy_records(
-                value=value_,
-                core_data=core_data_,
-                core_id_column=core_id_column,
-                core_name_column=core_name_column,
-                core_tags_column=core_tags_column,
-                on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
-                owner=owner,
-                **kwargs,
-            )
-
-        return self._match_exact_records(
-            value=value_,
-            core_data=core_data_,
-            core_id_column=core_id_column,
-            core_name_column=core_name_column,
-            core_tags_column=core_tags_column,
-            on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
-            owner=owner,
-            **kwargs,
+        index = self._reference_index(
+            core_data,
+            id_column=id_column,
+            name_column=name_column,
+            tags_column=tags_column,
+        )
+        return bulk_match_column(
+            data[column],
+            index,
+            fuzzy_match=self.fuzzy_match,
+            fuzzy_threshold=self.fuzzy_match_threshold,
+            on_multiple_matches=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
+            core_data=core_data,
         )
 
     def _match_accounts(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
-        """
-        Match account IDs in the transaction data with accounts in the accounts DataFrame.
-
-        This method processes the transaction data to resolve account references to actual account IDs
-        in the system. It handles both from_account_id and to_account_id columns and filters out
-        invalid transactions (those with both accounts null or both accounts non-null).
-
-        Args:
-            data: DataFrame containing transaction data with from_account_id and to_account_id columns.
-            owner: The owner of the accounts. Defaults to None.
-            **kwargs: Additional arguments passed to the matching functions.
-
-        Returns:
-            DataFrame with matched account IDs, filtered to include only valid entries where exactly
-            one of from_account_id or to_account_id is non-null.
-        """
+        """Match account IDs in the transaction data with accounts in the accounts DataFrame."""
         id_column = self.accounts_service.dto_type.__dao_type__.__table__.c.id.key
         name_column = self.accounts_service.dto_type.__dao_type__.__table__.c.name.key
         tags_column = self.accounts_service.dto_type.__dao_type__.__table__.c.tags.key
         from_account_id_column = self.service.dto_type.__dao_type__.__table__.c.from_account_id.key
         to_account_id_column = self.service.dto_type.__dao_type__.__table__.c.to_account_id.key
         accounts = self.accounts(owner=owner)[[id_column, name_column, tags_column]]
-        data_columns = [from_account_id_column, to_account_id_column]
         data_ = data.copy()
-        for col_ in data_columns:
-            data_[col_] = data_[col_].apply(
-                lambda value: self._match_records(
-                    value=value,
-                    core_data=accounts,
-                    core_id_column=id_column,
-                    core_name_column=name_column,
-                    core_tags_column=tags_column,
-                    on_conflict_do=kwargs.pop("on_conflict_do", self.on_multiple_account_matches),
-                    owner=owner,
-                    **kwargs,
-                )
-            )
-
-        return data_.loc[
-            ~(
-                (pd.isna(data_[from_account_id_column]) & pd.isna(data_[to_account_id_column]))
-                | (~pd.isna(data_[from_account_id_column]) & ~pd.isna(data_[to_account_id_column]))
-            )
-        ]
-
-    def _match_identified_transactions(
-        self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs
-    ) -> pd.DataFrame:
-        """
-        Match identified transaction IDs in the transaction data.
-
-        This method resolves references to identified transactions to actual identified transaction IDs
-        in the system. It uses the same matching strategy as account matching but applies it to the
-        identified_transaction_id column.
-
-        Args:
-            data: DataFrame containing transaction data with identified_transaction_id column.
-            owner: The owner of the identified transactions. Defaults to None.
-            **kwargs: Additional arguments passed to the matching functions.
-
-        Returns:
-            DataFrame with matched identified transaction IDs where possible.
-        """
-        id_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.id.key
-        name_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.name.key
-        tags_column = self.identified_transactions_service.dto_type.__dao_type__.__table__.c.tags.key
-        identified_transaction_id_column = self.service.dto_type.__dao_type__.__table__.c.identified_transaction_id.key
-        identified_transactions = self.identified_transactions(owner=owner)[[id_column, name_column, tags_column]]
-        data_ = data.copy()
-        data_[identified_transaction_id_column] = data_[identified_transaction_id_column].apply(
-            lambda value: self._match_records(
-                value=value,
-                core_data=identified_transactions,
-                core_id_column=id_column,
-                core_name_column=name_column,
-                core_tags_column=tags_column,
+        for col_ in (from_account_id_column, to_account_id_column):
+            if col_ not in data_.columns:
+                continue
+            data_[col_] = self._bulk_match_column(
+                data_,
+                col_,
+                accounts,
+                id_column=id_column,
+                name_column=name_column,
+                tags_column=tags_column,
                 owner=owner,
                 **kwargs,
             )
+
+        has_from = from_account_id_column in data_.columns
+        has_to = to_account_id_column in data_.columns
+        if has_from and has_to:
+            return data_.loc[~(pd.isna(data_[from_account_id_column]) & pd.isna(data_[to_account_id_column]))]
+        if has_from:
+            return data_.loc[~pd.isna(data_[from_account_id_column])]
+        if has_to:
+            return data_.loc[~pd.isna(data_[to_account_id_column])]
+        return data_
+
+    def _match_templates(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
+        """Match template IDs in the transaction data."""
+        if self.transaction_templates_service is None:
+            return data
+
+        id_column = self.transaction_templates_service.dto_type.__dao_type__.__table__.c.id.key
+        name_column = self.transaction_templates_service.dto_type.__dao_type__.__table__.c.name.key
+        tags_column = self.transaction_templates_service.dto_type.__dao_type__.__table__.c.tags.key
+        template_id_column = self.service.dto_type.__dao_type__.__table__.c.template_id.key
+        templates = self.transaction_templates(owner=owner)[[id_column, name_column, tags_column]]
+        data_ = data.copy()
+        if template_id_column not in data_.columns:
+            return data_
+
+        data_[template_id_column] = self._bulk_match_column(
+            data_,
+            template_id_column,
+            templates,
+            id_column=id_column,
+            name_column=name_column,
+            tags_column=tags_column,
+            owner=owner,
+            **kwargs,
+        )
+        return data_
+
+    def _match_categories(self, data: pd.DataFrame, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
+        """Match category IDs in the transaction data."""
+        if self.categories_service is None:
+            return data
+
+        id_column = self.categories_service.dto_type.__dao_type__.__table__.c.id.key
+        name_column = self.categories_service.dto_type.__dao_type__.__table__.c.name.key
+        tags_column = self.categories_service.dto_type.__dao_type__.__table__.c.tags.key
+        category_id_column = self.service.dto_type.__dao_type__.__table__.c.category_id.key
+        categories = self.categories(owner=owner)[[id_column, name_column, tags_column]]
+        data_ = data.copy()
+        if category_id_column not in data_.columns:
+            return data_
+
+        data_[category_id_column] = self._bulk_match_column(
+            data_,
+            category_id_column,
+            categories,
+            id_column=id_column,
+            name_column=name_column,
+            tags_column=tags_column,
+            owner=owner,
+            **kwargs,
         )
         return data_
 
     def dump(self, *, owner: "UsersDTO | None" = None, **kwargs) -> Self:
-        """
-        Save the loaded transaction data using the associated service.
-
-        This method persists the processed and matched transaction data to the underlying
-        data store through the service layer.
-
-        Args:
-            owner: The owner of the transactions. Defaults to None.
-            **kwargs: Additional arguments passed to the service's upsert_records method,
-                     such as batch size or conflict resolution strategies.
-
-        Returns:
-            Self instance for method chaining.
-
-        Raises:
-            ValueError: If there is no loaded data to dump (call load() first).
-        """
+        """Save the loaded transaction data using the associated service."""
         if not isinstance(self._loaded_data, pd.DataFrame):
             raise ValueError("There is no loaded data to dump.")
 
-        return self.service.upsert_records(
+        self.service.upsert_records(
             df=self._loaded_data,
             owner=owner,
             on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do),
             **kwargs,
         )
+        return self
 
     def load(
         self,
@@ -437,28 +252,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
         owner: "UsersDTO | None" = None,
         **kwargs,
     ) -> Self:
-        """
-        Load and process transaction data.
-
-        This method performs the complete transaction data processing pipeline:
-        1. Loads the raw transaction data
-        2. Matches account IDs for both from_account and to_account fields
-        3. Matches identified transaction IDs
-        4. Standardizes the data according to the DTO type specification
-
-        Args:
-            data: Raw transaction data to be processed, can be in various formats.
-            owner: The owner of the transactions. Defaults to None.
-            **kwargs: Additional arguments for processing and error handling,
-                      including loggers and strategy-specific parameters.
-
-        Returns:
-            Self instance for method chaining.
-
-        Raises:
-            Various exceptions may be raised based on the on_failure_do strategy
-            when data is empty or invalid.
-        """
+        """Load and process transaction data."""
         logger.debug("Loading data into %s", self.service.dto_type.__dao_type__.__tablename__)
         if getattr(data, "empty", True):
             self.on_failure_do.handle("There are no data or it's empty.", logger=kwargs.pop("logger", logger), **kwargs)
@@ -469,6 +263,7 @@ class TransactionsHandler(AbstractHandler[TransactionsService]):
                 "There are no data with valid account relationships.", logger=kwargs.pop("logger", logger), **kwargs
             )
 
-        identified_data_ = self._match_identified_transactions(accounts_data_, owner=owner, **kwargs)
-        self._loaded_data = self.service.dto_type.standardized_dataframe(identified_data_, **kwargs)
+        template_data_ = self._match_templates(accounts_data_, owner=owner, **kwargs)
+        category_data_ = self._match_categories(template_data_, owner=owner, **kwargs)
+        self._loaded_data = self.service.dto_type.standardized_dataframe(category_data_, **kwargs)
         return self

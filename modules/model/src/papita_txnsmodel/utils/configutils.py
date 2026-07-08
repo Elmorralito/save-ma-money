@@ -27,7 +27,7 @@ from papita_txnsmodel import LIB_NAME
 
 DEFAULT_ENCODING = "utf-8"
 LOGGER_NAME = LIB_NAME
-DEFAULT_LOGGER_CONFIG_PATH = str(importlib_resources.files(f"{LIB_NAME}.configs").joinpath("logger.yaml"))
+DEFAULT_LOGGER_CONFIG_PATH = str(importlib_resources.files(f"{LIB_NAME}.config.data").joinpath("logger.yaml"))
 
 
 def configure_logger(

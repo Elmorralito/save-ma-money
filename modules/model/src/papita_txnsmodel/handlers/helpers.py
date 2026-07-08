@@ -62,12 +62,17 @@ def make_service_dependencies_validator(
             ValueError: If the principal service is missing, if there are invalid
                         dependency types, or if a dependency name doesn't match a DTO field.
         """
-        if principal_service.__name__ not in val:
-            raise ValueError(f"Principal service '{principal_service.__name__}' is missing from dependencies.")
-
         dto = principal_service.dto_type
-        allowed = tuple(type_ for type_ in allowed_dependencies if issubclass(type_, BaseService))
+        allowed = tuple(
+            type_ for type_ in allowed_dependencies if inspect.isclass(type_) and issubclass(type_, BaseService)
+        )
+        if not allowed:
+            allowed = (BaseService,)
+
         for dep_name, dep_value in val.items():
+            if dep_name == principal_service.__name__:
+                continue
+
             dep_value_ = ClassDiscovery.select(dep_value, BaseService) if isinstance(dep_value, str) else dep_value
             if not dep_value_:
                 raise ValueError(f"Dependency '{dep_name}' could not be resolved.")
@@ -80,8 +85,7 @@ def make_service_dependencies_validator(
             if not issubclass(dep_value_type, allowed):
                 raise ValueError(f"Dependency '{dep_name}' has an invalid type '{dep_value_type.__name__}'.")
 
-            field = dto.model_fields.get(dep_name)
-            if field is None:
+            if dep_name not in dto.model_fields:
                 raise ValueError(f"The name '{dep_name}' is not a valid field in DTO '{dto.__name__}'.")
 
         return val

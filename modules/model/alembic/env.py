@@ -36,11 +36,35 @@ DEFAULT_ENV_PATH = os.path.join(
 
 sys.path.append(MODEL_PATH)
 
-from papita_txnsmodel.model import *  # pylint: disable=wildcard-import,wrong-import-position # noqa: F403,E402,F401,E501 # pyright: ignore[reportMissingImports]
+# pylint: disable=wrong-import-position,unused-import
+import alembic_utils.reversible_op  # noqa: F401,E402 - registers op.create_entity / op.drop_entity
+from alembic_utils.pg_materialized_view import PGMaterializedView  # noqa: E402
+from alembic_utils.replaceable_entity import register_entities  # noqa: E402
+
+from papita_txnsmodel.config.transaction_partitions import is_transactions_partition_table  # noqa: E402
+from papita_txnsmodel.model import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F403,F401,E402
+from papita_txnsmodel.model.contstants import SCHEMA_NAME  # noqa: E402
+from papita_txnsmodel.views import view_entities  # noqa: E402
+
+# pylint: enable=wrong-import-position,unused-import
+
+register_entities(
+    entities=view_entities,
+    schemas=[SCHEMA_NAME],
+    entity_types=[PGMaterializedView],
+)
 
 target_metadata = SQLModel.metadata
 
 logger = logging.getLogger("alembic.env")
+
+
+def include_object(object_, name, type_, reflected, compare_to):
+    """Ignore monthly child partitions when autogenerating or running alembic check."""
+    if type_ == "table" and is_transactions_partition_table(name):
+        return False
+    return True
+
 
 config = context.config
 
@@ -114,6 +138,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -158,6 +183,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             process_revision_directives=process_revision_directives,
             include_schemas=True,
+            include_object=include_object,
             template_args=template_args,
         )
 

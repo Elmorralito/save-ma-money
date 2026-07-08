@@ -1,95 +1,94 @@
 """Transactions service module for the Papita Transactions system.
 
 This module provides services for managing transaction entities in the system, including
-identified transactions (categorized transactions) and regular transactions. It implements
-the necessary functionality to handle the relationships between transactions and other
-entities like accounts and categories.
+transaction templates (recurring/planned) and posted transactions. It implements the
+necessary functionality to handle relationships between transactions, accounts, and categories.
 
 Classes:
-    IdentifiedTransactionsService: Service for managing categorized transaction entities.
-    TransactionsService: Service for managing transaction entities with links to accounts.
+    TransactionTemplatesService: Service for managing transaction template entities.
+    TransactionsService: Service for managing posted transaction entities.
 """
 
+import logging
 from typing import Annotated, Dict
 
+import pandas as pd
 from pydantic import Field
 
-from papita_txnsmodel.access.transactions.dto import IdentifiedTransactionsDTO, TransactionsDTO
-from papita_txnsmodel.access.transactions.repository import IdentifiedTransactionsRepository, TransactionsRepository
-from papita_txnsmodel.access.types.dto import TypesDTO
+from papita_txnsmodel.access.categories.dto import CategoriesDTO
+from papita_txnsmodel.access.transactions.dto import TransactionsDTO, TransactionTemplatesDTO
+from papita_txnsmodel.access.transactions.repository import TransactionsRepository, TransactionTemplatesRepository
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.accounts import AccountsService
-from papita_txnsmodel.services.extends import LinkedEntitiesService, LinkedEntity, TypedEntitiesService
+from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
+from papita_txnsmodel.services.categories import CategoriesService
+from papita_txnsmodel.services.extends import CategorizedEntitiesService, LinkedEntitiesService, LinkedEntity
+
+logger = logging.getLogger(__name__)
 
 
-class IdentifiedTransactionsService(TypedEntitiesService):
-    """Service for managing categorized transaction entities in the Papita Transactions system.
-
-    This service extends the TypedEntitiesService to handle transactions that have
-    category associations. It provides functionality to automatically handle category
-    relationships when creating, retrieving, or querying transactions.
+class TransactionTemplatesService(CategorizedEntitiesService):
+    """Service for managing transaction template entities in the Papita Transactions system.
 
     Attributes:
-        type_id_column_name (str): Name of the column storing the category ID.
-            Set to "category_id".
-        type_id_field_name (str): Name of the field storing the category.
-            Set to "category".
-        dto_type (type[IdentifiedTransactionsDTO]): DTO type for identified transactions.
-            Set to IdentifiedTransactionsDTO.
-        repository_type (type[IdentifiedTransactionsRepository]): Repository for identified
-            transaction database operations. Set to IdentifiedTransactionsRepository.
-        types_dto_type (type[TypesDTO]): DTO type for types. Set to TypesDTO.
+        category_id_column_name (str): Name of the column storing the category ID.
+        category_id_field_name (str): Name of the field storing the category.
+        dto_type (type[TransactionTemplatesDTO]): DTO type for transaction templates.
+        repository_type (type[TransactionTemplatesRepository]): Repository for templates.
+        categories_dto_type (type[CategoriesDTO]): DTO type for categories.
     """
 
-    type_id_column_name: str = "category_id"
-    type_id_field_name: str = "category"
-    dto_type: type[IdentifiedTransactionsDTO] = IdentifiedTransactionsDTO
-    repository_type: type[IdentifiedTransactionsRepository] = IdentifiedTransactionsRepository
-    types_dto_type: type[TypesDTO] = TypesDTO
+    category_id_column_name: str = "category_id"
+    category_id_field_name: str = "category_id"
+    dto_type: type[TransactionTemplatesDTO] = TransactionTemplatesDTO
+    repository_type: type[TransactionTemplatesRepository] = TransactionTemplatesRepository
+    categories_dto_type: type[CategoriesDTO] = CategoriesDTO
+
+
+# Backward-compatible alias for legacy callers.
+IdentifiedTransactionsService = TransactionTemplatesService
 
 
 class TransactionsService(LinkedEntitiesService):
-    """Service for managing transaction entities in the Papita Transactions system.
-
-    This service extends the LinkedEntitiesService to handle transactions that have
-    relationships with other entities like identified transactions and accounts.
-    It provides functionality to automatically handle these relationships when
-    creating or retrieving transactions.
+    """Service for managing posted transaction entities in the Papita Transactions system.
 
     Attributes:
-        __links__ (Dict[str, LinkedEntity]): Dictionary defining the relationships
-            between transactions and other entities.
+        __links__ (Dict[str, LinkedEntity]): Relationships to templates and accounts.
         dto_type (type[TransactionsDTO]): DTO type for transactions.
-            Set to TransactionsDTO.
-        repository_type (type[TransactionsRepository]): Repository for transaction
-            database operations. Set to TransactionsRepository.
+        repository_type (type[TransactionsRepository]): Repository for transactions.
         missing_upsertions_tol (float): Tolerance threshold for missing upsertions.
-            Set to 0.0, meaning no tolerance for missing upsertions.
         on_conflict_do (OnUpsertConflictDo | str): Action to take on upsert conflicts.
-            Set to OnUpsertConflictDo.UPDATE to update existing records.
     """
 
     __links__: Dict[str, LinkedEntity] = {
-        "identified_transaction": LinkedEntity(
-            expected_other_entity_service_type=IdentifiedTransactionsService,
+        "template_id": LinkedEntity(
+            expected_other_entity_service_type=TransactionTemplatesService,
             other_entity_link_column_name="id",
             other_entity_link_field_name="id",
-            own_entity_link_column_name="identified_transaction_id",
-            own_entity_link_field_name="identified_transaction",
+            own_entity_link_column_name="template_id",
+            own_entity_link_field_name="template_id",
         ),
-        "from_account": LinkedEntity(
+        "from_account_id": LinkedEntity(
             expected_other_entity_service_type=AccountsService,
             other_entity_link_column_name="id",
             other_entity_link_field_name="id",
             own_entity_link_column_name="from_account_id",
-            own_entity_link_field_name="from_account",
+            own_entity_link_field_name="from_account_id",
         ),
-        "to_account": LinkedEntity(
+        "to_account_id": LinkedEntity(
             expected_other_entity_service_type=AccountsService,
             other_entity_link_column_name="id",
             other_entity_link_field_name="id",
             own_entity_link_column_name="to_account_id",
-            own_entity_link_field_name="to_account",
+            own_entity_link_field_name="to_account_id",
+        ),
+        "category_id": LinkedEntity(
+            expected_other_entity_service_type=CategoriesService,
+            other_entity_link_column_name="id",
+            other_entity_link_field_name="id",
+            own_entity_link_column_name="category_id",
+            own_entity_link_field_name="category_id",
         ),
     }
 
@@ -98,3 +97,16 @@ class TransactionsService(LinkedEntitiesService):
 
     missing_upsertions_tol: Annotated[float, Field(ge=0, le=0.5)] = 0.0
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
+
+    def upsert_records(self, *, df: pd.DataFrame, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
+        """Upsert transactions and optionally refresh balance materialized views."""
+        mappings = super().upsert_records(df=df, owner=owner, **kwargs)
+        if kwargs.get("refresh_balances", True):
+            try:
+                refresh_balance_materialized_views(
+                    self.connector,
+                    concurrently=kwargs.get("refresh_balances_concurrently", False),
+                )
+            except Exception:
+                logger.exception("Failed to refresh balance materialized views after transaction upsert.")
+        return mappings
