@@ -16,4 +16,5 @@ regexes = [
   '''<password>''',
   '''<region>''',
   '''eyJ\.\.\.''',
+  '''"access_token": "eyJ[^"]*"''',
 ]
