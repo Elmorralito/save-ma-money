@@ -50,5 +50,5 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run supply chain checks
+      - name: Run supply chain security checks
         run: /bin/bash .github/scripts/supply_chain_check.sh

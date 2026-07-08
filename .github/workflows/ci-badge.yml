@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Evaluate CI configuration
+      - name: Evaluate CI configuration and coverage signals
         id: ci_eval
         env:
           REPO_NAME: ${{ github.repository }}
