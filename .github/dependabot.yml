@@ -9,13 +9,17 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Bogota
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - CI/CD
     commit-message:
       prefix: deps
       include: scope
+    groups:
+      python-workspace:
+        patterns:
+          - "*"
 
   - package-ecosystem: pip
     directory: /modules/model
@@ -24,13 +28,17 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Bogota
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - data model
     commit-message:
       prefix: deps
       include: scope
+    groups:
+      python-model:
+        patterns:
+          - "*"
 
   - package-ecosystem: pip
     directory: /modules/api
@@ -39,13 +47,17 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Bogota
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - API
     commit-message:
       prefix: deps
       include: scope
+    groups:
+      python-api:
+        patterns:
+          - "*"
 
   - package-ecosystem: github-actions
     directory: /
@@ -54,13 +66,17 @@ updates:
       day: monday
       time: "09:00"
       timezone: America/Bogota
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     labels:
       - dependencies
       - CI/CD
     commit-message:
       prefix: deps
       include: scope
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /docker/database
@@ -76,3 +92,26 @@ updates:
     commit-message:
       prefix: deps
       include: scope
+    groups:
+      docker-database:
+        patterns:
+          - "*"
+
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - CI/CD
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      pre-commit-hooks:
+        patterns:
+          - "*"
