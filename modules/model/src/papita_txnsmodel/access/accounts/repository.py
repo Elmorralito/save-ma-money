@@ -29,4 +29,4 @@ class AccountsRepository(OwnedTableRepository, metaclass=MetaSingleton):
             repository, set to AccountsDTO.
     """
 
-    __expected_dto_type__ = AccountsDTO
+    __expected_dto__ = AccountsDTO

@@ -27,6 +27,7 @@ from papita_txnsmodel.utils.modelutils import validate_tags
 
 from .abstract import AbstractHandler
 from .base import BaseTableHandler
+from .compat import warn_legacy_label
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,9 @@ class HandlerRegistry(metaclass=MetaSingleton):
         labels_ = self.parse_labels(labels)
         for label in labels_:
             if label in self.handlers:
-                return self.handlers[label]
+                handler = self.handlers[label]
+                warn_legacy_label(label, handler_name=handler.__name__)
+                return handler
 
         raise ValueError(f"Handler type with labels '{labels_}' is not recognized.")
 
@@ -264,7 +267,7 @@ class HandlerFactory:
             labels() method or lack the labels() method entirely are silently skipped.
             Only concrete handler implementations with valid labels are registered.
         """
-        for mod_ in set(modules) | {LIB_NAME}:
+        for mod_ in set(modules) | {LIB_NAME, f"{LIB_NAME}.handlers"}:
             logger.debug("Loading handlers from module: %s", mod_)
             for cls_ in ClassDiscovery.get_children(mod_, AbstractHandler):
                 if cls_ in (AbstractHandler, BaseTableHandler) or getattr(cls_, "labels", None) is None:
@@ -275,9 +278,14 @@ class HandlerFactory:
                     if not labels:
                         continue
 
-                    labels_ = tuple(cls.registry.parse_labels(labels)) + (cls_.__name__,)
-                    cls.registry = cls.registry.register_handlers_on_multiple_labels(labels_, cls_)
-                    logger.debug("Registered handler %s with labels %s", cls_.__name__, labels_)
+                    labels_ = tuple(cls.registry.parse_labels(labels))
+                    legacy: tuple[str, ...] = ()
+                    if hasattr(cls_, "legacy_labels"):
+                        legacy = tuple(cls.registry.parse_labels(cls_.legacy_labels()))
+
+                    all_labels = labels_ + legacy + (cls_.__name__,)
+                    cls.registry = cls.registry.register_handlers_on_multiple_labels(all_labels, cls_)
+                    logger.debug("Registered handler %s with labels %s", cls_.__name__, all_labels)
                 except NotImplementedError:
                     continue
 

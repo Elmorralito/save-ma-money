@@ -1,28 +1,28 @@
 """Extended service module for the Papita Transactions system.
 
 This module provides specialized service classes that extend the base service functionality
-with type-aware operations and entity linking capabilities. It defines services for
-handling typed entities, linked entities, and combinations of both.
+with category-aware operations and entity linking capabilities. It defines services for
+handling categorized entities, linked entities, and combinations of both.
 
 Classes:
-    TypedEntitiesService: Service for entities with type associations.
+    CategorizedEntitiesService: Service for entities with category associations.
     LinkedEntity: Model for defining entity relationships.
     LinkedEntitiesService: Service for entities with relationships to other entities.
-    TypedLinkedEntitiesServiceMixin: Combined service for typed entities with relationships.
+    CategorizedLinkedEntitiesServiceMixin: Combined service for categorized entities with relationships.
 """
 
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Self
 
 import pandas as pd
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
-from papita_txnsmodel.access.types.dto import TypesDTO
+from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
-from papita_txnsmodel.services.types import TypesService
+from papita_txnsmodel.services.categories import CategoriesService
 
 if TYPE_CHECKING:
     from papita_txnsmodel.access.users.dto import UsersDTO
@@ -30,37 +30,37 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class TypedEntitiesService(BaseService):
-    """Service for entities that have type associations.
+class CategorizedEntitiesService(BaseService):
+    """Service for entities that have category associations.
 
-    This service extends the base service to handle entities that are associated with
-    types from the Types table. It provides functionality to automatically handle
-    type relationships when creating, retrieving, or querying entities.
+    This service extends the base service to handle entities associated with
+    categories. It provides functionality to automatically handle category
+    relationships when creating, retrieving, or querying entities.
 
     Attributes:
-        types_service (TypesService): Service for handling type entities.
-        type_id_column_name (str): Name of the column in the database table that
-            stores the type ID. Defaults to empty string.
-        type_id_field_name (str): Name of the field in the DTO that stores the
-            type ID or type object. Defaults to empty string.
-        types_dto_type (type[TypesDTO]): DTO type for type entities. Defaults to TypesDTO.
+        categories_service (CategoriesService): Service for handling category entities.
+        category_id_column_name (str): Name of the column storing the category ID.
+        category_id_field_name (str): Name of the DTO field storing the category.
+        categories_dto_type (type[CategoriesDTO]): DTO type for categories.
         on_conflict_do (OnUpsertConflictDo | str): Action to take on upsert conflicts.
-            Defaults to OnUpsertConflictDo.UPDATE.
     """
 
-    types_service: TypesService
-    type_id_column_name: str = ""
-    type_id_field_name: str = ""
-    types_dto_type: type[TypesDTO] = TypesDTO
+    categories_service: CategoriesService | None = None
+    category_id_column_name: str = "category_id"
+    category_id_field_name: str = ""
+    categories_dto_type: type[CategoriesDTO] = CategoriesDTO
 
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
 
-    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
-        """Create a new typed entity record in the database.
+    @model_validator(mode="after")
+    def _wire_categories_service(self) -> Self:
+        """Instantiate categories_service from the shared connector when omitted."""
+        if not isinstance(self.categories_service, CategoriesService):
+            self.categories_service = CategoriesService.model_validate({"connector": self.connector})
+        return self
 
-        This method extends the base create method to handle type relationships.
-        It ensures the associated type exists (creating it if necessary) before
-        creating the entity.
+    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
+        """Create a new categorized entity record in the database.
 
         Args:
             obj: The object to create, either as a DTO or a dictionary of attributes.
@@ -68,104 +68,119 @@ class TypedEntitiesService(BaseService):
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
-            TableDTO: The created object as a DTO with type information.
+            TableDTO: The created object as a DTO with category information.
         """
-        type_dto = self.types_service.get_or_create(obj=getattr(obj, self.type_id_field_name), owner=owner, **kwargs)
+        category_dto = self.categories_service.get_or_create(
+            obj=getattr(obj, self.category_id_field_name), owner=owner, **kwargs
+        )
         dto = super().create(obj=obj, owner=owner, **kwargs)
-        setattr(dto, self.type_id_field_name, type_dto)
+        setattr(dto, self.category_id_field_name, category_dto)
         return dto
 
     def get(
         self, *, obj: TableDTO | str | dict | uuid.UUID, owner: "UsersDTO | None" = None, **kwargs
     ) -> TableDTO | None:
-        """Retrieve a typed entity record from the database.
-
-        This method extends the base get method to include type information in the
-        retrieved entity if requested.
+        """Retrieve a categorized entity record from the database.
 
         Args:
             obj: The object to retrieve, either as a DTO, a dictionary of attributes,
                 or a UUID.
             owner: The owner of the record. Defaults to None.
             **kwargs: Additional keyword arguments including:
-                - include_type (bool): Whether to include type information. Defaults to True.
+                - include_category (bool): Whether to include category information.
 
         Returns:
-            TableDTO | None: The retrieved object as a DTO with type information,
+            TableDTO | None: The retrieved object as a DTO with category information,
                 or None if not found.
         """
-        typed_dto = super().get(obj=obj, owner=owner, **kwargs)
-        if kwargs.get("include_type", True) and isinstance(typed_dto, self.dto_type):
-            typed_dto = self.dto_type.model_validate(
-                typed_dto.model_dump(mode="python")
+        categorized_dto = super().get(obj=obj, owner=owner, **kwargs)
+        if kwargs.get("include_category", True) and isinstance(categorized_dto, self.dto_type):
+            categorized_dto = self.dto_type.model_validate(
+                categorized_dto.model_dump(mode="python")
                 | {
-                    self.type_id_field_name: self.types_service.get(
-                        obj=getattr(typed_dto, self.type_id_field_name),
+                    self.category_id_field_name: self.categories_service.get(
+                        obj=getattr(categorized_dto, self.category_id_field_name),
                         owner=owner,
-                        dto_type=self.types_dto_type,
+                        dto_type=self.categories_dto_type,
                         **kwargs,
                     )
                 }
             )
 
-        return typed_dto
+        return categorized_dto
 
-    def get_records_by_type(
+    def get_records(self, dto: TableDTO | dict | None, owner: "UsersDTO | None" = None, **kwargs) -> pd.DataFrame:
+        """Retrieve records and optionally batch-hydrate category references."""
+        records_df = super().get_records(dto=dto, owner=owner, **kwargs)
+        if not kwargs.get("include_category", True) or getattr(records_df, "empty", True):
+            return records_df
+
+        if self.category_id_column_name not in records_df.columns:
+            return records_df
+
+        category_ids = records_df[self.category_id_column_name].dropna().unique()
+        category_cache = {
+            category_id: self.categories_service.get(obj=category_id, owner=owner, **kwargs)
+            for category_id in category_ids
+        }
+        records_df = records_df.copy()
+        records_df[self.category_id_column_name] = records_df[self.category_id_column_name].map(
+            lambda category_id: category_cache.get(category_id, category_id)
+        )
+        return records_df
+
+    def get_records_by_category(
         self,
-        type_dto: TypesDTO | dict[str, Any] | uuid.UUID,
+        category_dto: CategoriesDTO | dict[str, Any] | uuid.UUID,
         owner: "UsersDTO | None" = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Retrieve multiple entity records of a specific type from the database.
+        """Retrieve multiple entity records of a specific category from the database.
 
         Args:
-            type_dto: The type to filter by, either as a TypesDTO, a dictionary,
+            category_dto: The category to filter by, either as a CategoriesDTO, a dictionary,
                 or a UUID.
             owner: The owner of the records. Defaults to None.
             **kwargs: Additional keyword arguments to pass to the repository method.
 
         Returns:
-            pd.DataFrame: DataFrame containing the retrieved records of the specified type.
+            pd.DataFrame: DataFrame containing the retrieved records of the specified category.
 
         Raises:
-            TypeError: If the type_dto is not a supported type.
+            TypeError: If the category_dto is not a supported type.
         """
-        if isinstance(type_dto, self.types_dto_type):
-            type_id = type_dto.id
-        elif isinstance(type_dto, dict):
-            type_id = type_dto.get(self.type_id_column_name, type_dto["id"])
-        elif isinstance(type_dto, uuid.UUID):
-            type_id = type_dto
+        if isinstance(category_dto, self.categories_dto_type):
+            category_id = category_dto.id
+        elif isinstance(category_dto, dict):
+            category_id = category_dto.get(self.category_id_column_name, category_dto["id"])
+        elif isinstance(category_dto, uuid.UUID):
+            category_id = category_dto
         else:
             raise TypeError("Not supported")
 
         return self._repository.get_records(
-            getattr(self.dto_type.__dao_type__, self.type_id_column_name) == type_id,
+            getattr(self.dto_type.__dao_type__, self.category_id_column_name) == category_id,
             owner=owner,
             dto_type=self.dto_type,
             **kwargs,
         )
 
 
+# Backward-compatible alias for callers still using the legacy name.
+TypedEntitiesService = CategorizedEntitiesService
+
+
 class LinkedEntity(BaseModel):
     """Model for defining relationships between entities.
 
-    This class defines how entities are linked to each other, specifying the
-    relationship fields and expected service types.
-
     Attributes:
         expected_other_entity_service_type (type[BaseService]): Expected type of the
-            service for the linked entity. Defaults to BaseService.
-        other_entity_link_column_name (str): Name of the column in the linked entity's
-            table that stores the relationship. Defaults to empty string.
-        other_entity_link_field_name (str): Name of the field in the linked entity's
-            DTO that stores the relationship. Defaults to empty string.
-        own_entity_link_column_name (str): Name of the column in this entity's table
-            that stores the relationship. Defaults to empty string.
-        own_entity_link_field_name (str): Name of the field in this entity's DTO
-            that stores the relationship. Defaults to empty string.
-        other_entity_service (BaseService | None): Service instance for the linked
-            entity. Defaults to None.
+            service for the linked entity.
+        other_entity_link_column_name (str): Column in the linked entity's table.
+        other_entity_link_field_name (str): Field in the linked entity's DTO.
+        own_entity_link_column_name (str): Column in this entity's table.
+        own_entity_link_field_name (str): Field in this entity's DTO.
+        other_entity_service (BaseService | None): Service instance for the linked entity.
     """
 
     expected_other_entity_service_type: type[BaseService] = BaseService
@@ -181,8 +196,7 @@ class LinkedEntity(BaseModel):
 
         Args:
             service: The service instance to use for the linked entity.
-            **kwargs: Additional keyword arguments including:
-                - reload (bool): Whether to reload the service if already set.
+            **kwargs: Additional keyword arguments including reload flag.
 
         Returns:
             LinkedEntity: This LinkedEntity instance with the updated service.
@@ -195,25 +209,14 @@ class LinkedEntity(BaseModel):
                 f"Expected {self.expected_other_entity_service_type.__name__}. Got {service.__class__.__name__}"
             )
 
-        if isinstance(self.other_entity_service, self.expected_other_entity_service_type) and kwargs.get(
-            "reload", False
-        ):
+        if self.other_entity_service is None or kwargs.get("reload", False):
             setattr(self, "other_entity_service", service)
 
         return self
 
 
 class LinkedEntitiesService(BaseService):
-    """Service for entities that have relationships with other entities.
-
-    This service extends the base service to handle entities that are linked to
-    other entities. It provides functionality to automatically handle these
-    relationships when creating or retrieving entities.
-
-    Attributes:
-        __links__ (Dict[str, LinkedEntity]): Dictionary mapping field names to
-            LinkedEntity objects that define the relationships.
-    """
+    """Service for entities that have relationships with other entities."""
 
     __links__: Dict[str, LinkedEntity] = {}
 
@@ -224,8 +227,8 @@ class LinkedEntitiesService(BaseService):
 
         Args:
             links: Dictionary mapping field names to service instances.
-            reload: Whether to reload services that are already set. Defaults to True.
-            **kwargs: Additional keyword arguments to pass to the load_other_entity_service method.
+            reload: Whether to reload services that are already set.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             LinkedEntitiesService: This service instance with updated link services.
@@ -250,14 +253,10 @@ class LinkedEntitiesService(BaseService):
     def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new linked entity record in the database.
 
-        This method extends the base create method to handle entity relationships.
-        It ensures the linked entities exist (creating them if necessary) before
-        creating the entity.
-
         Args:
-            obj: The object to create, either as a DTO or a dictionary of attributes.
-            owner: The owner of the record. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the repository method.
+            obj: The object to create.
+            owner: The owner of the record.
+            **kwargs: Additional keyword arguments.
 
         Returns:
             TableDTO: The created object as a DTO with linked entity information.
@@ -287,20 +286,13 @@ class LinkedEntitiesService(BaseService):
     ) -> TableDTO | None:
         """Retrieve a linked entity record from the database.
 
-        This method extends the base get method to include linked entity information
-        in the retrieved entity if requested.
-
         Args:
-            obj: The object to retrieve, either as a DTO, a dictionary of attributes,
-                or a UUID.
-            owner: The owner of the record. Defaults to None.
-            **kwargs: Additional keyword arguments including:
-                - include_linked_dtos (bool): Whether to include linked entity information.
-                  Defaults to True.
+            obj: The object to retrieve.
+            owner: The owner of the record.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            TableDTO | None: The retrieved object as a DTO with linked entity information,
-                or None if not found.
+            TableDTO | None: The retrieved object as a DTO with linked entity information.
         """
         dto = super().get(obj=obj, owner=owner, **kwargs)
         if kwargs.get("include_linked_dtos", True) and isinstance(dto, self.dto_type):
@@ -317,49 +309,20 @@ class LinkedEntitiesService(BaseService):
         return dto
 
 
-class TypedLinkedEntitiesServiceMixin(LinkedEntitiesService, TypedEntitiesService):
-    """Service mixin that combines typed entity and linked entity functionality.
-
-    This mixin class combines the functionality of TypedEntitiesService and
-    LinkedEntitiesService to handle entities that both have type associations
-    and relationships with other entities.
-    """
+class CategorizedLinkedEntitiesServiceMixin(LinkedEntitiesService, CategorizedEntitiesService):
+    """Service mixin combining categorized entity and linked entity functionality."""
 
     def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
-        """Create a new typed and linked entity record in the database.
-
-        This method combines the create methods of TypedEntitiesService and
-        LinkedEntitiesService to handle both type associations and entity relationships.
-
-        Args:
-            obj: The object to create, either as a DTO or a dictionary of attributes.
-            owner: The owner of the record. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the repository method.
-
-        Returns:
-            TableDTO: The created object as a DTO with type and linked entity information.
-        """
-        typed_dto = TypedEntitiesService.create(self, obj=obj, owner=owner, **kwargs)
-        return LinkedEntitiesService.create(self, obj=typed_dto, owner=owner, **kwargs)
+        """Create a new categorized and linked entity record in the database."""
+        categorized_dto = CategorizedEntitiesService.create(self, obj=obj, owner=owner, **kwargs)
+        return LinkedEntitiesService.create(self, obj=categorized_dto, owner=owner, **kwargs)
 
     def get(
         self, *, obj: TableDTO | str | dict | uuid.UUID, owner: "UsersDTO | None" = None, **kwargs
     ) -> TableDTO | None:
-        """Retrieve a typed and linked entity record from the database.
+        """Retrieve a categorized and linked entity record from the database."""
+        categorized_dto = CategorizedEntitiesService.get(self, obj=obj, owner=owner, **kwargs)
+        return LinkedEntitiesService.get(self, obj=categorized_dto, owner=owner, **kwargs)  # type: ignore
 
-        This method combines the get methods of TypedEntitiesService and
-        LinkedEntitiesService to include both type and linked entity information
-        in the retrieved entity.
 
-        Args:
-            obj: The object to retrieve, either as a DTO, a dictionary of attributes,
-                or a UUID.
-            owner: The owner of the record. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the repository methods.
-
-        Returns:
-            TableDTO | None: The retrieved object as a DTO with type and linked entity
-                information, or None if not found.
-        """
-        typed_dto = TypedEntitiesService.get(self, obj=obj, owner=owner, **kwargs)
-        return LinkedEntitiesService.get(self, obj=typed_dto, owner=owner, **kwargs)  # type: ignore
+TypedLinkedEntitiesServiceMixin = CategorizedLinkedEntitiesServiceMixin

@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
-from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.utils.datautils import standardize_dataframe
@@ -95,6 +95,16 @@ class BaseService(BaseModel):
 
         return dto_type  # type: ignore[return-value]
 
+    def _requires_owner(self) -> bool:
+        """Return True when this service operates on tenant-owned tables."""
+        return inspect.isclass(self.dto_type) and issubclass(self.dto_type, OwnedTableDTO)
+
+    def _ensure_owner(self, owner: UsersDTO | None) -> UsersDTO | None:
+        """Require owner=UsersDTO for OwnedTableDTO services."""
+        if self._requires_owner() and owner is None:
+            raise ValueError(f"{self.dto_type.__name__} requires owner=UsersDTO for tenant-scoped operations.")
+        return owner
+
     def close(self) -> None:
         """Close the database connection.
 
@@ -114,6 +124,7 @@ class BaseService(BaseModel):
         Returns:
             TableDTO: The created object as a DTO.
         """
+        owner = self._ensure_owner(owner)
         parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
         kwargs.pop("_db_session", None)
@@ -135,6 +146,7 @@ class BaseService(BaseModel):
         Returns:
             pd.DataFrame: DataFrame containing the deleted records.
         """
+        owner = self._ensure_owner(owner)
         parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
         dao = self.dto_type.__dao_type__
@@ -163,6 +175,7 @@ class BaseService(BaseModel):
         Returns:
             TableDTO | None: The retrieved object as a DTO, or None if not found.
         """
+        owner = self._ensure_owner(owner)
         dto = self._repository.get_record_by_id(obj, owner=owner, dto_type=self.dto_type, **kwargs)
         if not dto and isinstance(obj, (dict, self.dto_type)):
             obj = self.parse_dto(obj, strict=True, by_alias=True)
@@ -190,6 +203,7 @@ class BaseService(BaseModel):
         if not isinstance(obj, (TableDTO, dict, uuid.UUID)):
             raise ValueError("Input object not supported. Supported: TableDTO | dict | uuid.UUID")
 
+        owner = self._ensure_owner(owner)
         dto = self.get(obj=obj, owner=owner, **kwargs)
         if isinstance(dto, self.dto_type):
             return dto
@@ -211,6 +225,7 @@ class BaseService(BaseModel):
         Returns:
             pd.DataFrame: DataFrame containing the retrieved records.
         """
+        owner = self._ensure_owner(owner)
         if not dto:
             records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type)
         else:
@@ -279,6 +294,7 @@ class BaseService(BaseModel):
             RuntimeError: If the number of successful upsertions is below the
                 tolerance threshold.
         """
+        owner = self._ensure_owner(owner)
         mappings = standardize_dataframe(self.dto_type, df, **kwargs)
         kwargs.pop("_db_session", None)
         on_conflict_do = kwargs.pop("on_conflict_do", self.on_conflict_do)

@@ -355,17 +355,18 @@ class OwnedTableRepository(BaseRepository):
             repository. Defaults to OwnedTableDTO.
     """
 
-    def _get_owner_filter(self, owner: UsersDTO, dao_type: type) -> Any:
+    def _get_owner_filter(self, owner: UsersDTO | uuid.UUID, dao_type: type) -> Any:
         """Create a filter condition for owner-based queries.
 
         Args:
-            owner: The user who owns the records.
+            owner: The user who owns the records, or a raw owner UUID.
             dao_type: The DAO type to create the filter for.
 
         Returns:
             Any: A SQLAlchemy filter condition matching the owner's ID.
         """
-        return dao_type.owner_id == owner.id
+        owner_id = owner.id if isinstance(owner, UsersDTO) else owner
+        return dao_type.owner_id == owner_id
 
     @SQLDatabaseConnector.connect
     def hard_delete_records(
@@ -511,7 +512,7 @@ class OwnedTableRepository(BaseRepository):
         if not isinstance(owner, (UsersDTO, uuid.UUID)):
             raise ValueError("Owner is required for get_records")
 
-        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)  # type: ignore
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().get_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
     def get_records_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> pd.DataFrame:

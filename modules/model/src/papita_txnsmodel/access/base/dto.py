@@ -132,9 +132,9 @@ class CoreTableDTO(TableDTO):
         tags (List[str]): List of tags associated with the entity.
     """
 
-    name: Annotated[str, Field(min_length=3)]
-    description: Annotated[str, Field(min_length=3)]
-    tags: Annotated[List[str], Field(min_length=1)] | Annotated[str, Field(min_length=3)]
+    name: Annotated[str, Field(min_length=1)]
+    description: Annotated[str, Field(min_length=0)] = ""
+    tags: List[str] | str = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:
@@ -156,8 +156,6 @@ class CoreTableDTO(TableDTO):
             tag_sources = list(self.tags)
 
         tag_sources.append(self.name.lower())
-        if hasattr(self, "classification") and hasattr(self.classification, "value"):
-            tag_sources.append(self.classification.value.lower())
 
         self.tags = list(modelutils.normalize_tags(tag_sources))
         return self

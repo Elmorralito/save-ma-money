@@ -5,45 +5,37 @@ It provides database access operations specific to transactions, extending the b
 repository functionality with transaction-specific implementations.
 
 Classes:
-    IdentifiedTransactionsRepository: Repository for planned or recurring transaction operations.
-    TransactionsRepository: Repository for actual financial transaction operations.
+    TransactionTemplatesRepository: Repository for planned or recurring template operations.
+    TransactionsRepository: Repository for posted financial transaction operations.
 """
 
 from papita_txnsmodel.access.base.repository import OwnedTableRepository
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
-from .dto import IdentifiedTransactionsDTO, TransactionsDTO
+from .dto import TransactionsDTO, TransactionTemplatesDTO
 
 
-class IdentifiedTransactionsRepository(OwnedTableRepository, metaclass=MetaSingleton):
-    """Repository for planned or recurring transaction database operations.
+class TransactionTemplatesRepository(OwnedTableRepository, metaclass=MetaSingleton):
+    """Repository for transaction template database operations.
 
-    This class extends the OwnedTableRepository to provide operations specific to identified
-    (planned or recurring) transactions. It uses the Singleton pattern via MetaSingleton
-    to ensure only one instance exists throughout the application.
-
-    The repository works with IdentifiedTransactionsDTO objects and provides all the CRUD
-    operations inherited from OwnedTableRepository, including querying, inserting, updating,
-    and deleting identified transaction records.
+    This class extends OwnedTableRepository to provide operations specific to
+    transaction templates. It uses the Singleton pattern via MetaSingleton to ensure
+    only one instance exists throughout the application.
 
     Attributes:
-        __expected_dto__ (type[IdentifiedTransactionsDTO]): The expected DTO type for this
-            repository, set to IdentifiedTransactionsDTO.
+        __expected_dto__ (type[TransactionTemplatesDTO]): The expected DTO type for this
+            repository, set to TransactionTemplatesDTO.
     """
 
-    __expected_dto__ = IdentifiedTransactionsDTO
+    __expected_dto__ = TransactionTemplatesDTO
 
 
 class TransactionsRepository(OwnedTableRepository, metaclass=MetaSingleton):
-    """Repository for actual financial transaction database operations.
+    """Repository for posted financial transaction database operations.
 
-    This class extends the OwnedTableRepository to provide operations specific to actual
-    financial transactions. It uses the Singleton pattern via MetaSingleton to ensure
-    only one instance exists throughout the application.
-
-    The repository works with TransactionsDTO objects and provides all the CRUD
-    operations inherited from OwnedTableRepository, including querying, inserting, updating,
-    and deleting transaction records.
+    This class extends OwnedTableRepository to provide operations specific to posted
+    transactions. It uses the Singleton pattern via MetaSingleton to ensure only one
+    instance exists throughout the application.
 
     Attributes:
         __expected_dto__ (type[TransactionsDTO]): The expected DTO type for this

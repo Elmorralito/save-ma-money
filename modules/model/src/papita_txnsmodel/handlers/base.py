@@ -13,7 +13,7 @@ by providing record retrieval methods and dependency management capabilities.
 import inspect
 import logging
 import uuid
-from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple
+from typing import Annotated, Dict, Generic, List, Self, Tuple, Type, TypeVarTuple, cast
 
 import pandas as pd
 from pydantic import BeforeValidator, Field, model_validator
@@ -142,8 +142,12 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         if isinstance(owner_id, UsersDTO):
             return owner_id
         for dep in self.dependencies.values():
-            if getattr(dep, "dto_type", None) is UsersDTO:
-                return dep.get(self.service, obj=owner_id, owner=None)
+            if not isinstance(dep, BaseService):
+                continue
+            if getattr(dep, "dto_type", None) is not UsersDTO:
+                continue
+            user = cast(BaseService, dep).get(obj=owner_id, owner=None)
+            return user if isinstance(user, UsersDTO) else None
         return None
 
     def get_record(
@@ -243,12 +247,69 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
             raise TypeError(f"Invalid DTO type: {dto.__class__}, expected: {self.service.dto_type}")
 
         for field_name, dep_service in self.dependencies.items():
+            if field_name not in self.service.dto_type.model_fields:
+                continue
+
             value = getattr(dto, field_name, None)
             if not value:
                 continue
 
             dependency_dto = dep_service.get_or_create(
                 obj=value, owner=owner, on_conflict_do=kwargs.pop("on_conflict_do", self.on_conflict_do), **kwargs
+            )
+            setattr(dto, field_name, dependency_dto)
+
+        return dto
+
+    def _prefetch_dependency_cache(
+        self,
+        dtos_: pd.DataFrame,
+        owner: UsersDTO | None = None,
+        **kwargs,
+    ) -> dict[tuple[str, object], TableDTO]:
+        """Resolve unique dependency references once per field to avoid N+1 lookups."""
+        cache: dict[tuple[str, object], TableDTO] = {}
+        on_conflict_do = kwargs.get("on_conflict_do", self.on_conflict_do)
+
+        for field_name, dep_service in self.dependencies.items():
+            if field_name not in self.service.dto_type.model_fields or field_name not in dtos_.columns:
+                continue
+
+            for value in dtos_[field_name].dropna().unique():
+                key = (field_name, value)
+                if key in cache:
+                    continue
+                cache[key] = dep_service.get_or_create(obj=value, owner=owner, on_conflict_do=on_conflict_do, **kwargs)
+
+        return cache
+
+    def _build_record_with_cache(
+        self,
+        dto: TableDTO | dict,
+        *,
+        cache: dict[tuple[str, object], TableDTO],
+        owner: UsersDTO | None = None,
+        **kwargs,
+    ) -> TableDTO:
+        """Build a record using a pre-populated dependency cache."""
+        if isinstance(dto, dict):
+            dto = self.service.dto_type.model_validate(dto)
+
+        if not isinstance(dto, self.service.dto_type):
+            raise TypeError(f"Invalid DTO type: {dto.__class__}, expected: {self.service.dto_type}")
+
+        on_conflict_do = kwargs.get("on_conflict_do", self.on_conflict_do)
+        for field_name, dep_service in self.dependencies.items():
+            if field_name not in self.service.dto_type.model_fields:
+                continue
+
+            value = getattr(dto, field_name, None)
+            if not value:
+                continue
+
+            cached = cache.get((field_name, value))
+            dependency_dto = cached or dep_service.get_or_create(
+                obj=value, owner=owner, on_conflict_do=on_conflict_do, **kwargs
             )
             setattr(dto, field_name, dependency_dto)
 
@@ -284,8 +345,11 @@ class BaseTableHandler(AbstractHandler[S], Generic[S, *ServiceDependencies]):
         else:
             raise TypeError("dtos must be a DataFrame or a list of TableDTO or dict instances.")
 
+        cache = self._prefetch_dependency_cache(dtos_, owner=owner, **kwargs)
         return dtos_.apply(
-            lambda row: self.build_record(dto=row.to_dict(), owner=owner, **kwargs).model_dump(mode="python"),
+            lambda row: self._build_record_with_cache(dto=row.to_dict(), cache=cache, owner=owner, **kwargs).model_dump(
+                mode="python"
+            ),
             axis=1,
             result_type="expand",
         )

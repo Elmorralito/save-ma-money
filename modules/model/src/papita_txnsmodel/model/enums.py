@@ -1,68 +1,71 @@
-"""Enumeration module for the Papita Transactions system.
-
-This module defines various enumeration types used throughout the Papita Transactions
-system to represent fixed sets of values for different attributes of models. These
-enumerations provide type safety and semantic meaning to categorical data used in
-financial accounts and transactions.
-
-Classes:
-    RealEstateAssetAccountsOwnership: Enumeration for real estate ownership types.
-    RealEstateAssetAccountsAreaUnits: Enumeration for area measurement units in real estate.
-    TypesClassifications: Enumeration for classification categories of financial types.
-"""
+"""Enumeration types for the Papita Transactions v3 schema."""
 
 from enum import Enum
 
 
-class RealEstateAssetAccountsOwnership(str, Enum):
-    """Enumeration for types of real estate ownership.
+class AccountKind(str, Enum):
+    """Discriminator for consolidated account rows."""
 
-    This enumeration represents the different types of ownership that can be
-    applied to real estate assets in the system.
+    CHECKING = "CHECKING"
+    SAVINGS = "SAVINGS"
+    CASH = "CASH"
+    INVESTMENT_BROKERAGE = "INVESTMENT_BROKERAGE"
+    REAL_ESTATE = "REAL_ESTATE"
+    CREDIT_CARD = "CREDIT_CARD"
+    LOAN_MORTGAGE = "LOAN_MORTGAGE"
+    OTHER_ASSET = "OTHER_ASSET"
+    OTHER_LIABILITY = "OTHER_LIABILITY"
 
-    Attributes:
-        FULL: Complete ownership of the property.
-        PARTIAL: Partial ownership of the property, typically used for shared properties.
-    """
+
+class LedgerSide(str, Enum):
+    """Balance sheet side for an account."""
+
+    ASSET = "ASSET"
+    LIABILITY = "LIABILITY"
+
+
+class InterestRateBasis(str, Enum):
+    """Canonical interest rate representation."""
+
+    NOMINAL_MONTHLY = "NOMINAL_MONTHLY"
+    APY = "APY"
+
+
+class CategoryKind(str, Enum):
+    """Income vs expense taxonomy for categories."""
+
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
+
+
+class TransactionKind(str, Enum):
+    """Ledger transaction semantics."""
+
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
+    TRANSFER = "TRANSFER"
+
+
+class TransactionStatus(str, Enum):
+    """Posting status for transactions."""
+
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class RealEstateOwnership(str, Enum):
+    """Real estate ownership mode."""
 
     FULL = "FULL"
     PARTIAL = "PARTIAL"
 
 
-class RealEstateAssetAccountsAreaUnits(str, Enum):
-    """Enumeration for area measurement units used in real estate assets.
-
-    This enumeration represents the different units of measurement that can be
-    used to specify the area of real estate properties in the system.
-
-    Attributes:
-        SQ_MT: Square meters.
-        SQ_FT: Square feet.
-        AC: Acres.
-        HA: Hectares.
-        BLK: Blocks (typically used in urban planning).
-    """
+class RealEstateAreaUnit(str, Enum):
+    """Area measurement units for real estate accounts."""
 
     SQ_MT = "SQ_MT"
     SQ_FT = "SQ_FT"
     AC = "AC"
     HA = "HA"
     BLK = "BLK"
-
-
-class TypesClassifications(str, Enum):
-    """Enumeration for classification categories of financial types.
-
-    This enumeration represents the major classification categories used to categorize
-    different financial types in the system. These classifications form the top-level
-    organization of the financial data model.
-
-    Attributes:
-        ASSETS: Types related to asset accounts and holdings.
-        LIABILITIES: Types related to liability accounts and obligations.
-        TRANSACTIONS: Types related to financial transactions and movements.
-    """
-
-    ASSETS = "ASSETS"
-    LIABILITIES = "LIABILITIES"
-    TRANSACTIONS = "TRANSACTIONS"

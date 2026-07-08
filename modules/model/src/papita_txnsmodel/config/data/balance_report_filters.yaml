@@ -1,0 +1,97 @@
+# Balance report filter registry — source of truth for BalanceReportsService/Handler.
+# owner: UsersDTO is required on every query (method argument, not listed here).
+reports:
+  account_balances:
+    label: Account balances
+    description: Per-account ledger-derived balances for a tenant owner
+    view: account_balances
+    filters:
+      account_id:
+        type: uuid
+        required: false
+        description: Restrict results to a single account
+      currency:
+        type: string
+        min_length: 3
+        max_length: 3
+        required: false
+        description: ISO 4217 currency code
+
+  owner_yearly_balances:
+    label: Owner yearly balances
+    description: Combined yearly totals across all owner accounts, per currency
+    view: owner_yearly_balances
+    filters:
+      balance_year:
+        type: integer
+        min: 1900
+        max: 9999
+        required: false
+      currency:
+        type: string
+        min_length: 3
+        max_length: 3
+        required: false
+
+  owner_monthly_balances:
+    label: Owner monthly balances
+    description: Combined monthly totals across all owner accounts, per currency
+    view: owner_monthly_balances
+    filters:
+      balance_year:
+        type: integer
+        min: 1900
+        max: 9999
+        required: false
+      balance_month:
+        type: integer
+        min: 1
+        max: 12
+        required: false
+      currency:
+        type: string
+        min_length: 3
+        max_length: 3
+        required: false
+
+  owner_quarterly_balances:
+    label: Owner quarterly balances
+    description: Combined quarterly totals across all owner accounts, per currency
+    view: owner_quarterly_balances
+    filters:
+      balance_year:
+        type: integer
+        min: 1900
+        max: 9999
+        required: false
+      balance_quarter:
+        type: integer
+        min: 1
+        max: 4
+        required: false
+      currency:
+        type: string
+        min_length: 3
+        max_length: 3
+        required: false
+
+  owner_biannual_balances:
+    label: Owner biannual balances
+    description: Combined semi-annual (H1/H2) totals across all owner accounts, per currency
+    view: owner_biannual_balances
+    filters:
+      balance_year:
+        type: integer
+        min: 1900
+        max: 9999
+        required: false
+      balance_half:
+        type: integer
+        min: 1
+        max: 2
+        required: false
+      currency:
+        type: string
+        min_length: 3
+        max_length: 3
+        required: false
