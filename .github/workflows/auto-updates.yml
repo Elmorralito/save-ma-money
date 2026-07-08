@@ -55,7 +55,9 @@ jobs:
             poetry run genbadge flake8 -i "${GITHUB_WORKSPACE}/docs/.flake8/report.txt" -o "${GITHUB_WORKSPACE}/docs/flake8-badge.svg"
 
       - name: Format generated markdown before commit
-        run: poetry run pre-commit run --files CHANGELOG.md README.md
+        run: |
+          poetry run pre-commit run --files CHANGELOG.md README.md || true
+          poetry run pre-commit run --files CHANGELOG.md README.md
 
       - name: Commit and push if changed
         run: |
