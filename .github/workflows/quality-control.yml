@@ -36,7 +36,7 @@ jobs:
           poetry install --no-interaction --with development,pre-commit
           python -m pip install pytest pytest-cov coverage
 
-      - uses: "pre-commit/action@v3.0.0"
+      - uses: "pre-commit/action@v3.0.1"
         env:
           # Local-only hooks; Strata/MCP validation use dedicated workflows or git commit.
           SKIP: strata-validate,mcp-config-validate
