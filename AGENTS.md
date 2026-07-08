@@ -168,7 +168,7 @@ Use the right tier for the question:
 | PPT-031 design program  | [`docs/design/README.md`](docs/design/README.md)                                       |
 | Auth contract           | [`docs/design/PPT-031-auth-contract.md`](docs/design/PPT-031-auth-contract.md)         |
 | API ↔ model mapping     | [`docs/design/PPT-031-api-model-mapping.md`](docs/design/PPT-031-api-model-mapping.md) |
-| Target REST contract    | [`modules/api/API_Endpoints.md.md`](modules/api/API_Endpoints.md.md)                   |
+| Target REST contract    | [`modules/api/README.md`](modules/api/README.md)                                       |
 | Issue briefs            | [`docs/issues/`](docs/issues/)                                                         |
 | Human README            | [`README.md`](README.md)                                                               |
 | CI workflows & scripts  | [`.github/CI.md`](.github/CI.md)                                                       |
@@ -211,7 +211,7 @@ The API is **not** a runnable FastAPI app yet — only settings and JWT helpers 
 - `modules/api/src/papita_txnsapi/config/settings.py` — env loading from `modules/api/src/.env`
 - `modules/api/src/papita_txnsapi/core/security.py` — `AuthSecurityManager` (singleton JWT encode/decode)
 
-Implement routers/schemas against [`API_Endpoints.md.md`](modules/api/API_Endpoints.md.md) per the PPT-031 mapping doc. Wire auth through `UsersService` per [`PPT-031-auth-contract.md`](docs/design/PPT-031-auth-contract.md).
+Implement routers/schemas against [`modules/api/README.md`](modules/api/README.md) per the PPT-031 mapping doc. Wire auth through `UsersService` per [`PPT-031-auth-contract.md`](docs/design/PPT-031-auth-contract.md).
 
 ---
 
