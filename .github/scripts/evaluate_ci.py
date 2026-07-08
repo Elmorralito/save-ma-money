@@ -305,10 +305,7 @@ def build_badge_url(level: str, score: int, color: str) -> str:
     """Build a shields.io badge URL for the adoption level."""
     label = "CI%20Adoption"
     message = f"{level}%20%7C%20Score%3A%20{score}"
-    return (
-        f"https://img.shields.io/badge/{label}-{message}-{color}"
-        "?style=for-the-badge&logo=githubactions&logoColor=white"
-    )
+    return f"https://img.shields.io/badge/{label}-{message}-{color}" "?style=flat&logo=githubactions&logoColor=white"
 
 
 def build_badge_link(repo_name: str) -> str:
