@@ -174,24 +174,25 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
     fi
 
     if [[ -n "${changed_files}" ]]; then
-        code_changed=false
+        needs_strata_pairing=false
         strata_changed=false
         while IFS= read -r path; do
             [[ -z "${path}" ]] && continue
-            if [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]] || [[ "${path}" == pyproject.toml ]]; then
-                code_changed=true
-            fi
             if [[ "${path}" == .strata/* ]] || [[ "${path}" == "AGENTS.md" ]] || [[ "${path}" == "CLAUDE.md" ]]; then
                 strata_changed=true
+            elif [[ "${path}" == "pyproject.toml" ]] || [[ "${path}" =~ ^modules/[^/]+/pyproject\.toml$ ]]; then
+                : # dependency manifest-only edits (e.g. Dependabot) do not require memory updates
+            elif [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]]; then
+                needs_strata_pairing=true
             fi
         done <<< "${changed_files}"
 
-        if [[ "${code_changed}" == true ]] && [[ "${strata_changed}" == false ]]; then
+        if [[ "${needs_strata_pairing}" == true ]] && [[ "${strata_changed}" == false ]]; then
             fail "code paths changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
-        elif [[ "${code_changed}" == true ]]; then
+        elif [[ "${needs_strata_pairing}" == true ]]; then
             ok "strict code/strata change pairing satisfied"
         else
-            ok "strict pairing skipped — no modules/deploy/pyproject.toml changes in diff"
+            ok "strict pairing skipped — no architecture code paths in diff"
         fi
     elif [[ "${STRATA_DIFF_SOURCE:-range}" == "staged" ]]; then
         ok "strict pairing skipped — no staged paths (nothing in index)"
