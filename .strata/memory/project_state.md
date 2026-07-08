@@ -20,8 +20,8 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Next action
 
-- Merge PR #53 after CI green; maintainer G1 sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28).
-- API #25 remains out of scope.
+- Merge PR [#55](https://github.com/Elmorralito/save-ma-money/pull/55) (unified API + model README docs) after CI green.
+- Begin PPT-032 API epic ([#42](https://github.com/Elmorralito/save-ma-money/issues/42)) — model gates (#34, #51, #28) closed.
 
 ### Prerequisites
 
