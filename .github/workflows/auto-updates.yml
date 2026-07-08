@@ -38,7 +38,7 @@ jobs:
 
       - name: "Install dependencies"
         run: |
-          poetry install --no-interaction
+          poetry install --no-interaction --with development,pre-commit
           python -m pip install pylint pytest pytest-cov coverage jinja2 requests
 
       - name: Update CHANGELOG.md
@@ -53,6 +53,9 @@ jobs:
           poetry run genbadge coverage -i "${GITHUB_WORKSPACE}/docs/coverage.xml" -o "${GITHUB_WORKSPACE}/docs/coverage-badge.svg"
           poetry run flake8 "${GITHUB_WORKSPACE}/modules/" --exit-zero --format=html --htmldir "${GITHUB_WORKSPACE}/docs/.flake8" --statistics --tee --output-file "${GITHUB_WORKSPACE}/docs/.flake8/report.txt" && \
             poetry run genbadge flake8 -i "${GITHUB_WORKSPACE}/docs/.flake8/report.txt" -o "${GITHUB_WORKSPACE}/docs/flake8-badge.svg"
+
+      - name: Format generated markdown before commit
+        run: poetry run pre-commit run --files CHANGELOG.md README.md
 
       - name: Commit and push if changed
         run: |
