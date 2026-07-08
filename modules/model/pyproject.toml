@@ -7,24 +7,24 @@ license = { file = "LICENSE" }
 authors = [{ name = "Elmorralito", email = "drestrepohinc@gmail.com" }]
 requires-python = ">=3.10,<3.15"
 dependencies = [
-    "pydantic(>=2.3.0,<3.0)",
-    "pandas(>=2.3.1,<2.4.0)",
-    "greenlet (>=3.2.4,<4.0)",
-    "mako (>=1.3.10,<2.0)",
-    "alembic[tz] (>=1.16.4,<2.0.0)",
-    "sqlmodel (>=0.0.24,<1.0)",
+    "pydantic(>=2.13.4,<3.0)",
+    "pandas(>=2.3.3,<2.4.0)",
+    "greenlet (>=3.5.3,<4.0)",
+    "mako (>=1.3.12,<2.0)",
+    "alembic[tz] (>=1.18.5,<2.0.0)",
+    "sqlmodel (>=0.0.39,<1.0)",
     "dotenv (>=0.9.9,<1.0)",
-    "psycopg2-binary (>=2.9.10,<3.0)",
+    "psycopg2-binary (>=2.9.12,<3.0)",
     "duckdb-engine (>=0.17.0,<0.18)",
-    "sqlalchemy[duckdb-engine] (>=2.0.43,<2.0.46)",
-    "pytest (>=8.3.1)",
+    "sqlalchemy[duckdb-engine] (>=2.0.51,<2.0.52)",
+    "pytest (>=9.1.1)",
     "toml (>=0.10.2,<0.11.0)",
-    "duckdb (>=1.4.2,<2.0.0)",
-    "argon2-cffi (>=24.1.0,<26.0.0)",
-    "semver (>=3.0.0,<4.0.0)",
-    "rapidfuzz (>=3.0.0,<4.0.0)",
+    "duckdb (>=1.5.4,<2.0.0)",
+    "argon2-cffi (>=25.1.0,<26.0.0)",
+    "semver (>=3.0.4,<4.0.0)",
+    "rapidfuzz (>=3.14.5,<4.0.0)",
     "alembic-utils (>=0.8.8,<0.9.0)",
-    "pyyaml (>=6.0,<7.0)",
+    "pyyaml (>=6.0.3,<7.0)",
 ]
 
 [project.urls]
