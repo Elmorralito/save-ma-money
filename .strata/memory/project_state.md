@@ -5,12 +5,13 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-07.** PPT-031 v3 working tree staged for commit on `refactor/PPT-031e` (not yet pushed as commits ahead of `origin/main`).
+**Session — 2026-07-07.** PR [#53](https://github.com/Elmorralito/save-ma-money/pull/53) on `refactor/PPT-031e` — CI fixes pushed (PyJWT swap, pre-commit formatting).
 
 ### Last completed
 
 - v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
 - Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
+- CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting on `README.md` / `CHANGELOG.md`.
 - Config package: `config/data/` (YAML), `config/transaction_partitions.py`, `config/materialized_views.py`; retired `configs/` package (logger YAML moved).
 - MV layer: five balance-report MVs + `views/indexes.py` fetch-support indexes; event-driven refresh via `balance_views.py`.
 - Deploy: `deploy/transaction_partitions.sh` (10-year retention, monthly ensure/archive); `deploy/alembic.sh` Poetry/venv fix.
@@ -19,8 +20,7 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Next action
 
-- Commit staged v3 tree; push branch; open PR (#34 / Track D).
-- Maintainer G1 sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28).
+- Merge PR #53 after CI green; maintainer G1 sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28).
 - API #25 remains out of scope.
 
 ### Prerequisites

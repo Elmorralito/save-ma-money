@@ -6,7 +6,8 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Callable
 
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 
 from papita_txnsapi.config.settings import Settings
 from papita_txnsmodel.utils.classutils import MetaSingleton
@@ -97,6 +98,6 @@ class AuthSecurityManager(metaclass=MetaSingleton):
                 algorithms=[self.algorithm],
             )
             return payload
-        except JWTError as exc:
+        except PyJWTError as exc:
             logger.debug("Token decode failed: %s", exc)
             return None
