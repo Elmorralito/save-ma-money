@@ -20,6 +20,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 - [Workflow overview](#workflow-overview)
 - [Run checks locally](#run-checks-locally)
 - [Workflows in detail](#workflows-in-detail)
+- [CI Adoption Badge](#ci-adoption-badge)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Strata validation](#strata-validation)
 - [Supporting scripts](#supporting-scripts)
@@ -104,6 +105,7 @@ Use this matrix to predict required checks before opening a PR.
 | Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                  |
 | Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | **PR only** (code/deploy paths)                            | `.strata/` layout + strict code/memory pairing          |
 | Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge      |
 
 ---
 
@@ -318,6 +320,84 @@ See [Strata validation](#strata-validation) for the full rule set.
 
 ---
 
+### CI Adoption Badge
+
+|                 |                                                         |
+| :-------------- | :------------------------------------------------------ |
+| **Trigger**     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch` |
+| **Permissions** | `contents: write`                                       |
+| **Script**      | [`evaluate_ci.py`](./scripts/evaluate_ci.py)            |
+
+**Steps:**
+
+1. Evaluate CI configuration files and quality signals; write `badge_url`, `level`, `score`, and `tools` to step outputs
+2. Replace the `CI Adoption` badge placeholder in [`README.md`](../README.md)
+3. Commit with `ci: update CI adoption badge [skip ci]` via `stefanzweifel/git-auto-commit-action@v5`
+4. Emit a step summary with level, score, detected tools, and quality signals
+
+**Loop guard:** push jobs skip when the head commit message contains `[skip ci]`.
+
+**Expected baseline for this repo:** ~65 (**Intermediate**) with the v1 rubric — nine GitHub Actions workflows (+ keyword bonuses), pre-commit, security scans (CodeQL, Trivy, Gitleaks), coverage artifacts, Docker Compose, `deploy/` scripts, and `.strata/` layout. **Advanced** (≥ 75) would require signals such as Dependabot and additional workflow keyword coverage.
+
+See [CI Adoption Badge](#ci-adoption-badge) for the scoring rubric and local usage.
+
+---
+
+## CI Adoption Badge
+
+The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shields.io badge in `README.md` that reflects repository CI maturity. Detection is **config-file based** (v1 does not query live workflow run status via the GitHub API).
+
+### Triggers
+
+| Event               | When it runs                                  |
+| :------------------ | :-------------------------------------------- |
+| `push`              | Commits to `main` (skips `[skip ci]` commits) |
+| `pull_request`      | PRs targeting `main`                          |
+| `schedule`          | Mondays at 06:00 UTC (`0 6 * * 1`)            |
+| `workflow_dispatch` | Manual run from the Actions tab               |
+
+### Scoring rubric (v1)
+
+| Signal                                                             | Base points      | Bonus                                                                     |
+| :----------------------------------------------------------------- | :--------------- | :------------------------------------------------------------------------ |
+| GitHub Actions (`.github/workflows/*.yml`)                         | +20              | +1 per keyword in YAML (`test`, `lint`, `deploy`, `security`, `coverage`) |
+| Travis / CircleCI / Jenkins / GitLab CI                            | +15 each         | +1 per keyword                                                            |
+| Azure / Bitbucket / Drone / TeamCity / Buildkite                   | +10 each         | +1 per keyword                                                            |
+| Test coverage config                                               | +5               | —                                                                         |
+| Linting config (`.flake8`, `.pylintrc`, `pyproject` tool sections) | +5               | —                                                                         |
+| Pre-commit hooks                                                   | +5               | —                                                                         |
+| Dependabot                                                         | +5               | —                                                                         |
+| Security scanning workflows                                        | +5               | —                                                                         |
+| Docker support                                                     | +3               | —                                                                         |
+| Deploy automation (`deploy/` or `Makefile`)                        | +2               | —                                                                         |
+| Strata layout (`.strata/`)                                         | +3               | repo-specific bonus                                                       |
+| **Maximum**                                                        | **100** (capped) |                                                                           |
+
+**Levels:** Advanced ≥ 75 · Intermediate ≥ 50 · Basic ≥ 20 · None &lt; 20
+
+### Run locally
+
+```bash
+python .github/scripts/evaluate_ci.py
+python .github/scripts/evaluate_ci.py --update-readme
+```
+
+`REPO_NAME` defaults to `owner/repo`; set it to `Elmorralito/save-ma-money` for the correct badge link target.
+
+**Local pre-push feedback (optional):** install the advisory hook once, then every `git push` prints the adoption report without blocking:
+
+```bash
+pre-commit install --hook-type pre-push
+```
+
+The hook uses [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) (`stages: [pre-push]` only — not run by CI pre-commit).
+
+### Manual refresh
+
+Open **Actions → CI Adoption Badge → Run workflow** (`workflow_dispatch`) after CI changes land on `main`.
+
+---
+
 ## Pre-commit hooks
 
 Defined in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). CI runs all hooks **except** the two local-only entries below.
@@ -345,15 +425,17 @@ Defined in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). CI runs all 
 | `actionlint`              | actionlint v1.7.7               | GitHub Actions workflow syntax                              |
 | **`strata-validate`**     | **local only**                  | See [Strata validation](#strata-validation)                 |
 | **`mcp-config-validate`** | **local only**                  | See [MCP config](#mcp-config-local)                         |
+| **`ci-adoption-check`**   | **local pre-push, advisory**    | See [CI Adoption Badge](#ci-adoption-badge)                 |
 
 ### Local-only hooks
 
-| Hook ID               | Wrapper                                                  | When it runs                                                              |
-| :-------------------- | :------------------------------------------------------- | :------------------------------------------------------------------------ |
-| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh) | Staged paths: `modules/`, `deploy/`, `.strata/`, `AGENTS.md`, `CLAUDE.md` |
-| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)       | Staged `.cursor/mcp.json`                                                 |
+| Hook ID               | Wrapper                                                            | When it runs                                                              |
+| :-------------------- | :----------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | Staged paths: `modules/`, `deploy/`, `.strata/`, `AGENTS.md`, `CLAUDE.md` |
+| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                 |
+| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set          |
 
-Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control).
+Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it.
 
 ---
 
@@ -416,18 +498,20 @@ Missing file → skip with success (project may not use MCP).
 
 ## Supporting scripts
 
-| Script                                                           | Invoked by               | Description                                                              |
-| :--------------------------------------------------------------- | :----------------------- | :----------------------------------------------------------------------- |
-| [`migration_check.sh`](./scripts/migration_check.sh)             | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
-| [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)       | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
-| [`check_module_versions.py`](./scripts/check_module_versions.py) | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
-| [`strata_check.sh`](./scripts/strata_check.sh)                   | Strata Check, pre-commit | Layout, budgets, frontmatter, strict pairing                             |
-| [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)         | pre-commit               | Sets `STRATA_STRICT_MODULES=1`, `STRATA_DIFF_SOURCE=staged`; skips in CI |
-| [`mcp_config_check.sh`](./scripts/mcp_config_check.sh)           | pre-commit               | MCP JSON structure + token scan                                          |
-| [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)               | pre-commit               | CI skip wrapper for MCP check                                            |
-| [`update_todos.py`](./scripts/update_todos.py)                   | Auto Updates             | CHANGELOG from GitHub API                                                |
-| [`changelog_template.jinja`](./scripts/changelog_template.jinja) | update_todos.py          | CHANGELOG section template                                               |
-| [`issue_template.jinja`](./scripts/issue_template.jinja)         | update_todos.py          | Per-issue CHANGELOG entry template                                       |
+| Script                                                             | Invoked by               | Description                                                              |
+| :----------------------------------------------------------------- | :----------------------- | :----------------------------------------------------------------------- |
+| [`migration_check.sh`](./scripts/migration_check.sh)               | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
+| [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)         | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
+| [`check_module_versions.py`](./scripts/check_module_versions.py)   | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
+| [`strata_check.sh`](./scripts/strata_check.sh)                     | Strata Check, pre-commit | Layout, budgets, frontmatter, strict pairing                             |
+| [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | pre-commit               | Sets `STRATA_STRICT_MODULES=1`, `STRATA_DIFF_SOURCE=staged`; skips in CI |
+| [`mcp_config_check.sh`](./scripts/mcp_config_check.sh)             | pre-commit               | MCP JSON structure + token scan                                          |
+| [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | pre-commit               | CI skip wrapper for MCP check                                            |
+| [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | pre-push (local)         | Advisory CI adoption report; never blocks push                           |
+| [`update_todos.py`](./scripts/update_todos.py)                     | Auto Updates             | CHANGELOG from GitHub API                                                |
+| [`evaluate_ci.py`](./scripts/evaluate_ci.py)                       | CI Adoption Badge        | CI tool detection, adoption scoring, README badge metadata               |
+| [`changelog_template.jinja`](./scripts/changelog_template.jinja)   | update_todos.py          | CHANGELOG section template                                               |
+| [`issue_template.jinja`](./scripts/issue_template.jinja)           | update_todos.py          | Per-issue CHANGELOG entry template                                       |
 
 Shared shell helpers: [`deploy/utils.sh`](../deploy/utils.sh) (`log`, `run_command`).
 
@@ -514,6 +598,7 @@ All times **UTC**, every **Monday**:
 | Workflow            | Cron        | Local time hint (US Eastern, DST) |
 | :------------------ | :---------- | :-------------------------------- |
 | Secret Scan         | `0 5 * * 1` | ~01:00 EDT                        |
+| CI Adoption Badge   | `0 6 * * 1` | ~02:00 EDT                        |
 | CodeQL Analysis     | `0 6 * * 1` | ~02:00 EDT                        |
 | Trivy Security Scan | `0 7 * * 1` | ~03:00 EDT                        |
 | Supply Chain Check  | `0 8 * * 1` | ~04:00 EDT                        |
@@ -536,16 +621,16 @@ Each workflow also supports **`workflow_dispatch`** from the Actions tab.
 
 ## Environment variables
 
-| Variable                  | Used by                         |           Required           | Example                                                          |
-| :------------------------ | :------------------------------ | :--------------------------: | :--------------------------------------------------------------- |
-| `DB_URL`                  | `migration_check.sh`            |    Yes (migration checks)    | `postgresql+psycopg2://papita:papita@localhost:5432/papita_test` |
-| `STRATA_STRICT_MODULES`   | `strata_check.sh`               |       No (default `0`)       | `1` enables code/memory pairing                                  |
-| `STRATA_DIFF_SOURCE`      | `strata_check.sh`               |     No (default `range`)     | `staged` for pre-commit                                          |
-| `STRATA_BASE_REF`         | `strata_check.sh` (CI)          |  No (default `origin/main`)  | `origin/main`                                                    |
-| `CI` / `GITHUB_ACTIONS`   | pre-commit wrappers             |          Set by GHA          | Skips local-only hooks                                           |
-| `SKIP`                    | quality-control pre-commit step |       Set by workflow        | `strata-validate,mcp-config-validate`                            |
-| `GITHUB_TOKEN`            | Gitleaks, Auto Updates          |       Provided by GHA        | —                                                                |
-| `REPO_OWNER`, `REPO_NAME` | `update_todos.py`               | Set by Auto Updates workflow | —                                                                |
+| Variable                  | Used by                             |          Required          | Example                                                          |
+| :------------------------ | :---------------------------------- | :------------------------: | :--------------------------------------------------------------- |
+| `DB_URL`                  | `migration_check.sh`                |   Yes (migration checks)   | `postgresql+psycopg2://papita:papita@localhost:5432/papita_test` |
+| `STRATA_STRICT_MODULES`   | `strata_check.sh`                   |      No (default `0`)      | `1` enables code/memory pairing                                  |
+| `STRATA_DIFF_SOURCE`      | `strata_check.sh`                   |    No (default `range`)    | `staged` for pre-commit                                          |
+| `STRATA_BASE_REF`         | `strata_check.sh` (CI)              | No (default `origin/main`) | `origin/main`                                                    |
+| `CI` / `GITHUB_ACTIONS`   | pre-commit wrappers                 |         Set by GHA         | Skips local-only hooks                                           |
+| `SKIP`                    | quality-control pre-commit step     |      Set by workflow       | `strata-validate,mcp-config-validate`                            |
+| `GITHUB_TOKEN`            | Gitleaks, Auto Updates              |      Provided by GHA       | —                                                                |
+| `REPO_OWNER`, `REPO_NAME` | `update_todos.py`, `evaluate_ci.py` |      Set by workflow       | —                                                                |
 
 ---
 

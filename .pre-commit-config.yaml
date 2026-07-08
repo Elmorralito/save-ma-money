@@ -85,6 +85,14 @@ repos:
         pass_filenames: false
         files: ^\.cursor/mcp\.json$
         # Excluded in CI via SKIP in quality-control.yml.
+      - id: ci-adoption-check
+        name: ci adoption check (local pre-push, advisory)
+        entry: /bin/bash .github/scripts/pre_commit_ci_adoption.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+        # Runs on `git push` when pre-push hook is installed locally; never blocks; skipped in CI.
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2

@@ -1,0 +1,71 @@
+---
+name: CI Adoption Badge
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ci-badge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate-ci:
+    name: Evaluate CI Adoption Level
+    runs-on: ubuntu-latest
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Evaluate CI configuration
+        id: ci_eval
+        env:
+          REPO_NAME: ${{ github.repository }}
+        run: python .github/scripts/evaluate_ci.py
+
+      - name: Update README badge
+        env:
+          REPO_NAME: ${{ github.repository }}
+        run: python .github/scripts/evaluate_ci.py --update-readme
+
+      - name: Commit badge update
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "ci: update CI adoption badge [skip ci]"
+          file_pattern: README.md
+          commit_user_name: "CI Badge Bot"
+          commit_user_email: "ci-badge-bot@users.noreply.github.com"
+
+      - name: Print CI summary
+        run: |
+          {
+            echo "### CI Adoption Report"
+            echo ""
+            echo "| Property | Value |"
+            echo "| --- | --- |"
+            echo "| **Level** | ${{ steps.ci_eval.outputs.level }} |"
+            echo "| **Score** | ${{ steps.ci_eval.outputs.score }}/100 |"
+            echo "| **Tools** | ${{ steps.ci_eval.outputs.tools }} |"
+            echo "| **Quality signals** | ${{ steps.ci_eval.outputs.quality_signals }} |"
+            echo "| **Badge** | ![CI Adoption](${{ steps.ci_eval.outputs.badge_url }}) |"
+          } >> "${GITHUB_STEP_SUMMARY}"
