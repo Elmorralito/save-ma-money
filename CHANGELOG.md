@@ -3,9 +3,6 @@
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#52](https://github.com/Elmorralito/save-ma-money/issues/52)**_] :: **ops/PPT-042: [infra] CI adoption badge GitHub Action** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 01:30:57+00:00</sub>_ :weary:
-
-
 - [ ] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and CI dual-target gate (B0 + B1)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary:
 
 
@@ -34,6 +31,39 @@
 
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#52](https://github.com/Elmorralito/save-ma-money/issues/52)**_] :: **ops/PPT-042: [infra] CI adoption badge GitHub Action** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 01:30:57+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 20:36:13+00:00</sub>_
+
+  > **Closed by** [_**#56**](https://github.com/Elmorralito/save-ma-money/pull/56): **ci(badge): add CI adoption scoring workflow and README badge (PPT-042)**
+  >
+
+  > Implement ops/PPT-042 (#52): a config-file-based CI maturity evaluator that scores repository adoption signals, maintains a dynamic shields.io badge in README.md, and gives developers optional local pre-push feedback. Before this change, CI maturity was documented only in .github/CI.md with no automated visibility in the README or repeatable rubric.
+
+  > 
+
+  > After this change, a GitHub Actions workflow evaluates CI on push/PR to main, weekly schedule, and workflow_dispatch; commits badge updates with [skip ci] to avoid loops; and exposes level/score/tools in the job summary. Local developers can optionally install a pre-push hook for advisory output that never blocks push.
+
+  > 
+
+  > Changes by file:
+
+  > - .github/workflows/ci-badge.yml: new workflow using Python 3.12, evaluate_ci.py, README update, git-auto-commit-action@v5, and step summary; skips push runs when head commit contains [skip ci]
+
+  > - .github/scripts/evaluate_ci.py: scoring engine detecting 10 CI platforms, quality signals (pre-commit, security workflows, coverage, Docker, deploy, Strata, linting, Dependabot), keyword bonuses in workflow YAML, capped 100-point rubric with Advanced/Intermediate/Basic/None levels; writes badge_url, badge_link, level, score, tools, and quality_signals to GITHUB_OUTPUT; supports --update-readme for README badge replacement
+
+  > - .github/scripts/pre_commit_ci_adoption.sh: local pre-push wrapper that skips in CI, infers REPO_NAME from origin, runs evaluate_ci.py, and always exits 0 (advisory only)
+
+  > - .pre-commit-config.yaml: register ci-adoption-check hook at pre-push stage (local-only; not invoked by CI pre-commit)
+
+  > - README.md: add CI Adoption shields.io badge linking to GitHub Actions (current measured level: Intermediate, score 65)
+
+  > - .github/CI.md: document workflow, scoring rubric, triggers, local usage, pre-push install instructions, hook inventory, supporting scripts table, and scheduled scan entry
+
+  > 
+
+  > Closes PPT-042 / #52.
+
 
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#28](https://github.com/Elmorralito/save-ma-money/issues/28)**_] :: **refactor/PPT-031: Simplify data model and align API design** :: _<sub style="vertical-align: middle; color: #636363;">2026-03-27 02:03:29+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 18:11:25+00:00</sub>_
