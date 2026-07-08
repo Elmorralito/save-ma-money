@@ -16,7 +16,11 @@ from papita_txnsmodel.services.account_details import (
 from papita_txnsmodel.services.account_financing import AccountFinancingService
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.balance_reports import BalanceReportsService
+from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
 from papita_txnsmodel.services.categories import CategoriesService
+from papita_txnsmodel.services.owner_period_balances import OwnerPeriodBalancesService
+from papita_txnsmodel.services.owner_yearly_balances import OwnerYearlyBalancesService
+from papita_txnsmodel.services.reports import ReportService
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.services.users import UsersService
 
@@ -29,9 +33,13 @@ __all__ = [
     "CategoriesService",
     "CreditCardAccountDetailsService",
     "LoanAccountDetailsService",
+    "OwnerPeriodBalancesService",
+    "OwnerYearlyBalancesService",
     "RealEstateAccountDetailsService",
+    "ReportService",
     "TradingAccountDetailsService",
     "TransactionTemplatesService",
     "TransactionsService",
     "UsersService",
+    "refresh_balance_materialized_views",
 ]

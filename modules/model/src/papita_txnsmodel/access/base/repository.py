@@ -185,14 +185,14 @@ class BaseRepository:
         if not dto.id:
             raise ValueError("There is no id in the DTO")
 
-        record = self.get_record_by_id(dto.id, dto, **kwargs)
+        record = self.get_record_by_id(dto.id, dto_type=type(dto), **kwargs)
         if hasattr(dao, "updated_at"):
             setattr(dao, "updated_at", datetime.now())
 
         _db_session.begin()
         try:
             logger.debug("Upserting single record with id '%s'", dto.id)
-            _ = _db_session.add(dao) if isinstance(record, dto) else _db_session.merge(dao)
+            _ = _db_session.add(dao) if record is None else _db_session.merge(dao)
             _db_session.commit()
             _db_session.refresh(dao)
             return dto.model_validate(dao.model_dump(), strict=True)
@@ -455,8 +455,7 @@ class OwnedTableRepository(BaseRepository):
                 raise ValueError("DTO owner_id does not match the provided owner.")
             dto.owner_id = owner.id  # type: ignore
 
-        kwargs.pop("owner", None)
-        return super().upsert_record(dto, _db_session=_db_session, **kwargs)
+        return super().upsert_record(dto, _db_session=_db_session, owner=owner, **kwargs)
 
     @SQLDatabaseConnector.connect
     def upsert_records(

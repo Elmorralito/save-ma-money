@@ -249,9 +249,8 @@ class TestUpsertRecord:
         with pytest.raises(ValueError, match="There is no id in the DTO"):
             repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
 
-    @patch("papita_txnsmodel.access.base.repository.isinstance")
-    def test_upsert_record_merges_record_when_not_found(self, mock_isinstance, repository, mock_dto, mock_session, mock_connector_connected):
-        """Test that upsert_record merges record when record does not exist."""
+    def test_upsert_record_adds_record_when_not_found(self, repository, mock_dto, mock_session, mock_connector_connected):
+        """Test that upsert_record inserts when no existing row is found."""
         test_id = uuid.uuid4()
         mock_dto_instance = MagicMock()
         mock_dto_instance.id = test_id
@@ -260,11 +259,10 @@ class TestUpsertRecord:
         repository.get_record_by_id = MagicMock(return_value=None)
         mock_dao.model_dump.return_value = {"id": test_id, "name": "Test"}
         mock_dto_instance.model_validate.return_value = mock_dto_instance
-        mock_isinstance.return_value = False
 
         result = repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
 
-        mock_session.merge.assert_called_once_with(mock_dao)
+        mock_session.add.assert_called_once_with(mock_dao)
         mock_session.commit.assert_called_once()
         mock_session.refresh.assert_called_once_with(mock_dao)
         assert result is not None
@@ -296,7 +294,7 @@ class TestUpsertRecord:
         mock_dao = MagicMock()
         mock_dto_instance.to_dao.return_value = mock_dao
         repository.get_record_by_id = MagicMock(return_value=None)
-        mock_session.merge.side_effect = Exception("Database error")
+        mock_session.add.side_effect = Exception("Database error")
 
         result = repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
 

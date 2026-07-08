@@ -56,9 +56,7 @@ class CategoriesRepository(BaseRepository, metaclass=MetaSingleton):
             pd.DataFrame: DataFrame containing the retrieved records.
         """
         if owner:
-            owner_filter = [
-                or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id is None)  # noqa: E711
-            ]
+            owner_filter = [or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id.is_(None))]
             return super().get_records(*owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
         return super().get_records(*query_filters, dto_type=dto_type, **kwargs)

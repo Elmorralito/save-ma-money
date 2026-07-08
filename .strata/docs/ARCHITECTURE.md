@@ -44,7 +44,20 @@ Removed v0: `accounts_indexer`, `types`, `assets_*`, `liabilities_*`, `identifie
 
 ## Balance reports (read)
 
-YAML registry: `papita_txnsmodel/config/data/balance_report_filters.yaml` (five `report_id`s). Unregistered views raise `UnregisteredBalanceReportError` and cannot be queried. `BalanceReportsService` / `BalanceReportsHandler` expose `list_reports()`, filter specs, and `get_report_data(report_id, owner, filters)`. MV fetch indexes: `views/indexes.py` (Alembic-applied; not `alembic_utils` autogenerate). Refresh: event-driven on upsert (`balance_views.py`); time-based refresh not supported by `alembic_utils` (see runbook).
+YAML registry: `papita_txnsmodel/config/data/balance_report_filters.yaml` (five `report_id`s). Unregistered views raise `UnregisteredBalanceReportError` and cannot be queried. `BalanceReportsService` / `BalanceReportsHandler` expose `list_reports()`, filter specs, and `get_report_data(report_id, owner, filters)`. MV fetch indexes: `views/indexes.py` (Alembic-applied; not `alembic_utils` autogenerate). Refresh: event-driven on transaction writes (`balance_views.py` via `TransactionsService.create` / `delete` / `upsert_records`); time-based refresh not supported by `alembic_utils` (see runbook).
+
+## API-readiness services (PPT-041)
+
+Model-layer endpoints for PPT-032 wire through:
+
+| Service                              | Module                      | Role                                                                                                |
+| ------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------- |
+| `AccountsService`                    | `services/accounts.py`      | CRUD + `create_account` / `update_account` extension orchestration by `account_kind`; `get_balance` |
+| `TransactionsService`                | `services/transactions.py`  | CRUD + `list_transfers`, `create_transfer`, `complete_transfer`, `cancel`                           |
+| `ReportService`                      | `services/reports.py`       | `spending`, `cash_flow`, `trends`, `export` (transaction SQL aggregations; FR-12)                   |
+| `refresh_balance_materialized_views` | `services/balance_views.py` | Shared MV refresh helper (exported from `services/__init__.py`)                                     |
+
+Extension routing map: `services/account_extension_routing.py`. Live-DB tenancy tests: `tests/tests_papita_txnsmodel/integration/` (require `DATABASE_URL` PostgreSQL).
 
 ## Invariants
 
