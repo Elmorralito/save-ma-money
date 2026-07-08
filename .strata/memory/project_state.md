@@ -11,7 +11,7 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 - v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
 - Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
-- CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting on `README.md` / `CHANGELOG.md`.
+- CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting; MV SQL test assertions aligned with SQLFluff join order.
 - Config package: `config/data/` (YAML), `config/transaction_partitions.py`, `config/materialized_views.py`; retired `configs/` package (logger YAML moved).
 - MV layer: five balance-report MVs + `views/indexes.py` fetch-support indexes; event-driven refresh via `balance_views.py`.
 - Deploy: `deploy/transaction_partitions.sh` (10-year retention, monthly ensure/archive); `deploy/alembic.sh` Poetry/venv fix.

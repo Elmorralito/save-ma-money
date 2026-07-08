@@ -35,8 +35,8 @@ def test_read_data_from_package_file_loads_account_balances_sql() -> None:
     sql = read_data_from_package_file(_BALANCE_REPORTS_PACKAGE, "account_balances.sql")
     assert "papita_transactions.accounts" in sql
     assert "per_owner_account_net" in sql
-    assert "a_to.owner_id = t.owner_id" in sql
-    assert "a_from.owner_id = t.owner_id" in sql
+    assert "t.owner_id = a_to.owner_id" in sql
+    assert "t.owner_id = a_from.owner_id" in sql
     assert "GROUP BY" in sql
 
 
