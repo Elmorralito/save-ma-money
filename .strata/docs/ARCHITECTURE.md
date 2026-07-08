@@ -5,7 +5,7 @@ The codemap: where things happen, coarse module by coarse module — a map of a 
 ## Map
 
 - **`modules/model`** — `papita_txnsmodel`: SQLModel tables under `src/papita_txnsmodel/model/` (composite indexes on `accounts`, `transactions`, `transaction_templates`, `account_financing`), DTOs/repositories in `access/`, business logic in `services/`, loaders in `handlers/`. Balance report MVs in `views/balance_reports/` (SQL + `views.py` entities); MV fetch indexes in `views/indexes.py`. Generic balance report reads: `config/data/balance_report_filters.yaml`, `config/balance_report_specs.py`, `access/balance_reports/`, `services/balance_reports.py`, `handlers/balance_reports.py`. Partition + MV registry: `config/transaction_partitions.py`, `config/materialized_views.py`. Alembic under `alembic/`.
-- **`modules/api`** — `papita_txnsapi`: FastAPI app scaffold; `config/settings.py`, `core/security.py` (JWT). Target routes documented in `API_Endpoints.md.md` ([#25](https://github.com/Elmorralito/save-ma-money/issues/25) not started).
+- **`modules/api`** — `papita_txnsapi`: FastAPI app scaffold; `config/settings.py`, `core/security.py` (JWT). Target routes documented in [`README.md`](../../modules/api/README.md) ([#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic — not started).
 - **`deploy/`** — shared shell utilities, `alembic.sh`, `test.sh`, `transaction_partitions.sh` (monthly partition ensure + retention archive).
 - **`docker/database/`** — local PostgreSQL 15 via Compose for dev and migration CI.
 

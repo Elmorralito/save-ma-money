@@ -19,7 +19,7 @@ The `/strata:save`-style references throughout this file name those operations â
 
 ## What save-ma-money is
 
-Production-grade Python monorepo for personal/professional financial transaction data: type-safe SQLModel persistence (`papita-txnsmodel`), Alembic migrations, and a FastAPI API layer (`papita-txnsapi`) documented in `modules/api/API_Endpoints.md.md`. "Done" means auditable PostgreSQL-backed data, tested model/registrar paths, and a shippable REST API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25)).
+Production-grade Python monorepo for personal/professional financial transaction data: type-safe SQLModel persistence (`papita-txnsmodel`), Alembic migrations, and a FastAPI API layer (`papita-txnsapi`) documented in [`modules/api/README.md`](../modules/api/README.md). "Done" means auditable PostgreSQL-backed data, tested model paths, and a shippable REST API ([#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic).
 
 ## Structural overview
 

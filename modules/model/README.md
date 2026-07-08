@@ -1,198 +1,404 @@
 # Papita Transactions Data Model
 
-Welcome to the **backbone of financial data integrity** for the `save-ma-finances` ecosystem. The `papita-txnsmodel` library is a production-grade framework engineered to solve the inherent challenges of financial data fragmentation. It bridges the gap between disparate, messy financial exports and a clean, structured, and auditable data warehouse.
+Welcome to the **backbone of financial data integrity** for the **save-ma-money** monorepo. The `papita-txnsmodel` package (`papita-transactions-model`) is the **system of record**: SQLModel schemas, Alembic migrations, repositories, services, and ingestion handlers. The sibling [`papita-txnsapi`](../api/README.md) package will expose HTTP routes that call these services — business rules live here, not in FastAPI routers.
 
-![](../../docs/postgres_papita_transactions.png)
+![PostgreSQL ER diagram — papita_transactions v3 core + balance read models](../../docs/postgres_papita_transactions_v4.png)
+
+Entity-relationship diagram for schema `papita_transactions`: **v3 core tables** (users, accounts, categories, transaction templates, transactions, account extensions, financing) plus **materialized balance views** (`account_balances`, `owner_*_balances`). DDL authority: [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md). Post-MVP additive tables (budgets, splits, recurrence, reconciliation): [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md).
 
 ## Overview
 
-In the world of personal and professional finance, data often arrives in heterogeneous formats: banking CSVs, API JSONs, and manual spreadsheets. `papita-txnsmodel` acts as the **central nervous system** for this data, providing a unified language that translates these "raw signals" into actionable logical entities.
+Personal and small-business finance rarely starts in one clean database. Data arrives as bank CSVs, card portal exports, broker statements, spreadsheets, and manual corrections — each with its own column names, sign conventions, and category vocabulary. Without a shared domain layer, every import script re-implements validation, tenancy, and balance logic differently, and an API built on top inherits those inconsistencies.
 
-### The Problem Space
+`papita-txnsmodel` solves that by treating finance as **structured, tenant-scoped domain data** in PostgreSQL (schema `papita_transactions`). Every path — bulk CSV ingest via handlers, direct service calls in notebooks, or future REST endpoints — flows through the same DTO validation, repository upserts, and service rules.
 
-Traditional financial tracking often suffers from:
+### The problem space
 
-- **Data Fragmentation**: Different banks used different naming conventions.
-- **Lack of Schema Enforcement**: Silent failures when importing non-standard data.
-- **High Friction in Switching Backends**: Developers being locked into a specific database (e.g., PostgreSQL vs. SQLite).
+- **Data fragmentation** — the same merchant appears as `AMZN MKTP`, `Amazon.com`, or a custom spreadsheet label; categories and dates drift between sources
+- **Silent import failures** — weak validation lets malformed rows persist until month-end reconciliation
+- **Tenancy risk** — household or multi-user finance requires hard boundaries; global lookup tables and shared deterministic IDs can leak or collide across users
+- **Schema complexity** — the legacy v0 model used an `accounts_indexer` hub with eight nullable foreign keys to subtype tables; routing logic lived in Python instead of the database
+- **Spec drift** — API documents described `balance`, `category_type`, and `/movements/*` fields that did not exist on SQLModel tables
 
-### Our Solution
+### Our solution
 
-`papita-txnsmodel` addresses these by providing a **Resilient, Layered Data Pipeline**:
+1. **v3 consolidated schema (PPT-031)** — accounts carry an `account_kind` discriminator; at most one 1:1 extension row; categories replace v0 `types`; transfers are `transaction_kind = TRANSFER` (no separate movements table)
+2. **Strict type safety** — Pydantic v2 DTOs at the access layer; SQLModel + PostgreSQL CHECK constraints at persistence
+3. **PostgreSQL only** — Docker Postgres locally (B0); Supabase pooler for hosted (B1). **DuckDB is deprecated** — see [platform decision](../../docs/issues/PPT-031-C-supabase-decision-brief.md)
+4. **Conflict-aware ingestion** — idempotent bulk loads via `PostgreSQLUpserter` and tolerance-aware `upsert_records`
+5. **API-ready services (PPT-041)** — account extension orchestration, transfer helpers, FR-12 report aggregations, materialized balance views, live-DB tenancy tests
 
-1.  **Strict Type Safety**: Every field is validated at the point of entry.
-2.  **PostgreSQL persistence**: Production and local development use **PostgreSQL** (Docker locally; Supabase for hosted). **DuckDB is deprecated** — see [PPT-031 platform decision](../../docs/issues/PPT-031-C-supabase-decision-brief.md).
-3.  **Conflict-Aware Ingestion**: Sophisticated upsert logic that understands when to update a record and when to respect existing data.
+### Core philosophy
 
-### Core Philosophy
+- **Explicit over implicit** — relationships, enums, and denormalizations are documented in design specs and migrations, not inferred at runtime
+- **Built-in traceability** — soft delete via `active` and `deleted_at` on `BaseSQLModel`; repositories default to soft delete
+- **Single domain layer** — services own invariants; API schemas map to DTOs without duplicating validators
+- **Layered architecture** — Model → Access → Service → Handler; see [`.strata/docs/ARCHITECTURE.md`](../../.strata/docs/ARCHITECTURE.md) for the repo codemap
 
-- **Explicit over Implicit**: Schemas are centralized, and relationships are clearly defined to prevent "ghost records" or orphan transactions.
-- **Built-in Traceability**: Support for soft deletions (`deleted_at`) and active flags means you never lose data, even when "deleting" it.
-- **Developer Efficiency**: Standardized CRUD operations and Pandas integration allow developers to focus on financial logic rather than SQL boilerplate.
+## From v0 to v3
 
-## Architectural Layers
+PPT-031 ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) redesigned the model for **Third Normal Form**, API alignment, and PostgreSQL-only operation. The v3 baseline ships as Alembic revision `a75354933e79` (see [migration runbook](../../docs/design/PPT-031-migration-runbook.md)).
 
-The library follows a strict four-layer architecture to ensure maintainability and scalability.
+| v0 pattern                                         | v3 replacement                                     | Why it changed                                  |
+| :------------------------------------------------- | :------------------------------------------------- | :---------------------------------------------- |
+| `accounts` + `accounts_indexer` + 6 subtype tables | `accounts` + optional 1:1 `*_account_details`      | Eliminate 8-FK sparse matrix (FR-03)            |
+| `types` (ASSETS / LIABILITIES / TRANSACTIONS)      | `categories` with `category_kind` INCOME / EXPENSE | API `/categories/*` vocabulary (FR-13)          |
+| `identified_transactions`                          | `transaction_templates`                            | Clear template vs posted split (FR-05)          |
+| Single-sided transactions only                     | `transaction_kind` INCOME / EXPENSE / TRANSFER     | `/movements/*` maps to TRANSFER rows (NF-01)    |
+| Phantom `balance` column on accounts               | `account_balances` materialized view               | Read model without denormalizing writes (FR-12) |
+| DuckDB + PostgreSQL dual dialect                   | PostgreSQL only                                    | Platform decision B0/B1                         |
 
-### 1. Model Layer (`papita_txnsmodel.model`)
+**Design authority:** [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md) · **as-is audit:** [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md)
 
-This layer defines the "Source of Truth" using [SQLModel](https://sqlmodel.tiangolo.com/).
+### Entity relationship (v3)
 
-- **BaseSQLModel**: Every entity inherits from this base class, which automatically injects:
-  - `active` (bool): A flag for logical status.
-  - `deleted_at` (timestamp): Tracking the exact moment of soft deletion.
-  - `SCHEMA_NAME`: Centralized schema management (defaults to `papita_transactions`).
-- **Design Pattern**: Distinguishes between **Templates** (e.g., `IdentifiedTransactions` for recurring setups) and **Instances** (e.g., `Transactions` for actual money movements).
-- **Relationships**: Rich SQLAlchemy-backed relationships with cascade delete configurations and many-to-one linkings.
+```
+users
+  └── owner_id on hot tables (accounts, categories, transactions, transaction_templates, account_financing)
 
-### 2. Access Layer (`papita_txnsmodel.access`)
+accounts (account_kind, ledger_side, currency, initial_value, current_value)
+  ├── banking_account_details      (CHECKING, SAVINGS, CASH)
+  ├── trading_account_details      (INVESTMENT_BROKERAGE)
+  ├── real_estate_account_details  (REAL_ESTATE)
+  ├── credit_card_account_details  (CREDIT_CARD)
+  └── loan_account_details         (LOAN_MORTGAGE)
 
-The bridge between the database and the application logic, focusing on data shapes and raw queries.
+account_financing  ── links asset accounts to loan accounts (financing_share)
 
-- **DTO (Data Transfer Objects)**:
-  - `TableDTO`: Standardizes validation using Pydantic. Includes methods like `from_dao()` and `to_dao()` for seamless conversion.
-  - `CoreTableDTO`: Adds common fields like `name`, `description`, and `tags` (with automated normalization).
-- **Repository Pattern**:
-  - `BaseRepository`: Implements sophisticated CRUD logic, including `soft_delete_records`, `hard_delete_records`, and complex `run_query` implementations.
-  - **Pandas Integration**: Native support for returning query results as standardized DataFrames via `get_records`.
+categories (parent_id, category_kind)  ── hierarchical income/expense taxonomy
 
-### 3. Service Layer (`papita_txnsmodel.services`)
+transaction_templates  ── planned / recurring setups
+transactions           ── posted ledger (monthly partitions on transaction_ts)
+                         INCOME | EXPENSE | TRANSFER + optional template_id
 
-Orchestrates business logic and maintains transaction integrity across multiple repositories.
+account_balances, owner_yearly_balances, owner_*_balances  ── materialized views
+```
 
-- **BaseService**: Acts as the primary entry point for application developers.
-  - **Validation**: Methods like `check_expected_dto_type` ensure that only valid data reaches the lower layers.
-  - **Advanced Bulk Upserts**: Features a tolerance mechanism (`missing_upsertions_tol`) that allows developers to set an acceptable threshold for partial failures during high-volume data ingestion.
-  - Support for `get_or_create` logic to simplify entity management.
+### Account kinds
 
-### 4. Handler Layer (`papita_txnsmodel.handlers`)
+| `account_kind`         | `ledger_side` | Extension table               | Typical use             |
+| :--------------------- | :------------ | :---------------------------- | :---------------------- |
+| `CHECKING`             | ASSET         | `banking_account_details`     | Day-to-day bank account |
+| `SAVINGS`              | ASSET         | `banking_account_details`     | Savings account         |
+| `CASH`                 | ASSET         | `banking_account_details`     | Petty cash              |
+| `INVESTMENT_BROKERAGE` | ASSET         | `trading_account_details`     | Brokerage / trading     |
+| `REAL_ESTATE`          | ASSET         | `real_estate_account_details` | Property                |
+| `CREDIT_CARD`          | LIABILITY     | `credit_card_account_details` | Revolving credit        |
+| `LOAN_MORTGAGE`        | LIABILITY     | `loan_account_details`        | Mortgage / term loan    |
+| `OTHER_ASSET`          | ASSET         | —                             | Generic asset shell     |
+| `OTHER_LIABILITY`      | LIABILITY     | —                             | Generic liability shell |
 
-Provides the interface for high-level data pipelines (e.g., CSV loaders, external API integrations).
+Extension routing for create/update: `services/account_extension_routing.py` → `AccountsService.create_account` / `update_account`.
 
-- **AbstractHandler**: A generic base (parameterized by Service type) that defines strict `load()` and `dump()` contracts.
-- **Dynamic Discovery**:
-  - `HandlerFactory`: Automatically scans for concrete handler implementations.
-  - `HandlerRegistry`: A singleton that manages handlers using a labeling system. Handlers can be retrieved by multiple labels (e.g., "csv", "transactions", "bank-a").
-- **Extensibility**: Developers can add new loaders just by inheriting from `AbstractHandler` and decorating with appropriate labels.
+### Transaction kinds
 
-## Database Integration & Conflict Resolution
+| `transaction_kind` | Account FKs                                | API surface                              |
+| :----------------- | :----------------------------------------- | :--------------------------------------- |
+| `INCOME`           | `to_account_id` required                   | `/transactions` POST                     |
+| `EXPENSE`          | `from_account_id` required                 | `/transactions` POST                     |
+| `TRANSFER`         | both `from_account_id` and `to_account_id` | `/transactions` and `/movements/*` alias |
 
-The database layer is designed for extreme flexibility, particularly for the **Upsert** operation (Insert or Update if exists).
+Templates (`transaction_templates`) hold planned name, amount, and schedule; posted rows in `transactions` may reference `template_id` when matched from recurrence.
+
+## Tenancy and security
+
+**Strategy B (denormalized `owner_id`)** on hot tables — fast tenant-filtered scans without joining through `accounts` on every ledger query. Extension detail tables derive tenancy via `account_id → accounts.owner_id` and do not carry their own `owner_id`.
+
+| Rule                                      | Enforcement                                                                                                     |
+| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| All owned writes require `owner=UsersDTO` | `BaseService._ensure_owner`; `OwnedTableRepository`                                                             |
+| Cross-tenant ID access                    | Repository filters return empty / upsert denied                                                                 |
+| Global categories (`owner_id IS NULL`)    | Readable by all tenants; **writes blocked** in `CategoriesService`                                              |
+| Category identity (FR-15)                 | Composite unique `(owner_id, name, category_kind)` with `NULLS NOT DISTINCT`                                    |
+| Auth (Track E)                            | `UsersService.register` / `verify_credentials`; see [auth contract](../../docs/design/PPT-031-auth-contract.md) |
+
+Live-DB tenancy tests: `tests/tests_papita_txnsmodel/integration/test_tenancy_live_db.py` (require `DATABASE_URL` PostgreSQL).
+
+Row-level security (Supabase B3) is **deferred** — documented in the Supabase brief, not implemented in v3.
+
+## Architectural layers
+
+```mermaid
+flowchart TB
+  subgraph ingest [Ingestion]
+    H[handlers/]
+  end
+
+  subgraph domain [papita_txnsmodel]
+    SV[services/]
+    RP[access/*/repository.py]
+    DTO[access/*/dto.py]
+    SM[model/]
+  end
+
+  subgraph read [Read models]
+    MV[views/balance_reports/ MVs]
+    RPT[ReportService]
+  end
+
+  DB[(PostgreSQL papita_transactions)]
+
+  H --> SV
+  SV --> RP --> DTO --> SM --> DB
+  SV --> MV
+  RPT --> SV
+  MV --> DB
+```
+
+### 1. Model layer (`src/papita_txnsmodel/model/`)
+
+SQLModel tables on **`BaseSQLModel`**: `active`, `deleted_at`, `created_at`, `updated_at`, schema `papita_transactions`.
+
+- Enums in `model/enums.py` — `AccountKind`, `LedgerSide`, `TransactionKind`, `TransactionStatus`, `CategoryKind`
+- **Partitioning** — `transactions` uses monthly RANGE partitions (`config/transaction_partitions.py`; ops script `deploy/transaction_partitions.sh`)
+- **Intentional denormalizations** — e.g. `transactions.owner_id` for hot-path tenant scans; documented in schema §6
+
+### 2. Access layer (`src/papita_txnsmodel/access/`)
+
+| Component                    | Purpose                                         |
+| :--------------------------- | :---------------------------------------------- |
+| `TableDTO` / `OwnedTableDTO` | Pydantic validation; `from_dao()` / `to_dao()`  |
+| `BaseRepository`             | CRUD, soft delete, pandas `get_records`, upsert |
+| `OwnedTableRepository`       | Tenant-scoped reads/writes with `owner` context |
+| `access/balance_reports/`    | DTOs for YAML-registered balance report MVs     |
+
+Repositories use `@SQLDatabaseConnector.connect` — never open sessions manually in application code.
+
+### 3. Service layer (`src/papita_txnsmodel/services/`)
+
+The **primary API for application code**. Instantiate with optional shared `connector`; pass `owner=UsersDTO` for tenant scope.
+
+#### Core CRUD services
+
+| Service                       | Domain                                               |
+| :---------------------------- | :--------------------------------------------------- |
+| `UsersService`                | Users; `register`, `verify_credentials`, `get_owner` |
+| `AccountsService`             | Accounts + extension orchestration                   |
+| `CategoriesService`           | Income/expense categories                            |
+| `TransactionTemplatesService` | Recurring/planned templates                          |
+| `TransactionsService`         | Posted ledger + transfer helpers                     |
+| `AccountFinancingService`     | Asset–loan financing links                           |
+| `*AccountDetailsService`      | Per-kind 1:1 extension CRUD                          |
+
+#### API-readiness (PPT-041)
+
+| Method / module                                              | Purpose                                             |
+| :----------------------------------------------------------- | :-------------------------------------------------- |
+| `AccountsService.create_account`                             | Atomic account + extension upsert by `account_kind` |
+| `AccountsService.get_with_extension`                         | Account shell + detail row for API GET              |
+| `AccountsService.get_balance`                                | Balance from `account_balances` MV                  |
+| `TransactionsService.list_transfers`                         | Filter `transaction_kind = TRANSFER`                |
+| `TransactionsService.create_transfer`                        | Two-legged TRANSFER with validation                 |
+| `TransactionsService.complete_transfer` / `cancel`           | Status transitions                                  |
+| `ReportService.spending` / `cash_flow` / `trends` / `export` | FR-12 MVP report aggregations                       |
+| `refresh_balance_materialized_views`                         | Called after transaction create/delete/upsert       |
+
+Endpoint mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) (32 MVP routes → these services).
+
+### 4. Handler layer (`src/papita_txnsmodel/handlers/`)
+
+Bulk **load/dump** pipelines for ETL and file ingest. Handlers resolve dependencies (accounts, categories) and delegate to services.
+
+| Handler                            | Labels (examples)                           |
+| :--------------------------------- | :------------------------------------------ |
+| `UsersTableHandler`                | users                                       |
+| `AccountsTableHandler`             | accounts                                    |
+| `CategoriesTableHandler`           | categories                                  |
+| `TransactionTemplatesTableHandler` | transaction_templates                       |
+| `TransactionsHandler`              | transactions                                |
+| `*_account_details` handlers       | per extension table                         |
+| `AccountFinancingTableHandler`     | account_financing                           |
+| `BalanceReportsHandler`            | balance_reports, reports (read-only export) |
+
+Register via `HandlerFactory.load("papita_txnsmodel.handlers")`. Legacy v0 labels (`types`, `identified_transactions`) warn through `handlers/compat.py`.
+
+## Balance reports and materialized views
+
+Balances are **derived**, not stored on `accounts` rows:
+
+| View                                                                              | Purpose                            |
+| :-------------------------------------------------------------------------------- | :--------------------------------- |
+| `account_balances`                                                                | Per-account ledger balance         |
+| `owner_yearly_balances`                                                           | Combined yearly totals by currency |
+| `owner_monthly_balances` / `owner_quarterly_balances` / `owner_biannual_balances` | Period rollups                     |
+
+- SQL definitions: `src/papita_txnsmodel/views/balance_reports/`
+- Registry: `config/data/balance_report_filters.yaml` (five `report_id`s)
+- **Refresh:** event-driven on `TransactionsService.create`, `delete`, and `upsert_records` via `refresh_balance_materialized_views`
+- **Reads:** `BalanceReportsService` / `BalanceReportsHandler` for registered report exports
+
+## Database integration
 
 ### SQLDatabaseConnector
-
-A robust connection manager that handles:
-
-- **Singleton Engine**: Efficiently manages SQLAlchemy engine instances.
-- **Auto-session Decoration**: Uses `@SQLDatabaseConnector.connect` to handle session lifecycle automatically.
-- **PostgreSQL**: Sole supported dialect for PPT-031. Use `postgresql+psycopg2://` connection strings.
-- **Legacy DuckDB paths** in this module (`DuckDBUpserter`, connector fallbacks) are deprecated and scheduled for removal.
-
-### Upsert Engine
-
-Based on a factory pattern that matches the database dialect:
-
-- **PostgreSQLUpserter**: Leverages `ON CONFLICT DO UPDATE` or `DO NOTHING` syntax.
-- **DuckDBUpserter**: Deprecated — emits `DeprecationWarning` on use; `UpserterFactory` rejects `duckdb` dialect.
-- **OnConflict Strategies**: Developers can choose `UPDATE`, `NOTHING`, or `RAISE` via the `OnUpsertConflictDo` enum.
-
-## Utilities & Helpers (`papita_txnsmodel.utils`)
-
-- **ClassDiscovery**: Powerful introspection to find subclasses across modules (used in factories).
-- **DataUtils**: Functions like `standardize_dataframe` ensure Pandas data aligns perfectly with Pydantic model definitions.
-- **ModelUtils**: Built-in validators for shared fields like `tags` and `boolean` strings.
-
-## Usage Example
-
-### 1. Connecting to the Database
 
 ```python
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 
-# Connect to local Docker Postgres (see docker/database/docker-compose.yml)
+# Always pass a dict when using a URL string (avoids legacy DuckDB path detection)
 SQLDatabaseConnector.establish(
-    connection="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
+    connection={"url": "postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"}
 )
 ```
 
-### 2. High-Level Data Ingestion
+- Singleton engine; `@SQLDatabaseConnector.connect` manages session lifecycle and rollback on errors
+- **PostgreSQL only** for new work; DuckDB upsert/connector paths emit deprecation warnings
+
+### Upsert engine
+
+Bulk idempotent loads use `PostgreSQLUpserter` with `OnUpsertConflictDo` (`UPDATE`, `NOTHING`, `RAISE`). Services expose `missing_upsertions_tol` — exceed the threshold during bulk upsert and a `RuntimeError` raises to prevent silent partial failure.
+
+## Usage examples
+
+### Register a user and resolve tenant context
+
+```python
+from papita_txnsmodel.services.users import UsersService
+
+users = UsersService()
+users.ensure_password_manager()  # Argon2 bootstrap (required before hash)
+
+registered = users.register(username="demo_user", email="demo@example.com", password="SecurePass1!")
+owner = users.get_owner(owner_id=registered.id)
+```
+
+### Create account with banking extension
+
+```python
+from papita_txnsmodel.services.accounts import AccountsService
+
+accounts = AccountsService(owner=owner)
+
+account = accounts.create_account(
+    obj={
+        "name": "Checking",
+        "account_kind": "CHECKING",
+        "currency": "USD",
+        "initial_value": 1000.0,
+    },
+    extension={"entity": "Example Bank", "account_number": "****1234"},
+)
+balance = accounts.get_balance(account.id)
+shell, detail = accounts.get_with_extension(account.id)
+```
+
+### Record a transfer between accounts
+
+```python
+from papita_txnsmodel.services.transactions import TransactionsService
+
+txns = TransactionsService(owner=owner)
+
+transfer = txns.create_transfer(
+    obj={
+        "value": 250.0,
+        "currency": "USD",
+        "from_account_id": checking_id,
+        "to_account_id": savings_id,
+        "description": "Monthly savings",
+    }
+)
+```
+
+### Spending report for a date window
+
+```python
+from datetime import datetime, timezone
+from papita_txnsmodel.services.reports import ReportService
+
+reports = ReportService()
+summary = reports.spending(
+    owner=owner,
+    start_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
+    end_date=datetime(2026, 6, 30, tzinfo=timezone.utc),
+)
+reports.close()
+```
+
+### Bulk CSV upsert
 
 ```python
 import pandas as pd
-from papita_txnsmodel.services.transactions import TransactionService
+from papita_txnsmodel.services.transactions import TransactionsService
 
-# Load data from a raw source (e.g., CSV)
-raw_data = pd.read_csv("bank_export.csv")
-
-# Initialize the service
-txn_service = TransactionService()
-
-# Upsert 10,000 records with a 1% failure tolerance
-# If more than 100 records fail, a RuntimeError is raised.
-txn_service.upsert_records(
-    df=raw_data,
+txns = TransactionsService(owner=owner)
+txns.upsert_records(
+    df=pd.read_csv("bank_export.csv"),
     on_conflict_do="UPDATE",
-    missing_upsertions_tol=0.01
+    missing_upsertions_tol=0.01,
 )
 ```
 
-### 3. Implementing a Custom Handler
+## Package layout
 
-```python
-from papita_txnsmodel.handlers.abstract import AbstractHandler
-from papita_txnsmodel.services.transactions import TransactionService
-
-class MyCustomBankHandler(AbstractHandler[TransactionService]):
-    @classmethod
-    def labels(cls):
-        return ("my-bank", "transactions")
-
-    def load(self, data, **kwargs):
-        # Implementation of parsing logic...
-        return self
-
-    def dump(self, **kwargs):
-        # Implementation of persisting logic...
-        return self
+```
+modules/model/
+├── alembic/                    # Migrations (alembic.ini at module root)
+├── src/papita_txnsmodel/
+│   ├── model/                  # SQLModel tables
+│   ├── access/                 # DTOs + repositories per domain
+│   ├── services/               # Business logic
+│   ├── handlers/               # Load/dump pipelines
+│   ├── database/               # Connector, upsert helpers
+│   ├── views/                  # Balance report MV SQL + index registry
+│   └── config/                 # Partition + MV + balance report specs
+└── tests/
+    ├── tests_papita_txnsmodel/ # Unit tests (mocked DB)
+    └── integration/            # Live PostgreSQL tenancy tests
 ```
 
 ## Database migrations
 
-Alembic lives under `alembic/` with `alembic.ini` at the module root. Migrations target schema `papita_transactions` on PostgreSQL.
+Alembic targets schema `papita_transactions` on PostgreSQL. v3 seed baseline: **`a75354933e79`**.
 
 ```bash
-# From repository root
+# From repository root — Docker Postgres
+/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+
+# Explicit URL (local or Supabase session/direct — not transaction pooler)
 /bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 /bin/bash ./deploy/alembic.sh downgrade --url "..."   # defaults to head^1
 ```
 
-Docker-backed PostgreSQL for migrations: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
+Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
 
 ### CI migration gate
 
-[`.github/workflows/migration-check.yml`](../../.github/workflows/migration-check.yml) validates PostgreSQL migrations:
-
-- full `upgrade head` → `downgrade -1` → `upgrade head`, then `alembic check`
-
-Script: [`.github/scripts/migration_check.sh`](../../.github/scripts/migration_check.sh).
+[`.github/workflows/migration-check.yml`](../../.github/workflows/migration-check.yml): `upgrade head` → `downgrade -1` → `upgrade head` → `alembic check` on PostgreSQL 15.
 
 ## Testing
 
-228 unit tests under `tests/` cover access, database, services, and utils layers (mocked DB; no live PostgreSQL required).
+**351** tests — layered coverage across access, database, services, handlers, and views.
+
+| Suite            | Location                                     | Requirements                                                 |
+| :--------------- | :------------------------------------------- | :----------------------------------------------------------- |
+| Unit (default)   | `tests/tests_papita_txnsmodel/`              | Mocked DB; no `DATABASE_URL` needed                          |
+| Integration      | `tests/.../integration/`                     | `DATABASE_URL` must be PostgreSQL; 4 tests skipped otherwise |
+| PPT-041 services | `tests/.../services/test_ppt041_services.py` | Account orchestration, transfers, reports, category guards   |
 
 ```bash
-# From repository root
+# Standard gate (from repo root)
 poetry run pytest modules/model/tests
 /bin/bash ./deploy/test.sh
+
+# Live-DB tenancy suite
+DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
+  poetry run pytest modules/model/tests/tests_papita_txnsmodel/integration/
 ```
 
 ## Related documentation
 
-| Document                                                                   | Description                                                                        |
-| :------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
-| [`docs/design/README.md`](../../docs/design/README.md)                     | PPT-031 schema redesign program                                                    |
-| [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md) | As-is schema audit ([#30](https://github.com/Elmorralito/save-ma-money/issues/30)) |
-| [`CHANGELOG.md`](../../CHANGELOG.md)                                       | Auto-generated issue and release tracker                                           |
-| [`README.md`](../../README.md)                                             | Monorepo setup, CI, and development guide                                          |
+| Document                                                                                                     | Description                                                                                       |
+| :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| [`docs/design/README.md`](../../docs/design/README.md)                                                       | PPT-031 design program index                                                                      |
+| [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md)                                 | v3 frozen schema, constraints, G1 checklist                                                       |
+| [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md)                                   | v0 inventory, 3NF analysis, NF register                                                           |
+| [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)) |
+| [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md)                         | Local JWT + `UsersService` flows                                                                  |
+| [`docs/design/PPT-031-migration-runbook.md`](../../docs/design/PPT-031-migration-runbook.md)                 | B0/B1 validation, rollback, FR-14                                                                 |
+| [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../../docs/issues/PPT-031-C-supabase-decision-brief.md) | B0/B1 platform; B2/B3 deferred                                                                    |
+| [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)                         | Budgets, splits, recurrence (post-MVP)                                                            |
+| [`modules/api/README.md`](../api/README.md)                                                                  | FastAPI scaffold and target REST contract                                                         |
+| [`README.md`](../../README.md)                                                                               | Monorepo overview and quick start                                                                 |
+| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                         | Issue and release tracker                                                                         |
 
-Package version: see `[project].version` in [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).
+Package version: [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).

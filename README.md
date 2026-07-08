@@ -10,10 +10,10 @@
 
 I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ignorance**. This project is a Python monorepo for personal and (hopefully in the future) professional financial data: type-safe PostgreSQL persistence, Alembic migrations, and a FastAPI REST surface. The goal is auditable, tenant-isolated finance data with a tested model layer and a shippable API.
 
-| Package              | Path                                          | Role                                                                      |
-| :------------------- | :-------------------------------------------- | :------------------------------------------------------------------------ |
-| **papita-txnsmodel** | [`modules/model/`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations            |
-| **papita-txnsapi**   | [`modules/api/`](./modules/api/README.md)     | FastAPI settings, JWT helpers, target REST contract (routers in progress) |
+| Package              | Path                                          | Role                                                                                                                                                                  |
+| :------------------- | :-------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **papita-txnsmodel** | [`modules/model/`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations                                                                                                        |
+| **papita-txnsapi**   | [`modules/api/`](./modules/api/README.md)     | FastAPI scaffold; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 ---
 
@@ -36,7 +36,7 @@ save-ma-money treats finance as **structured domain data**, not ad hoc files. A 
 The architecture separates **how data is stored** from **how it is exposed**:
 
 - **`papita-txnsmodel`** — The system of record: migrations, handlers for ingestion, and business logic API routers will call — not reimplement.
-- **`papita-txnsapi`** — A thin FastAPI layer: request/response schemas, auth, and routing over existing services.
+- **`papita-txnsapi`** — A thin FastAPI layer: request/response schemas, auth, and routing over existing services. The full REST contract lives in [`modules/api/README.md`](./modules/api/README.md) (endpoint catalog, integration guide, and target package layout in one place).
 
 That split keeps ingestion pipelines and REST endpoints aligned on one tested model, makes balances and reports derivable from the same ledger, and lets the API ship incrementally without forking financial rules into duplicate code paths.
 
@@ -66,13 +66,13 @@ flowchart TB
   SV --> RP --> DTO --> SM --> DB
 ```
 
-| Layer   | Location                     | Responsibility                                              |
-| :------ | :--------------------------- | :---------------------------------------------------------- |
-| Model   | `papita_txnsmodel/model/`    | Tables, relationships, soft delete (`active`, `deleted_at`) |
-| Access  | `papita_txnsmodel/access/`   | DTO validation, repository CRUD, pandas DataFrames          |
-| Service | `papita_txnsmodel/services/` | Business rules, transfers, reports, account extensions      |
-| Handler | `papita_txnsmodel/handlers/` | Load/dump pipelines for bulk ingest                         |
-| API     | `papita_txnsapi/`            | Settings, auth helpers, future FastAPI routers              |
+| Layer   | Location                     | Responsibility                                                                                                                                                     |
+| :------ | :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model   | `papita_txnsmodel/model/`    | Tables, relationships, soft delete (`active`, `deleted_at`)                                                                                                        |
+| Access  | `papita_txnsmodel/access/`   | DTO validation, repository CRUD, pandas DataFrames                                                                                                                 |
+| Service | `papita_txnsmodel/services/` | Business rules, transfers, reports, account extensions                                                                                                             |
+| Handler | `papita_txnsmodel/handlers/` | Load/dump pipelines for bulk ingest                                                                                                                                |
+| API     | `papita_txnsapi/`            | Settings, auth helpers, unified REST reference ([`README.md`](./modules/api/README.md)); routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 **Platform:** PostgreSQL only — Docker Postgres locally (B0), Supabase for hosted environments (B1). DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)).
 
@@ -80,14 +80,15 @@ flowchart TB
 
 ## Current status and roadmap
 
-| Area                          | Status                                                                                                                                                                                                                              |
-| :---------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **v3 schema & migrations**    | Written and seeded ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); v3 freeze awaiting maintainer sign-off (G1)                                      |
-| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                               |
-| **Model hardening (PPT-041)** | [#51](https://github.com/Elmorralito/save-ma-money/issues/51) — service gaps for API readiness (transfers, reports, tenancy guards)                                                                                                 |
-| **API**                       | Scaffold only: `Settings`, `AuthSecurityManager`, logging — no `main.py` or routers yet                                                                                                                                             |
-| **API epic (PPT-032)**        | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) — FastAPI MVP (32 endpoints) blocked on [#34](https://github.com/Elmorralito/save-ma-money/issues/34) + [#51](https://github.com/Elmorralito/save-ma-money/issues/51) |
-| **Design program (PPT-031)**  | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) — schema simplification, API mapping, auth contract, migration runbook                                                                                                |
+| Area                          | Status                                                                                                                                                                                                                                                               |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v3 schema & migrations**    | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI                                                                                  |
+| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                                                                |
+| **Model hardening (PPT-041)** | **Closed** ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards, live-DB integration tests                                                                                                       |
+| **Design program (PPT-031)**  | **Closed** ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — v3 schema, API mapping, auth contract, migration runbook                                                                                                                                |
+| **API documentation**         | Consolidated in [`modules/api/README.md`](./modules/api/README.md) — replaces `API_Endpoints.md.md`, `API_Documentation.md.md`, and project-structure notes (redirect stubs remain for old links)                                                                    |
+| **API implementation**        | Scaffold only: `Settings`, `AuthSecurityManager`, logging — no `main.py` or routers yet                                                                                                                                                                              |
+| **API epic (PPT-032)**        | **Active** ([#42](https://github.com/Elmorralito/save-ma-money/issues/42)) — FastAPI MVP (32 endpoints); model gates cleared; sub-issues [#43](https://github.com/Elmorralito/save-ma-money/issues/43)–[#50](https://github.com/Elmorralito/save-ma-money/issues/50) |
 
 Post-MVP items (budgets, splits, recurrence) are documented in [`docs/design/PPT-031-v4-extensions.md`](./docs/design/PPT-031-v4-extensions.md) and intentionally out of the v3 MVP scope.
 
@@ -103,7 +104,8 @@ save-ma-money/
 │   │   ├── src/papita_txnsmodel/
 │   │   ├── alembic/            # migrations
 │   │   └── tests/
-│   └── api/                    # papita-txnsapi — scaffold stage
+│   └── api/                    # papita-txnsapi — scaffold + unified README
+│       ├── README.md           # REST contract, integration guide, target layout
 │       └── src/papita_txnsapi/
 ├── deploy/                     # alembic.sh, test.sh, utils.sh
 ├── docker/database/            # local Postgres 15 Compose
@@ -153,25 +155,33 @@ poetry run pytest
 /bin/bash ./deploy/test.sh
 ```
 
-API route tests will be added with the [#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic. See [`modules/api/README.md`](./modules/api/README.md) for package setup details.
+API route tests will be added with the [#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic. When routers land, start the dev server with:
+
+```bash
+uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+See [`modules/api/README.md`](./modules/api/README.md) for env setup, auth flows, v3 data shapes, and the full endpoint catalog.
 
 ---
 
 ## Documentation hub
 
-| Document                                                                                 | Scope                                       |
-| :--------------------------------------------------------------------------------------- | :------------------------------------------ |
-| [Root README](./README.md)                                                               | Monorepo overview (this file)               |
-| [`modules/model/README.md`](./modules/model/README.md)                                   | Data model layers, migrations, testing      |
-| [`modules/api/README.md`](./modules/api/README.md)                                       | API package status and doc index            |
-| [`docs/design/README.md`](./docs/design/README.md)                                       | PPT-031 design program registry and gates   |
-| [`docs/issues/`](./docs/issues/README.md)                                                | Issue-linked requirement briefs             |
-| [`docs/design/PPT-031-api-model-mapping.md`](./docs/design/PPT-031-api-model-mapping.md) | Endpoint → Service → DTO → SQLModel mapping |
-| [`modules/api/API_Endpoints.md.md`](./modules/api/API_Endpoints.md.md)                   | Canonical REST contract (32 MVP endpoints)  |
-| [`docs/design/PPT-031-auth-contract.md`](./docs/design/PPT-031-auth-contract.md)         | Local JWT + users auth strategy             |
-| [`.github/CI.md`](./.github/CI.md)                                                       | CI workflows, pre-commit, PR checklist      |
-| [`AGENTS.md`](./AGENTS.md)                                                               | Agent and contributor operational guide     |
-| [CHANGELOG.md](./CHANGELOG.md)                                                           | Issue tracker and merged PR summaries       |
+| Document                                                                                 | Scope                                                                   |
+| :--------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
+| [Root README](./README.md)                                                               | Monorepo overview (this file)                                           |
+| [`modules/model/README.md`](./modules/model/README.md)                                   | v3 schema, services, handlers, migrations, testing                      |
+| [`modules/api/README.md`](./modules/api/README.md)                                       | **Unified API reference** — architecture, integration, 32 MVP endpoints |
+| [`docs/postgres_papita_transactions_v4.png`](./docs/postgres_papita_transactions_v4.png) | ER diagram — v3 core + balance materialized views                       |
+| [`docs/design/README.md`](./docs/design/README.md)                                       | PPT-031 design program registry and gates                               |
+| [`docs/issues/`](./docs/issues/README.md)                                                | Issue-linked requirement briefs                                         |
+| [`docs/design/PPT-031-api-model-mapping.md`](./docs/design/PPT-031-api-model-mapping.md) | Endpoint → Service → DTO → SQLModel mapping                             |
+| [`docs/design/PPT-031-auth-contract.md`](./docs/design/PPT-031-auth-contract.md)         | Local JWT + users auth strategy                                         |
+| [`.github/CI.md`](./.github/CI.md)                                                       | CI workflows, pre-commit, PR checklist                                  |
+| [`AGENTS.md`](./AGENTS.md)                                                               | Agent and contributor operational guide                                 |
+| [CHANGELOG.md](./CHANGELOG.md)                                                           | Issue tracker and merged PR summaries                                   |
+
+Legacy API filenames (`API_Endpoints.md.md`, `API_Documentation.md.md`) redirect to [`modules/api/README.md`](./modules/api/README.md).
 
 ---
 
