@@ -16,11 +16,61 @@
 
 - [ ] [_**[#44](https://github.com/Elmorralito/save-ma-money/issues/44)**_] :: **feat/PPT-035: [api] Auth routes and tenant context module (local JWT)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:49+00:00</sub>_ :weary:
 
-- [ ] [_**[#43](https://github.com/Elmorralito/save-ma-money/issues/43)**_] :: **docs/PPT-033: [api] Validate API spec against v3 model implementation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:48+00:00</sub>_ :weary:
-
-- [ ] [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#43](https://github.com/Elmorralito/save-ma-money/issues/43)**_] :: **docs/PPT-033: [api] Validate API spec against v3 model implementation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-09 18:05:24+00:00</sub>_
+
+  > **Closed by** [_**#80**](https://github.com/Elmorralito/save-ma-money/pull/80): **docs/PPT-033: [api] Validate API spec against v3 model implementation**
+
+  > ## Summary
+
+  >
+
+  > - Publishes the PPT-033 **coverage matrix** (docs/design/PPT-033-api-coverage-matrix.md) auditing all **32 MVP endpoints** against the implemented v3 model in papita_txnsmodel.
+
+  > - Aligns PPT-031-api-model-mapping.md with actual service/DTO names (AccountsService, TransactionsService, etc.) and points FR-17 canonical spec to modules/api/README.md.
+
+  > - Cross-links matrix from API README, design index, and legacy redirect stubs.
+
+  >
+
+  > Closes #43 · Unblocks #45 (PPT-034 scaffold + health).
+
+  >
+
+  > ## Test plan
+
+  >
+
+  > - [x] Pre-commit passed locally (prettier, markdownlint, strata-validate)
+
+  > - [x] Matrix covers health, auth, accounts, categories, transactions, movements, reports
+
+  > - [x] Deferred endpoints (501) documented separately
+
+  > - [x] B0/B1 validation plan included in matrix §8
+
+  > - [ ] Maintainer review: confirm readiness verdict unblocks PPT-034
+
+  >
+
+  > ## References
+
+  >
+
+  > - Parent epic: #42
+
+  > - Prerequisites: #34 (closed), #51 (closed)
+
+  > - Deliverable paths: docs/design/PPT-033-api-coverage-matrix.md, docs/design/PPT-031-api-model-mapping.md, modules/api/README.md
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#52](https://github.com/Elmorralito/save-ma-money/issues/52)**_] :: **ops/PPT-042: [infra] CI adoption badge GitHub Action** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 01:30:57+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 20:36:13+00:00</sub>_
 
