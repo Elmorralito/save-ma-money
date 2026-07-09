@@ -18,7 +18,7 @@ dependencies = [
     "jinja2 (>=3.1.6,<4.0.0)",
     "aiofiles (>=25.1.0,<26.0.0)",
     "uvicorn[standard] (>=0.51.0,<0.52.0)",
-    "python-multipart (>=0.0.22,<0.0.23)",
+    "python-multipart (>=0.0.31,<0.0.32)",
     "httpx (>=0.28.1,<0.29.0)",
 ]
 

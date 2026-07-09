@@ -1,4 +1,4 @@
-# Papita Transactions API — B0 local / B1 pooler runtime
+# Papita Transactions API - B0 local / B1 pooler runtime
 # Build context: repository root (docker compose: context: .., dockerfile: docker/api/Dockerfile)
 
 FROM python:3.12-slim-bookworm
@@ -20,7 +20,10 @@ COPY modules/model/alembic.ini /app/modules/model/
 COPY modules/api/pyproject.toml modules/api/README.md modules/api/LICENSE /app/modules/api/
 COPY modules/api/src /app/modules/api/src
 
-RUN pip install --no-cache-dir /app/modules/model /app/modules/api
+RUN pip install --no-cache-dir /app/modules/model /app/modules/api \
+    && groupadd --system --gid 1001 appuser \
+    && useradd --system --uid 1001 --gid appuser --home-dir /app appuser \
+    && chown -R appuser:appuser /app
 
 WORKDIR /app/modules/api/src
 
@@ -32,5 +35,7 @@ EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live')" || exit 1
+
+USER appuser
 
 CMD ["uvicorn", "papita_txnsapi.main:app", "--host", "0.0.0.0", "--port", "8000"]
