@@ -70,6 +70,8 @@ Further mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 
+**Spec validation (PPT-033 / [#43](https://github.com/Elmorralito/save-ma-money/issues/43)):** The v3 model aligns with this README. See the [coverage matrix](../../docs/design/PPT-033-api-coverage-matrix.md) for endpoint × service status and API-layer gaps before PPT-034–040.
+
 **MVP scope:** **32** endpoints (health, auth register/login, accounts, categories, transactions, movements, four reports). **11** deferred (501).
 
 ---
@@ -1578,12 +1580,13 @@ X-RateLimit-Reset: 1707058440
 
 ## Related documentation
 
-| Document                                                                                     | Purpose                                |
-| :------------------------------------------------------------------------------------------- | :------------------------------------- |
-| [`modules/model/README.md`](../model/README.md)                                              | v3 schema, services, handlers, testing |
-| [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) | Endpoint → Service → DTO → SQLModel    |
-| [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md)         | JWT and auth flows                     |
-| [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md)                 | v3 DDL and constraints                 |
-| [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)         | Budgets, splits (post-MVP)             |
-| [`../../README.md`](../../README.md)                                                         | Monorepo quick start                   |
-| [`../../CHANGELOG.md`](../../CHANGELOG.md)                                                   | Issue tracker                          |
+| Document                                                                                         | Purpose                                                                                   |
+| :----------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| [`modules/model/README.md`](../model/README.md)                                                  | v3 schema, services, handlers, testing                                                    |
+| [`docs/design/PPT-033-api-coverage-matrix.md`](../../docs/design/PPT-033-api-coverage-matrix.md) | PPT-033 validation matrix ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) |
+| [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md)     | Endpoint → Service → DTO → SQLModel                                                       |
+| [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md)             | JWT and auth flows                                                                        |
+| [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md)                     | v3 DDL and constraints                                                                    |
+| [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)             | Budgets, splits (post-MVP)                                                                |
+| [`../../README.md`](../../README.md)                                                             | Monorepo quick start                                                                      |
+| [`../../CHANGELOG.md`](../../CHANGELOG.md)                                                       | Issue tracker                                                                             |

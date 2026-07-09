@@ -49,8 +49,8 @@ HTTP Request
 
 **FR-17 rules:**
 
-- `API_Endpoints.md.md` is the **canonical human-readable spec** for endpoint contracts until FastAPI `main.py` ships; then OpenAPI JSON from the running app becomes the runtime source of truth.
-- `API_Documentation.md.md` is the **v3-aligned integration guide** (auth flows, SDK patterns, data shapes) — must not contradict `API_Endpoints.md.md`.
+- [`modules/api/README.md`](../../modules/api/README.md) is the **canonical human-readable spec** (endpoint contracts + integration guide) until FastAPI `main.py` ships; then OpenAPI JSON from the running app becomes the runtime source of truth. Legacy paths `API_Endpoints.md.md` and `API_Documentation.md.md` redirect to README sections.
+- **Validation matrix (PPT-033):** [`PPT-033-api-coverage-matrix.md`](PPT-033-api-coverage-matrix.md) — endpoint × field × service × status audit ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)).
 - API schemas map 1:1 to model DTOs; validators live in DTOs, not duplicated in API layer.
 - Add `python-multipart` to `modules/api/pyproject.toml` before implementing OAuth2 form login.
 
@@ -176,26 +176,26 @@ Full contract: [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md).
 
 ### 5.3 Accounts
 
-| Method | Path                             | Router            | Service                      | Repository          | DTO                           | SQLModel                             | MVP  |
-| ------ | -------------------------------- | ----------------- | ---------------------------- | ------------------- | ----------------------------- | ------------------------------------ | ---- |
-| GET    | `/accounts`                      | `accounts.router` | `AccountService`             | `AccountRepository` | `AccountDTO`                  | `accounts` + `account_balances` join | ✓ P3 |
-| GET    | `/accounts/{account_id}`         | `accounts.router` | `AccountService`             | `AccountRepository` | `AccountDTO`                  | `accounts` + extensions              | ✓ P3 |
-| POST   | `/accounts`                      | `accounts.router` | `AccountService`             | `AccountRepository` | `AccountDTO` + extension DTOs | `accounts`, `*_account_details`      | ✓ P3 |
-| PUT    | `/accounts/{account_id}`         | `accounts.router` | `AccountService`             | `AccountRepository` | `AccountDTO`                  | `accounts`                           | ✓ P3 |
-| DELETE | `/accounts/{account_id}`         | `accounts.router` | `AccountService.soft_delete` | `AccountRepository` | —                             | `accounts` (`active=false`)          | ✓ P3 |
-| GET    | `/accounts/{account_id}/balance` | `accounts.router` | `AccountService.get_balance` | —                   | —                             | `account_balances` view              | ✓ P3 |
+| Method | Path                             | Router            | Service                                                               | Repository           | DTO                            | SQLModel                             | MVP  |
+| ------ | -------------------------------- | ----------------- | --------------------------------------------------------------------- | -------------------- | ------------------------------ | ------------------------------------ | ---- |
+| GET    | `/accounts`                      | `accounts.router` | `AccountsService.get_records` + `AccountBalancesService.get_balances` | `AccountsRepository` | `AccountsDTO`                  | `accounts` + `account_balances` join | ✓ P3 |
+| GET    | `/accounts/{account_id}`         | `accounts.router` | `AccountsService.get_with_extension`                                  | `AccountsRepository` | `AccountsDTO`                  | `accounts` + extensions              | ✓ P3 |
+| POST   | `/accounts`                      | `accounts.router` | `AccountsService.create_account`                                      | `AccountsRepository` | `AccountsDTO` + extension DTOs | `accounts`, `*_account_details`      | ✓ P3 |
+| PUT    | `/accounts/{account_id}`         | `accounts.router` | `AccountsService.update_account`                                      | `AccountsRepository` | `AccountsDTO`                  | `accounts`                           | ✓ P3 |
+| DELETE | `/accounts/{account_id}`         | `accounts.router` | `AccountsService.delete` (soft)                                       | `AccountsRepository` | —                              | `accounts` (`active=false`)          | ✓ P3 |
+| GET    | `/accounts/{account_id}/balance` | `accounts.router` | `AccountsService.get_balance`                                         | —                    | —                              | `account_balances` view              | ✓ P3 |
 
-**v3 service notes:** `AccountService` replaces v0 `AccountsService` + `IndexersService` + subtype services. Extension table writes keyed by `account_kind`.
+**v3 service notes:** `AccountsService` replaces v0 indexer + subtype orchestration. Extension table writes keyed by `account_kind` via `account_extension_routing.py`.
 
 ### 5.4 Categories
 
-| Method | Path                        | Router              | Service                       | Repository             | DTO           | SQLModel     | MVP  |
-| ------ | --------------------------- | ------------------- | ----------------------------- | ---------------------- | ------------- | ------------ | ---- |
-| GET    | `/categories`               | `categories.router` | `CategoryService`             | `CategoriesRepository` | `CategoryDTO` | `categories` | ✓ P4 |
-| GET    | `/categories/{category_id}` | `categories.router` | `CategoryService`             | `CategoriesRepository` | `CategoryDTO` | `categories` | ✓ P4 |
-| POST   | `/categories`               | `categories.router` | `CategoryService`             | `CategoriesRepository` | `CategoryDTO` | `categories` | ✓ P4 |
-| PUT    | `/categories/{category_id}` | `categories.router` | `CategoryService`             | `CategoriesRepository` | `CategoryDTO` | `categories` | ✓ P4 |
-| DELETE | `/categories/{category_id}` | `categories.router` | `CategoryService.soft_delete` | `CategoriesRepository` | —             | `categories` | ✓ P4 |
+| Method | Path                        | Router              | Service                           | Repository             | DTO             | SQLModel     | MVP  |
+| ------ | --------------------------- | ------------------- | --------------------------------- | ---------------------- | --------------- | ------------ | ---- |
+| GET    | `/categories`               | `categories.router` | `CategoriesService`               | `CategoriesRepository` | `CategoriesDTO` | `categories` | ✓ P4 |
+| GET    | `/categories/{category_id}` | `categories.router` | `CategoriesService`               | `CategoriesRepository` | `CategoriesDTO` | `categories` | ✓ P4 |
+| POST   | `/categories`               | `categories.router` | `CategoriesService`               | `CategoriesRepository` | `CategoriesDTO` | `categories` | ✓ P4 |
+| PUT    | `/categories/{category_id}` | `categories.router` | `CategoriesService`               | `CategoriesRepository` | `CategoriesDTO` | `categories` | ✓ P4 |
+| DELETE | `/categories/{category_id}` | `categories.router` | `CategoriesService.delete` (soft) | `CategoriesRepository` | —               | `categories` | ✓ P4 |
 
 **FR-13:** Expense/income taxonomy only. v0 `types` with `ASSETS`/`LIABILITIES` classification is replaced by `accounts.account_kind` — not exposed via `/categories`.
 
@@ -217,15 +217,15 @@ Full contract: [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md).
 
 ### 5.6 Transactions
 
-| Method | Path                                   | Router                | Service                          | Repository              | DTO                | SQLModel                | MVP          |
-| ------ | -------------------------------------- | --------------------- | -------------------------------- | ----------------------- | ------------------ | ----------------------- | ------------ |
-| GET    | `/transactions`                        | `transactions.router` | `TransactionService`             | `TransactionRepository` | `TransactionDTO`   | `transactions`          | ✓ P4         |
-| GET    | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionService`             | `TransactionRepository` | `TransactionDTO`   | `transactions`          | ✓ P4         |
-| POST   | `/transactions`                        | `transactions.router` | `TransactionService`             | `TransactionRepository` | `TransactionDTO`   | `transactions`          | ✓ P4         |
-| POST   | `/transactions/bulk`                   | `transactions.router` | `TransactionService.bulk_create` | `TransactionRepository` | `TransactionDTO[]` | `transactions`          | ✓ P4         |
-| PUT    | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionService`             | `TransactionRepository` | `TransactionDTO`   | `transactions`          | ✓ P4         |
-| DELETE | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionService.soft_delete` | `TransactionRepository` | —                  | `transactions`          | ✓ P4         |
-| POST   | `/transactions/{transaction_id}/split` | `transactions.router` | —                                | —                       | —                  | v4 `transaction_splits` | **Deferred** |
+| Method | Path                                   | Router                | Service                              | Repository               | DTO                 | SQLModel                | MVP          |
+| ------ | -------------------------------------- | --------------------- | ------------------------------------ | ------------------------ | ------------------- | ----------------------- | ------------ |
+| GET    | `/transactions`                        | `transactions.router` | `TransactionsService`                | `TransactionsRepository` | `TransactionsDTO`   | `transactions`          | ✓ P4         |
+| GET    | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionsService`                | `TransactionsRepository` | `TransactionsDTO`   | `transactions`          | ✓ P4         |
+| POST   | `/transactions`                        | `transactions.router` | `TransactionsService`                | `TransactionsRepository` | `TransactionsDTO`   | `transactions`          | ✓ P4         |
+| POST   | `/transactions/bulk`                   | `transactions.router` | `TransactionsService.upsert_records` | `TransactionsRepository` | `TransactionsDTO[]` | `transactions`          | ✓ P4         |
+| PUT    | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionsService`                | `TransactionsRepository` | `TransactionsDTO`   | `transactions`          | ✓ P4         |
+| DELETE | `/transactions/{transaction_id}`       | `transactions.router` | `TransactionsService.delete` (soft)  | `TransactionsRepository` | —                   | `transactions`          | ✓ P4         |
+| POST   | `/transactions/{transaction_id}/split` | `transactions.router` | —                                    | —                        | —                   | v4 `transaction_splits` | **Deferred** |
 
 **Query filter:** `transaction_type=transfer` on `/transactions` returns same rows as `/movements/*`. Default list excludes `TRANSFER` unless filter includes it (avoid duplicate listing when both routers mounted).
 
@@ -233,16 +233,16 @@ Full contract: [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md).
 
 ### 5.7 Movements — **Alias router**
 
-| Method | Path                               | Router             | Service                                | Repository              | DTO                                    | SQLModel                            | MVP            |
-| ------ | ---------------------------------- | ------------------ | -------------------------------------- | ----------------------- | -------------------------------------- | ----------------------------------- | -------------- |
-| GET    | `/movements`                       | `movements.router` | `TransactionService.list_transfers`    | `TransactionRepository` | `MovementDTO` (API) → `TransactionDTO` | `transactions` (`kind=TRANSFER`)    | ✓ P4 **Alias** |
-| GET    | `/movements/{movement_id}`         | `movements.router` | `TransactionService.get`               | `TransactionRepository` | `MovementDTO`                          | `transactions`                      | ✓ P4 **Alias** |
-| POST   | `/movements`                       | `movements.router` | `TransactionService.create_transfer`   | `TransactionRepository` | `TransactionDTO`                       | `transactions`                      | ✓ P4 **Alias** |
-| PUT    | `/movements/{movement_id}`         | `movements.router` | `TransactionService.update`            | `TransactionRepository` | `TransactionDTO`                       | `transactions`                      | ✓ P4 **Alias** |
-| DELETE | `/movements/{movement_id}`         | `movements.router` | `TransactionService.cancel`            | `TransactionRepository` | —                                      | `transactions` (`status=CANCELLED`) | ✓ P4 **Alias** |
-| POST   | `/movements/{movement_id}/execute` | `movements.router` | `TransactionService.complete_transfer` | `TransactionRepository` | —                                      | `transactions` (`status=COMPLETED`) | ✓ P4 **Alias** |
+| Method | Path                               | Router             | Service                                 | Repository               | DTO                                     | SQLModel                            | MVP            |
+| ------ | ---------------------------------- | ------------------ | --------------------------------------- | ------------------------ | --------------------------------------- | ----------------------------------- | -------------- |
+| GET    | `/movements`                       | `movements.router` | `TransactionsService.list_transfers`    | `TransactionsRepository` | `MovementDTO` (API) → `TransactionsDTO` | `transactions` (`kind=TRANSFER`)    | ✓ P4 **Alias** |
+| GET    | `/movements/{movement_id}`         | `movements.router` | `TransactionsService.get`               | `TransactionsRepository` | `MovementDTO`                           | `transactions`                      | ✓ P4 **Alias** |
+| POST   | `/movements`                       | `movements.router` | `TransactionsService.create_transfer`   | `TransactionsRepository` | `TransactionsDTO`                       | `transactions`                      | ✓ P4 **Alias** |
+| PUT    | `/movements/{movement_id}`         | `movements.router` | `TransactionsService.create` (upsert)   | `TransactionsRepository` | `TransactionsDTO`                       | `transactions`                      | ✓ P4 **Alias** |
+| DELETE | `/movements/{movement_id}`         | `movements.router` | `TransactionsService.cancel`            | `TransactionsRepository` | —                                       | `transactions` (`status=CANCELLED`) | ✓ P4 **Alias** |
+| POST   | `/movements/{movement_id}/execute` | `movements.router` | `TransactionsService.complete_transfer` | `TransactionsRepository` | —                                       | `transactions` (`status=COMPLETED`) | ✓ P4 **Alias** |
 
-**Implementation pattern:** `movements.router` delegates to `TransactionService` with `transaction_kind=TRANSFER` enforced. `MovementDTO` is a Pydantic API schema that maps field names (`source_account_id` ↔ `from_account_id`).
+**Implementation pattern:** `movements.router` delegates to `TransactionsService` with `transaction_kind=TRANSFER` enforced. `MovementDTO` is a Pydantic API schema that maps field names (`source_account_id` ↔ `from_account_id`). When `scheduled: false`, router sets `status=COMPLETED` after `create_transfer` (service defaults to PENDING).
 
 ### 5.8 Reports (read models — FR-12)
 
@@ -388,5 +388,6 @@ schemas/
 - v0 audit API gaps: [`PPT-031-v0-audit.md`](PPT-031-v0-audit.md) §10
 - v4 budgets: [`PPT-031-v4-extensions.md`](PPT-031-v4-extensions.md) §4
 - Supabase platform: [`PPT-031-C-supabase-decision-brief.md`](../issues/PPT-031-C-supabase-decision-brief.md)
-- Canonical API spec: [`modules/api/API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md)
+- Canonical API spec: [`modules/api/README.md`](../../modules/api/README.md)
+- PPT-033 coverage matrix: [`PPT-033-api-coverage-matrix.md`](PPT-033-api-coverage-matrix.md) ([#43](https://github.com/Elmorralito/save-ma-money/issues/43))
 - Design index: [`README.md`](README.md)
