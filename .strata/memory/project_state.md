@@ -5,10 +5,11 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-07.** PR [#53](https://github.com/Elmorralito/save-ma-money/pull/53) on `refactor/PPT-031e` — CI fixes pushed (PyJWT swap, pre-commit formatting).
+**Session — 2026-07-09.** PPT-033 ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) — API spec validated against v3 model; coverage matrix published.
 
 ### Last completed
 
+- **PPT-033 / #43:** [`docs/design/PPT-033-api-coverage-matrix.md`](../../docs/design/PPT-033-api-coverage-matrix.md) — 32 MVP endpoints mapped to model services; doc drift fixes in mapping doc + API README cross-links.
 - v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
 - Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
 - CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting; MV SQL test assertions aligned with SQLFluff join order.
@@ -20,8 +21,8 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Next action
 
-- Merge PR [#55](https://github.com/Elmorralito/save-ma-money/pull/55) (unified API + model README docs) after CI green.
-- Begin PPT-032 API epic ([#42](https://github.com/Elmorralito/save-ma-money/issues/42)) — model gates (#34, #51, #28) closed.
+- Merge PPT-033 PR (coverage matrix + doc alignment) and close [#43](https://github.com/Elmorralito/save-ma-money/issues/43).
+- Start PPT-034 ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)) — FastAPI scaffold + health on B0 Docker Postgres.
 
 ### Prerequisites
 
