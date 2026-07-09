@@ -1,0 +1,92 @@
+---
+# Full local stack: PostgreSQL + Alembic migrate + FastAPI API (B0)
+#
+#   cp docker/api/.env.example docker/api/.env   # optional
+#   docker compose -f docker/docker-compose.yml up --build
+#
+# API: http://localhost:8000/api/docs
+# Health: http://localhost:8000/api/v1/health/ready
+#
+# Database-only dev (no API): docker/database/docker-compose.yml
+
+name: "${COMPOSE_NAME:-papita-transactions}"
+
+networks:
+  papita-local-net:
+    driver: bridge
+
+volumes:
+  papita-local-env:
+    driver: local
+
+services:
+  postgres-db:
+    container_name: "postgresql-${COMPOSE_NAME:-papita-transactions}"
+    image: postgres:15-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    expose:
+      - "${DB_PORT:-5435}"
+    ports:
+      - "${DB_PORT:-5435}:${DB_PORT:-5435}/tcp"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready --username=${DB_USER:-admin} --port=${DB_PORT:-5435} --dbname=${DB_NAME:-papita}'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: "${DB_USER:-admin}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-admin}"
+      POSTGRES_DB: "${DB_NAME:-papita}"
+      PGPORT: "${DB_PORT:-5435}"
+    volumes:
+      - papita-local-env:/var/lib/postgresql/data:rw
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    container_name: "${COMPOSE_NAME:-papita-transactions}-migrate"
+    networks:
+      - papita-local-net
+    working_dir: /app/modules/model
+    command:
+      - alembic
+      - -c
+      - /app/modules/model/alembic.ini
+      - upgrade
+      - head
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/api/Dockerfile
+    container_name: "${COMPOSE_NAME:-papita-transactions}-api"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-replace-with-long-random-secret-min-32-chars}"
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["*"]}'
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully

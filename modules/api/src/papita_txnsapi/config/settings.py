@@ -1,6 +1,5 @@
 # type: ignore
 
-import contextlib
 import logging
 import warnings
 from functools import lru_cache
@@ -18,6 +17,7 @@ from papita_txnsmodel.utils.configutils import configure_logger
 from papita_txnsmodel.utils.enums import FallbackAction
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
+LOGGER_CONFIG_PATH = Path(__file__).parent / "logger.yaml"
 
 logger = logging.getLogger(API_LIB_NAME)
 
@@ -50,9 +50,8 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def validate_database_url(cls, value: str | Type[SQLDatabaseConnector] | None) -> Type[SQLDatabaseConnector]:
-        with contextlib.suppress(ValueError):
-            if issubclass(value, SQLDatabaseConnector):
-                return value
+        if isinstance(value, type) and issubclass(value, SQLDatabaseConnector):
+            return value
 
         if isinstance(value, str) and value.strip() != "":
             return SQLDatabaseConnector.establish(connection=value)
@@ -65,8 +64,9 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def build_model(self) -> Self:
-        configure_logger(logger_name=MODEL_LIB_NAME, config=Path(self.LOG_FILE), level=self.LOG_LEVEL)
-        configure_logger(logger_name=API_LIB_NAME, config=Path(self.LOG_FILE), level=self.LOG_LEVEL)
+        log_config = Path(self.LOG_FILE) if self.LOG_FILE else LOGGER_CONFIG_PATH
+        configure_logger(logger_name=MODEL_LIB_NAME, config=log_config, level=self.LOG_LEVEL)
+        configure_logger(logger_name=API_LIB_NAME, config=log_config, level=self.LOG_LEVEL)
         logger.info("Application %s %s initialized", self.APP_NAME, self.APP_VERSION)
         return self
 

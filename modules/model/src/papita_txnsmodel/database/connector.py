@@ -25,6 +25,60 @@ from papita_txnsmodel.utils.enums import FallbackAction
 logger = logging.getLogger(__name__)
 
 
+def _dict_connection_to_url(connection: dict) -> str | db.URL:
+    """Build a SQLAlchemy URL from a credentials or nested-url dictionary."""
+    try:
+        url = connection.pop("url", connection.pop("dburl", connection.pop("credentials", None)))
+        if not url:
+            return db.URL.create(
+                drivername=connection["drivername"],
+                username=connection.get("username"),
+                password=connection.get("password"),
+                host=connection.get("host"),
+                database=connection.get("database"),
+                port=connection.get("port"),
+            )
+        if isinstance(url, str):
+            return db.make_url(url)
+        if isinstance(url, dict):
+            return db.URL.create(
+                drivername=url["drivername"],
+                username=url.get("username"),
+                password=url.get("password"),
+                host=url.get("host"),
+                database=url.get("database"),
+                port=url.get("port"),
+            )
+    except Exception:
+        logger.exception("Something happened while parsing dict params.")
+    return db.URL.create(**connection)
+
+
+def _string_connection_to_url(connection: str) -> str:
+    """Resolve a string connection to a SQLAlchemy URL or DuckDB file path."""
+    if "://" in connection:
+        return connection
+
+    try:
+        url_path = Path(os.path.abspath(connection))
+        url_path = url_path.joinpath("store.duckdb") if url_path.is_dir() else url_path
+        return f"duckdb:///{url_path.absolute().as_posix()}"
+    except OSError:
+        logger.exception("Cannot load duckdb storage due to:")
+        return connection
+
+
+def _coerce_connection_url(connection: dict | str | db.URL) -> str | db.URL:
+    """Normalize connection input to a SQLAlchemy URL or URL string."""
+    if isinstance(connection, dict):
+        return _dict_connection_to_url(connection)
+    if isinstance(connection, str):
+        return _string_connection_to_url(connection)
+    if hasattr(connection, "drivername"):
+        return connection
+    return "duckdb:///:memory:"
+
+
 class AbstractConnector(abc.ABC):
     """Abstract base class defining the interface for database connectors.
 
@@ -121,46 +175,7 @@ class SQLDatabaseConnector(AbstractConnector):
         if not connection:
             connection = Path(os.getcwd()).joinpath(".tmp").as_posix()
 
-        if isinstance(connection, dict):
-            try:
-                url = connection.pop("url", connection.pop("dburl", connection.pop("credentials", None)))
-                if not url:
-                    url = db.URL.create(
-                        drivername=connection["drivername"],
-                        username=connection.get("username"),
-                        password=connection.get("password"),
-                        host=connection.get("host"),
-                        database=connection.get("database"),
-                        port=connection.get("port"),
-                    )
-                elif isinstance(url, str):
-                    url = db.make_url(url)
-                elif isinstance(url, dict):
-                    url = db.URL.create(
-                        drivername=url["drivername"],
-                        username=url.get("username"),
-                        password=url.get("password"),
-                        host=url.get("host"),
-                        database=url.get("database"),
-                        port=url.get("port"),
-                    )
-            except Exception:
-                logger.exception("Something happened while parsing dict params.")
-                url = db.URL.create(**connection)
-
-        elif isinstance(connection, str):
-            try:
-                url_path = Path(os.path.abspath(connection))
-                url_path = url_path.joinpath("store.duckdb") if url_path.is_dir() else url_path
-                url = f"duckdb:///{url_path.absolute().as_posix()}"
-            except OSError:
-                logger.exception("Cannot load duckdb storage due to:")
-                url = connection
-        elif hasattr(connection, "drivername"):
-            url = connection
-        else:
-            url = "duckdb:///:memory:"
-
+        url = _coerce_connection_url(connection)
         url = db.make_url(url) if isinstance(url, str) else url
         sql_kwargs_ = (cls.sql_kwargs or {}) | sql_kwargs
         if not sql_kwargs_ and url.drivername == "duckdb":
