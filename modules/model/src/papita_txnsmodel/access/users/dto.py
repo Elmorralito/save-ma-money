@@ -12,6 +12,7 @@ Classes:
 import hashlib
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated, Self
 
 from pydantic import Field, field_serializer, field_validator, model_serializer, model_validator
@@ -36,7 +37,7 @@ class UsersDTO(TableDTO):
         password (str): The user's plain text password (hashed on serialization).
     """
 
-    __dao_type__: "Users"
+    __dao_type__ = Users
 
     username: Annotated[
         str, Field(strip_whitespace=True, to_lower=False, min_length=6, max_length=255, pattern=USERNAME_REGEX)
@@ -60,6 +61,8 @@ class UsersDTO(TableDTO):
         Raises:
             ValueError: If the password does not match the complexity requirements.
         """
+        if v.startswith("$argon2"):
+            return v
         if not re.match(PASSWORD_REGEX, v):
             raise ValueError(
                 "Password must be 8-128 characters long, include at least one uppercase letter, "
@@ -81,6 +84,9 @@ class UsersDTO(TableDTO):
             uuid.NAMESPACE_URL,
             hashlib.sha256(self.username.encode(DEFAULT_ENCODING)).hexdigest(),
         )
+        now = datetime.now(timezone.utc)
+        self.created_at = self.created_at or now
+        self.updated_at = self.updated_at or now
         return self
 
     @model_serializer()
@@ -96,7 +102,7 @@ class UsersDTO(TableDTO):
             "id": self.id,
             "username": self.username,
             "email": self.email,
-            "password": PasswordManagerFactory.password_manager.hash_password(self.password),
+            "password": PasswordManagerFactory().password_manager.hash_password(self.password),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "deleted_at": self.deleted_at,

@@ -155,13 +155,31 @@ class BaseRepository:
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
         try:
-            return pd.DataFrame(
-                _db_session.exec(statement, params=kwargs.get("params", kwargs.get("statement_params"))).all()
-            )
+            results = _db_session.exec(statement, params=kwargs.get("params", kwargs.get("statement_params"))).all()
+            if not results:
+                return pd.DataFrame([])
+            first = results[0]
+            if hasattr(first, "model_dump"):
+                return pd.DataFrame([item.model_dump(mode="python") for item in results])
+            return pd.DataFrame(results)
         except Exception as exc:
             logger.exception("The query has failed due to: %s", exc)
 
         return pd.DataFrame([])
+
+    def _dataframe_row_to_dto(self, output_df: pd.DataFrame, dto_type: type[TableDTO], **kwargs) -> TableDTO | None:
+        """Convert the first row of a query DataFrame into a validated DTO."""
+        if getattr(output_df, "empty", True):
+            return None
+
+        dao_type = dto_type.__dao_type__
+        if len(output_df.columns) == 1:
+            cell = output_df.iloc[0, 0]
+            if isinstance(cell, dao_type):
+                return dto_type.from_dao(cell)
+
+        row_dict = dto_type.standardized_dataframe(output_df, **kwargs).iloc[0].to_dict()
+        return dto_type.model_validate(row_dict)
 
     @SQLDatabaseConnector.connect
     def upsert_record(self, dto: TableDTO, *, _db_session: Session, **kwargs) -> None:
@@ -316,11 +334,7 @@ class BaseRepository:
 
         dao = dto_type.__dao_type__
         output_df = self.get_records(dao.id == id_, dto_type=dto_type, **kwargs)
-        return (
-            None
-            if getattr(output_df, "empty", True)
-            else dto_type.standardized_dataframe(output_df, **kwargs).iloc[0].to_dict()
-        )
+        return self._dataframe_row_to_dto(output_df, dto_type, **kwargs)
 
     def get_record_from_attributes(self, dto: TableDTO, **kwargs) -> TableDTO | None:
         """Retrieve a single record from the database based on DTO attributes.
@@ -336,11 +350,8 @@ class BaseRepository:
             TableDTO | None: The retrieved record as a DTO, or None if not found.
         """
         output_df = self.get_records_from_attributes(dto, **kwargs)
-        return (
-            None
-            if getattr(output_df, "empty", True)
-            else dto.standardized_dataframe(output_df, **kwargs).iloc[0].to_dict()
-        )
+        dto_type = kwargs.pop("dto_type", type(dto))
+        return self._dataframe_row_to_dto(output_df, dto_type, **kwargs)
 
 
 class OwnedTableRepository(BaseRepository):

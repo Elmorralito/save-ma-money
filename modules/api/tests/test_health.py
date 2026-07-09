@@ -4,18 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
-
-from papita_txnsapi.config.settings import get_settings
-from papita_txnsapi.main import create_app
-
-
-@pytest.fixture
-def client() -> TestClient:
-    """FastAPI test client with cached settings cleared."""
-    get_settings.cache_clear()
-    return TestClient(create_app())
 
 
 class TestHealthEndpoints:
@@ -58,3 +47,5 @@ class TestOpenAPI:
         schema = response.json()
         assert schema["info"]["title"] == "Save Ma Money API"
         assert "/api/v1/health" in schema["paths"]
+        assert "/api/v1/auth/register" in schema["paths"]
+        assert "/api/v1/auth/me" in schema["paths"]

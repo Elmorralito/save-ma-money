@@ -413,11 +413,13 @@ class TestGetRecordById:
         repository.get_records = MagicMock(return_value=sample_df)
         mock_standardized_df = pd.DataFrame({"id": [test_id], "name": ["Test"]})
         mock_dto.standardized_dataframe.return_value = mock_standardized_df
+        validated_dto = MagicMock()
+        mock_dto.model_validate.return_value = validated_dto
 
         result = repository.get_record_by_id(test_id, mock_dto)
 
-        assert result is not None
-        assert isinstance(result, dict)
+        assert result is validated_dto
+        mock_dto.model_validate.assert_called_once()
 
     def test_get_record_by_id_returns_none_when_not_found(self, repository, mock_dto):
         """Test that get_record_by_id returns None when record with given ID does not exist."""
@@ -458,12 +460,16 @@ class TestGetRecordFromAttributes:
         sample_df = pd.DataFrame({"id": [uuid.uuid4()], "name": ["Test"]})
         repository.get_records_from_attributes = MagicMock(return_value=sample_df)
         mock_standardized_df = pd.DataFrame({"id": [uuid.uuid4()], "name": ["Test"]})
-        mock_dto_instance.standardized_dataframe.return_value = mock_standardized_df
+        mock_dto_type = MagicMock()
+        mock_dto_type.__dao_type__ = MagicMock()
+        mock_dto_type.standardized_dataframe.return_value = mock_standardized_df
+        validated_dto = MagicMock()
+        mock_dto_type.model_validate.return_value = validated_dto
 
-        result = repository.get_record_from_attributes(mock_dto_instance)
+        result = repository.get_record_from_attributes(mock_dto_instance, dto_type=mock_dto_type)
 
-        assert result is not None
-        assert isinstance(result, dict)
+        assert result is validated_dto
+        mock_dto_type.model_validate.assert_called_once()
 
     def test_get_record_from_attributes_returns_none_when_no_match(self, repository, mock_dto):
         """Test that get_record_from_attributes returns None when no records match attributes."""
