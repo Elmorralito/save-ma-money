@@ -54,19 +54,25 @@ Further mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/
 
 ## Status and roadmap
 
-**Current tree:** scaffold only — no `main.py`, routers, or route tests.
+**Current tree:** runnable FastAPI app with health probes, shared infrastructure, and deferred budget 501 stubs ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)).
 
-| Implemented    | Location                                                      |
-| :------------- | :------------------------------------------------------------ |
-| Settings / env | `src/papita_txnsapi/config/settings.py`                       |
-| JWT helpers    | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`) |
-| Logging        | `src/papita_txnsapi/config/logger.yaml`                       |
+| Implemented    | Location                                                                   |
+| :------------- | :------------------------------------------------------------------------- |
+| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers |
+| Settings / env | `src/papita_txnsapi/config/settings.py`                                    |
+| JWT helpers    | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)              |
+| Health (P1)    | `src/papita_txnsapi/routers/v1/health.py`                                  |
+| Shared schemas | `src/papita_txnsapi/schemas/common.py`, `converters.py`                    |
+| Dependencies   | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`             |
+| Deferred 501   | `src/papita_txnsapi/routers/v1/budgets.py`                                 |
+| Route tests    | `modules/api/tests/`                                                       |
+| Logging        | `src/papita_txnsapi/config/logger.yaml`                                    |
 
-| Not yet implemented                           | Track via                                                                                                                                                                                        |
-| :-------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| FastAPI app, routers, API schemas, middleware | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)–[#50](https://github.com/Elmorralito/save-ma-money/issues/50)) |
-| `modules/api/tests/`                          | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                                                                                                    |
-| Supabase B1 production wiring                 | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                                                                                                    |
+| Not yet implemented                       | Track via                                                                                                                   |
+| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| Auth + domain routers (accounts, txns, …) | [#44](https://github.com/Elmorralito/save-ma-money/issues/44)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48) |
+| Supabase B1 production wiring             | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
+| Full API integration CI (B0 + B1)         | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 
@@ -132,19 +138,18 @@ modules/api/
     │   └── logger.yaml                # ✓ implemented
     ├── core/
     │   └── security.py                # ✓ implemented
-    ├── main.py                        # target — FastAPI app factory
-    ├── dependencies/                  # target
-    │   ├── auth.py                    # JWT → UsersService.get_owner()
+    ├── main.py                        # ✓ FastAPI app factory
+    ├── dependencies/                  # ✓ pagination + service factories
     │   ├── pagination.py
-    │   └── services.py                # AccountsService, TransactionsService, …
-    ├── schemas/                       # target — API-only shapes
-    │   ├── auth.py, account.py, category.py
-    │   ├── transaction.py, movement.py, report.py
-    │   └── common.py                  # PaginatedResponse, ErrorBody
+    │   └── services.py
+    ├── schemas/                       # ✓ common + converters (+ health)
+    │   ├── common.py, converters.py, health.py
+    │   └── auth.py, account.py, …     # target — PPT-035+
     └── routers/
         └── v1/
-            ├── health.py
-            ├── auth.py
+            ├── health.py              # ✓ implemented
+            ├── budgets.py             # ✓ 501 deferred stub
+            ├── auth.py                # target — PPT-035
             ├── accounts.py, categories.py
             ├── transactions.py, movements.py
             └── reports.py
@@ -169,7 +174,7 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 
 **Tenant flow:** `Authorization: Bearer` → decode JWT → `UsersService.get_owner(sub)` → pass `owner=` to every financial service call.
 
-**Database:** `Settings` loads `DATABASE_URL` and establishes `SQLDatabaseConnector` (same connector as the model package). Env file: `modules/api/src/.env` (see [`.env.example`](../../.env.example)).
+**Database:** `Settings` loads `DATABASE_URL` and establishes `SQLDatabaseConnector` (same connector as the model package). Env file: `modules/api/src/.env` (template: [`modules/api/src/.env.example`](src/.env.example)).
 
 **ER diagram:** [`docs/postgres_papita_transactions_v4.png`](../../docs/postgres_papita_transactions_v4.png) (v3 core + balance materialized views).
 
@@ -191,7 +196,7 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 poetry install
 
 # Required: modules/api/src/.env
-cp ../../.env.example modules/api/src/.env
+cp modules/api/src/.env.example modules/api/src/.env
 # Set JWT_SECRET_KEY and DATABASE_URL (PostgreSQL URL required)
 
 # Migrate database
@@ -203,9 +208,50 @@ When routers land:
 ```bash
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
 # Docs: http://localhost:8000/api/docs
+# OpenAPI: http://localhost:8000/api/openapi.json
+# Health: http://localhost:8000/api/v1/health/ready
 ```
 
-**Testing today:** CI runs `modules/model/tests` (351 tests). API route tests: [#50](https://github.com/Elmorralito/save-ma-money/issues/50).
+### B0 — Docker Compose (API + Postgres)
+
+Full stack (Postgres, Alembic migrate, API) from the repository root:
+
+```bash
+cp docker/api/.env.example docker/api/.env   # optional — edit JWT_SECRET_KEY
+docker compose -f docker/docker-compose.yml up --build
+```
+
+| Service      | URL                                       |
+| ------------ | ----------------------------------------- |
+| Swagger UI   | http://localhost:8000/api/docs            |
+| OpenAPI JSON | http://localhost:8000/api/openapi.json    |
+| Health ready | http://localhost:8000/api/v1/health/ready |
+
+The API container uses `DATABASE_URL=...@postgres-db:5435/papita` on the Compose network. Image definition: [`docker/api/Dockerfile`](../../docker/api/Dockerfile).
+
+Database-only (no API): `docker compose -f docker/database/docker-compose.yml up -d`
+
+### B0 — Docker Postgres (local, host uvicorn)
+
+```bash
+# From repository root
+docker compose -f docker/database/docker-compose.yml up -d
+/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+
+cp modules/api/src/.env.example modules/api/src/.env
+# Set JWT_SECRET_KEY and DATABASE_URL (PostgreSQL — see .env.example)
+
+uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
+curl -s http://localhost:8000/api/v1/health/ready
+```
+
+`/health/ready` returns **200** with `{"ready": true}` when the database accepts `SELECT 1`; **503** with `{"ready": false}` when the pooler or Postgres is unreachable (transient B1 failures included).
+
+### B1 — Supabase pooler (staging / production)
+
+Use the same `uvicorn` command with `DATABASE_URL` pointing at the transaction pooler (`:6543`, `?pgbouncer=true`). Migrations use `DATABASE_URL_MIGRATIONS` on direct `:5432` — see [`.env.example`](../../.env.example). Full B1 smoke tests: [#49](https://github.com/Elmorralito/save-ma-money/issues/49).
+
+**Testing today:** `poetry run pytest modules/api/tests` (health, pagination, budgets 501) plus `modules/model/tests`.
 
 ---
 

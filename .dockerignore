@@ -1,0 +1,16 @@
+.git
+.github
+.cursor
+.strata
+.venv
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/*.pyc
+docs/
+modules/**/tests/
+modules/api/src/.env
+docker/database/.env
+*.md
+!modules/api/README.md
+!modules/model/README.md
