@@ -1,4 +1,17 @@
-"""FastAPI dependencies."""
+"""FastAPI dependency injection surface for the Papita Transactions API.
+
+Re-exports auth, pagination, service factory, and tenant-context dependencies
+used by route handlers. Import from this package rather than individual
+``dependencies.*`` modules to keep router wiring consistent.
+
+Exported symbols:
+    Auth: ``get_auth_manager``, ``get_current_owner``, ``oauth2_scheme``
+    Pagination: ``PaginationParams``, ``get_pagination``
+    Services: ``get_accounts_service``, ``get_categories_service``,
+        ``get_connector``, ``get_report_service``, ``get_transactions_service``,
+        ``get_users_service``
+    Tenancy: ``TenantContext``
+"""
 
 from papita_txnsapi.dependencies.auth import get_auth_manager, get_current_owner, oauth2_scheme
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination

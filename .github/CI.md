@@ -95,17 +95,17 @@ Use this matrix to predict required checks before opening a PR.
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                   |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :-------------------------------------------------------- |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests, Codecov (strict) |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check               |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`             |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                             |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                         |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                    |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/deploy paths)                    | `.strata/` layout + strict code/memory pairing            |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges   |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge        |
+| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                     |
+| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :---------------------------------------------------------- |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests, Codecov (optional) |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                 |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`               |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                               |
+| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                           |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                      |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/deploy paths)                    | `.strata/` layout + strict code/memory pairing              |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges     |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge          |
 
 ---
 
@@ -150,11 +150,11 @@ pre-commit install   # optional but recommended for commit-time hooks
 
 ### Code Quality Control
 
-|               |                                                          |
-| :------------ | :------------------------------------------------------- |
-| **Trigger**   | PR opened/synchronized/reopened; `paths-ignore: docs/**` |
-| **Runner**    | `ubuntu-latest`                                          |
-| **Artifacts** | `docs/coverage.xml` → Codecov                            |
+|               |                                                                  |
+| :------------ | :--------------------------------------------------------------- |
+| **Trigger**   | PR opened/synchronized/reopened; `paths-ignore: docs/**`         |
+| **Runner**    | `ubuntu-latest`                                                  |
+| **Artifacts** | `docs/coverage.xml` (Codecov upload when `CODECOV_TOKEN` is set) |
 
 **Steps:**
 
@@ -169,7 +169,7 @@ pre-commit install   # optional but recommended for commit-time hooks
 4. **Pytest + coverage** via [`deploy/test.sh`](../deploy/test.sh)
    - `testpaths`: `modules/model/tests`, `modules/api/tests`, `modules/registrar/tests` (registrar not in tree yet)
    - Coverage XML: `docs/coverage.xml`
-5. Codecov upload (`fail_ci_if_error: false`)
+5. Codecov upload — **skipped** when `CODECOV_TOKEN` is unset; when set, uploads with `fail_ci_if_error: true`
 
 **Code style enforced here:** Black (120 cols), isort (black profile), flake8, pylint, mypy (gradual), interrogate (≥90% doc coverage on `modules/*/src`), shellcheck, yamllint, markdownlint, actionlint, prettier. Configuration lives in [`pyproject.toml`](../pyproject.toml) and [`.cursor/rules/gen-custom/`](../.cursor/rules/gen-custom/).
 
@@ -378,7 +378,7 @@ The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shie
 | Config            | Test coverage, linting, pre-commit, Dependabot, security scans, Docker, deploy scripts, Strata |          +33 max | File/config presence (same as v1)                                              |
 | **Runtime**       | Postgres CI service                                                                            |               +2 | `quality-control.yml` has `services.postgres`                                  |
 | **Runtime**       | Live DB integration tests                                                                      |               +2 | QC sets `DATABASE_URL`, runs Alembic + `deploy/test.sh`                        |
-| **Runtime**       | Codecov upload gate                                                                            |               +1 | `fail_ci_if_error: true` in QC                                                 |
+| **Runtime**       | Codecov upload gate                                                                            |               +1 | `fail_ci_if_error: true` when `CODECOV_TOKEN` is configured                    |
 | **Runtime**       | Supply chain audit                                                                             |               +1 | `pip-audit` in `supply_chain_check.sh`                                         |
 | **Runtime**       | Scheduled quality control                                                                      |               +1 | `schedule` cron in QC workflow                                                 |
 | **Runtime**       | Strata push gate                                                                               |               +1 | `strata-check.yml` runs on push to `main`                                      |

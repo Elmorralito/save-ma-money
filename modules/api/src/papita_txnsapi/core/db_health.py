@@ -1,4 +1,11 @@
-"""Database readiness probes for health endpoints."""
+"""Database readiness probes for health endpoints.
+
+Provides lightweight connectivity checks against the model-layer SQLAlchemy engine.
+Used by ``/health`` and ``/ready`` routes to report whether the API can reach PostgreSQL.
+
+Key exports:
+    check_database_ready: Execute ``SELECT 1`` and return a boolean readiness flag.
+"""
 
 from __future__ import annotations
 
@@ -15,13 +22,17 @@ logger = logging.getLogger(__name__)
 
 
 def check_database_ready(connector: Type[SQLDatabaseConnector]) -> bool:
-    """Run ``SELECT 1`` against the configured SQLAlchemy engine.
+    """Probe database connectivity with a minimal ``SELECT 1`` query.
+
+    Verifies that the connector is initialized, an engine exists, and a session can
+    execute a trivial statement without raising.
 
     Args:
-        connector: Model SQLDatabaseConnector class bound to an engine.
+        connector: Model ``SQLDatabaseConnector`` class bound to a configured engine.
 
     Returns:
-        True when the engine is initialized and the probe succeeds.
+        ``True`` when the engine is connected and the probe succeeds; ``False`` on
+        disconnect, missing engine, or any execution error (errors are logged).
     """
     if not connector.connected(on_disconnected=FallbackAction.LOG, custom_logger=logger):
         return False

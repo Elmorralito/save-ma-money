@@ -174,10 +174,15 @@ class AccountsService(BaseService):
         extension_service = extension_service_type.model_validate({"connector": self.connector})
         records = extension_service.get_records(
             extension_dto_type.model_construct(account_id=account.id),
+            owner=owner,
             **kwargs,
         )
         if getattr(records, "empty", True):
             return account, None
+
+        dao_type = extension_dto_type.__dao_type__
+        if len(records.columns) == 1 and isinstance(records.iloc[0, 0], dao_type):
+            return account, extension_dto_type.from_dao(records.iloc[0, 0])
 
         return account, extension_dto_type.model_validate(records.iloc[0].to_dict())
 

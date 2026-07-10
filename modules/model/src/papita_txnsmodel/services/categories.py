@@ -67,14 +67,15 @@ class CategoriesService(BaseService):
         """Block tenant mutations against global (``owner_id IS NULL``) categories."""
         if owner is None:
             return
-        if dto.owner_id is None:
-            raise ValueError("Tenants cannot create or modify global categories.")
         if dto.id is not None:
             existing_owner_id = self._existing_category_owner_id(dto.id, owner)
             if existing_owner_id is _CATEGORY_NOT_FOUND:
                 return
             if existing_owner_id is None:
                 raise ValueError("Tenants cannot modify global categories.")
+            return
+        if dto.owner_id is None:
+            raise ValueError("Tenants cannot create or modify global categories.")
 
     def create(
         self,

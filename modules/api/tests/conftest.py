@@ -15,9 +15,11 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 
+from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsapi.main import create_app
+from papita_txnsmodel.access.users.dto import UsersDTO
 
 
 @pytest.fixture
@@ -36,4 +38,52 @@ def users_client() -> tuple[TestClient, MagicMock]:
     app.dependency_overrides[get_users_service] = lambda: mock_service
     test_client = TestClient(app)
     yield test_client, mock_service
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def authed_client() -> tuple[TestClient, UsersDTO]:
+    """Test client with authenticated owner dependency."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    test_client = TestClient(app)
+    yield test_client, owner
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def accounts_client() -> tuple[TestClient, UsersDTO, MagicMock]:
+    """Authenticated client with mocked AccountsService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_accounts_service
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    mock_service = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_accounts_service] = lambda: mock_service
+    test_client = TestClient(app)
+    yield test_client, owner, mock_service
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def categories_client() -> tuple[TestClient, UsersDTO, MagicMock]:
+    """Authenticated client with mocked CategoriesService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_categories_service
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    mock_service = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_categories_service] = lambda: mock_service
+    test_client = TestClient(app)
+    yield test_client, owner, mock_service
     app.dependency_overrides.clear()

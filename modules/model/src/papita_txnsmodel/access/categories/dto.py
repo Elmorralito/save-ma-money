@@ -57,3 +57,12 @@ class CategoriesDTO(CoreTableDTO):
             return None
 
         return value.id if isinstance(value, TableDTO) else value
+
+    def to_dao(self) -> Categories:
+        """Convert to DAO, preserving nullable ``owner_id`` / ``parent_id`` keys."""
+        data = self.model_dump(mode="python", exclude_unset=True, exclude={"id"})
+        data["owner_id"] = self.owner_id
+        data["parent_id"] = self._serialize_parent_id(self.parent_id)
+        if self.id is not None:
+            data["id"] = self.id
+        return self.__dao_type__.model_validate(data)

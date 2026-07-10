@@ -643,7 +643,7 @@ Create a new account.
 }
 ```
 
-> **v3 note:** `initial_balance` → `initial_value`. Optional opening-balance `INCOME` transaction may be created on register. For liability accounts use `account_kind: "credit_card"` or `"loan_mortgage"` with `ledger_side: "liability"`.
+> **v3 note:** `initial_balance` → `initial_value`. Response `balance` uses the `account_balances` materialized view when a row exists; otherwise it falls back to `initial_value` until an opening ledger transaction is posted (PPT-037). Optional opening-balance `INCOME` transaction may be created on register. For liability accounts use `account_kind: "credit_card"` or `"loan_mortgage"` with `ledger_side: "liability"`.
 
 **Response 201:**
 

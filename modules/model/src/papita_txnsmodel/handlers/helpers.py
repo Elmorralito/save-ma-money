@@ -1,3 +1,9 @@
+"""Pydantic validators for handler service dependency wiring.
+
+Provides factory helpers used by load handlers to ensure injected service maps include
+the principal service and only DTO-backed dependency names allowed by the handler contract.
+"""
+
 import inspect
 from typing import Callable, Dict, Tuple, Type
 
@@ -12,55 +18,38 @@ def make_service_dependencies_validator(
 ) -> Callable[
     [Dict[str, Type[BaseService] | BaseService | str], ValidationInfo], Dict[str, Type[BaseService] | BaseService | str]
 ]:
-    """
-    Create a validator function to validate service dependencies.
-
-    This function generates a validator that checks if the provided dependencies
-    include the principal service and only allowed dependency types. It also
-    verifies that dependency names correspond to fields in the principal service's
-    DTO type.
+    """Create a Pydantic validator for handler service dependency maps.
 
     Args:
-        principal_service: The main service that must be included in the dependencies.
-        allowed_dependencies: A tuple of allowed service types for dependencies.
+        principal_service: Main service that must appear in the dependency map.
+        allowed_dependencies: Service types permitted as dependency values.
 
     Returns:
-        A validator function that takes a dictionary of dependencies and validation info,
-        and returns the validated dependencies dictionary.
+        Callable suitable for ``field_validator`` / legacy ``validator`` on a dependencies
+        dict field; returns the validated map unchanged when all checks pass.
 
-    Example:
-        ```python
-        # Creating a validator for UserService dependencies
-        user_dependencies_validator = make_service_dependencies_validator(
-            principal_service=UserService,
-            allowed_dependencies=(BaseService, AuthService, ProfileService)
-        )
-
-        # Using in a Pydantic model
-        class UserServiceConfig(BaseModel):
-            dependencies: Dict[str, Type[BaseService]]
-
-            _validate_deps = validator('dependencies')(user_dependencies_validator)
-        ```
+    Raises:
+        ValueError: When a dependency cannot be resolved, has a disallowed type, or its
+            key is not a field on the principal service DTO.
     """
 
     def validate_service_dependencies(
         val: Dict[str, Type[BaseService] | BaseService | str],
         _: ValidationInfo,
     ) -> Dict[str, Type[BaseService] | BaseService | str]:
-        """
-        Validate the service dependencies.
+        """Validate injected service dependencies against the principal DTO schema.
 
         Args:
-            val: The dependencies to validate as a dictionary mapping names to services.
-            _: Additional validation info (not used in this implementation).
+            val: Mapping of dependency field names to service classes, instances, or
+                import path strings resolvable via ``ClassDiscovery``.
+            _: Pydantic validation context (unused).
 
         Returns:
-            The validated dependencies dictionary.
+            The input mapping when every dependency resolves and type-checks.
 
         Raises:
-            ValueError: If the principal service is missing, if there are invalid
-                        dependency types, or if a dependency name doesn't match a DTO field.
+            ValueError: When the principal service is missing, a dependency type is not
+                allowed, or a key is absent from the principal DTO ``model_fields``.
         """
         dto = principal_service.dto_type
         allowed = tuple(

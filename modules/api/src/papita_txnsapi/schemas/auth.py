@@ -1,4 +1,9 @@
-"""Authentication request and response schemas."""
+"""Authentication request and response schemas.
+
+Defines JSON bodies for registration and token issuance plus the public user
+profile returned by auth endpoints. Passwords are accepted on write paths only
+and are never serialized on ``UserResponse``.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +16,13 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 
 
 class RegisterRequest(BaseModel):
-    """JSON body for ``POST /auth/register``."""
+    """JSON body for ``POST /auth/register``.
+
+    Attributes:
+        username: Unique login name; 6–255 characters.
+        email: Contact email; 5–255 characters.
+        password: Plain-text password for hashing by the auth service; 8–128 characters.
+    """
 
     username: str = Field(min_length=6, max_length=255)
     email: str = Field(min_length=5, max_length=255)
@@ -19,7 +30,14 @@ class RegisterRequest(BaseModel):
 
 
 class UserResponse(BaseModel):
-    """Public user profile — never includes password."""
+    """Public user profile — never includes password.
+
+    Attributes:
+        id: Stable user identifier (UUID).
+        username: Login name.
+        email: Registered email address.
+        created_at: UTC timestamp when the user record was created.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -30,7 +48,17 @@ class UserResponse(BaseModel):
 
     @classmethod
     def from_dto(cls, user: UsersDTO) -> UserResponse:
-        """Build an API response from a model ``UsersDTO``."""
+        """Build an API response from a model ``UsersDTO``.
+
+        Args:
+            user: Persisted user row from the model layer.
+
+        Returns:
+            Sanitized profile suitable for JSON serialization.
+
+        Raises:
+            ValueError: When ``user.created_at`` is missing.
+        """
         if user.created_at is None:
             raise ValueError("User record is missing created_at")
         return cls(
@@ -42,7 +70,13 @@ class UserResponse(BaseModel):
 
 
 class TokenResponse(BaseModel):
-    """OAuth2-compatible access token payload."""
+    """OAuth2-compatible access token payload.
+
+    Attributes:
+        access_token: Signed JWT issued by ``AuthSecurityManager``.
+        token_type: Token scheme; always ``bearer`` for this API.
+        expires_in: Token lifetime in seconds (must be positive).
+    """
 
     access_token: str
     token_type: str = "bearer"

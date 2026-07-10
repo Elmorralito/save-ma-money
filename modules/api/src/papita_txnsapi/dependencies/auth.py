@@ -1,4 +1,13 @@
-"""Authentication dependencies — Bearer JWT to tenant owner."""
+"""Authentication dependencies — Bearer JWT to tenant owner.
+
+FastAPI ``Depends`` callables that extract OAuth2 bearer tokens, validate JWT claims,
+and resolve the active tenant owner via ``UsersService``. Used by protected v1 routes.
+
+Key exports:
+    oauth2_scheme: Optional OAuth2 bearer extractor (``auto_error=False``).
+    get_auth_manager: Factory for the configured ``AuthSecurityManager``.
+    get_current_owner: Require a valid token and return the tenant ``UsersDTO``.
+"""
 
 from __future__ import annotations
 
@@ -20,7 +29,14 @@ _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
 
 
 def get_auth_manager(settings: Annotated[Settings, Depends(get_settings)]) -> AuthSecurityManager:
-    """Return the singleton JWT manager configured from Settings."""
+    """Return the singleton JWT manager configured from application settings.
+
+    Args:
+        settings: Injected API settings (secret, algorithm, token type).
+
+    Returns:
+        Shared ``AuthSecurityManager`` instance bound to ``settings``.
+    """
     return AuthSecurityManager(settings)
 
 
@@ -29,7 +45,22 @@ def get_current_owner(
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> UsersDTO:
-    """Decode Bearer JWT and resolve the tenant ``UsersDTO`` for protected routes."""
+    """Decode bearer JWT and resolve the active tenant owner for protected routes.
+
+    Validates token presence, signature, token-type claim, and ``sub`` UUID. Loads the
+    owner record and rejects inactive or soft-deleted users.
+
+    Args:
+        token: Bearer token from the ``Authorization`` header (may be ``None``).
+        settings: Injected API settings for JWT validation parameters.
+        users_service: Injected service used to load the owner by ID.
+
+    Returns:
+        Active ``UsersDTO`` representing the authenticated tenant owner.
+
+    Raises:
+        HTTPException: 401 when the token is missing, invalid, or the owner is not active.
+    """
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

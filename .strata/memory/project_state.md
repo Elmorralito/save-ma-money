@@ -1,31 +1,30 @@
 ---
 name: save-ma-money State
-description: v3 model — balance reports, partitioning, config package, migration squash (2026-07-07).
+description: v3 model — PPT-036 PR #84 open; CodeQL B1 gate fix pushed.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-10.** CI fix: quality-control runs on `main` push with Postgres service; live DB tests gate on reachable `DATABASE_URL`.
+**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) on `feat/PPT-036`
+— PR [#84](https://github.com/Elmorralito/save-ma-money/pull/84). CodeQL fix: `is_supabase_pooler_url()` uses
+`urlparse` hostname/port (not substring) + unit tests in `test_postgres_gate.py`.
 
 ### Last completed
 
-- **CI quality-control:** push-to-`main` trigger, Postgres 15 service, Alembic migrate before pytest; `postgres_gate.py` skips live tests when DB unreachable (fixes connection-refused errors).
-- **PPT-035 hardening (local):** auth rate limits, JWT `type` validation, inactive/soft-deleted rejection on `/me`, Argon2 rehash on login.
-- **PPT-035 / #44:** auth routes + tenant context; merged PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
-- **PPT-033 / #43:** merged [PR #80](https://github.com/Elmorralito/save-ma-money/pull/80) — coverage matrix published.
-- v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
-- Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
-- CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting; MV SQL test assertions aligned with SQLFluff join order.
-- Config package: `config/data/` (YAML), `config/transaction_partitions.py`, `config/materialized_views.py`; retired `configs/` package (logger YAML moved).
-- MV layer: five balance-report MVs + `views/indexes.py` fetch-support indexes; event-driven refresh via `balance_views.py`.
-- Deploy: `deploy/transaction_partitions.sh` (10-year retention, monthly ensure/archive); `deploy/alembic.sh` Poetry/venv fix.
-- Tests: **335** model tests passing; pre-commit shellcheck/flake8/pylint/mypy green after lint fixes.
-- Strata: `.strata/docs/ARCHITECTURE.md` updated for config paths, partitioning, balance reports.
+- **PPT-036 / #46 (committed):** 11 endpoints — accounts + categories routers, schemas, converters, mocked + live-DB +
+  B1 smoke tests; G8 `initial_value` balance fallback; model-layer owned-repo / category / extension fixes.
+- **Pre-commit hardening:** flake8 F821 (enum imports), pylint R0917 (keyword-only query params), mypy UUID guards via
+  `_require_uuid()` in `routers/v1/accounts.py`.
+- **API documentation:** 100% module + public-def Google docstrings in `modules/api/src` (35 files); pylint 10.00/10 on
+  package.
+- **CI quality-control:** Postgres 15 service + Alembic before pytest; `@requires_postgres` / `@requires_supabase_b1`
+  gates in `postgres_gate.py`.
+- **PPT-035 / #44:** auth + tenant — merged PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
 
 ### Next action
 
-- Verify Code Quality Control passes on `main` after CI fix push.
-- Start PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) — accounts + categories routers using `get_current_owner`.
+- Confirm PR #84 CI green after optional Codecov gate fix (upload skipped without `CODECOV_TOKEN`).
+- Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + opening-balance txn.
 
 ### Prerequisites
 
@@ -35,4 +34,6 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Uncommitted / staging notes
 
-- **Strata pre-commit:** strict pairing requires `.strata/` (or `AGENTS.md` / `CLAUDE.md`) staged whenever `modules/**` or `deploy/**` change; strict mode also runs Python/Bash review via `strata_code_review.sh`.
+- **Strata:** this save pairs with pending `modules/api/src/**` docstring diff — stage `.strata/memory/` + `.strata/docs/`
+  together before commit.
+- **Artifacts to omit:** `docs/coverage.xml`, `docs/interrogate_badge.svg` (regenerated locally).
