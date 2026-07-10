@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from urllib.parse import urlparse
 
 import pytest
 
@@ -40,8 +41,11 @@ def is_supabase_pooler_url(url: str | None) -> bool:
     """Return True when the URL targets a Supabase transaction pooler (B1)."""
     if not url:
         return False
-    normalized = url.lower()
-    return ":6543" in normalized or "pooler.supabase.com" in normalized
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host == "pooler.supabase.com" or host.endswith(".pooler.supabase.com"):
+        return True
+    return parsed.port == 6543
 
 
 def supabase_b1_available() -> bool:

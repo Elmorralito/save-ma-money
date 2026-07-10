@@ -1,12 +1,13 @@
 ---
 name: save-ma-money State
-description: v3 model — PPT-036 accounts/categories API shipped; docstring pass pending commit.
+description: v3 model — PPT-036 PR #84 open; CodeQL B1 gate fix pushed.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) committed on `feat/PPT-036`
-(`6d13604`). Uncommitted: Google docstring refresh across all 35 files in `modules/api/src/papita_txnsapi/`.
+**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) on `feat/PPT-036`
+— PR [#84](https://github.com/Elmorralito/save-ma-money/pull/84). CodeQL fix: `is_supabase_pooler_url()` uses
+`urlparse` hostname/port (not substring) + unit tests in `test_postgres_gate.py`.
 
 ### Last completed
 
@@ -22,8 +23,8 @@ description: v3 model — PPT-036 accounts/categories API shipped; docstring pas
 
 ### Next action
 
-- Commit docstring-only API pass (stage `.strata/` with `modules/api/**`; omit `docs/interrogate_badge.svg`).
-- Open PR for PPT-036; confirm CI quality-control on branch.
+- Confirm PR #84 CI: CodeQL should clear after pooler URL fix; **quality-control** may still fail on Codecov upload
+  (main lacks `CODECOV_TOKEN` since `fail_ci_if_error: true` in c853236).
 - Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + opening-balance txn.
 
 ### Prerequisites
