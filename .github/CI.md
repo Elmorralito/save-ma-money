@@ -97,7 +97,7 @@ Use this matrix to predict required checks before opening a PR.
 
 | Workflow             | File                                                                     | Triggers                                                   | Purpose                                                 |
 | :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------ |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR; skips `docs/**`-only diffs                             | pre-commit, pytest, Codecov                             |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; skips `docs/**`-only diffs            | pre-commit, pytest, Postgres live tests, Codecov        |
 | Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration paths)                | PostgreSQL Alembic round-trip + drift check             |
 | Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`           |
 | Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                           |
@@ -337,7 +337,7 @@ See [Strata validation](#strata-validation) for the full rule set.
 
 **Loop guard:** push jobs skip when the head commit message contains `[skip ci]`.
 
-**Expected baseline for this repo:** ~65 (**Intermediate**) with the v1 rubric — nine GitHub Actions workflows (+ keyword bonuses), pre-commit, security scans (CodeQL, Trivy, Gitleaks), coverage artifacts, Docker Compose, `deploy/` scripts, and `.strata/` layout. **Advanced** (≥ 75) would require signals such as Dependabot and additional workflow keyword coverage.
+**Expected baseline for this repo:** **75** (**Advanced**) with the v1 rubric — nine GitHub Actions workflows (+ keyword bonuses), pre-commit, Dependabot, security scans (CodeQL, Trivy, Gitleaks), coverage artifacts, Docker Compose, `deploy/` scripts, and `.strata/` layout. Quality-control runs on PR and push to `main` with Postgres live integration tests.
 
 See [CI Adoption Badge](#ci-adoption-badge) for the scoring rubric and local usage.
 

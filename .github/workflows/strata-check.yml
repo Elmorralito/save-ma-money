@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies for Strata code review
         run: poetry install --no-interaction --with development,pre-commit
 
-      - name: Run Strata layout validation and code review
+      - name: Run Strata layout validation and lint code review
         env:
           TERM: xterm-256color
           STRATA_STRICT_MODULES: "1"
