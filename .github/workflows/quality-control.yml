@@ -79,8 +79,21 @@ jobs:
         run: |
           /bin/bash "${GITHUB_WORKSPACE}/deploy/test.sh"
 
+      - name: "Detect Codecov token"
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "${CODECOV_TOKEN}" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: "Upload coverage report"
+        if: steps.codecov.outputs.enabled == 'true'
         uses: "codecov/codecov-action@v7"
         with:
-          file: "./docs/coverage.xml"
+          files: "./docs/coverage.xml"
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true

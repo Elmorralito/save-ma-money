@@ -23,8 +23,7 @@ description: v3 model — PPT-036 PR #84 open; CodeQL B1 gate fix pushed.
 
 ### Next action
 
-- Confirm PR #84 CI: CodeQL should clear after pooler URL fix; **quality-control** may still fail on Codecov upload
-  (main lacks `CODECOV_TOKEN` since `fail_ci_if_error: true` in c853236).
+- Confirm PR #84 CI green after optional Codecov gate fix (upload skipped without `CODECOV_TOKEN`).
 - Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + opening-balance txn.
 
 ### Prerequisites
