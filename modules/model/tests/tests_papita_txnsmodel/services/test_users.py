@@ -172,6 +172,27 @@ class TestVerifyCredentials:
 
         assert service.verify_credentials("johndoe", VALID_PASSWORD) is None
 
+    @patch.object(UsersService, "ensure_password_manager")
+    @patch("papita_txnsmodel.services.users.PasswordManagerFactory")
+    def test_verify_credentials_rehashes_outdated_argon2_hash(self, mock_factory_cls, _mock_ensure, users_service):
+        """Successful login upgrades Argon2 parameters when the stored hash is weak."""
+        from papita_txnsmodel.utils.hashutils import Argon2PasswordManager
+
+        service, repo = users_service
+        weak_manager = Argon2PasswordManager(time_cost=2)
+        strong_manager = Argon2PasswordManager(time_cost=3)
+        old_hash = weak_manager.hash_password(VALID_PASSWORD)
+        stored_user = _stored_user(password=old_hash)
+        repo.get_record_from_attributes.return_value = stored_user
+
+        mock_factory_cls.return_value.password_manager = strong_manager
+
+        result = service.verify_credentials("johndoe", VALID_PASSWORD)
+
+        assert result is not None
+        assert result.password != old_hash
+        repo.upsert_record.assert_called_once()
+
 
 class TestRegister:
     """Tests for user registration."""

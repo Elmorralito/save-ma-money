@@ -12,6 +12,7 @@ export TERM="${TERM:-xterm-256color}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export STRATA_STRICT_MODULES=1
+export STRATA_CODE_REVIEW="${STRATA_CODE_REVIEW:-1}"
 export STRATA_DIFF_SOURCE=staged
 
 exec /bin/bash "${SCRIPT_DIR}/strata_check.sh"

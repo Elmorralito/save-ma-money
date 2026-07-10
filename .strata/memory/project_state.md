@@ -5,12 +5,12 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-09.** PPT-035 ([#44](https://github.com/Elmorralito/save-ma-money/issues/44)) — auth routes + tenant context implemented locally.
+**Session — 2026-07-10.** PPT-035 auth hardening (local): rate limits, JWT `type` check, inactive-user guard, Argon2 rehash-on-login.
 
 ### Last completed
 
-- **PPT-035 / #44:** auth routes + tenant context; model fixes (`UsersDTO.__dao_type__`, password manager, timestamps) for B0 register.
-- **PPT-034 / #45:** merged PR [#81](https://github.com/Elmorralito/save-ma-money/pull/81) — FastAPI scaffold, health, Docker stack.
+- **PPT-035 hardening (local):** auth rate limits, JWT `type` validation, inactive/soft-deleted rejection on `/me`, Argon2 rehash on login.
+- **PPT-035 / #44:** auth routes + tenant context; PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
 - **PPT-033 / #43:** merged [PR #80](https://github.com/Elmorralito/save-ma-money/pull/80) — coverage matrix published.
 - v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
 - Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
@@ -23,7 +23,7 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Next action
 
-- Commit + open PR for PPT-035 / #44.
+- Merge PR #82; rebuild Docker API for `/auth/*` on `:8000`.
 - Start PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) — accounts + categories routers using `get_current_owner`.
 
 ### Prerequisites
@@ -34,4 +34,4 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Uncommitted / staging notes
 
-- **Strata pre-commit:** strict pairing requires `.strata/` (or `AGENTS.md` / `CLAUDE.md`) staged whenever `modules/**` or `deploy/**` change.
+- **Strata pre-commit:** strict pairing requires `.strata/` (or `AGENTS.md` / `CLAUDE.md`) staged whenever `modules/**` or `deploy/**` change; strict mode also runs Python/Bash review via `strata_code_review.sh`.

@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.dependencies.services import get_users_service

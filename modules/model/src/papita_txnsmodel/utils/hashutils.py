@@ -160,6 +160,10 @@ class Argon2PasswordManager(AbstractPasswordManager):
             logger.error("Password verification failed")
             return False
 
+    def needs_rehash(self, hashed_password: str) -> bool:
+        """Return True when the stored hash should be upgraded to current Argon2 parameters."""
+        return self.ph.check_needs_rehash(hashed_password)
+
 
 class PasswordManagerFactory(metaclass=MetaSingleton):
     """Factory for creating and managing password manager instances.

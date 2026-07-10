@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.dependencies.auth import get_auth_manager, get_current_owner
+from papita_txnsapi.dependencies.rate_limit import enforce_auth_login_rate_limit, enforce_auth_register_rate_limit
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsapi.schemas.auth import RegisterRequest, TokenResponse, UserResponse
 from papita_txnsapi.schemas.common import DeferredResponse
@@ -25,6 +26,7 @@ _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
 def register_user(
     body: RegisterRequest,
+    _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> UserResponse:
     """Register a new user. Does not issue a JWT — client must call ``/auth/login``."""
@@ -35,6 +37,7 @@ def register_user(
 @router.post("/login", response_model=TokenResponse)
 def login(
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    _rate_limit: Annotated[None, Depends(enforce_auth_login_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
     auth_manager: Annotated[AuthSecurityManager, Depends(get_auth_manager)],

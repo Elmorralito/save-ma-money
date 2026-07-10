@@ -6,6 +6,7 @@
 set -euo pipefail
 
 PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../deploy/utils.sh
 source "${PROJECT_PATH}/deploy/utils.sh"
 
@@ -193,6 +194,15 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
             ok "strict code/strata change pairing satisfied"
         else
             ok "strict pairing skipped — no architecture code paths in diff"
+        fi
+
+        if [[ "${STRATA_CODE_REVIEW:-1}" == "1" ]]; then
+            log "INFO" "Strict mode: reviewing changed Python and Bash files..."
+            if ! /bin/bash "${SCRIPT_DIR}/strata_code_review.sh" "${changed_files}"; then
+                fail "Strata code review failed on changed Python or Bash files"
+            fi
+        else
+            ok "Strata code review skipped (STRATA_CODE_REVIEW=${STRATA_CODE_REVIEW:-0})"
         fi
     elif [[ "${STRATA_DIFF_SOURCE:-range}" == "staged" ]]; then
         ok "strict pairing skipped — no staged paths (nothing in index)"

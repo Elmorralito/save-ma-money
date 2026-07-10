@@ -38,7 +38,7 @@ def get_current_owner(
         )
 
     auth_manager = AuthSecurityManager(settings)
-    payload = auth_manager.decode_token(token)
+    payload = auth_manager.decode_token(token, expected_type=settings.JWT_TOKEN_TYPE)
     if payload is None or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -56,7 +56,7 @@ def get_current_owner(
         ) from exc
 
     owner = users_service.get_owner(owner_id)
-    if owner is None:
+    if owner is None or not owner.active or owner.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

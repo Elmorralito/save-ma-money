@@ -19,7 +19,7 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.access.users.repository import UsersRepository
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.base import BaseService
-from papita_txnsmodel.utils.hashutils import PasswordManagerFactory
+from papita_txnsmodel.utils.hashutils import Argon2PasswordManager, PasswordManagerFactory
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,33 @@ class UsersService(BaseService):
         """
         return self._lookup_by_identifier(identifier, require_active=True)
 
+    def _persist_password_hash(self, user: UsersDTO, password_hash: str) -> UsersDTO:
+        """Persist an already-hashed password without re-running plain-text serialization."""
+        updated = UsersDTO.model_construct(
+            id=user.id,
+            username=user.username,
+            email=user.email,
+            password=password_hash,
+            active=user.active,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+            deleted_at=user.deleted_at,
+        )
+        self._repository.upsert_record(updated, owner=None)
+        return updated
+
+    def _rehash_password_if_needed(self, user: UsersDTO, plain_password: str) -> UsersDTO:
+        """Upgrade Argon2 parameters on login when the stored hash is outdated."""
+        password_manager = PasswordManagerFactory().password_manager
+        if not isinstance(password_manager, Argon2PasswordManager):
+            return user
+        if not password_manager.needs_rehash(user.password):
+            return user
+
+        new_hash = password_manager.hash_password(plain_password)
+        logger.info("Upgrading Argon2 hash parameters for user_id=%s", user.id)
+        return self._persist_password_hash(user, new_hash)
+
     def verify_credentials(self, username_or_email: str, password: str) -> UsersDTO | None:
         """Verify login credentials and return the user on success.
 
@@ -136,7 +163,7 @@ class UsersService(BaseService):
             logger.debug("Authentication failed: password mismatch for user_id=%s", user.id)
             return None
 
-        return user
+        return self._rehash_password_if_needed(user, password)
 
     def register(self, *, username: str, email: str, password: str) -> UsersDTO:
         """Register a new user after uniqueness checks.
