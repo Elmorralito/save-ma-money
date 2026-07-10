@@ -5,27 +5,23 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-10.** CI fix: quality-control runs on `main` push with Postgres service; live DB tests gate on reachable `DATABASE_URL`.
+**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) accounts + categories CRUD implemented in API layer.
 
 ### Last completed
 
-- **CI quality-control:** push-to-`main` trigger, Postgres 15 service, Alembic migrate before pytest; `postgres_gate.py` skips live tests when DB unreachable (fixes connection-refused errors).
-- **PPT-035 hardening (local):** auth rate limits, JWT `type` validation, inactive/soft-deleted rejection on `/me`, Argon2 rehash on login.
+- **PPT-036 / #46:** 11 endpoints — `routers/v1/accounts.py`, `routers/v1/categories.py`; Pydantic schemas; mocked route tests; live-DB CRUD tests (`@requires_postgres`); G8 `initial_value` balance fallback in API responses; model-layer fixes (owned-repo owner passthrough, category `to_dao`, soft-delete flatten).
+- **CI quality-control:** push-to-`main` trigger, Postgres 15 service, Alembic migrate before pytest; `postgres_gate.py` skips live tests when DB unreachable.
 - **PPT-035 / #44:** auth routes + tenant context; merged PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
 - **PPT-033 / #43:** merged [PR #80](https://github.com/Elmorralito/save-ma-money/pull/80) — coverage matrix published.
 - v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
 - Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
-- CI babysit (PR #53): `python-jose` → `PyJWT`; pre-commit formatting; MV SQL test assertions aligned with SQLFluff join order.
-- Config package: `config/data/` (YAML), `config/transaction_partitions.py`, `config/materialized_views.py`; retired `configs/` package (logger YAML moved).
-- MV layer: five balance-report MVs + `views/indexes.py` fetch-support indexes; event-driven refresh via `balance_views.py`.
-- Deploy: `deploy/transaction_partitions.sh` (10-year retention, monthly ensure/archive); `deploy/alembic.sh` Poetry/venv fix.
-- Tests: **335** model tests passing; pre-commit shellcheck/flake8/pylint/mypy green after lint fixes.
-- Strata: `.strata/docs/ARCHITECTURE.md` updated for config paths, partitioning, balance reports.
+- Tests: model + API pytest green; B1 smoke gated on Supabase pooler URL (`test_supabase_b1_smoke.py`).
 
 ### Next action
 
-- Verify Code Quality Control passes on `main` after CI fix push.
-- Start PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) — accounts + categories routers using `get_current_owner`.
+- Open PR for PPT-036 (omit `docs/coverage.xml` from commit); CI quality-control runs B0 live tests via Postgres service + `@requires_postgres`.
+- B1 Supabase smoke (`test_supabase_b1_smoke.py`) runs only when `DATABASE_URL` targets pooler `:6543` — manual / scheduled, not default CI.
+- Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + movements routers (opening-balance ledger txn).
 
 ### Prerequisites
 

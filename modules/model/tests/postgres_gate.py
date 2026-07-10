@@ -7,6 +7,7 @@ import os
 import pytest
 
 _POSTGRES_SKIP_REASON = "DATABASE_URL must point to a reachable PostgreSQL for live integration tests"
+_B1_SKIP_REASON = "DATABASE_URL must point to a reachable Supabase transaction pooler (:6543) for B1 smoke tests"
 
 
 def postgres_url() -> str | None:
@@ -35,4 +36,21 @@ def postgres_available() -> bool:
         return False
 
 
+def is_supabase_pooler_url(url: str | None) -> bool:
+    """Return True when the URL targets a Supabase transaction pooler (B1)."""
+    if not url:
+        return False
+    normalized = url.lower()
+    return ":6543" in normalized or "pooler.supabase.com" in normalized
+
+
+def supabase_b1_available() -> bool:
+    """Return True when B1 pooler URL is configured and accepts connections."""
+    url = postgres_url()
+    if url is None or not is_supabase_pooler_url(url):
+        return False
+    return postgres_available()
+
+
 requires_postgres = pytest.mark.skipif(not postgres_available(), reason=_POSTGRES_SKIP_REASON)
+requires_supabase_b1 = pytest.mark.skipif(not supabase_b1_available(), reason=_B1_SKIP_REASON)

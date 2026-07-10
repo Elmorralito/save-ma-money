@@ -85,6 +85,19 @@ class BaseRepository:
 
         return records
 
+    @staticmethod
+    def _flatten_records_dataframe(records: pd.DataFrame, dto_type: type[TableDTO]) -> pd.DataFrame:
+        """Expand single-column SQLModel result frames into plain dict rows."""
+        if getattr(records, "empty", True) or len(records.columns) != 1:
+            return records
+
+        dao_type = dto_type.__dao_type__
+        first_cell = records.iloc[0, 0]
+        if not isinstance(first_cell, dao_type):
+            return records
+
+        return pd.DataFrame([row.model_dump(mode="python") for row in records.iloc[:, 0]])
+
     @SQLDatabaseConnector.connect
     def soft_delete_records(
         self, *query_filters, dto_type: Type[TableDTO], _db_session: Session, **kwargs
@@ -106,6 +119,7 @@ class BaseRepository:
             pd.DataFrame: DataFrame containing the soft-deleted records.
         """
         records = self.get_records(*query_filters, dto_type=dto_type, **kwargs)
+        records = self._flatten_records_dataframe(records, dto_type)
         if getattr(records, "empty", True):
             logger.warning("No records to delete were found.")
             return pd.DataFrame([])
@@ -207,13 +221,15 @@ class BaseRepository:
         if hasattr(dao, "updated_at"):
             setattr(dao, "updated_at", datetime.now())
 
-        _db_session.begin()
         try:
             logger.debug("Upserting single record with id '%s'", dto.id)
-            _ = _db_session.add(dao) if record is None else _db_session.merge(dao)
+            if record is None:
+                _db_session.add(dao)
+            else:
+                dao = _db_session.merge(dao)
             _db_session.commit()
             _db_session.refresh(dao)
-            return dto.model_validate(dao.model_dump(), strict=True)
+            return dto.model_validate(dao.model_dump(mode="python"), strict=True)
         except Exception as exc:
             logger.exception("The upsert operation has failed due to: %s", exc)
             _db_session.rollback()
@@ -304,9 +320,12 @@ class BaseRepository:
         query_filters = [
             getattr(dao, key) == getattr(dto, key)
             for key in dto.model_fields_set
-            if getattr(dto, key, None) is not None and hasattr(dto.__dao_type__, key)
+            if (value := getattr(dto, key, None)) is not None
+            and not (isinstance(value, str) and value == "")
+            and hasattr(dto.__dao_type__, key)
         ]
-        return self.get_records(*query_filters, dto=dto, **kwargs)
+        dto_type = kwargs.pop("dto_type", type(dto))
+        return self.get_records(*query_filters, dto_type=dto_type, **kwargs)
 
     def get_record_by_id(
         self, id_: TableDTO | str | dict | uuid.UUID, dto_type: type[TableDTO], **kwargs
@@ -349,8 +368,8 @@ class BaseRepository:
         Returns:
             TableDTO | None: The retrieved record as a DTO, or None if not found.
         """
-        output_df = self.get_records_from_attributes(dto, **kwargs)
         dto_type = kwargs.pop("dto_type", type(dto))
+        output_df = self.get_records_from_attributes(dto, dto_type=dto_type, **kwargs)
         return self._dataframe_row_to_dto(output_df, dto_type, **kwargs)
 
 
@@ -404,7 +423,7 @@ class OwnedTableRepository(BaseRepository):
 
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().hard_delete_records(
-            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
+            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, owner=owner, **kwargs
         )
 
     @SQLDatabaseConnector.connect
@@ -434,7 +453,7 @@ class OwnedTableRepository(BaseRepository):
 
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().soft_delete_records(
-            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, **kwargs
+            owner_filter, *query_filters, dto_type=dto_type, _db_session=_db_session, owner=owner, **kwargs
         )
 
     @SQLDatabaseConnector.connect
@@ -544,7 +563,7 @@ class OwnedTableRepository(BaseRepository):
             raise ValueError("Owner is required for get_records_from_attributes")
 
         dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id  # type: ignore
-        return super().get_records_from_attributes(dto, **kwargs)
+        return super().get_records_from_attributes(dto, owner=owner, **kwargs)
 
     def get_record_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> OwnedTableDTO | None:
         """Retrieve a single record owned by the specified user based on DTO attributes.
@@ -565,4 +584,4 @@ class OwnedTableRepository(BaseRepository):
             raise ValueError("Owner is required for get_record_from_attributes")
 
         dto.owner_id = owner if isinstance(owner, uuid.UUID) else owner.id  # type: ignore
-        return super().get_record_from_attributes(dto, **kwargs)
+        return super().get_record_from_attributes(dto, owner=owner, **kwargs)

@@ -252,16 +252,24 @@ class TestReportService:
 class TestCategoriesGlobalWriteGuard:
     """Tenants cannot mutate global category seeds."""
 
-    def test_create_global_category_rejected_for_tenant(self, owner: UsersDTO):
-        """owner_id=None writes are blocked when owner context is present."""
+    def test_tenant_create_with_unassigned_owner_id_succeeds(self, owner: UsersDTO):
+        """New tenant categories omit owner_id; repository assigns it on upsert."""
         with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
             service = CategoriesService()
             service._repository = MagicMock()
+            service._repository.get_records.return_value = __import__("pandas").DataFrame()
+            service._repository.upsert_record.return_value = CategoriesDTO(
+                name="Rent",
+                description="seed",
+                category_kind=CategoryKind.EXPENSE,
+                owner_id=owner.id,
+            )
         category = CategoriesDTO(
-            name="Global Rent",
+            name="Rent",
             description="seed",
             category_kind=CategoryKind.EXPENSE,
             owner_id=None,
         )
-        with pytest.raises(ValueError, match="global categories"):
-            service.create(obj=category, owner=owner)
+        result = service.create(obj=category, owner=owner)
+        assert result.name == "Rent"
+        service._repository.upsert_record.assert_called_once()

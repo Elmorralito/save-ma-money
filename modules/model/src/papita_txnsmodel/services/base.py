@@ -128,8 +128,8 @@ class BaseService(BaseModel):
         parsed_obj = self.parse_dto(obj)
         self.check_expected_dto_type(parsed_obj)
         kwargs.pop("_db_session", None)
-        self._repository.upsert_record(parsed_obj, owner=owner, **kwargs)
-        return parsed_obj
+        upserted = self._repository.upsert_record(parsed_obj, owner=owner, **kwargs)
+        return upserted if upserted is not None else parsed_obj
 
     def delete(
         self, *, obj: TableDTO | dict[str, Any], owner: UsersDTO | None = None, hard: bool = False, **kwargs
@@ -153,7 +153,9 @@ class BaseService(BaseModel):
         query_filters = [
             getattr(dao, key) == getattr(parsed_obj, key)
             for key in parsed_obj.model_fields_set
-            if getattr(parsed_obj, key, None) is not None and hasattr(dao, key)
+            if (value := getattr(parsed_obj, key, None)) is not None
+            and not (isinstance(value, str) and value == "")
+            and hasattr(dao, key)
         ]
         kwargs.pop("_db_session", None)
         if hard:
@@ -181,6 +183,9 @@ class BaseService(BaseModel):
             obj = self.parse_dto(obj, strict=True, by_alias=True)
             self.check_expected_dto_type(obj)
             dto = self._repository.get_record_from_attributes(dto=obj, owner=owner, **kwargs)
+
+        if dto is not None and not getattr(dto, "active", True):
+            return None
 
         return dto
 
@@ -232,6 +237,11 @@ class BaseService(BaseModel):
             parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
             self.check_expected_dto_type(parsed_dto)
             records_df = self._repository.get_records_from_attributes(parsed_dto, owner=owner, **kwargs)
+
+        if not getattr(records_df, "empty", False) and len(records_df.columns) == 1:
+            dao_type = self.dto_type.__dao_type__
+            if isinstance(records_df.iloc[0, 0], dao_type):
+                return records_df
 
         return standardize_dataframe(self.dto_type, records_df, **kwargs)
 

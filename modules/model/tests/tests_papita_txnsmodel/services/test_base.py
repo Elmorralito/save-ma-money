@@ -136,6 +136,7 @@ class TestCreate:
     def test_create_with_dto_calls_upsert_record(self, service, mock_dto, mock_repository):
         """Test that create calls repository upsert_record when given a DTO."""
         service._repository = mock_repository
+        mock_repository.upsert_record.return_value = mock_dto
 
         result = service.create(obj=mock_dto)
 
@@ -145,6 +146,7 @@ class TestCreate:
     def test_create_with_dict_validates_and_calls_upsert_record(self, service, mock_dto, mock_repository):
         """Test that create validates dict and calls repository upsert_record."""
         service._repository = mock_repository
+        mock_repository.upsert_record.return_value = mock_dto
         obj_dict = {"id": uuid.uuid4()}
 
         with patch.object(TableDTO, "model_validate", return_value=mock_dto) as mock_validate:
@@ -302,6 +304,7 @@ class TestGetOrCreate:
         obj_dict = {"id": uuid.uuid4()}
         mock_repository.get_record_by_id.return_value = None
         mock_repository.get_record_from_attributes.return_value = None
+        mock_repository.upsert_record.return_value = mock_dto
 
         with patch.object(TableDTO, "model_validate", return_value=mock_dto):
             result = service.get_or_create(obj=obj_dict)
