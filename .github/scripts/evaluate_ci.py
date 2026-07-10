@@ -30,6 +30,15 @@ class QualitySignalDef(TypedDict):
     score: int
 
 
+class RuntimeSignalDef(TypedDict):
+    """Runtime maturity signal checked from workflow/script content."""
+
+    name: str
+    score: int
+    file: str
+    required: list[str]
+
+
 CI_TOOLS: list[CIToolDef] = [
     {
         "name": "GitHub Actions",
@@ -148,6 +157,70 @@ LEVEL_THRESHOLDS: list[tuple[int, str, str]] = [
     (0, "None", "red"),
 ]
 
+# v2: semantic keyword detection for GitHub Actions (avoids ubuntu-latest / papita_test false positives)
+GITHUB_ACTIONS_KEYWORD_PATTERNS: dict[str, re.Pattern[str]] = {
+    "test": re.compile(
+        r"(pytest|test\.sh|test_auth|test_tenancy|integration.test|integration tests|/tests/|papita_test)",
+        re.IGNORECASE,
+    ),
+    "lint": re.compile(
+        r"(pre-commit|flake8|pylint|\blint\b|isort|black|sqlfluff)",
+        re.IGNORECASE,
+    ),
+    "deploy": re.compile(
+        r"(deploy/|deploy\.|alembic|migration-check|/deploy/)",
+        re.IGNORECASE,
+    ),
+    "security": re.compile(
+        r"(security|codeql|trivy|gitleaks|pip-audit|supply.chain)",
+        re.IGNORECASE,
+    ),
+    "coverage": re.compile(
+        r"(coverage|codecov|pytest-cov|genbadge.coverage)",
+        re.IGNORECASE,
+    ),
+}
+
+# v2: runtime maturity signals detected from workflow/script content (max +8)
+RUNTIME_SIGNAL_DEFS: list[RuntimeSignalDef] = [
+    {
+        "name": "Postgres CI service",
+        "score": 2,
+        "file": ".github/workflows/quality-control.yml",
+        "required": ["services:", "postgres:", "5432"],
+    },
+    {
+        "name": "Live DB integration tests",
+        "score": 2,
+        "file": ".github/workflows/quality-control.yml",
+        "required": ["database_url", "deploy/test.sh", "alembic"],
+    },
+    {
+        "name": "Codecov upload gate",
+        "score": 1,
+        "file": ".github/workflows/quality-control.yml",
+        "required": ["codecov", "fail_ci_if_error: true"],
+    },
+    {
+        "name": "Supply chain audit",
+        "score": 1,
+        "file": ".github/scripts/supply_chain_check.sh",
+        "required": ["pip-audit"],
+    },
+    {
+        "name": "Scheduled quality control",
+        "score": 1,
+        "file": ".github/workflows/quality-control.yml",
+        "required": ["schedule:", "cron:"],
+    },
+    {
+        "name": "Strata push gate",
+        "score": 1,
+        "file": ".github/workflows/strata-check.yml",
+        "required": ["push:", "branches:", "main"],
+    },
+]
+
 CI_BADGE_PATTERN = re.compile(r"\[!\[CI Adoption\]\([^)]+\)\]\([^)]+\)")
 
 
@@ -173,12 +246,14 @@ class BadgeInfo:
 
 
 @dataclass
-class CIReport:
+class CIReport:  # pylint: disable=too-many-instance-attributes
     """Aggregated CI adoption report."""
 
     tools: list[CITool]
     quality_signals: list[str]
     quality_score: int
+    runtime_signals: list[str]
+    runtime_score: int
     total_score: int
     badge: BadgeInfo
     recommendations: list[str]
@@ -216,6 +291,39 @@ def has_linting_config(root: Path) -> bool:
     return "[tool.flake8]" in content or "[tool.pylint]" in content
 
 
+def workflow_has_keyword(content: str, keyword: str, *, tool_name: str) -> bool:
+    """Return True when workflow content matches a semantic keyword pattern."""
+    if tool_name != "GitHub Actions":
+        return keyword in content
+
+    pattern = GITHUB_ACTIONS_KEYWORD_PATTERNS.get(keyword)
+    if pattern is None:
+        return keyword in content
+    return pattern.search(content) is not None
+
+
+def file_contains_all(root: Path, relative_path: str, required: list[str]) -> bool:
+    """Return True when a file exists and contains every required substring."""
+    filepath = root / relative_path
+    if not filepath.is_file():
+        return False
+    content = read_file_content(str(filepath))
+    return all(fragment.lower() in content for fragment in required)
+
+
+def evaluate_runtime_signals(root: Path) -> tuple[int, list[str]]:
+    """Check v2 runtime maturity signals from workflow and script content."""
+    bonus = 0
+    found_signals: list[str] = []
+
+    for signal in RUNTIME_SIGNAL_DEFS:
+        if file_contains_all(root, signal["file"], signal["required"]):
+            bonus += signal["score"]
+            found_signals.append(signal["name"])
+
+    return bonus, found_signals
+
+
 def evaluate_tool(tool_def: CIToolDef, root: Path) -> CITool:
     """Evaluate a single CI tool definition."""
     patterns = tool_def["patterns"]
@@ -234,7 +342,7 @@ def evaluate_tool(tool_def: CIToolDef, root: Path) -> CITool:
     for filepath in matched_files:
         content = read_file_content(filepath)
         for keyword in bonus_checks:
-            if keyword in content:
+            if workflow_has_keyword(content, keyword, tool_name=ci_tool.name):
                 ci_tool.score_contribution += 1
                 ci_tool.details.append(f"  +1 keyword '{keyword}' in {Path(filepath).name}")
 
@@ -272,7 +380,30 @@ def compute_level(score: int) -> tuple[str, str]:
     return "None", "red"
 
 
-def build_recommendations(tools: list[CITool], quality_signals: list[str]) -> list[str]:
+QUALITY_RECOMMENDATIONS: dict[str, str] = {
+    "Test coverage config": "Add coverage reporting (docs/coverage.xml, codecov.yml, or .coveragerc)",
+    "Linting config": "Add linting configuration (.flake8, .pylintrc, or pyproject tool sections)",
+    "Dependabot": "Enable Dependabot (.github/dependabot.yml)",
+    "Pre-commit hooks": "Add pre-commit hooks (.pre-commit-config.yaml)",
+    "Security scanning": "Add security scanning workflows (CodeQL, Trivy, or Gitleaks)",
+    "Docker support": "Add Docker support (Dockerfile or docker/ directory)",
+    "Deploy automation": "Add deploy automation scripts (deploy/ or Makefile)",
+    "Strata layout": "Add Strata agent memory layout (.strata/MANIFEST.md)",
+}
+
+RUNTIME_RECOMMENDATIONS: dict[str, str] = {
+    "Postgres CI service": "Add a Postgres service to quality-control for live integration tests",
+    "Codecov upload gate": "Set codecov fail_ci_if_error: true in quality-control",
+    "Scheduled quality control": "Add a weekly schedule to quality-control.yml",
+    "Strata push gate": "Run strata-check on push to main (path-filtered)",
+}
+
+
+def build_recommendations(
+    tools: list[CITool],
+    quality_signals: list[str],
+    runtime_signals: list[str],
+) -> list[str]:
     """Suggest improvements for missing CI maturity signals."""
     found_names = {tool.name for tool in tools if tool.found}
     recommendations: list[str] = []
@@ -281,22 +412,14 @@ def build_recommendations(tools: list[CITool], quality_signals: list[str]) -> li
         recommendations.append("No CI system detected — add GitHub Actions under .github/workflows/")
     if "GitHub Actions" not in found_names:
         recommendations.append("Add GitHub Actions for native GitHub integration")
-    if "Test coverage config" not in quality_signals:
-        recommendations.append("Add coverage reporting (docs/coverage.xml, codecov.yml, or .coveragerc)")
-    if "Linting config" not in quality_signals:
-        recommendations.append("Add linting configuration (.flake8, .pylintrc, or pyproject tool sections)")
-    if "Dependabot" not in quality_signals:
-        recommendations.append("Enable Dependabot (.github/dependabot.yml)")
-    if "Pre-commit hooks" not in quality_signals:
-        recommendations.append("Add pre-commit hooks (.pre-commit-config.yaml)")
-    if "Security scanning" not in quality_signals:
-        recommendations.append("Add security scanning workflows (CodeQL, Trivy, or Gitleaks)")
-    if "Docker support" not in quality_signals:
-        recommendations.append("Add Docker support (Dockerfile or docker/ directory)")
-    if "Deploy automation" not in quality_signals:
-        recommendations.append("Add deploy automation scripts (deploy/ or Makefile)")
-    if "Strata layout" not in quality_signals:
-        recommendations.append("Add Strata agent memory layout (.strata/MANIFEST.md)")
+
+    for signal_name, message in QUALITY_RECOMMENDATIONS.items():
+        if signal_name not in quality_signals:
+            recommendations.append(message)
+
+    for signal_name, message in RUNTIME_RECOMMENDATIONS.items():
+        if signal_name not in runtime_signals:
+            recommendations.append(message)
 
     return recommendations
 
@@ -337,18 +460,21 @@ def build_report(root: Path, repo_name: str) -> CIReport:
     evaluated_tools = [evaluate_tool(tool_def, root) for tool_def in CI_TOOLS]
     found_tools = [tool for tool in evaluated_tools if tool.found]
     quality_score, quality_signals = evaluate_quality_signals(root)
+    runtime_score, runtime_signals = evaluate_runtime_signals(root)
 
     ci_score = sum(tool.score_contribution for tool in found_tools)
-    total_score = min(ci_score + quality_score, 100)
+    total_score = min(ci_score + quality_score + runtime_score, 100)
     level, badge_color = compute_level(total_score)
     badge_url = build_badge_url(level, total_score, badge_color)
     badge_link = build_badge_link(repo_name)
-    recommendations = build_recommendations(evaluated_tools, quality_signals)
+    recommendations = build_recommendations(evaluated_tools, quality_signals, runtime_signals)
 
     return CIReport(
         tools=found_tools,
         quality_signals=quality_signals,
         quality_score=quality_score,
+        runtime_signals=runtime_signals,
+        runtime_score=runtime_score,
         total_score=total_score,
         badge=BadgeInfo(level=level, color=badge_color, url=badge_url, link=badge_link),
         recommendations=recommendations,
@@ -372,6 +498,10 @@ def print_report(report: CIReport) -> None:
     for signal in report.quality_signals:
         print(f"  - {signal}")
 
+    print(f"\nRuntime signals ({len(report.runtime_signals)}) +{report.runtime_score} pts:")
+    for signal in report.runtime_signals:
+        print(f"  - {signal}")
+
     if report.recommendations:
         print("\nRecommendations:")
         for recommendation in report.recommendations:
@@ -385,6 +515,7 @@ def write_github_outputs(report: CIReport) -> None:
     """Expose report fields to downstream GitHub Actions steps."""
     tools_str = ", ".join(tool.name for tool in report.tools) or "None"
     signals_str = ", ".join(report.quality_signals) or "None"
+    runtime_str = ", ".join(report.runtime_signals) or "None"
 
     set_output("badge_url", report.badge.url)
     set_output("badge_link", report.badge.link)
@@ -393,6 +524,7 @@ def write_github_outputs(report: CIReport) -> None:
     set_output("score", str(report.total_score))
     set_output("tools", tools_str)
     set_output("quality_signals", signals_str)
+    set_output("runtime_signals", runtime_str)
 
 
 def update_readme_badge(readme_path: Path, badge_markdown: str) -> bool:

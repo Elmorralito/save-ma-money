@@ -95,17 +95,17 @@ Use this matrix to predict required checks before opening a PR.
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                 |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------ |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; skips `docs/**`-only diffs            | pre-commit, pytest, Postgres live tests, Codecov        |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration paths)                | PostgreSQL Alembic round-trip + drift check             |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`           |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                           |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                       |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                  |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | **PR only** (code/deploy paths)                            | `.strata/` layout + strict code/memory pairing          |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge      |
+| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                   |
+| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :-------------------------------------------------------- |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests, Codecov (strict) |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check               |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`             |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                             |
+| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                         |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                    |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/deploy paths)                    | `.strata/` layout + strict code/memory pairing            |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges   |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge        |
 
 ---
 
@@ -337,15 +337,70 @@ See [Strata validation](#strata-validation) for the full rule set.
 
 **Loop guard:** push jobs skip when the head commit message contains `[skip ci]`.
 
-**Expected baseline for this repo:** **75** (**Advanced**) with the v1 rubric — nine GitHub Actions workflows (+ keyword bonuses), pre-commit, Dependabot, security scans (CodeQL, Trivy, Gitleaks), coverage artifacts, Docker Compose, `deploy/` scripts, and `.strata/` layout. Quality-control runs on PR and push to `main` with Postgres live integration tests.
+**Expected baseline for this repo:** **77** (**Advanced**) with the v2 rubric — semantic workflow keywords, eight config quality signals, and six runtime signals (Postgres CI, live DB tests, Codecov gate, pip-audit, scheduled QC, Strata push gate). Quality-control runs on PR, push to `main`, and weekly schedule with Postgres live integration tests.
 
 See [CI Adoption Badge](#ci-adoption-badge) for the scoring rubric and local usage.
+
+### Branch protection (recommended)
+
+`main` is not branch-protected today. To require the quality gate before merge:
+
+1. GitHub → **Settings → Branches → Add rule** for `main`
+2. Enable **Require status checks to pass**
+3. Required checks: **Code Quality Control**, **Secret Scan** (minimum); add **Strata Check**, **Migration Check**, **Supply Chain Check** when path filters apply
+4. Enable **Require branches to be up to date**
+
+Or via CLI (repo admin):
+
+```bash
+gh api repos/Elmorralito/save-ma-money/branches/main/protection \
+  --method PUT \
+  --field required_status_checks='{"strict":true,"contexts":["Code Quality Control","Secret Scan"]}' \
+  --field enforce_admins=false \
+  --field required_pull_request_reviews=null \
+  --field restrictions=null
+```
 
 ---
 
 ## CI Adoption Badge
 
-The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shields.io badge in `README.md` that reflects repository CI maturity. Detection is **config-file based** (v1 does not query live workflow run status via the GitHub API).
+The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shields.io badge in `README.md` that reflects repository CI maturity. Detection is **config-file based** for quality signals and **content-semantic** for workflow keywords (v2).
+
+### Scoring rubric (v2)
+
+**Total = min(GitHub Actions + quality signals + runtime signals, 100)**
+
+| Layer             | Signal                                                                                         |           Points | Detection                                                                      |
+| :---------------- | :--------------------------------------------------------------------------------------------- | ---------------: | :----------------------------------------------------------------------------- |
+| CI platform       | GitHub Actions presence                                                                        |              +20 | `.github/workflows/*.yml` exist                                                |
+| Workflow keywords | `test`, `lint`, `deploy`, `security`, `coverage`                                               | +1 each per file | Semantic regex in workflow YAML (v2 — ignores `ubuntu-latest` false positives) |
+| Config            | Test coverage, linting, pre-commit, Dependabot, security scans, Docker, deploy scripts, Strata |          +33 max | File/config presence (same as v1)                                              |
+| **Runtime**       | Postgres CI service                                                                            |               +2 | `quality-control.yml` has `services.postgres`                                  |
+| **Runtime**       | Live DB integration tests                                                                      |               +2 | QC sets `DATABASE_URL`, runs Alembic + `deploy/test.sh`                        |
+| **Runtime**       | Codecov upload gate                                                                            |               +1 | `fail_ci_if_error: true` in QC                                                 |
+| **Runtime**       | Supply chain audit                                                                             |               +1 | `pip-audit` in `supply_chain_check.sh`                                         |
+| **Runtime**       | Scheduled quality control                                                                      |               +1 | `schedule` cron in QC workflow                                                 |
+| **Runtime**       | Strata push gate                                                                               |               +1 | `strata-check.yml` runs on push to `main`                                      |
+
+**Levels:** Advanced ≥ 75 · Intermediate ≥ 50 · Basic ≥ 20 · None &lt; 20
+
+### Scoring rubric (v1 — superseded)
+
+| Signal                                                             | Base points      | Bonus                                                                               |
+| :----------------------------------------------------------------- | :--------------- | :---------------------------------------------------------------------------------- |
+| GitHub Actions (`.github/workflows/*.yml`)                         | +20              | +1 per keyword substring in YAML (`test`, `lint`, `deploy`, `security`, `coverage`) |
+| Travis / CircleCI / Jenkins / GitLab CI                            | +15 each         | +1 per keyword                                                                      |
+| Azure / Bitbucket / Drone / TeamCity / Buildkite                   | +10 each         | +1 per keyword                                                                      |
+| Test coverage config                                               | +5               | —                                                                                   |
+| Linting config (`.flake8`, `.pylintrc`, `pyproject` tool sections) | +5               | —                                                                                   |
+| Pre-commit hooks                                                   | +5               | —                                                                                   |
+| Dependabot                                                         | +5               | —                                                                                   |
+| Security scanning workflows                                        | +5               | —                                                                                   |
+| Docker support                                                     | +3               | —                                                                                   |
+| Deploy automation (`deploy/` or `Makefile`)                        | +2               | —                                                                                   |
+| Strata layout (`.strata/`)                                         | +3               | repo-specific bonus                                                                 |
+| **Maximum**                                                        | **100** (capped) |                                                                                     |
 
 ### Triggers
 
@@ -355,25 +410,6 @@ The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shie
 | `pull_request`      | PRs targeting `main`                          |
 | `schedule`          | Mondays at 06:00 UTC (`0 6 * * 1`)            |
 | `workflow_dispatch` | Manual run from the Actions tab               |
-
-### Scoring rubric (v1)
-
-| Signal                                                             | Base points      | Bonus                                                                     |
-| :----------------------------------------------------------------- | :--------------- | :------------------------------------------------------------------------ |
-| GitHub Actions (`.github/workflows/*.yml`)                         | +20              | +1 per keyword in YAML (`test`, `lint`, `deploy`, `security`, `coverage`) |
-| Travis / CircleCI / Jenkins / GitLab CI                            | +15 each         | +1 per keyword                                                            |
-| Azure / Bitbucket / Drone / TeamCity / Buildkite                   | +10 each         | +1 per keyword                                                            |
-| Test coverage config                                               | +5               | —                                                                         |
-| Linting config (`.flake8`, `.pylintrc`, `pyproject` tool sections) | +5               | —                                                                         |
-| Pre-commit hooks                                                   | +5               | —                                                                         |
-| Dependabot                                                         | +5               | —                                                                         |
-| Security scanning workflows                                        | +5               | —                                                                         |
-| Docker support                                                     | +3               | —                                                                         |
-| Deploy automation (`deploy/` or `Makefile`)                        | +2               | —                                                                         |
-| Strata layout (`.strata/`)                                         | +3               | repo-specific bonus                                                       |
-| **Maximum**                                                        | **100** (capped) |                                                                           |
-
-**Levels:** Advanced ≥ 75 · Intermediate ≥ 50 · Basic ≥ 20 · None &lt; 20
 
 ### Run locally
 

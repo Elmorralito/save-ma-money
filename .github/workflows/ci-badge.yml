@@ -67,5 +67,6 @@ jobs:
             echo "| **Score** | ${{ steps.ci_eval.outputs.score }}/100 |"
             echo "| **Tools** | ${{ steps.ci_eval.outputs.tools }} |"
             echo "| **Quality signals** | ${{ steps.ci_eval.outputs.quality_signals }} |"
+            echo "| **Runtime signals** | ${{ steps.ci_eval.outputs.runtime_signals }} |"
             echo "| **Badge** | ![CI Adoption](${{ steps.ci_eval.outputs.badge_url }}) |"
           } >> "${GITHUB_STEP_SUMMARY}"

@@ -11,6 +11,9 @@ on:
       - main
     paths-ignore:
       - "docs/**"
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
 
 concurrency:
   group: quality-control-${{ github.ref }}
@@ -80,4 +83,4 @@ jobs:
         uses: "codecov/codecov-action@v7"
         with:
           file: "./docs/coverage.xml"
-          fail_ci_if_error: false
+          fail_ci_if_error: true
