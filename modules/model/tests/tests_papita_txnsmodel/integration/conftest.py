@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 
 import pytest
@@ -10,12 +9,9 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from postgres_gate import postgres_url, requires_postgres
 
-POSTGRES_URL = os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL")
-requires_postgres = pytest.mark.skipif(
-    not POSTGRES_URL or not str(POSTGRES_URL).startswith("postgresql"),
-    reason="DATABASE_URL must point to PostgreSQL for live integration tests",
-)
+POSTGRES_URL = postgres_url()
 
 
 @pytest.fixture(scope="session")

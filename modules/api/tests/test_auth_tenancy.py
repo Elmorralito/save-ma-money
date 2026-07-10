@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "model" / "tests"))
 
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.main import create_app
@@ -15,12 +19,9 @@ from papita_txnsmodel.access.accounts.repository import AccountsRepository
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.model.enums import AccountKind, LedgerSide
 from papita_txnsmodel.services.users import UsersService
+from postgres_gate import postgres_url, requires_postgres
 
-POSTGRES_URL = os.environ.get("DATABASE_URL") or os.environ.get("TEST_DATABASE_URL")
-requires_postgres = pytest.mark.skipif(
-    not POSTGRES_URL or not str(POSTGRES_URL).startswith("postgresql"),
-    reason="DATABASE_URL must point to PostgreSQL for live auth integration tests",
-)
+POSTGRES_URL = postgres_url()
 
 _VALID_PASSWORD = "SecurePass1!"
 _REGISTER = {

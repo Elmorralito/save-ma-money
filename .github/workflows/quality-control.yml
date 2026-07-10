@@ -6,6 +6,11 @@ on:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
 
 concurrency:
   group: quality-control-${{ github.ref }}
@@ -14,6 +19,21 @@ concurrency:
 jobs:
   quality-control:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: papita
+          POSTGRES_PASSWORD: papita
+          POSTGRES_DB: papita_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: "Checkout code"
         uses: "actions/checkout@v7"
@@ -42,7 +62,17 @@ jobs:
           # Local-only hooks; Strata/MCP validation use dedicated workflows or git commit.
           SKIP: strata-validate,mcp-config-validate
 
+      - name: "Run database migrations (live integration tests)"
+        env:
+          DB_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
+        run: |
+          poetry run alembic -c modules/model/alembic.ini -x "dbUrl=${DB_URL}" upgrade head
+
       - name: "Run PyTest with Coverage"
+        env:
+          DATABASE_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
+          JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters
+          AUTH_RATE_LIMIT_ENABLED: "false"
         run: |
           /bin/bash "${GITHUB_WORKSPACE}/deploy/test.sh"
 
