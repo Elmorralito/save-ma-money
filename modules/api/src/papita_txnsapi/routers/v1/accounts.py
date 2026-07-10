@@ -1,4 +1,26 @@
-"""Account CRUD routes — PPT-036."""
+"""Account CRUD routes — PPT-036.
+
+Exposes tenant-scoped account management under ``/accounts``. All handlers require an
+authenticated owner via ``get_current_owner`` and delegate persistence to
+:class:`~papita_txnsmodel.services.accounts.AccountsService`.
+
+Routes:
+    ``GET /accounts`` — paginated list with optional kind, ledger side, and active filters.
+    ``GET /accounts/{account_id}`` — single account with extension details and balance.
+    ``POST /accounts`` — create account and optional kind-specific extension row.
+    ``PUT /accounts/{account_id}`` — update account and optional extension row.
+    ``DELETE /accounts/{account_id}`` — soft-delete tenant-owned account.
+    ``GET /accounts/{account_id}/balance`` — balance from ``account_balances`` MV.
+
+Tenant scoping:
+    Every handler passes ``owner`` to service methods so queries and mutations are
+    limited to the authenticated tenant's records.
+
+Service delegation:
+    List/read operations use ``get_records``, ``get``, and ``get_with_extension``.
+    Mutations use ``create_account``, ``update_account``, and ``delete``.
+    Balances are read via ``get_balance`` and the nested ``balances_service`` when present.
+"""
 
 from __future__ import annotations
 
@@ -30,11 +52,29 @@ router = APIRouter(prefix="/accounts", tags=["Accounts"])
 
 
 def _account_not_found() -> HTTPException:
+    """Build a 404 response for a missing or inaccessible account.
+
+    Returns:
+        HTTPException: 404 with a generic "Account not found" detail to avoid leaking
+            cross-tenant existence.
+    """
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
 
 
 def _require_uuid(value: uuid.UUID | None, *, not_found: HTTPException | None = None) -> uuid.UUID:
-    """Return a persisted UUID or raise when the DTO has no primary key."""
+    """Return a persisted UUID or raise when the DTO has no primary key.
+
+    Args:
+        value: Primary key from a DTO that may not yet be persisted.
+        not_found: Optional exception to raise instead of the default account-not-found
+            response.
+
+    Returns:
+        The non-``None`` UUID value.
+
+    Raises:
+        HTTPException: When ``value`` is ``None``.
+    """
     if value is None:
         raise not_found or _account_not_found()
     return value
@@ -46,7 +86,17 @@ def _build_account_filter_dto(
     ledger_side: str | None,
     is_active: bool | None,
 ) -> AccountsDTO | None:
-    """Build a filter DTO using only explicitly set query parameters."""
+    """Build a filter DTO using only explicitly set query parameters.
+
+    Args:
+        account_kind: Optional account kind slug to parse into an enum value.
+        ledger_side: Optional asset/liability slug to parse into an enum value.
+        is_active: Optional active flag; omitted parameters are not applied.
+
+    Returns:
+        A partial :class:`~papita_txnsmodel.access.accounts.dto.AccountsDTO` for
+        service filtering, or ``None`` when no filters were provided.
+    """
     filter_fields: dict[str, object] = {}
     if account_kind is not None:
         filter_fields["account_kind"] = parse_account_kind(account_kind)
@@ -65,7 +115,18 @@ def _balance_for_account(
     account_id: uuid.UUID,
     account: AccountsDTO | None = None,
 ) -> float:
-    """Return MV balance for an account, falling back to ``initial_value`` when MV is empty."""
+    """Return MV balance for an account, falling back to ``initial_value`` when MV is empty.
+
+    Args:
+        accounts_service: Tenant-scoped accounts service with optional balances helper.
+        owner: Authenticated tenant used for balance lookups.
+        account_id: Target account primary key.
+        account: Optional account DTO used to apply ``effective_account_balance`` fallback
+            logic when the materialized view has no row.
+
+    Returns:
+        Numeric balance for the account, preferring MV data when available.
+    """
     row = accounts_service.get_balance(owner=owner, account_id=account_id)
     mv_balance = float(row.balance) if row is not None else None
     if account is not None:
@@ -85,7 +146,19 @@ def list_accounts(
     ledger_side: Annotated[str | None, Query(description="Filter by asset or liability")] = None,
     is_active: Annotated[bool | None, Query(description="Filter by active status")] = None,
 ) -> PaginatedResponse[AccountResponse]:
-    """List tenant accounts with optional filters and balances from ``account_balances``."""
+    """List tenant accounts with optional filters and balances from ``account_balances``.
+
+    Args:
+        owner: Authenticated tenant from JWT.
+        pagination: Skip/limit window for the response page.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+        account_kind: Optional filter by account kind slug.
+        ledger_side: Optional filter by asset or liability slug.
+        is_active: Optional filter by active status.
+
+    Returns:
+        Paginated account rows enriched with effective balances per item.
+    """
     filter_dto = _build_account_filter_dto(
         account_kind=account_kind,
         ledger_side=ledger_side,
@@ -118,7 +191,19 @@ def get_account(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
 ) -> AccountResponse:
-    """Retrieve a single account with extension details and current balance."""
+    """Retrieve a single account with extension details and current balance.
+
+    Args:
+        account_id: Primary key of the account to fetch.
+        owner: Authenticated tenant from JWT.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+
+    Returns:
+        Account payload including kind-specific extension fields and computed balance.
+
+    Raises:
+        HTTPException: 404 when the account is missing or not owned by the tenant.
+    """
     account, extension = accounts_service.get_with_extension(obj=account_id, owner=owner)
     if account is None:
         raise _account_not_found()
@@ -137,7 +222,20 @@ def create_account(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
 ) -> AccountResponse:
-    """Create an account and optional kind-specific extension row."""
+    """Create an account and optional kind-specific extension row.
+
+    Args:
+        body: Validated create payload including core account fields and extension data.
+        owner: Authenticated tenant from JWT; used as ``owner_id`` on the new record.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+
+    Returns:
+        Created account with extension details and initial effective balance.
+
+    Raises:
+        HTTPException: 404 when the owner DTO lacks a persisted id (unexpected).
+        ValueError: Propagated from the service layer on invalid business input.
+    """
     account_dto = body.to_accounts_dto(owner_id=_require_uuid(owner.id))
     created = accounts_service.create_account(
         obj=account_dto,
@@ -157,7 +255,21 @@ def update_account(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
 ) -> AccountResponse:
-    """Update an account and optional extension row."""
+    """Update an account and optional extension row.
+
+    Args:
+        account_id: Primary key of the account to update.
+        body: Partial update payload merged onto the existing DTO.
+        owner: Authenticated tenant from JWT.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+
+    Returns:
+        Updated account with extension details and current effective balance.
+
+    Raises:
+        HTTPException: 404 when the account is missing or not owned by the tenant.
+        ValueError: Propagated from the service layer on invalid business input.
+    """
     existing, _extension = accounts_service.get_with_extension(obj=account_id, owner=owner)
     if existing is None:
         raise _account_not_found()
@@ -180,7 +292,19 @@ def delete_account(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
 ) -> None:
-    """Soft-delete an account owned by the authenticated tenant."""
+    """Soft-delete an account owned by the authenticated tenant.
+
+    Args:
+        account_id: Primary key of the account to delete.
+        owner: Authenticated tenant from JWT.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+
+    Returns:
+        ``None``; response body is empty on success.
+
+    Raises:
+        HTTPException: 404 when the account is missing or not owned by the tenant.
+    """
     existing = accounts_service.get(obj=account_id, owner=owner)
     if existing is None:
         raise _account_not_found()
@@ -193,7 +317,19 @@ def get_account_balance(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
 ) -> BalanceResponse:
-    """Return the current balance from the ``account_balances`` materialized view."""
+    """Return the current balance from the ``account_balances`` materialized view.
+
+    Args:
+        account_id: Primary key of the account whose balance is requested.
+        owner: Authenticated tenant from JWT.
+        accounts_service: Injected accounts service scoped to the request lifecycle.
+
+    Returns:
+        Balance snapshot with currency; falls back to ``initial_value`` when MV has no row.
+
+    Raises:
+        HTTPException: 404 when the account is missing or not owned by the tenant.
+    """
     existing = accounts_service.get(obj=account_id, owner=owner)
     if existing is None:
         raise _account_not_found()

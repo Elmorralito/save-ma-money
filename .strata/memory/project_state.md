@@ -1,27 +1,30 @@
 ---
 name: save-ma-money State
-description: v3 model — balance reports, partitioning, config package, migration squash (2026-07-07).
+description: v3 model — PPT-036 accounts/categories API shipped; docstring pass pending commit.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) accounts + categories CRUD implemented in API layer.
+**Session — 2026-07-10.** PPT-036 ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)) committed on `feat/PPT-036`
+(`6d13604`). Uncommitted: Google docstring refresh across all 35 files in `modules/api/src/papita_txnsapi/`.
 
 ### Last completed
 
-- **PPT-036 / #46:** 11 endpoints — `routers/v1/accounts.py`, `routers/v1/categories.py`; Pydantic schemas; mocked route tests; live-DB CRUD tests (`@requires_postgres`); G8 `initial_value` balance fallback in API responses; model-layer fixes (owned-repo owner passthrough, category `to_dao`, soft-delete flatten).
-- **CI quality-control:** push-to-`main` trigger, Postgres 15 service, Alembic migrate before pytest; `postgres_gate.py` skips live tests when DB unreachable.
-- **PPT-035 / #44:** auth routes + tenant context; merged PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
-- **PPT-033 / #43:** merged [PR #80](https://github.com/Elmorralito/save-ma-money/pull/80) — coverage matrix published.
-- v3 schema squash: Alembic head `g4b5c6d7e8f9` (seed → period-balance MVs → MV fetch indexes → table indexes → **monthly transaction partitioning**).
-- Balance reports: YAML registry `config/data/balance_report_filters.yaml`, `BalanceReportsService` / `BalanceReportsHandler`, unified repository + filter validation.
-- Tests: model + API pytest green; B1 smoke gated on Supabase pooler URL (`test_supabase_b1_smoke.py`).
+- **PPT-036 / #46 (committed):** 11 endpoints — accounts + categories routers, schemas, converters, mocked + live-DB +
+  B1 smoke tests; G8 `initial_value` balance fallback; model-layer owned-repo / category / extension fixes.
+- **Pre-commit hardening:** flake8 F821 (enum imports), pylint R0917 (keyword-only query params), mypy UUID guards via
+  `_require_uuid()` in `routers/v1/accounts.py`.
+- **API documentation:** 100% module + public-def Google docstrings in `modules/api/src` (35 files); pylint 10.00/10 on
+  package.
+- **CI quality-control:** Postgres 15 service + Alembic before pytest; `@requires_postgres` / `@requires_supabase_b1`
+  gates in `postgres_gate.py`.
+- **PPT-035 / #44:** auth + tenant — merged PR [#82](https://github.com/Elmorralito/save-ma-money/pull/82).
 
 ### Next action
 
-- Open PR for PPT-036 (omit `docs/coverage.xml` from commit); CI quality-control runs B0 live tests via Postgres service + `@requires_postgres`.
-- B1 Supabase smoke (`test_supabase_b1_smoke.py`) runs only when `DATABASE_URL` targets pooler `:6543` — manual / scheduled, not default CI.
-- Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + movements routers (opening-balance ledger txn).
+- Commit docstring-only API pass (stage `.strata/` with `modules/api/**`; omit `docs/interrogate_badge.svg`).
+- Open PR for PPT-036; confirm CI quality-control on branch.
+- Start PPT-037 ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) — transactions + opening-balance txn.
 
 ### Prerequisites
 
@@ -31,4 +34,6 @@ description: v3 model — balance reports, partitioning, config package, migrati
 
 ### Uncommitted / staging notes
 
-- **Strata pre-commit:** strict pairing requires `.strata/` (or `AGENTS.md` / `CLAUDE.md`) staged whenever `modules/**` or `deploy/**` change; strict mode also runs Python/Bash review via `strata_code_review.sh`.
+- **Strata:** this save pairs with pending `modules/api/src/**` docstring diff — stage `.strata/memory/` + `.strata/docs/`
+  together before commit.
+- **Artifacts to omit:** `docs/coverage.xml`, `docs/interrogate_badge.svg` (regenerated locally).

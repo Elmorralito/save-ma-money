@@ -1,4 +1,26 @@
-"""Category CRUD routes — PPT-036."""
+"""Category CRUD routes — PPT-036.
+
+Exposes tenant-scoped category management under ``/categories``. Handlers require an
+authenticated owner and delegate to
+:class:`~papita_txnsmodel.services.categories.CategoriesService`. Global seed
+categories (``owner_id is None``) are readable but not mutable per G7 / FR-15.
+
+Routes:
+    ``GET /categories`` — paginated list with optional parent and kind filters.
+    ``GET /categories/{category_id}`` — single tenant-owned or global seed category.
+    ``POST /categories`` — create tenant-owned category.
+    ``PUT /categories/{category_id}`` — update tenant-owned category.
+    ``DELETE /categories/{category_id}`` — soft-delete tenant-owned category.
+
+Tenant scoping:
+    List and read operations return both tenant-owned and global seed rows visible to
+    the owner. Create, update, and delete pass ``owner`` to the service and reject
+    mutations on global seeds.
+
+Service delegation:
+    Queries use ``get_records`` and ``get``; mutations use ``create`` (upsert) and
+    ``delete``. Global-category guard violations from the service are mapped to 404.
+"""
 
 from __future__ import annotations
 
@@ -34,11 +56,24 @@ _GLOBAL_CATEGORY_MESSAGES = frozenset(
 
 
 def _category_not_found() -> HTTPException:
+    """Build a 404 response for a missing, global, or inaccessible category.
+
+    Returns:
+        HTTPException: 404 with a generic "Category not found" detail to avoid leaking
+            cross-tenant or global-mutation restrictions.
+    """
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
 
 def _reject_global_category(category) -> None:
-    """Global seeds are readable but not mutable by tenants (G7 / FR-15)."""
+    """Block mutations on global seed categories (G7 / FR-15).
+
+    Args:
+        category: Category DTO fetched for the current request.
+
+    Raises:
+        HTTPException: 404 when ``category.owner_id`` is ``None`` (global seed).
+    """
     if category.owner_id is None:
         raise _category_not_found()
 
@@ -51,7 +86,20 @@ def list_categories(
     parent_id: Annotated[uuid.UUID | None, Query(description="Filter by parent category")] = None,
     category_type: Annotated[str | None, Query(description="Filter by income or expense")] = None,
 ) -> PaginatedResponse[CategoryResponse]:
-    """List tenant and global seed categories with optional hierarchy nesting."""
+    """List tenant and global seed categories with optional hierarchy nesting.
+
+    Args:
+        owner: Authenticated tenant from JWT.
+        pagination: Skip/limit window for the response page.
+        categories_service: Injected categories service scoped to the request lifecycle.
+        parent_id: Optional parent category id; when omitted, returns top-level categories
+            with nested subcategory summaries.
+        category_type: Optional income/expense slug filter.
+
+    Returns:
+        Paginated categories; top-level rows include embedded subcategory lists when
+        ``parent_id`` is not set.
+    """
     records_df = categories_service.get_records(None, owner=owner)
     all_categories = categories_from_dataframe(records_df)
 
@@ -97,7 +145,19 @@ def get_category(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
 ) -> CategoryResponse:
-    """Retrieve a tenant-owned or global seed category by id."""
+    """Retrieve a tenant-owned or global seed category by id.
+
+    Args:
+        category_id: Primary key of the category to fetch.
+        owner: Authenticated tenant from JWT.
+        categories_service: Injected categories service scoped to the request lifecycle.
+
+    Returns:
+        Category payload for a visible tenant-owned or global seed row.
+
+    Raises:
+        HTTPException: 404 when the category is not visible to the tenant.
+    """
     category = categories_service.get(obj=category_id, owner=owner)
     if category is None:
         raise _category_not_found()
@@ -110,7 +170,20 @@ def create_category(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
 ) -> CategoryResponse:
-    """Create a tenant-owned category."""
+    """Create a tenant-owned category.
+
+    Args:
+        body: Validated create payload converted to a categories DTO.
+        owner: Authenticated tenant from JWT.
+        categories_service: Injected categories service scoped to the request lifecycle.
+
+    Returns:
+        Newly created category owned by the authenticated tenant.
+
+    Raises:
+        HTTPException: 404 when the service rejects global-category mutation attempts.
+        ValueError: Propagated for other validation failures from the service layer.
+    """
     try:
         created = categories_service.create(obj=body.to_categories_dto(), owner=owner)
     except ValueError as exc:
@@ -127,7 +200,21 @@ def update_category(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
 ) -> CategoryResponse:
-    """Update a tenant-owned category."""
+    """Update a tenant-owned category.
+
+    Args:
+        category_id: Primary key of the category to update.
+        body: Partial update payload merged onto the existing DTO.
+        owner: Authenticated tenant from JWT.
+        categories_service: Injected categories service scoped to the request lifecycle.
+
+    Returns:
+        Updated category owned by the authenticated tenant.
+
+    Raises:
+        HTTPException: 404 when the category is missing, global, or not owned by the tenant.
+        ValueError: Propagated for other validation failures from the service layer.
+    """
     existing = categories_service.get(obj=category_id, owner=owner)
     if existing is None:
         raise _category_not_found()
@@ -149,7 +236,19 @@ def delete_category(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
 ) -> None:
-    """Soft-delete a tenant-owned category."""
+    """Soft-delete a tenant-owned category.
+
+    Args:
+        category_id: Primary key of the category to delete.
+        owner: Authenticated tenant from JWT.
+        categories_service: Injected categories service scoped to the request lifecycle.
+
+    Returns:
+        ``None``; response body is empty on success.
+
+    Raises:
+        HTTPException: 404 when the category is missing, global, or not owned by the tenant.
+    """
     existing = categories_service.get(obj=category_id, owner=owner)
     if existing is None:
         raise _category_not_found()

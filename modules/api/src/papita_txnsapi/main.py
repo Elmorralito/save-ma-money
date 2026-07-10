@@ -1,4 +1,14 @@
-"""FastAPI application factory for papita_txnsapi."""
+"""FastAPI application factory for papita_txnsapi.
+
+Constructs the runnable API with CORS, request logging, global exception handlers,
+and v1 routers mounted at ``/api/v1``. Bootstraps password hashing on startup
+(NFR-08) via the application lifespan context.
+
+Key exports:
+    lifespan: Async context manager for startup/shutdown hooks.
+    create_app: Build a configured ``FastAPI`` instance (optionally with test settings).
+    app: Module-level application used by ASGI servers (e.g. uvicorn).
+"""
 
 from __future__ import annotations
 
@@ -20,7 +30,17 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Bootstrap password manager before auth routes run (NFR-08)."""
+    """Bootstrap shared resources on startup and log shutdown.
+
+    Ensures ``UsersService`` password manager is initialized before auth routes accept
+    traffic (NFR-08).
+
+    Args:
+        _app: FastAPI application instance (unused; required by lifespan signature).
+
+    Yields:
+        Control back to FastAPI while the application is serving requests.
+    """
     UsersService.ensure_password_manager()
     logger.info("Application lifespan started — password manager ready")
     yield
@@ -30,11 +50,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Build and configure the FastAPI application.
 
+    Registers CORS and request-logging middleware, global exception handlers, OpenAPI
+    documentation paths under ``/api/docs``, and the v1 API router.
+
     Args:
-        settings: Optional settings override (used in tests).
+        settings: Optional settings override (used in tests); defaults to ``get_settings()``.
 
     Returns:
-        Configured FastAPI instance with v1 routes mounted at ``/api/v1``.
+        Configured ``FastAPI`` instance with v1 routes mounted at ``/api/v1``.
     """
     app_settings = settings or get_settings()
 

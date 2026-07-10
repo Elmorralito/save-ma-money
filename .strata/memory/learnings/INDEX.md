@@ -4,6 +4,7 @@ Operation-keyed behavioral rules: one lesson per file, fired by trigger, origin 
 
 <!-- GENERATED at /strata:save from learnings/ frontmatter — do not hand-edit; edit learning files instead -->
 
-| Trigger            | Applies when | Origin | File |
-| ------------------ | ------------ | ------ | ---- |
-| _no learnings yet_ | —            | —      | —    |
+| Trigger                                            | Applies when          | Origin  | File                                                 |
+| -------------------------------------------------- | --------------------- | ------- | ---------------------------------------------------- |
+| before committing changes under modules/api/src    | modules/api/\*\*      | failure | [api-pre-commit-lint.md](api-pre-commit-lint.md)     |
+| before git commit when modules/ or deploy/ changed | modules/**, deploy/** | success | [strata-strict-pairing.md](strata-strict-pairing.md) |

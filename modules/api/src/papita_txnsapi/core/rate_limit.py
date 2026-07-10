@@ -1,4 +1,14 @@
-"""In-memory sliding-window rate limiter for auth endpoints (B0 single-instance)."""
+"""In-memory sliding-window rate limiter for auth endpoints (B0 single-instance).
+
+Thread-safe per-key counter suitable for single-process deployments. Tracks request
+timestamps in a sliding window and exposes standard ``X-RateLimit-*`` header values via
+``RateLimitResult``. Disabled or bypassed when limits are non-positive.
+
+Key exports:
+    RateLimitResult: Immutable outcome of a limit check.
+    InMemoryRateLimiter: Process-wide singleton limiter (``MetaSingleton``).
+    get_rate_limiter: Accessor for the shared limiter instance.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +22,14 @@ from papita_txnsmodel.utils.classutils import MetaSingleton
 
 @dataclass(frozen=True)
 class RateLimitResult:
-    """Outcome of a rate-limit check."""
+    """Immutable outcome of a single rate-limit check.
+
+    Attributes:
+        allowed: Whether the request is permitted under the current window.
+        limit: Configured maximum requests allowed per window.
+        remaining: Requests still available when ``allowed`` is ``True``; ``0`` when denied.
+        reset_at: Unix epoch seconds when the oldest event in the window expires.
+    """
 
     allowed: bool
     limit: int
@@ -21,19 +38,41 @@ class RateLimitResult:
 
 
 class InMemoryRateLimiter(metaclass=MetaSingleton):
-    """Thread-safe per-key sliding window counter."""
+    """Thread-safe per-key sliding-window request counter.
+
+    Maintains monotonic timestamps per limit key under a process-wide lock. One instance
+    is shared across all auth rate-limit dependencies.
+    """
 
     def __init__(self) -> None:
         self._events: dict[str, list[float]] = defaultdict(list)
         self._lock = threading.Lock()
 
     def reset(self) -> None:
-        """Clear all counters (tests only)."""
+        """Clear all per-key event buckets.
+
+        Intended for test isolation only; not for production traffic management.
+
+        Returns:
+            None.
+        """
         with self._lock:
             self._events.clear()
 
     def check(self, key: str, *, limit: int, window_seconds: int = 60) -> RateLimitResult:
-        """Return whether ``key`` is within ``limit`` requests per window."""
+        """Evaluate whether ``key`` is within ``limit`` requests for the sliding window.
+
+        Prunes expired timestamps, records the current request when allowed, and
+        computes remaining quota and reset time for response headers.
+
+        Args:
+            key: Opaque identifier (typically scope plus client IP).
+            limit: Maximum requests permitted per window; non-positive limits always allow.
+            window_seconds: Sliding window length in seconds.
+
+        Returns:
+            ``RateLimitResult`` describing allowance, quota, and reset epoch.
+        """
         if limit <= 0:
             epoch_now = int(time.time())
             return RateLimitResult(allowed=True, limit=limit, remaining=limit, reset_at=epoch_now + window_seconds)
@@ -61,5 +100,9 @@ class InMemoryRateLimiter(metaclass=MetaSingleton):
 
 
 def get_rate_limiter() -> InMemoryRateLimiter:
-    """Return the process-wide rate limiter singleton."""
+    """Return the process-wide ``InMemoryRateLimiter`` singleton.
+
+    Returns:
+        Shared limiter instance used by auth rate-limit dependencies.
+    """
     return InMemoryRateLimiter()

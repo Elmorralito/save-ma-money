@@ -68,6 +68,8 @@ Extension routing map: `services/account_extension_routing.py`. Live-DB tenancy 
 
 Schemas: `schemas/accounts.py`, `schemas/categories.py`; enum slugs via `schemas/converters.py`. Balance display falls back to `initial_value` when MV row absent (G8 API semantics until opening txn in #47).
 
+All public modules under `modules/api/src/papita_txnsapi/` carry Google-style docstrings (routers, dependencies, schemas, core).
+
 Live API integration: `modules/api/tests/test_accounts_categories_live_db.py` (`@requires_postgres` B0); `test_supabase_b1_smoke.py` (`@requires_supabase_b1` pooler `:6543`).
 
 ## Invariants

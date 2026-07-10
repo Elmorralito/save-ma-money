@@ -1,5 +1,11 @@
-"""
-JWT token management and authentication for the API.
+"""JWT token management and authentication for the API.
+
+Encapsulates encode/decode of bearer tokens using settings-driven secret, algorithm,
+expiration, and token-type claims. ``AuthSecurityManager`` is a process singleton
+configured once from ``Settings``.
+
+Key exports:
+    AuthSecurityManager: Issue and validate JWTs for login and protected routes.
 """
 
 import logging
@@ -16,11 +22,18 @@ logger = logging.getLogger(__name__)
 
 
 class AuthSecurityManager(metaclass=MetaSingleton):
-    """
-    Token manager that authenticates credentials and issues JWT tokens on success.
+    """Singleton manager for JWT issuance, credential verification, and token decoding.
+
+    Reads signing parameters from ``Settings`` on construction. Subsequent calls with
+    the same settings reuse the shared instance via ``MetaSingleton``.
     """
 
     def __init__(self, settings: Settings) -> None:
+        """Initialize signing parameters from application settings.
+
+        Args:
+            settings: API settings supplying secret key, algorithm, TTL, and token type.
+        """
         self.secret_key = settings.JWT_SECRET_KEY
         self.algorithm = settings.JWT_ALGORITHM
         self.expiration_time = settings.JWT_EXPIRATION_TIME_SECONDS

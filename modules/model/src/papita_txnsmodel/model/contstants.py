@@ -1,3 +1,10 @@
+"""Schema, table, view, and validation constants for papita_txnsmodel.
+
+Centralizes PostgreSQL schema name, physical table names, materialized view identifiers,
+and regex patterns used by DTO validators. Typo in module filename is retained for import
+stability across the codebase.
+"""
+
 SCHEMA_NAME = "papita_transactions"
 
 ACCOUNTS__TABLENAME = "accounts"

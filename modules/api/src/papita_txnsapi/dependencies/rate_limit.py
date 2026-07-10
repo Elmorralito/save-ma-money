@@ -1,4 +1,13 @@
-"""Rate-limit dependencies for authentication routes."""
+"""Rate-limit dependencies for authentication routes.
+
+FastAPI dependencies that enforce per-IP sliding-window limits on login and register
+endpoints. Emits ``X-RateLimit-*`` and ``Retry-After`` headers; no-ops when rate
+limiting is disabled in settings.
+
+Key exports:
+    enforce_auth_login_rate_limit: Guard ``/auth/login`` attempts.
+    enforce_auth_register_rate_limit: Guard ``/auth/register`` attempts.
+"""
 
 from __future__ import annotations
 
@@ -12,13 +21,30 @@ from papita_txnsapi.core.rate_limit import RateLimitResult, get_rate_limiter
 
 
 def _client_ip(request: Request) -> str:
-    """Resolve client IP for rate-limit keys (direct connection in B0)."""
+    """Resolve client IP for rate-limit bucket keys.
+
+    Uses the direct Starlette client host in B0; does not parse proxy headers.
+
+    Args:
+        request: Incoming HTTP request.
+
+    Returns:
+        Client host string, or ``"unknown"`` when ``request.client`` is unset.
+    """
     if request.client is None:
         return "unknown"
     return request.client.host
 
 
 def _rate_limit_headers(result: RateLimitResult) -> dict[str, str]:
+    """Build standard rate-limit response headers from a check result.
+
+    Args:
+        result: Outcome of the in-memory limiter check.
+
+    Returns:
+        Mapping of ``X-RateLimit-Limit``, ``Remaining``, and ``Reset`` header values.
+    """
     return {
         "X-RateLimit-Limit": str(result.limit),
         "X-RateLimit-Remaining": str(result.remaining),
@@ -27,6 +53,17 @@ def _rate_limit_headers(result: RateLimitResult) -> dict[str, str]:
 
 
 def _enforce_rate_limit(request: Request, settings: Settings, *, scope: str, limit: int) -> None:
+    """Apply a scoped per-IP rate limit when enabled in settings.
+
+    Args:
+        request: Incoming HTTP request used to derive the client IP.
+        settings: API settings controlling enable flag, window, and limits.
+        scope: Logical bucket prefix (e.g. ``auth-login``).
+        limit: Maximum requests per window for this scope.
+
+    Raises:
+        HTTPException: 429 when the client exceeds the configured limit.
+    """
     if not settings.AUTH_RATE_LIMIT_ENABLED:
         return
 
@@ -49,7 +86,15 @@ def enforce_auth_login_rate_limit(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
-    """Limit login attempts per client IP."""
+    """Enforce per-IP rate limits on login attempts.
+
+    Args:
+        request: Incoming login request.
+        settings: Injected API settings with login limit and window configuration.
+
+    Raises:
+        HTTPException: 429 when login attempts exceed ``AUTH_LOGIN_RATE_LIMIT_PER_MINUTE``.
+    """
     _enforce_rate_limit(
         request,
         settings,
@@ -62,7 +107,15 @@ def enforce_auth_register_rate_limit(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> None:
-    """Limit registration attempts per client IP."""
+    """Enforce per-IP rate limits on registration attempts.
+
+    Args:
+        request: Incoming registration request.
+        settings: Injected API settings with register limit and window configuration.
+
+    Raises:
+        HTTPException: 429 when register attempts exceed ``AUTH_REGISTER_RATE_LIMIT_PER_MINUTE``.
+    """
     _enforce_rate_limit(
         request,
         settings,
