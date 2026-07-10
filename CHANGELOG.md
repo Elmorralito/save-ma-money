@@ -12,11 +12,73 @@
 
 - [ ] [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary:
 
-- [ ] [_**[#46](https://github.com/Elmorralito/save-ma-money/issues/46)**_] :: **feat/PPT-036: [api] Accounts and categories CRUD (v3 model)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:52+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] [_**[#46](https://github.com/Elmorralito/save-ma-money/issues/46)**_] :: **feat/PPT-036: [api] Accounts and categories CRUD (v3 model)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:52+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 20:28:06+00:00</sub>_
+
+  > **Closed by** [_**#84**](https://github.com/Elmorralito/save-ma-money/pull/84): **feat(api): add accounts and categories CRUD endpoints (PPT-036)**
+
+  > Implement PPT-036 / #46: eleven tenant-scoped REST routes for accounts and categories, wired through existing model services with pagination, enum slug conversion, extension fields (G1), MV-backed balances with G8 initial_value fallback, list filters (G4), and global category immutability (G7). Before this change the API had health, auth, and deferred budgets only; account and category CRUD lived solely in the model layer. After this change authenticated tenants can manage accounts and categories via /api/v1/accounts and /api/v1/categories, with cross-tenant access returning 404 and inactive records hidden on GET.
+
+  >
+
+  > Supporting model-layer fixes were required for live CRUD correctness: owned repository owner passthrough on delete/filter queries, category to_dao() id preservation, extension upsert keyed by account_id, BaseService.create() returning persisted upsert results, inactive-record filtering on GET, and SQLModel single-column DataFrame flattening for soft-delete and attribute queries.
+
+  >
+
+  > Changes by file:
+
+  > - .strata/docs/ARCHITECTURE.md: document PPT-036 router map, schema paths, G8 balance fallback semantics, and live/B1 integration test locations
+
+  > - .strata/memory/project_state.md: record PPT-036 completion, CI B0 live-test gating, B1 smoke opt-in, and next steps for PR / PPT-037 opening txn
+
+  > - modules/api/README.md: clarify POST /accounts response balance uses MV when present, else falls back to initial_value until PPT-037 opening txn
+
+  > - modules/api/src/papita_txnsapi/routers/v1/**init**.py: mount accounts and categories routers on the v1 aggregator
+
+  > - modules/api/src/papita_txnsapi/routers/v1/accounts.py: add six routes — list (paginated, filtered), get, create, update, delete, and balance — with tenant scoping via get_current_owner and AccountsService
+
+  > - modules/api/src/papita_txnsapi/routers/v1/categories.py: add five routes — list (nested subcategories), get, create, update, delete — global seed read-only guard returning 404 on tenant PUT/DELETE
+
+  > - modules/api/src/papita_txnsapi/schemas/accounts.py: Pydantic create/update/ response schemas, kind-specific extension blocks, effective_account_balance, DataFrame pagination helpers, and balance/index utilities
+
+  > - modules/api/src/papita_txnsapi/schemas/categories.py: Pydantic category schemas, subcategory nesting on list responses, and DataFrame conversion helpers
+
+  > - modules/api/src/papita_txnsapi/schemas/converters.py: add parse_account_kind, parse_ledger_side, and parse_category_kind slug converters for API lowercase JSON ↔ model uppercase enums
+
+  > - modules/api/tests/conftest.py: add accounts_client, categories_client, and authed_client fixtures with mocked services and owner override
+
+  > - modules/api/tests/test_accounts.py: mocked route tests for auth, CRUD, balance, G8 initial_value fallback, list filters (account_kind, ledger_side, is_active), tenancy 404, and OpenAPI registration
+
+  > - modules/api/tests/test_categories.py: mocked route tests for auth, CRUD, nested subcategories, global category G7 guards, cross-tenant GET 404, and OpenAPI registration
+
+  > - modules/api/tests/test_accounts_categories_live_db.py: seven B0 live-DB E2E tests (CRUD lifecycles, banking extension, cross-tenant isolation, global category guard, list filter) gated by @requires_postgres
+
+  > - modules/api/tests/test_supabase_b1_smoke.py: B1 pooler smoke tests for health/ready and authenticated accounts list, gated by @requires_supabase_b1
+
+  > - modules/model/src/papita_txnsmodel/access/account_details/repository.py: introduce AccountDetailsRepository.upsert_record keyed by account_id; inherit from it in all five extension repositories (fixes G1 extension create)
+
+  > - modules/model/src/papita_txnsmodel/access/base/repository.py: flatten single-column SQLModel frames before soft-delete; fix dto_type propagation in get_records_from_attributes; skip empty-string attribute filters; remove nested begin() in upsert; pass owner through owned delete paths; return merged DAO from upsert refresh
+
+  > - modules/model/src/papita_txnsmodel/access/categories/dto.py: override to_dao() to preserve id, owner_id, and parent_id on upsert (fixes API response ids and hierarchy FK integrity)
+
+  > - modules/model/src/papita_txnsmodel/services/accounts.py: parse SQLModel extension rows in get_with_extension; pass owner to extension queries
+
+  > - modules/model/src/papita_txnsmodel/services/base.py: create() returns upsert result with DB-assigned ids; get() hides inactive records; skip broken standardize on single-column SQLModel attribute-query frames; ignore empty-string filters in delete attribute matching
+
+  > - modules/model/src/papita_txnsmodel/services/categories.py: allow tenant create when owner_id is unset (repo assigns owner); block global category updates only when record already exists with owner_id IS NULL
+
+  > - modules/model/tests/postgres_gate.py: add is_supabase_pooler_url, supabase_b1_available, and @requires_supabase_b1 marker for B1 smoke
+
+  > - modules/model/tests/tests_papita_txnsmodel/services/test_base.py: mock upsert return values to match new create() return semantics
+
+  > - modules/model/tests/tests_papita_txnsmodel/services/test_ppt041_services.py: update categories global-write guard test for tenant create with unassigned owner_id
+
+  >
+
+  > Opening-balance ledger transaction (true G8 ledger write) remains deferred to PPT-037. B1 Supabase validation runs only when DATABASE_URL targets a pooler :6543 URL; default CI exercises B0 via Postgres service + @requires_postgres. docs/coverage.xml intentionally omitted (generated artifact).
 
 - [x] [_**[#44](https://github.com/Elmorralito/save-ma-money/issues/44)**_] :: **feat/PPT-035: [api] Auth routes and tenant context module (local JWT)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:14:39+00:00</sub>_
 
