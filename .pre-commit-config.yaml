@@ -76,7 +76,8 @@ repos:
         entry: /bin/bash .github/scripts/pre_commit_strata.sh
         language: system
         pass_filenames: false
-        files: ^(modules/|deploy/|pyproject\.toml|\.strata/|AGENTS\.md|CLAUDE\.md)
+        always_run: true
+        # Evaluates all staged paths via git diff --cached (STRATA_DIFF_SOURCE=staged).
         # Excluded in CI via SKIP in quality-control.yml; strata-check.yml runs strata_check.sh on PRs.
       - id: mcp-config-validate
         name: mcp config validate (local only)

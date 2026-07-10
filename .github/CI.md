@@ -429,11 +429,11 @@ Defined in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). CI runs all 
 
 ### Local-only hooks
 
-| Hook ID               | Wrapper                                                            | When it runs                                                              |
-| :-------------------- | :----------------------------------------------------------------- | :------------------------------------------------------------------------ |
-| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | Staged paths: `modules/`, `deploy/`, `.strata/`, `AGENTS.md`, `CLAUDE.md` |
-| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                 |
-| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set          |
+| Hook ID               | Wrapper                                                            | When it runs                                                                      |
+| :-------------------- | :----------------------------------------------------------------- | :-------------------------------------------------------------------------------- |
+| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | **Always runs** on commit; evaluates **all staged paths** via `git diff --cached` |
+| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                         |
+| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set                  |
 
 Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it.
 
@@ -470,7 +470,7 @@ Files matching `.strata/issues/[0-9]*-*.md`:
 | `severity` (optional) | `high`, `med`, `low`                                          |
 | `revive-when`         | Required when `status: parked`                                |
 
-### Strict mode (code ↔ memory pairing)
+### Strict mode (code ↔ memory pairing + code review)
 
 When `STRATA_STRICT_MODULES=1`:
 
@@ -478,6 +478,15 @@ When `STRATA_STRICT_MODULES=1`:
 | :-------------------- | :------------------------------ | :---------------------------------------------------------------------------------------- |
 | **Local pre-commit**  | `STRATA_DIFF_SOURCE=staged`     | Staged `modules/**` or `deploy/**` must include `.strata/**`, `AGENTS.md`, or `CLAUDE.md` |
 | **CI (Strata Check)** | `STRATA_BASE_REF=origin/<base>` | Same rule across the PR diff vs base branch                                               |
+
+When `STRATA_CODE_REVIEW=1` (default in strict mode), changed files under `modules/**`, `deploy/**`, or `.github/scripts/**` are reviewed via [`strata_code_review.sh`](./scripts/strata_code_review.sh):
+
+| Language | Hooks (pre-commit)                           |
+| :------- | :------------------------------------------- |
+| Python   | `black`, `isort`, `flake8`, `pylint`, `mypy` |
+| Bash     | `shellcheck`                                 |
+
+Disable review only: `STRATA_CODE_REVIEW=0`. Strata Check installs Poetry + pre-commit deps before running the review in CI.
 
 **Fix workflow:** `/strata:capture` during work → `/strata:save` before push → `git add .strata/ AGENTS.md CLAUDE.md` → commit again.
 

@@ -79,12 +79,13 @@ class AuthSecurityManager(metaclass=MetaSingleton):
         logger.debug("Token generated for user_id=%s", user_id)
         return token
 
-    def decode_token(self, token: str) -> dict | None:
+    def decode_token(self, token: str, *, expected_type: str | None = None) -> dict | None:
         """
         Decode and validate a JWT; return the payload or None if invalid.
 
         Args:
             token: Encoded JWT string.
+            expected_type: When set, reject tokens whose ``type`` claim does not match.
 
         Returns:
             Payload dict with at least 'sub' and 'exp', or None if decode/validation fails.
@@ -97,6 +98,9 @@ class AuthSecurityManager(metaclass=MetaSingleton):
                 self.secret_key,
                 algorithms=[self.algorithm],
             )
+            if expected_type is not None and payload.get("type") != expected_type:
+                logger.debug("Token type mismatch: expected=%s got=%s", expected_type, payload.get("type"))
+                return None
             return payload
         except PyJWTError as exc:
             logger.debug("Token decode failed: %s", exc)

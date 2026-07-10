@@ -47,6 +47,12 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = ["*"]
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
+    # Auth hardening — per-IP sliding window (single-instance B0; use Redis post-MVP)
+    AUTH_RATE_LIMIT_ENABLED: bool = True
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
+    AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: int = 5
+
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
     def validate_database_url(cls, value: str | Type[SQLDatabaseConnector] | None) -> Type[SQLDatabaseConnector]:

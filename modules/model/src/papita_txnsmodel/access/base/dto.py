@@ -84,14 +84,7 @@ class TableDTO(BaseModel):
         if not isinstance(obj, cls.__dao_type__):
             raise TypeError(f"Unsupported DAO type: {type(obj)}")
 
-        data = {
-            field.alias if field.alias else field_name: getattr(
-                obj, field_name, getattr(obj, field.alias, None) if field.alias else None
-            )
-            for field_name, field in cls.model_fields.items()
-            if field_name in obj.model_fields_set or field.alias in obj.model_fields_set
-        }
-        return cls.model_validate(data)
+        return cls.model_validate(obj.model_dump(mode="python"))
 
     @classmethod
     def standardized_dataframe(

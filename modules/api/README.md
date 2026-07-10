@@ -54,25 +54,27 @@ Further mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/
 
 ## Status and roadmap
 
-**Current tree:** runnable FastAPI app with health probes, shared infrastructure, and deferred budget 501 stubs ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)).
+**Current tree:** runnable FastAPI app with health probes, auth (register/login/me), shared infrastructure, and deferred 501 stubs ([#45](https://github.com/Elmorralito/save-ma-money/issues/45), [#44](https://github.com/Elmorralito/save-ma-money/issues/44)).
 
-| Implemented    | Location                                                                   |
-| :------------- | :------------------------------------------------------------------------- |
-| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers |
-| Settings / env | `src/papita_txnsapi/config/settings.py`                                    |
-| JWT helpers    | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)              |
-| Health (P1)    | `src/papita_txnsapi/routers/v1/health.py`                                  |
-| Shared schemas | `src/papita_txnsapi/schemas/common.py`, `converters.py`                    |
-| Dependencies   | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`             |
-| Deferred 501   | `src/papita_txnsapi/routers/v1/budgets.py`                                 |
-| Route tests    | `modules/api/tests/`                                                       |
-| Logging        | `src/papita_txnsapi/config/logger.yaml`                                    |
+| Implemented    | Location                                                                             |
+| :------------- | :----------------------------------------------------------------------------------- |
+| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers           |
+| Settings / env | `src/papita_txnsapi/config/settings.py`                                              |
+| JWT helpers    | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)                        |
+| Health (P1)    | `src/papita_txnsapi/routers/v1/health.py`                                            |
+| Auth (P2)      | `src/papita_txnsapi/routers/v1/auth.py` — register, login, `/me`, 501 refresh/logout |
+| Auth deps      | `src/papita_txnsapi/dependencies/auth.py` — `get_current_owner()`                    |
+| Shared schemas | `src/papita_txnsapi/schemas/common.py`, `converters.py`, `auth.py`                   |
+| Dependencies   | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`, `tenant.py`          |
+| Deferred 501   | `src/papita_txnsapi/routers/v1/budgets.py`, auth refresh/logout                      |
+| Route tests    | `modules/api/tests/` (26 tests)                                                      |
+| Logging        | `src/papita_txnsapi/config/logger.yaml`                                              |
 
-| Not yet implemented                       | Track via                                                                                                                   |
-| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
-| Auth + domain routers (accounts, txns, …) | [#44](https://github.com/Elmorralito/save-ma-money/issues/44)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48) |
-| Supabase B1 production wiring             | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
-| Full API integration CI (B0 + B1)         | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
+| Not yet implemented               | Track via                                                                                                                   |
+| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
+| Domain routers (accounts, …)      | [#46](https://github.com/Elmorralito/save-ma-money/issues/46)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48) |
+| Supabase B1 production wiring     | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
+| Full API integration CI (B0 + B1) | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 

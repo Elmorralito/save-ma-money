@@ -7,7 +7,7 @@ on:
       - "modules/**"
       - "pyproject.toml"
       - "deploy/**"
-      - ".github/scripts/strata_check.sh"
+      - ".github/scripts/**"
       - ".github/workflows/strata-check.yml"
   workflow_dispatch:
 
@@ -25,9 +25,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Strata layout validation (lint)
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies for Strata code review
+        run: poetry install --no-interaction --with development,pre-commit
+
+      - name: Run Strata layout validation and code review
         env:
           TERM: xterm-256color
           STRATA_STRICT_MODULES: "1"
+          STRATA_CODE_REVIEW: "1"
           STRATA_BASE_REF: origin/${{ github.base_ref }}
         run: /bin/bash .github/scripts/strata_check.sh
