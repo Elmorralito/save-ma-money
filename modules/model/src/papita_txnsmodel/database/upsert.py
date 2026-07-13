@@ -371,6 +371,21 @@ class DuckDBUpserter(PostgreSQLUpserter):
         on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
         **to_sql_kwargs,
     ) -> int:
+        """[DEPRECATED]
+        Perform an upsert operation for DuckDB. This method is deprecated and will be removed in a future release.
+
+        Args:
+            schema_name (str): The schema name.
+            table (str | Table | DeclarativeMeta): The table object.
+            pks (Sequence[str]): Primary keys for the table.
+            df (pd.DataFrame): DataFrame containing the data to upsert.
+            db_session (DBSession): SQLAlchemy session object.
+            on_conflict_do (OnUpsertConflictDo): Action to take on conflict.
+            **to_sql_kwargs: Additional arguments for the `to_sql` method.
+
+        Returns:
+            int: Number of rows affected by the upsert operation.
+        """
         _warn_duckdb_upserter_deprecated()
         return super().upsert(
             schema_name=schema_name,

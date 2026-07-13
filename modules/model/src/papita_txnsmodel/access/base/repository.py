@@ -12,11 +12,12 @@ Classes:
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Type
+from typing import Any, Sequence, Type
 
 import pandas as pd
+from sqlalchemy import func
 from sqlalchemy import inspect as db_inspector
-from sqlmodel import Session, delete, update
+from sqlmodel import Session, delete, select, update
 from sqlmodel.sql.expression import Select
 
 from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
@@ -284,6 +285,48 @@ class BaseRepository:
             **kwargs,
         )
 
+    @staticmethod
+    def _apply_list_options(
+        statement: Select,
+        *,
+        order_by: Any | Sequence[Any] | None = None,
+        skip: int | None = None,
+        limit: int | None = None,
+    ) -> Select:
+        """Apply ordering and pagination clauses to a SELECT statement."""
+        if order_by is not None:
+            if isinstance(order_by, Sequence) and not isinstance(order_by, (str, bytes)):
+                statement = statement.order_by(*order_by)
+            else:
+                statement = statement.order_by(order_by)
+        if skip is not None:
+            statement = statement.offset(skip)
+        if limit is not None:
+            statement = statement.limit(limit)
+        return statement
+
+    @SQLDatabaseConnector.connect
+    def count_records(
+        self,
+        *query_filters,
+        dto_type: type[TableDTO],
+        _db_session: Session,
+        **kwargs,
+    ) -> int:
+        """Count rows matching query filters without fetching the full result set."""
+        if not isinstance(_db_session, Session):
+            raise TypeError("Session not supported.")
+
+        dao = dto_type.__dao_type__
+        statement = select(func.count()).select_from(dao)  # pylint: disable=not-callable
+        if query_filters:
+            statement = statement.where(*query_filters)
+        try:
+            return int(_db_session.exec(statement).one())
+        except Exception as exc:
+            logger.exception("The count query has failed due to: %s", exc)
+            return 0
+
     def get_records(self, *query_filters, dto_type: type[TableDTO], **kwargs) -> pd.DataFrame:
         """Retrieve records from the database based on query filters.
         Args:
@@ -292,11 +335,15 @@ class BaseRepository:
             **kwargs: Additional keyword arguments to pass to run_query.
 
         Returns:
-            pd.DataFrame: DataFrame containing the retrieved records.
+            DataFrame containing the retrieved records.
         """
+        order_by = kwargs.pop("order_by", None)
+        skip = kwargs.pop("skip", None)
+        limit = kwargs.pop("limit", None)
         statement = (
             Select(dto_type.__dao_type__).where(*query_filters) if query_filters else Select(dto_type.__dao_type__)
         )
+        statement = self._apply_list_options(statement, order_by=order_by, skip=skip, limit=limit)
         output_df = self.run_query(statement, **kwargs)
         if getattr(output_df, "empty", True):
             return output_df
@@ -543,6 +590,15 @@ class OwnedTableRepository(BaseRepository):
 
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().get_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+
+    def count_records(self, *query_filters, dto_type: Type[OwnedTableDTO], **kwargs) -> int:
+        """Count tenant-owned rows matching query filters."""
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for count_records")
+
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().count_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
     def get_records_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> pd.DataFrame:
         """Retrieve records owned by the specified user based on DTO attributes.

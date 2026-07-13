@@ -115,11 +115,27 @@ class TestTransactionsServiceTransfers:
     """Transfer helpers enforce TRANSFER semantics."""
 
     def test_list_transfers_filters_by_kind(self, owner: UsersDTO):
-        """list_transfers queries transaction_kind=TRANSFER."""
+        """list_transfers queries transaction_kind=TRANSFER with SQL pagination."""
         service = _transactions_service()
         service._repository.get_records.return_value = pd.DataFrame()
-        service.list_transfers(owner=owner)
+        service._repository.count_records.return_value = 0
+        records, total = service.list_transfers(owner=owner, skip=10, limit=25)
+        assert total == 0
+        assert service._repository.count_records.call_count == 1
         assert service._repository.get_records.call_count == 1
+        assert service._repository.get_records.call_args.kwargs["skip"] == 10
+        assert service._repository.get_records.call_args.kwargs["limit"] == 25
+
+    def test_list_transactions_applies_sql_pagination(self, owner: UsersDTO):
+        """list_transactions passes skip/limit to the repository query."""
+        service = _transactions_service()
+        service._repository.get_records.return_value = pd.DataFrame()
+        service._repository.count_records.return_value = 42
+        records, total = service.list_transactions(owner=owner, skip=5, limit=15)
+        assert total == 42
+        assert service._repository.count_records.call_count == 1
+        assert service._repository.get_records.call_args.kwargs["skip"] == 5
+        assert service._repository.get_records.call_args.kwargs["limit"] == 15
 
     def test_create_transfer_requires_account_legs(self, owner: UsersDTO):
         """Transfers without both account legs are rejected."""

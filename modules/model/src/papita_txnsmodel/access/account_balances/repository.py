@@ -5,12 +5,11 @@ from __future__ import annotations
 import uuid
 
 import pandas as pd
-from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
-from papita_txnsmodel.model.contstants import ACCOUNT_BALANCES_VIEW, SCHEMA_NAME
+from papita_txnsmodel.model.account_balances import AccountBalances
 from papita_txnsmodel.utils.classutils import MetaSingleton
 
 
@@ -30,20 +29,15 @@ class AccountBalancesRepository(metaclass=MetaSingleton):
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
 
-        statement_sql = f"""
-            SELECT owner_id, account_id, currency, balance, last_activity_ts
-            FROM {SCHEMA_NAME}.{ACCOUNT_BALANCES_VIEW}
-            WHERE owner_id = :owner_id
-        """
-        params: dict[str, object] = {"owner_id": owner.id}
+        statement = select(AccountBalances).where(AccountBalances.owner_id == owner.id)
         if account_id is not None:
-            statement_sql += " AND account_id = :account_id"
-            params["account_id"] = account_id
+            statement = statement.where(AccountBalances.account_id == account_id)
 
-        statement = text(statement_sql)
         try:
-            rows = _db_session.exec(statement, params=params).all()
-            return pd.DataFrame(rows)
+            rows = _db_session.exec(statement).all()
+            if not rows:
+                return pd.DataFrame([])
+            return pd.DataFrame([row.model_dump(mode="python") for row in rows])
         except Exception:
             return pd.DataFrame([])
 
@@ -58,6 +52,10 @@ class AccountBalancesRepository(metaclass=MetaSingleton):
         """Refresh the account_balances materialized view after ledger changes."""
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
+
+        from sqlalchemy import text
+
+        from papita_txnsmodel.model.contstants import ACCOUNT_BALANCES_VIEW, SCHEMA_NAME
 
         concurrent_clause = "CONCURRENTLY " if concurrently else ""
         statement = text(f"REFRESH MATERIALIZED VIEW {concurrent_clause}{SCHEMA_NAME}.{ACCOUNT_BALANCES_VIEW}")

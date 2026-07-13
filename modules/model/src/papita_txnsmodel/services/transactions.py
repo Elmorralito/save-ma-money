@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import date
 from typing import Annotated, Any, Dict
 
 import pandas as pd
@@ -20,6 +21,7 @@ from pydantic import Field
 
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO, TransactionTemplatesDTO
+from papita_txnsmodel.access.transactions.query_filters import TransactionListFilterSpec, build_transaction_list_filters
 from papita_txnsmodel.access.transactions.repository import TransactionsRepository, TransactionTemplatesRepository
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
@@ -137,14 +139,89 @@ class TransactionsService(LinkedEntitiesService):
         self._maybe_refresh_balances(**kwargs)
         return mappings
 
-    def list_transfers(self, *, owner: UsersDTO, **kwargs) -> pd.DataFrame:
-        """List transfer transactions for a tenant owner."""
-        return self._repository.get_records(
-            Transactions.transaction_kind == TransactionKind.TRANSFER,
+    def list_transactions(  # pylint: disable=too-many-arguments,too-many-locals
+        self,
+        *,
+        owner: UsersDTO,
+        account_id: uuid.UUID | None = None,
+        category_id: uuid.UUID | None = None,
+        transaction_kind: TransactionKind | None = None,
+        exclude_transfer: bool = True,
+        status: TransactionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        min_amount: float | None = None,
+        max_amount: float | None = None,
+        search: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """List posted transactions for a tenant using SQLModel WHERE filters."""
+        query_filters = build_transaction_list_filters(
+            TransactionListFilterSpec(
+                transaction_kind=transaction_kind,
+                exclude_transfer=exclude_transfer,
+                status=status,
+                account_id=account_id,
+                category_id=category_id,
+                start_date=start_date,
+                end_date=end_date,
+                min_amount=min_amount,
+                max_amount=max_amount,
+                search=search,
+            )
+        )
+        order_by = (Transactions.transaction_ts.desc(), Transactions.id.desc())
+        total = self._repository.count_records(*query_filters, dto_type=self.dto_type, owner=owner, **kwargs)
+        records = self._repository.get_records(
+            *query_filters,
             dto_type=self.dto_type,
             owner=owner,
+            skip=skip,
+            limit=limit,
+            order_by=order_by,
             **kwargs,
         )
+        return records, total
+
+    def list_transfers(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        owner: UsersDTO,
+        source_account_id: uuid.UUID | None = None,
+        destination_account_id: uuid.UUID | None = None,
+        status: TransactionStatus | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """List transfer transactions for a tenant owner."""
+        query_filters = build_transaction_list_filters(
+            TransactionListFilterSpec(
+                transaction_kind=TransactionKind.TRANSFER,
+                exclude_transfer=False,
+                status=status,
+                source_account_id=source_account_id,
+                destination_account_id=destination_account_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+        order_by = (Transactions.transaction_ts.desc(), Transactions.id.desc())
+        total = self._repository.count_records(*query_filters, dto_type=self.dto_type, owner=owner, **kwargs)
+        records = self._repository.get_records(
+            *query_filters,
+            dto_type=self.dto_type,
+            owner=owner,
+            skip=skip,
+            limit=limit,
+            order_by=order_by,
+            **kwargs,
+        )
+        return records, total
 
     def create_transfer(
         self,

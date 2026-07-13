@@ -10,6 +10,9 @@ Routes exposed (prefix relative to app mount):
     ``/accounts`` — tenant-scoped account CRUD via :class:`~papita_txnsmodel.services.accounts.AccountsService`.
     ``/categories`` — tenant + global seed categories via
         :class:`~papita_txnsmodel.services.categories.CategoriesService`.
+    ``/transactions`` — tenant-scoped INCOME/EXPENSE ledger via
+        :class:`~papita_txnsmodel.services.transactions.TransactionsService`.
+    ``/movements`` — TRANSFER alias over the same transactions service.
     ``/budgets`` — placeholder 501 responses (FR-09 deferred to v4.1).
 
 Tenant scoping:
@@ -20,11 +23,13 @@ Tenant scoping:
 
 from fastapi import APIRouter
 
-from papita_txnsapi.routers.v1 import accounts, auth, budgets, categories, health
+from papita_txnsapi.routers.v1 import accounts, auth, budgets, categories, health, movements, transactions
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(auth.router)
 api_v1_router.include_router(accounts.router)
 api_v1_router.include_router(categories.router)
+api_v1_router.include_router(transactions.router)
+api_v1_router.include_router(movements.router)
 api_v1_router.include_router(budgets.router)
