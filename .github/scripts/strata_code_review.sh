@@ -31,8 +31,8 @@ is_reviewable_path() {
     if [[ "${path}" == deploy/* ]]; then
         [[ "${path}" == *.py || "${path}" == *.sh ]] && return 0
     fi
-    if [[ "${path}" == .github/scripts/* && "${path}" == *.sh ]]; then
-        return 0
+    if [[ "${path}" == .github/scripts/* ]]; then
+        [[ "${path}" == *.py || "${path}" == *.sh ]] && return 0
     fi
     return 1
 }

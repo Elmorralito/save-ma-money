@@ -191,7 +191,7 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
         done <<< "${changed_files}"
 
         if [[ "${needs_strata_pairing}" == true ]] && [[ "${strata_changed}" == false ]]; then
-            fail "code paths changed but .strata/ (or .agents/AGENTS.md / .agents/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
+            fail "code paths changed but .strata/ (or .agents/** / .cursor/AGENTS.md / .cursor/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
         elif [[ "${needs_strata_pairing}" == true ]]; then
             ok "strict code/strata change pairing satisfied"
         else
