@@ -123,18 +123,16 @@ save-ma-money/
 
 ### 1. Environment
 
-Copy [`.env.example`](./.env.example) and populate the paths below. **Always set `DATABASE_URL`** — omitting it can trigger legacy DuckDB fallback paths.
+Templates live under [`environments/`](./environments/README.md). **Always set `DATABASE_URL`** — omitting it can trigger legacy DuckDB fallback paths.
 
 ```bash
-cp .env.example modules/api/src/.env
+cp environments/local/.env.example environments/local/.env
 # Edit JWT_SECRET_KEY and DATABASE_URL (PostgreSQL URL required)
+export PAPITA_ENV=local   # default
 
-# modules/api/src/.env
-JWT_SECRET_KEY="change-me"
-DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
+# Compose / API share environments/local/.env
+docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
 ```
-
-For local PostgreSQL, use [`docker/database/docker-compose.yml`](./docker/database/docker-compose.yml) and optional `docker/database/.env`.
 
 ### 2. Install dependencies
 
@@ -150,7 +148,7 @@ poetry lock && poetry install
 
 ```bash
 # PostgreSQL (Docker)
-/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
 
 # Unit and integration tests (model package)
 poetry run pytest

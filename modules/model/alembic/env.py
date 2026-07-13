@@ -31,7 +31,10 @@ DB_URL_PATTERN = re.compile(
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 DEFAULT_ENV_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docker", "alembic", "default.env"
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "environments",
+    os.environ.get("PAPITA_ENV", "local"),
+    ".env",
 )
 
 sys.path.append(MODEL_PATH)

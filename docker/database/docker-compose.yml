@@ -1,4 +1,11 @@
 ---
+# Database-only Postgres (B0). Prefer full stack via docker/docker-compose.yml.
+#
+#   cp environments/local/.env.example environments/local/.env
+#   docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
+#
+# Env layout: environments/README.md (PAPITA_ENV=local)
+
 name: "${COMPOSE_NAME:-papita-transactions-db}"
 
 networks:

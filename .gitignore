@@ -17,6 +17,8 @@ node_modules/
 .venv/
 .env
 .env.local
+environments/**/.env
+!environments/**/.env.example
 .dbversion
 # Build files
 build/

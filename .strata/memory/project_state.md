@@ -1,33 +1,32 @@
 ---
 name: save-ma-money State
-description: PPT-038 PR #90; linked txn services + report DAO flatten CI fix pushed.
+description: PPT-039 repurposed to Supabase Auth; epic #42 Auth-first (pooler optional).
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-13.** PPT-038 ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)) on
-[PR #90](https://github.com/Elmorralito/save-ma-money/pull/90) (`feat/PPT-038`). B0 live report seed failed in
-`quality-control` until transaction link services were wired and report frames flattened from DAO columns.
+**Session — 2026-07-13.** Executed Auth-first strategy: #49/#42 reissue docs,
+PPT-031-C G7 supersede, README/AGENTS/environments aligned. Next: implement Supabase
+JWT verify in API (PPT-039 code).
 
 ### Last completed (this session)
 
-- **CI fix:** `get_transactions_service` calls `load_link_services` (accounts/categories/templates);
-  `LinkedEntitiesService.create` skips `None` FKs; `ReportService._load_transactions` flattens single-column DAO
-  frames and timezone-safe date windows.
-- **PPT-038:** tenant-scoped `/reports/*`, G9 cash-flow MV refresh, structured `/health/database`, PPT-044 brief.
+- `docs/issues/PPT-039-supabase-auth-reissue.md` + GH body drafts
+- Brief G7 supersede; epic/API docs no longer require Supabase PG
+- Pooler work marked optional ops
 
 ### Next action
 
-- Watch PR #90 `quality-control` green; merge when mergeable.
-- Then PPT-040 (#50) CI dual-target or PPT-044 (#89) hardening.
+- Publish `gh issue edit` for #49 / #42 if not yet applied
+- Implement Auth: JWKS verify, `get_current_owner` provision, env `SUPABASE_URL`
+- Update #50 secret contract
 
 ### Prerequisites
 
-- Local Postgres: `docker compose -f docker/database/docker-compose.yml up -d` (host port often `5435`)
-- Migrations: `./deploy/alembic.sh upgrade --docker-rm`
-- `DATABASE_URL` for B0 live report tests; pooler `:6543` for B1 smoke.
+- `export PAPITA_ENV=local`
+- Supabase project for Auth (not necessarily for Postgres)
 
 ### Uncommitted / staging notes
 
-- Stage `.strata/` with `modules/**` (strict pairing).
-- Prefer dropping `docs/coverage.xml` from the commit.
+- Stage `.strata/` with docs/`modules`/`environments` changes
+- Do not commit `environments/**/.env`

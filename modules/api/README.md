@@ -28,7 +28,8 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | Base URL (dev)          | `http://localhost:8000/api/v1`                                                                                                                                              |
 | Base URL (prod)         | `https://api.savemamoney.com/api/v1`                                                                                                                                        |
 | OpenAPI (when deployed) | `/api/openapi.json`                                                                                                                                                         |
-| Database                | PostgreSQL only — Docker locally (B0); Supabase pooler hosted (B1)                                                                                                          |
+| Database                | PostgreSQL only — Docker locally (B0); any hosted Postgres in staging/prod (Supabase PG optional)                                                                           |
+| Auth                    | **Supabase Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)); local HS256 issuance being replaced                                            |
 | Design program          | PPT-031 closed ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)); implementation epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032) |
 
 ### v3 alignment at a glance
@@ -73,8 +74,8 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 | Not yet implemented               | Track via                                                                                                                   |
 | :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
 | Domain routers (accounts, …)      | [#46](https://github.com/Elmorralito/save-ma-money/issues/46)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48) |
-| Supabase B1 production wiring     | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
-| Full API integration CI (B0 + B1) | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
+| Supabase Auth (replace local JWT) | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
+| Full API integration CI           | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 
@@ -176,7 +177,7 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 
 **Tenant flow:** `Authorization: Bearer` → decode JWT → `UsersService.get_owner(sub)` → pass `owner=` to every financial service call.
 
-**Database:** `Settings` loads `DATABASE_URL` and establishes `SQLDatabaseConnector` (same connector as the model package). Env file: `modules/api/src/.env` (template: [`modules/api/src/.env.example`](src/.env.example)).
+**Database:** `Settings` loads `DATABASE_URL` from `environments/$PAPITA_ENV/.env` (see [`environments/README.md`](../../environments/README.md)).
 
 **ER diagram:** [`docs/postgres_papita_transactions_v4.png`](../../docs/postgres_papita_transactions_v4.png) (v3 core + balance materialized views).
 
@@ -197,12 +198,12 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 # From repository root
 poetry install
 
-# Required: modules/api/src/.env
-cp modules/api/src/.env.example modules/api/src/.env
+cp environments/local/.env.example environments/local/.env
 # Set JWT_SECRET_KEY and DATABASE_URL (PostgreSQL URL required)
+export PAPITA_ENV=local
 
 # Migrate database
-/bin/bash ../../deploy/alembic.sh upgrade --docker-local --docker-rm
+/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
 ```
 
 When routers land:
@@ -219,8 +220,8 @@ uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
 Full stack (Postgres, Alembic migrate, API) from the repository root:
 
 ```bash
-cp docker/api/.env.example docker/api/.env   # optional — edit JWT_SECRET_KEY
-docker compose -f docker/docker-compose.yml up --build
+cp environments/local/.env.example environments/local/.env
+docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
 ```
 
 | Service      | URL                                       |
@@ -231,27 +232,37 @@ docker compose -f docker/docker-compose.yml up --build
 
 The API container uses `DATABASE_URL=...@postgres-db:5435/papita` on the Compose network. Image definition: [`docker/api/Dockerfile`](../../docker/api/Dockerfile).
 
-Database-only (no API): `docker compose -f docker/database/docker-compose.yml up -d`
+Database-only (no API): `docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d`
 
 ### B0 — Docker Postgres (local, host uvicorn)
 
 ```bash
 # From repository root
-docker compose -f docker/database/docker-compose.yml up -d
-/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
+/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
 
-cp modules/api/src/.env.example modules/api/src/.env
-# Set JWT_SECRET_KEY and DATABASE_URL (PostgreSQL — see .env.example)
-
+export PAPITA_ENV=local
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
 curl -s http://localhost:8000/api/v1/health/ready
 ```
 
 `/health/ready` returns **200** with `{"ready": true}` when the database accepts `SELECT 1`; **503** with `{"ready": false}` when the pooler or Postgres is unreachable (transient B1 failures included).
 
-### B1 — Supabase pooler (staging / production)
+### Optional — hosted Postgres / pooler tips
 
-Use the same `uvicorn` command with `DATABASE_URL` pointing at the transaction pooler (`:6543`, `?pgbouncer=true`). Migrations use `DATABASE_URL_MIGRATIONS` on direct `:5432` — see [`.env.example`](../../.env.example). Full B1 smoke tests: [#49](https://github.com/Elmorralito/save-ma-money/issues/49).
+If you use a transaction pooler (including Supabase PG), copy [`environments/staging/.env.example`](../../environments/staging/.env.example), set `PAPITA_ENV=staging`, and keep migrations on `DATABASE_URL_MIGRATIONS` (`:5432`). See [`environments/README.md`](../../environments/README.md) and the [optional pooler checklist](../../docs/ops/b1-supabase-deploy-checklist.md).
+
+```bash
+# Migrate on direct URL (never transaction pooler)
+PAPITA_ENV=staging /bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
+
+# Optional pooler connectivity smoke (not an epic gate after PPT-039 Auth reissue)
+PAPITA_ENV=staging make b1-smoke
+```
+
+**Engine opts:** API `Settings` pass `pool_pre_ping=True` and `pool_size=DATABASE_POOL_SIZE` into `SQLDatabaseConnector.establish`. On pooler URLs (`:6543` / `pgbouncer=true`), `max_overflow=0`.
+
+Pooler modes: [PPT-031-C §2.2](../../docs/issues/PPT-031-C-supabase-decision-brief.md). **MVP Auth** is Supabase Auth — [#49](https://github.com/Elmorralito/save-ma-money/issues/49) / [reissue note](../../docs/issues/PPT-039-supabase-auth-reissue.md).
 
 **Testing today:** `poetry run pytest modules/api/tests` (health, pagination, budgets 501) plus `modules/model/tests`.
 
@@ -448,7 +459,7 @@ Liveness probe for Kubernetes.
 ## Authentication Endpoints
 
 > **Auth contract:** [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) (FR-10, FR-11, G5).
-> **Platform:** Local JWT (HS256) + `papita_transactions.users`. Supabase Auth (B2) deferred.
+> **Platform:** **Supabase Auth** for access JWTs (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Local HS256 issuance is being replaced. Database remains Docker / any Postgres (Supabase PG optional).
 
 ### Auth strategy summary
 

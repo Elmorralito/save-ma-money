@@ -30,6 +30,7 @@ save-ma-money/
 ├── modules/model/                 papita-txnsmodel (SQLModel, Alembic, services)
 ├── modules/api/                   papita-txnsapi (FastAPI settings, security)
 ├── docs/design/ · docs/issues/    human design program (pre-Strata)
+├── environments/                  PAPITA_ENV profiles (local|staging|production)
 ├── deploy/ · docker/database/     migrations, local Postgres
 └── .strata/
     ├── MANIFEST.md                this contract (layout_version, routing, load order)

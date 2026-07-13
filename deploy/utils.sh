@@ -29,11 +29,27 @@ log() {
 
 
 get_python_cmd() {
-    if [[ "${POETRY_ACTIVE}" == "1" ]] || [[ -n "${VIRTUAL_ENV}" ]]; then
+    if [[ "${POETRY_ACTIVE:-0}" == "1" ]] || [[ -n "${VIRTUAL_ENV:-}" ]]; then
         echo "python"
     else
         echo "python -m poetry"
     fi
+}
+
+# Resolve environments/<PAPITA_ENV>/.env (default local). Optional override: first arg.
+# Usage: resolve_papita_env_file [name]  → prints absolute path; exits 1 on unknown name.
+resolve_papita_env_file() {
+    local name="${1:-${PAPITA_ENV:-local}}"
+    local root
+    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    case "${name}" in
+        local | staging | production) ;;
+        *)
+            log ERROR "Unknown PAPITA_ENV='${name}' (expected local|staging|production)"
+            return 1
+            ;;
+    esac
+    echo "${root}/environments/${name}/.env"
 }
 
 

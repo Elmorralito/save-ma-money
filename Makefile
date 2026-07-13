@@ -22,3 +22,8 @@ lite-dev: prep
 
 activate: prep
 	echo "eval \"$(shell $(PYTHON_CMD) env activate)\"" | exec $(PBCOPY_COMMAND)
+
+# PPT-039: opt-in B1 Supabase pooler smoke (default PAPITA_ENV=staging).
+# Requires environments/staging/.env with pooler DATABASE_URL + JWT_SECRET_KEY.
+b1-smoke:
+	/bin/bash ./deploy/b1_smoke.sh

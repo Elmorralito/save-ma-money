@@ -14,8 +14,12 @@ usage() {
 }
 
 source "${PROJECT_PATH}/deploy/utils.sh"
-log "INFO" "Loading global env vars at ${PROJECT_PATH}/.env"
-source "${PROJECT_PATH}/.env"
+POETRY_ACTIVE="${POETRY_ACTIVE:-0}"
+VIRTUAL_ENV="${VIRTUAL_ENV:-}"
+ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV:-local}")" || exit 1
+log "INFO" "Loading env vars from ${ENV_FILE}"
+# shellcheck source=/dev/null
+source "${ENV_FILE}"
 
 while getopts ":e:d:s:p:b:fh" opt; do
     case $opt in

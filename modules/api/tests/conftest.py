@@ -14,6 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
+# Prefer process env over environments/$PAPITA_ENV/.env for unit tests (live tests set URLs explicitly).
+if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = ""
 
 from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
