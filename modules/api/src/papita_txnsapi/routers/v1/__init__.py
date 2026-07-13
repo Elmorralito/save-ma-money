@@ -5,7 +5,7 @@ application. Registration order places unauthenticated probes first, then auth, 
 tenant-scoped CRUD routes.
 
 Routes exposed (prefix relative to app mount):
-    ``/health`` — liveness, readiness, and composite health (no tenant scope).
+    ``/health`` — liveness, readiness, database communication, and composite health (no tenant scope).
     ``/auth`` — register, login, profile; refresh/logout deferred (FR-11).
     ``/accounts`` — tenant-scoped account CRUD via :class:`~papita_txnsmodel.services.accounts.AccountsService`.
     ``/categories`` — tenant + global seed categories via
@@ -13,6 +13,7 @@ Routes exposed (prefix relative to app mount):
     ``/transactions`` — tenant-scoped INCOME/EXPENSE ledger via
         :class:`~papita_txnsmodel.services.transactions.TransactionsService`.
     ``/movements`` — TRANSFER alias over the same transactions service.
+    ``/reports`` — FR-12 read models via :class:`~papita_txnsmodel.services.reports.ReportService`.
     ``/budgets`` — placeholder 501 responses (FR-09 deferred to v4.1).
 
 Tenant scoping:
@@ -23,7 +24,7 @@ Tenant scoping:
 
 from fastapi import APIRouter
 
-from papita_txnsapi.routers.v1 import accounts, auth, budgets, categories, health, movements, transactions
+from papita_txnsapi.routers.v1 import accounts, auth, budgets, categories, health, movements, reports, transactions
 
 api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
@@ -32,4 +33,5 @@ api_v1_router.include_router(accounts.router)
 api_v1_router.include_router(categories.router)
 api_v1_router.include_router(transactions.router)
 api_v1_router.include_router(movements.router)
+api_v1_router.include_router(reports.router)
 api_v1_router.include_router(budgets.router)

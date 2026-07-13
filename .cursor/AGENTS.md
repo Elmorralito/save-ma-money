@@ -236,21 +236,23 @@ Do not create git commits unless the user explicitly asks.
 
 The API is a **runnable FastAPI app** (`papita_txnsapi.main.create_app`, module-level `app`) with CORS, request logging, global exception handlers, and v1 routers at `/api/v1`.
 
-| Router prefix   | Module                       | Delegates to          | Notes                                                                                                                           |
-| --------------- | ---------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `/health`       | `routers/v1/health.py`       | DB probe              | No auth ([#45](https://github.com/Elmorralito/save-ma-money/issues/45))                                                         |
-| `/auth`         | `routers/v1/auth.py`         | `UsersService`        | Register, login, profile ([#44](https://github.com/Elmorralito/save-ma-money/issues/44))                                        |
-| `/accounts`     | `routers/v1/accounts.py`     | `AccountsService`     | CRUD, extensions, balance ([#46](https://github.com/Elmorralito/save-ma-money/issues/46))                                       |
-| `/categories`   | `routers/v1/categories.py`   | `CategoriesService`   | CRUD, hierarchy, global seed read ([#46](https://github.com/Elmorralito/save-ma-money/issues/46))                               |
-| `/transactions` | `routers/v1/transactions.py` | `TransactionsService` | INCOME/EXPENSE CRUD + bulk; TRANSFER excluded from default list ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)) |
-| `/movements`    | `routers/v1/movements.py`    | `TransactionsService` | TRANSFER alias — scheduled execute/cancel ([#47](https://github.com/Elmorralito/save-ma-money/issues/47))                       |
-| `/budgets`      | `routers/v1/budgets.py`      | —                     | Deferred 501 (FR-09 / v4.1)                                                                                                     |
+| Router prefix   | Module                       | Delegates to          | Notes                                                                                                                                  |
+| --------------- | ---------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `/health`       | `routers/v1/health.py`       | DB probe + latency    | No auth; includes `/database` communication check ([#45](https://github.com/Elmorralito/save-ma-money/issues/45))                      |
+| `/auth`         | `routers/v1/auth.py`         | `UsersService`        | Register, login, profile ([#44](https://github.com/Elmorralito/save-ma-money/issues/44))                                               |
+| `/accounts`     | `routers/v1/accounts.py`     | `AccountsService`     | CRUD, extensions, balance ([#46](https://github.com/Elmorralito/save-ma-money/issues/46))                                              |
+| `/categories`   | `routers/v1/categories.py`   | `CategoriesService`   | CRUD, hierarchy, global seed read ([#46](https://github.com/Elmorralito/save-ma-money/issues/46))                                      |
+| `/transactions` | `routers/v1/transactions.py` | `TransactionsService` | INCOME/EXPENSE CRUD + bulk; TRANSFER excluded from default list ([#47](https://github.com/Elmorralito/save-ma-money/issues/47))        |
+| `/movements`    | `routers/v1/movements.py`    | `TransactionsService` | TRANSFER alias — scheduled execute/cancel ([#47](https://github.com/Elmorralito/save-ma-money/issues/47))                              |
+| `/reports`      | `routers/v1/reports.py`      | `ReportService`       | Tenant-scoped spending/cash-flow/trends/export; budget-performance 501 ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)) |
 
-**Schemas:** `schemas/accounts.py`, `schemas/categories.py`, `schemas/transactions.py`, `schemas/movements.py`, `schemas/query_params.py`; enum slugs via `schemas/converters.py`.
+| `/budgets` | `routers/v1/budgets.py` | — | Deferred 501 (FR-09 / v4.1) |
+
+**Schemas:** `schemas/accounts.py`, `schemas/categories.py`, `schemas/transactions.py`, `schemas/movements.py`, `schemas/reports.py`, `schemas/query_params.py`; enum slugs via `schemas/converters.py`.
 
 **Auth:** JWT via `core/security.py` (`AuthSecurityManager`); protected routes use `dependencies/auth.get_current_owner` and pass `owner` to services per [`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
 
-**Not yet wired:** reports ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)), transaction split (501 on `POST /transactions/{id}/split`).
+**Deferred stubs:** transaction split (501 on `POST /transactions/{id}/split`), `GET /reports/budget-performance`, export `xlsx`/`pdf`.
 
 Implement new endpoints against [`modules/api/README.md`](../modules/api/README.md) and [`ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33).
 

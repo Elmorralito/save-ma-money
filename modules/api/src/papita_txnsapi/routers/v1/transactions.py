@@ -1,7 +1,9 @@
 """Transaction CRUD routes — PPT-037.
 
 Exposes tenant-scoped INCOME/EXPENSE transaction management under ``/transactions``.
-TRANSFER rows are excluded from default list responses; use ``/movements`` or
+All handlers require JWT auth via ``get_current_owner`` and delegate persistence to
+:class:`~papita_txnsmodel.services.transactions.TransactionsService`. TRANSFER rows
+are excluded from default list responses; use ``/movements`` or
 ``?transaction_type=transfer`` to include them.
 
 Routes:
@@ -12,6 +14,10 @@ Routes:
     ``PUT /transactions/{transaction_id}`` — update tenant-owned transaction.
     ``DELETE /transactions/{transaction_id}`` — soft-delete tenant-owned transaction.
     ``POST /transactions/{transaction_id}/split`` — deferred 501 (v4).
+
+Tenant scoping:
+    Every mutating and read path passes ``owner=`` so ledger rows never leak across
+    tenants. Cross-tenant ids resolve as not found (404).
 """
 
 from __future__ import annotations
@@ -45,19 +51,44 @@ _DEFERRED_SPLIT = DeferredResponse(deferred_reason="Transaction split deferred t
 
 
 def _transaction_not_found() -> HTTPException:
-    """Build a 404 response for a missing or inaccessible transaction."""
+    """Build a 404 response for a missing or inaccessible transaction.
+
+    Returns:
+        HTTPException: 404 with a generic detail that avoids leaking cross-tenant
+            existence of ledger rows.
+    """
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
 
 
 def _require_uuid(value: uuid.UUID | None) -> uuid.UUID:
-    """Return a persisted UUID or raise when the DTO has no primary key."""
+    """Return a persisted UUID or raise when the DTO has no primary key.
+
+    Args:
+        value: Primary key from a DTO that may not yet be persisted.
+
+    Returns:
+        The non-``None`` UUID value.
+
+    Raises:
+        HTTPException: 404 when ``value`` is ``None``.
+    """
     if value is None:
         raise _transaction_not_found()
     return value
 
 
 def _require_owner_id(owner: UsersDTO) -> uuid.UUID:
-    """Return the authenticated owner's primary key."""
+    """Return the authenticated owner's primary key.
+
+    Args:
+        owner: Authenticated tenant DTO from JWT resolution.
+
+    Returns:
+        Non-null tenant UUID used when constructing create DTOs.
+
+    Raises:
+        HTTPException: 401 when ``owner.id`` is missing (invalid auth context).
+    """
     if owner.id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid owner context")
     return owner.id
@@ -70,7 +101,20 @@ def list_transactions(
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
     filters: Annotated[TransactionListQuery, Depends(get_transaction_list_query)],
 ) -> PaginatedResponse[TransactionResponse]:
-    """List tenant transactions with optional filters."""
+    """List tenant transactions with optional G4 filters.
+
+    By default TRANSFER rows are excluded (``exclude_transfer=True``) unless the
+    client filters ``transaction_type=transfer``.
+
+    Args:
+        owner: Authenticated tenant from JWT.
+        pagination: Skip/limit window for the response page.
+        transactions_service: Injected service providing ``list_transactions``.
+        filters: Bundled query parameters mapped to service kwargs.
+
+    Returns:
+        Paginated ``TransactionResponse`` items owned by ``owner``.
+    """
     records_df, total = transactions_service.list_transactions(
         owner=owner,
         skip=pagination.skip,
@@ -92,7 +136,22 @@ def bulk_create_transactions(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
 ) -> TransactionBulkResponse:
-    """Create multiple INCOME/EXPENSE transactions."""
+    """Create multiple INCOME/EXPENSE transactions for the authenticated tenant.
+
+    Each item is created independently; ``ValueError`` / ``TypeError`` on an item
+    increments ``failed`` without aborting the remainder of the batch.
+
+    Args:
+        body: Bulk payload containing one or more ``TransactionCreate`` items.
+        owner: Authenticated tenant that will own every created row.
+        transactions_service: Injected service used for per-item ``create``.
+
+    Returns:
+        TransactionBulkResponse with counts and successfully created items.
+
+    Raises:
+        HTTPException: 401 when the owner context lacks a primary key.
+    """
     owner_id = _require_owner_id(owner)
     created_items: list[TransactionResponse] = []
     failed = 0
@@ -110,7 +169,14 @@ def bulk_create_transactions(
 
 @router.post("/{transaction_id}/split", status_code=status.HTTP_501_NOT_IMPLEMENTED)
 def split_transaction(transaction_id: uuid.UUID) -> DeferredResponse:
-    """Split a transaction — deferred post-MVP (v4)."""
+    """Defer transaction split until v4 ``transaction_splits`` (MVP stub).
+
+    Args:
+        transaction_id: Path identifier reserved for a future split target row.
+
+    Returns:
+        DeferredResponse explaining that split is not implemented in MVP.
+    """
     del transaction_id
     return _DEFERRED_SPLIT
 
@@ -121,7 +187,19 @@ def get_transaction(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
 ) -> TransactionResponse:
-    """Retrieve a single transaction with linked account and category names."""
+    """Retrieve a single tenant-owned transaction with linked names.
+
+    Args:
+        transaction_id: Ledger primary key from the path.
+        owner: Authenticated tenant from JWT.
+        transactions_service: Injected service for owner-scoped get-by-id.
+
+    Returns:
+        TransactionResponse including account/category names when linked DTOs load.
+
+    Raises:
+        HTTPException: 404 when the row is missing or not owned by ``owner``.
+    """
     transaction = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=True)
     if transaction is None:
         raise _transaction_not_found()
@@ -134,7 +212,20 @@ def create_transaction(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
 ) -> TransactionResponse:
-    """Create an INCOME or EXPENSE transaction."""
+    """Create an INCOME or EXPENSE transaction for the authenticated tenant.
+
+    Args:
+        body: Create payload (account, category, type, amount, date, optional fields).
+        owner: Authenticated tenant that will own the new row.
+        transactions_service: Injected service providing ``create``.
+
+    Returns:
+        TransactionResponse for the persisted row.
+
+    Raises:
+        HTTPException: 401 when owner id is missing; domain errors may surface as
+            400 via the global ``ValueError`` handler.
+    """
     dto = body.to_transactions_dto(owner_id=_require_owner_id(owner))
     created = transactions_service.create(obj=dto, owner=owner)
     return TransactionResponse.from_dto(created)
@@ -147,7 +238,22 @@ def update_transaction(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
 ) -> TransactionResponse:
-    """Update a tenant-owned INCOME/EXPENSE transaction."""
+    """Update a tenant-owned INCOME/EXPENSE transaction via upsert.
+
+    TRANSFER rows must be updated through ``PUT /movements`` instead.
+
+    Args:
+        transaction_id: Ledger primary key from the path.
+        body: Partial update fields applied onto the existing DTO.
+        owner: Authenticated tenant that must own the row.
+        transactions_service: Injected service for get and upsert.
+
+    Returns:
+        TransactionResponse for the updated row.
+
+    Raises:
+        HTTPException: 404 when missing; 422 when the row is a TRANSFER.
+    """
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()
@@ -168,7 +274,16 @@ def delete_transaction(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
 ) -> None:
-    """Soft-delete a tenant-owned transaction."""
+    """Soft-delete a tenant-owned transaction.
+
+    Args:
+        transaction_id: Ledger primary key from the path.
+        owner: Authenticated tenant that must own the row.
+        transactions_service: Injected service providing soft ``delete``.
+
+    Raises:
+        HTTPException: 404 when the row is missing or not owned by ``owner``.
+    """
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()

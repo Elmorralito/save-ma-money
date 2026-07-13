@@ -5,7 +5,7 @@ The codemap: where things happen, coarse module by coarse module — a map of a 
 ## Map
 
 - **`modules/model`** — `papita_txnsmodel`: SQLModel tables under `src/papita_txnsmodel/model/` (composite indexes on `accounts`, `transactions`, `transaction_templates`, `account_financing`), DTOs/repositories in `access/`, business logic in `services/`, loaders in `handlers/`. Balance report MVs in `views/balance_reports/` (SQL + `views.py` entities); MV fetch indexes in `views/indexes.py`. Generic balance report reads: `config/data/balance_report_filters.yaml`, `config/balance_report_specs.py`, `access/balance_reports/`, `services/balance_reports.py`, `handlers/balance_reports.py`. Partition + MV registry: `config/transaction_partitions.py`, `config/materialized_views.py`. Alembic under `alembic/`.
-- **`modules/api`** — `papita_txnsapi`: FastAPI app — health ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)), auth + tenant ([#44](https://github.com/Elmorralito/save-ma-money/issues/44)); **accounts + categories CRUD** ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)); transactions/reports in [#47](https://github.com/Elmorralito/save-ma-money/issues/47)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48).
+- **`modules/api`** — `papita_txnsapi`: FastAPI app — health ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)) including `/health/database` (API↔DB latency probe via `core/db_health.probe_database`), auth + tenant ([#44](https://github.com/Elmorralito/save-ma-money/issues/44)); **accounts + categories CRUD** ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)); transactions/movements ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)); **reports** ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)).
 - **`deploy/`** — shared shell utilities, `alembic.sh`, `test.sh`, `transaction_partitions.sh` (monthly partition ensure + retention archive).
 - **`docker/database/`** — local PostgreSQL 15 via Compose for dev and migration CI.
 
@@ -50,27 +50,33 @@ YAML registry: `papita_txnsmodel/config/data/balance_report_filters.yaml` (five 
 
 Model-layer endpoints for PPT-032 wire through:
 
-| Service                              | Module                      | Role                                                                                                |
-| ------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------- |
-| `AccountsService`                    | `services/accounts.py`      | CRUD + `create_account` / `update_account` extension orchestration by `account_kind`; `get_balance` |
-| `TransactionsService`                | `services/transactions.py`  | CRUD + `list_transfers`, `create_transfer`, `complete_transfer`, `cancel`                           |
-| `ReportService`                      | `services/reports.py`       | `spending`, `cash_flow`, `trends`, `export` (transaction SQL aggregations; FR-12)                   |
-| `refresh_balance_materialized_views` | `services/balance_views.py` | Shared MV refresh helper (exported from `services/__init__.py`)                                     |
+| Service                              | Module                      | Role                                                                                                            |
+| ------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `AccountsService`                    | `services/accounts.py`      | CRUD + `create_account` / `update_account` extension orchestration by `account_kind`; `get_balance`             |
+| `TransactionsService`                | `services/transactions.py`  | CRUD + `list_transfers`, `create_transfer`, `complete_transfer`, `cancel`                                       |
+| `ReportService`                      | `services/reports.py`       | Tenant-scoped `spending` / `cash_flow` / `trends` / `export` (FR-12); requires `owner=`; validates `account_id` |
+| `refresh_balance_materialized_views` | `services/balance_views.py` | Shared MV refresh helper (exported from `services/__init__.py`; used by cash-flow G9)                           |
 
 Extension routing map: `services/account_extension_routing.py`. Live-DB tenancy tests: `tests/tests_papita_txnsmodel/integration/` (require `DATABASE_URL` PostgreSQL).
 
-## API routers (PPT-036 / #46)
+## API routers (PPT-036–038)
 
-| Router prefix        | Module                     | Service delegation                                           |
-| -------------------- | -------------------------- | ------------------------------------------------------------ |
-| `/api/v1/accounts`   | `routers/v1/accounts.py`   | `AccountsService` — CRUD, extensions (G1), balance (G2)      |
-| `/api/v1/categories` | `routers/v1/categories.py` | `CategoriesService` — CRUD, hierarchy, global seed read (G7) |
+| Router prefix          | Module                       | Service delegation                                                               |
+| ---------------------- | ---------------------------- | -------------------------------------------------------------------------------- |
+| `/api/v1/accounts`     | `routers/v1/accounts.py`     | `AccountsService` — CRUD, extensions (G1), balance (G2)                          |
+| `/api/v1/categories`   | `routers/v1/categories.py`   | `CategoriesService` — CRUD, hierarchy, global seed read (G7)                     |
+| `/api/v1/transactions` | `routers/v1/transactions.py` | `TransactionsService` — INCOME/EXPENSE CRUD + bulk (PPT-037 / #47)               |
+| `/api/v1/movements`    | `routers/v1/movements.py`    | `TransactionsService` — TRANSFER alias (PPT-037 / #47)                           |
+| `/api/v1/reports`      | `routers/v1/reports.py`      | `ReportService` — spending/cash-flow/trends/export; budget-performance 501 (#48) |
+| `/api/v1/health`       | `routers/v1/health.py`       | `probe_database` — readiness + `/database` latency (allowlisted details)         |
 
-Schemas: `schemas/accounts.py`, `schemas/categories.py`; enum slugs via `schemas/converters.py`. Balance display falls back to `initial_value` when MV row absent (G8 API semantics until opening txn in #47).
+Schemas: `schemas/accounts.py`, `schemas/categories.py`, `schemas/transactions.py`, `schemas/movements.py`,
+`schemas/reports.py`, `schemas/query_params.py`; enum slugs via `schemas/converters.py`.
 
 All public modules under `modules/api/src/papita_txnsapi/` carry Google-style docstrings (routers, dependencies, schemas, core).
 
-Live API integration: `modules/api/tests/test_accounts_categories_live_db.py` (`@requires_postgres` B0); `test_supabase_b1_smoke.py` (`@requires_supabase_b1` pooler `:6543`).
+Live API integration: `modules/api/tests/test_accounts_categories_live_db.py`, `test_reports_live_db.py` (`@requires_postgres` B0);
+`test_supabase_b1_smoke.py` (`@requires_supabase_b1` pooler `:6543`, includes reports spending probe).
 
 ## Invariants
 
@@ -78,6 +84,7 @@ Live API integration: `modules/api/tests/test_accounts_categories_live_db.py` (`
 - PostgreSQL only (B0 Docker local, B1 Supabase hosted). DuckDB deprecated.
 - Soft deletes by default; repositories use `@SQLDatabaseConnector.connect`.
 - `OwnedTableDTO` services require `owner=UsersDTO` (`BaseService._ensure_owner`).
+- Report aggregations require `owner=` on every `ReportService` public method; optional `account_id` must belong to that tenant.
 - Categories: unique `(owner_id, name, category_kind)` with `NULLS NOT DISTINCT` (FR-15).
 
 ## Specs
