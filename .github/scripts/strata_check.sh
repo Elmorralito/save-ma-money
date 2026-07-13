@@ -13,6 +13,8 @@ source "${PROJECT_PATH}/deploy/utils.sh"
 cd "${PROJECT_PATH}" || exit 1
 
 STRATA_DIR="${PROJECT_PATH}/.strata"
+AGENTS_ADAPTER="${PROJECT_PATH}/.agents/AGENTS.md"
+CLAUDE_ADAPTER="${PROJECT_PATH}/.agents/CLAUDE.md"
 FAIL=0
 STRICT_MODULES="${STRATA_STRICT_MODULES:-0}"
 
@@ -56,8 +58,8 @@ if [[ ! -d "${STRATA_DIR}" ]]; then
 fi
 
 require_file "${STRATA_DIR}/MANIFEST.md"
-require_file "${PROJECT_PATH}/AGENTS.md"
-require_file "${PROJECT_PATH}/CLAUDE.md"
+require_file "${AGENTS_ADAPTER}"
+require_file "${CLAUDE_ADAPTER}"
 
 for rel in \
     memory/MEMORY.md \
@@ -95,15 +97,15 @@ else
     fail "MANIFEST.md missing layout_version: 3 frontmatter stamp"
 fi
 
-if grep -qF ".strata/MANIFEST.md" "${PROJECT_PATH}/AGENTS.md" "${PROJECT_PATH}/CLAUDE.md"; then
-    ok "AGENTS.md and CLAUDE.md reference .strata/MANIFEST.md"
+if grep -qF ".strata/MANIFEST.md" "${AGENTS_ADAPTER}" "${CLAUDE_ADAPTER}"; then
+    ok ".agents/AGENTS.md and .agents/CLAUDE.md reference .strata/MANIFEST.md"
 else
-    fail "AGENTS.md or CLAUDE.md does not reference .strata/MANIFEST.md"
+    fail ".agents/AGENTS.md or .agents/CLAUDE.md does not reference .strata/MANIFEST.md"
 fi
 
-if grep -rE '\{\{(PROJECT_NAME|INIT_DATE)\}\}' "${STRATA_DIR}" "${PROJECT_PATH}/AGENTS.md" "${PROJECT_PATH}/CLAUDE.md" >/dev/null 2>&1; then
+if grep -rE '\{\{(PROJECT_NAME|INIT_DATE)\}\}' "${STRATA_DIR}" "${AGENTS_ADAPTER}" "${CLAUDE_ADAPTER}" >/dev/null 2>&1; then
     fail "unsubstituted Strata template placeholders remain under .strata/ or adapters"
-    grep -rnE '\{\{(PROJECT_NAME|INIT_DATE)\}\}' "${STRATA_DIR}" "${PROJECT_PATH}/AGENTS.md" "${PROJECT_PATH}/CLAUDE.md" || true
+    grep -rnE '\{\{(PROJECT_NAME|INIT_DATE)\}\}' "${STRATA_DIR}" "${AGENTS_ADAPTER}" "${CLAUDE_ADAPTER}" || true
 else
     ok "no unsubstituted template placeholders"
 fi
@@ -179,7 +181,7 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
         strata_changed=false
         while IFS= read -r path; do
             [[ -z "${path}" ]] && continue
-            if [[ "${path}" == .strata/* ]] || [[ "${path}" == "AGENTS.md" ]] || [[ "${path}" == "CLAUDE.md" ]]; then
+            if [[ "${path}" == .strata/* ]] || [[ "${path}" == .agents/* ]] || [[ "${path}" == .cursor/AGENTS.md ]] || [[ "${path}" == .cursor/CLAUDE.md ]]; then
                 strata_changed=true
             elif [[ "${path}" == "pyproject.toml" ]] || [[ "${path}" =~ ^modules/[^/]+/pyproject\.toml$ ]]; then
                 : # dependency manifest-only edits (e.g. Dependabot) do not require memory updates
@@ -189,7 +191,7 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
         done <<< "${changed_files}"
 
         if [[ "${needs_strata_pairing}" == true ]] && [[ "${strata_changed}" == false ]]; then
-            fail "code paths changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
+            fail "code paths changed but .strata/ (or .agents/AGENTS.md / .agents/CLAUDE.md) was not updated — run /strata:save, restage, and retry"
         elif [[ "${needs_strata_pairing}" == true ]]; then
             ok "strict code/strata change pairing satisfied"
         else

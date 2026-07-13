@@ -9,7 +9,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 | PostgreSQL (migration CI) | 15-alpine                                                      |
 | Lock file                 | `poetry.lock` is **gitignored** — CI resolves deps at run time |
 
-**Related docs:** [`AGENTS.md`](../AGENTS.md) · [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) · [`.strata/MANIFEST.md`](../.strata/MANIFEST.md) · [Issue #41](https://github.com/Elmorralito/save-ma-money/issues/41) (security CI requirement)
+**Related docs:** [`.agents/AGENTS.md`](../.agents/AGENTS.md) · [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) · [`.strata/MANIFEST.md`](../.strata/MANIFEST.md) · [Issue #41](https://github.com/Elmorralito/save-ma-money/issues/41) (security CI requirement)
 
 ---
 
@@ -481,7 +481,7 @@ Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-
 
 ### Layout requirements
 
-**Required files:** `MANIFEST.md`, `memory/MEMORY.md`, `memory/project_state.md`, learnings index/template, archive files, issue views (`ACTIVE.md`, `OPEN.md`, `PARKED.md`), `docs/ARCHITECTURE.md`, `inbox/.gitignore`, plus root `AGENTS.md` and `CLAUDE.md`.
+**Required files:** `MANIFEST.md`, `memory/MEMORY.md`, `memory/project_state.md`, learnings index/template, archive files, issue views (`ACTIVE.md`, `OPEN.md`, `PARKED.md`), `docs/ARCHITECTURE.md`, `inbox/.gitignore`, plus `.agents/AGENTS.md` and `.agents/CLAUDE.md`.
 
 **Required directories:** `memory/learnings`, `memory/archive`, `issues/archive`, `docs/{product,architecture,decisions,reference,ops}`, `inbox`.
 
@@ -510,10 +510,10 @@ Files matching `.strata/issues/[0-9]*-*.md`:
 
 When `STRATA_STRICT_MODULES=1`:
 
-| Context               | Diff source                     | Behavior                                                                                  |
-| :-------------------- | :------------------------------ | :---------------------------------------------------------------------------------------- |
-| **Local pre-commit**  | `STRATA_DIFF_SOURCE=staged`     | Staged `modules/**` or `deploy/**` must include `.strata/**`, `AGENTS.md`, or `CLAUDE.md` |
-| **CI (Strata Check)** | `STRATA_BASE_REF=origin/<base>` | Same rule across the PR diff vs base branch                                               |
+| Context               | Diff source                     | Behavior                                                                                                                 |
+| :-------------------- | :------------------------------ | :----------------------------------------------------------------------------------------------------------------------- |
+| **Local pre-commit**  | `STRATA_DIFF_SOURCE=staged`     | Staged `modules/**` or `deploy/**` must include `.strata/**`, `.agents/**`, or `.cursor/AGENTS.md` / `.cursor/CLAUDE.md` |
+| **CI (Strata Check)** | `STRATA_BASE_REF=origin/<base>` | Same rule across the PR diff vs base branch                                                                              |
 
 When `STRATA_CODE_REVIEW=1` (default in strict mode), changed files under `modules/**`, `deploy/**`, or `.github/scripts/**` are reviewed via [`strata_code_review.sh`](./scripts/strata_code_review.sh):
 
@@ -524,7 +524,7 @@ When `STRATA_CODE_REVIEW=1` (default in strict mode), changed files under `modul
 
 Disable review only: `STRATA_CODE_REVIEW=0`. Strata Check installs Poetry + pre-commit deps before running the review in CI.
 
-**Fix workflow:** `/strata:capture` during work → `/strata:save` before push → `git add .strata/ AGENTS.md CLAUDE.md` → commit again.
+**Fix workflow:** `/strata:capture` during work → `/strata:save` before push → `git add .strata/ .agents/AGENTS.md .agents/CLAUDE.md` → commit again.
 
 ---
 
@@ -586,7 +586,7 @@ pre-commit run --all-files
 - Pair `modules/**` / `deploy/**` edits with `.strata/` (or adapter) updates
 - Keep PR scope focused
 
-Full agent-oriented checklist: [`AGENTS.md` — PR checklist](../AGENTS.md#pr-checklist).
+Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents/AGENTS.md#pr-checklist).
 
 ---
 
@@ -595,10 +595,10 @@ Full agent-oriented checklist: [`AGENTS.md` — PR checklist](../AGENTS.md#pr-ch
 ### Strata Check / `strata-validate` failed: code without memory update
 
 ```
-code paths changed but .strata/ (or AGENTS.md/CLAUDE.md) was not updated
+code paths changed but .strata/ (or .agents/AGENTS.md / .agents/CLAUDE.md) was not updated
 ```
 
-Run `/strata:save`, stage `.strata/`, `AGENTS.md`, and/or `CLAUDE.md`, recommit.
+Run `/strata:save`, stage `.strata/`, `.agents/AGENTS.md`, and/or `.agents/CLAUDE.md`, recommit.
 
 ### Strata Check did not run on my PR
 

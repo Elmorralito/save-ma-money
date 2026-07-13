@@ -1,0 +1,15 @@
+---
+description: Canonical agent adapters live in .cursor/ — edit AGENTS.md and CLAUDE.md there; .agents/ symlinks for strata
+alwaysApply: true
+---
+
+NOTE: Operational agent instructions are **canonical under `.cursor/`**:
+
+- [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md) — build, test, architecture, API status, PR checklist
+- [`.cursor/CLAUDE.md`](../../.cursor/CLAUDE.md) — thin Claude adapter → AGENTS.md
+
+Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.cursor/AGENTS.md` (same for `CLAUDE.md`).
+
+**Do not duplicate or edit adapter content in this rule file.** Code-style enforcement stays in sibling `gen-custom/*.mdc` rules. Project memory and routing live in [`.strata/MANIFEST.md`](../../.strata/MANIFEST.md).
+
+When API status or operational conventions change, update **`.cursor/AGENTS.md`** / **`.cursor/CLAUDE.md`** and pair with `.strata/` updates when `modules/**` changes (strata strict mode).

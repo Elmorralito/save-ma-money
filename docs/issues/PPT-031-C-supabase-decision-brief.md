@@ -5,17 +5,17 @@
 
 ## Document ↔ issue cross-reference
 
-| Related document                                                         | Issue                                                                                  |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md) | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) — requirements (Track B) |
-| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)         | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) — v0 schema baseline     |
-| [`../design/PPT-031-v1-schema.md`](../design/PPT-031-v1-schema.md)       | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) — v3 tenancy (proposed)  |
-| `../design/PPT-031-migration-runbook.md` _(planned)_                     | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) — RLS migrations (B3)    |
-| `../design/PPT-031-auth-contract.md` _(planned)_                         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E — FR-10/11       |
+| Related document                                                                                                                                 | Issue                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)                                                                         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) — requirements (Track B) |
+| [`../design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)     | [#30](https://github.com/Elmorralito/save-ma-money/issues/30) — v0 schema baseline     |
+| [`../design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) | [#32](https://github.com/Elmorralito/save-ma-money/issues/32) — v3 tenancy (proposed)  |
+| `../design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34` _(planned)_                                                                 | [#34](https://github.com/Elmorralito/save-ma-money/issues/34) — RLS migrations (B3)    |
+| `../design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` _(planned)_                                                                   | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E — FR-10/11       |
 
 ## Executive decision
 
-**Propose G7 as a phased B0 + B1 path:** use **Docker Postgres locally** (B0) for offline development, Alembic iteration, and CI parity; use **Supabase PostgreSQL** (B1) for staging and production via the pooler `DATABASE_URL`. Keep **local JWT + `papita_transactions.users`** (PR #27 investment) until `PPT-031-auth-contract.md` (G5) is written. **Defer B2 (Supabase Auth)** and **B3 (RLS; optional B2)** to a post-MVP phase — RLS policy outline is documented here for [#34](https://github.com/Elmorralito/save-ma-money/issues/34) but not implemented.
+**Propose G7 as a phased B0 + B1 path:** use **Docker Postgres locally** (B0) for offline development, Alembic iteration, and CI parity; use **Supabase PostgreSQL** (B1) for staging and production via the pooler `DATABASE_URL`. Keep **local JWT + `papita_transactions.users`** (PR #27 investment) until `ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` (G5) is written. **Defer B2 (Supabase Auth)** and **B3 (RLS; optional B2)** to a post-MVP phase — RLS policy outline is documented here for [#34](https://github.com/Elmorralito/save-ma-money/issues/34) but not implemented.
 
 **Rationale:** B0/B1 share one Postgres dialect and require no auth rewrite mid-refactor. **DuckDB is not part of this path** — Postgres is the only supported engine going forward. v3 schema (proposed in [#32](https://github.com/Elmorralito/save-ma-money/issues/32)) already adopts app-layer tenancy (denormalized `owner_id`); RLS is optional defense-in-depth, not a G1 blocker.
 
@@ -79,16 +79,16 @@ Document Supabase × FastAPI integration and produce a decision record for auth/
 | **Mechanism**   | Replace or bridge local JWT issuance with Supabase Auth (`auth.users`); FastAPI validates Supabase JWT or exchanges session.                                               |
 | **Pros**        | OAuth, magic links, MFA, hosted session management; less custom auth code long-term.                                                                                       |
 | **Cons**        | Rewrites FR-10/FR-11 mid-refactor; requires `auth.users.id` ↔ `papita_transactions.users.id` sync; PR #27 `Users` + `AuthSecurityManager` investment abandoned or bridged. |
-| **Defer until** | `PPT-031-auth-contract.md` (G5) explicitly evaluates Supabase Auth vs local JWT.                                                                                           |
+| **Defer until** | `ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` (G5) explicitly evaluates Supabase Auth vs local JWT.                                                             |
 
 ### 1.5 B3 — RLS on `owner_id` (deferred)
 
-|                 |                                                                                                                                                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Mechanism**   | PostgreSQL RLS policies on tenant-scoped tables; API sets `app.user_id` per request from JWT `sub` (works with **B0/B1 local JWT** — Supabase Auth/B2 not required).                                                        |
-| **Pros**        | Defense-in-depth; DB blocks cross-tenant reads even if repository filter is omitted.                                                                                                                                        |
-| **Cons**        | Doubles isolation logic (app layer + DB); global `categories` seeds (`owner_id NULL`) need special policies; service-role bypass for admin/migrations; test matrix doubles.                                                 |
-| **Defer until** | App-layer tenancy proven (v3 + G5); implement in [#34](https://github.com/Elmorralito/save-ma-money/issues/34) / v4.7 per [`PPT-031-v4-extensions.md` §6](../design/PPT-031-v4-extensions.md#6-rls-policy-outline-v47--b3). |
+|                 |                                                                                                                                                                                                                                                            |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Mechanism**   | PostgreSQL RLS policies on tenant-scoped tables; API sets `app.user_id` per request from JWT `sub` (works with **B0/B1 local JWT** — Supabase Auth/B2 not required).                                                                                       |
+| **Pros**        | Defense-in-depth; DB blocks cross-tenant reads even if repository filter is omitted.                                                                                                                                                                       |
+| **Cons**        | Doubles isolation logic (app layer + DB); global `categories` seeds (`owner_id NULL`) need special policies; service-role bypass for admin/migrations; test matrix doubles.                                                                                |
+| **Defer until** | App-layer tenancy proven (v3 + G5); implement in [#34](https://github.com/Elmorralito/save-ma-money/issues/34) / v4.7 per [`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a` §6](../design/ARCHITECTURE.md#6-rls-policy-outline-v47--b3). |
 
 **Note:** B3 is **not blocked on B2**. If B2 (Supabase Auth) is adopted later, map its `sub` to `app.user_id` the same way as local JWT.
 
@@ -288,7 +288,7 @@ Input: Track E in [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requir
 
 **Cross-cutting prerequisites (all B-options before #25 MVP):**
 
-1. `PPT-031-auth-contract.md` (G5) — register/login schema, refresh strategy, id mapping
+1. `ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` (G5) — register/login schema, refresh strategy, id mapping
 2. `UsersService.verify_credentials(username, password) -> str | None`
 3. `PasswordManagerFactory` initialized in FastAPI lifespan
 4. `python-multipart` for OAuth2 form login (per requirements doc)
@@ -349,13 +349,13 @@ Repeat `FOR SELECT` / `FOR ALL` pattern for `transactions`, `transaction_templat
 
 1. FastAPI auth dependency decodes JWT → `current_user_id`
 2. Before repository calls: `session.connection().execute(text("SET LOCAL app.user_id = :uid"), {"uid": str(current_user_id)})`
-3. Keep `OwnedTableRepository` filters — RLS is **additive**, not a replacement ([`PPT-031-v4-extensions.md` §6](../design/PPT-031-v4-extensions.md#6-rls-policy-outline-v47--b3))
+3. Keep `OwnedTableRepository` filters — RLS is **additive**, not a replacement ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a` §6](../design/ARCHITECTURE.md#6-rls-policy-outline-v47--b3))
 4. Migrations / backfill: use `SUPABASE_SERVICE_ROLE_KEY` or direct Postgres role that bypasses RLS
 5. Alembic revision series: `V4-13` or dedicated RLS migration in [#34](https://github.com/Elmorralito/save-ma-money/issues/34)
 
 ### 6.4 v4 extension tables (future)
 
-When v4 ships, extend policies to: `budgets`, `budget_allocations`, `transaction_splits`, `counterparties`, `categorization_rules`, `account_reconciliations`, `reconciliation_items`, `transaction_attachments`, `import_batches`, `tags` — full list in [`PPT-031-v4-extensions.md` §6](../design/PPT-031-v4-extensions.md#6-rls-policy-outline-v47--b3).
+When v4 ships, extend policies to: `budgets`, `budget_allocations`, `transaction_splits`, `counterparties`, `categorization_rules`, `account_reconciliations`, `reconciliation_items`, `transaction_attachments`, `import_batches`, `tags` — full list in [`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a` §6](../design/ARCHITECTURE.md#6-rls-policy-outline-v47--b3).
 
 ---
 
@@ -374,7 +374,7 @@ When v4 ships, extend policies to: `budgets`, `budget_allocations`, `transaction
 | Item                              | Gate / issue                                                                                                                  | Notes                                                                                                                                   |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | G1 v3 schema freeze               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) / [#32](https://github.com/Elmorralito/save-ma-money/issues/32) | Tenancy in §1.6 / v3 §3.2; RLS in §6 — **proposed**, not maintainer-approved                                                            |
-| G5 auth contract                  | Track E                                                                                                                       | `PPT-031-auth-contract.md` — blocks `/auth/*` in #25                                                                                    |
+| G5 auth contract                  | Track E                                                                                                                       | `ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` — blocks `/auth/*` in #25                                                      |
 | G7 maintainer sign-off            | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)                                                                 | Confirm B0+B1 on #28; [#31](https://github.com/Elmorralito/save-ma-money/issues/31) deliverables complete — issue may close on PR merge |
 | B2 Supabase Auth                  | G7 phase 2                                                                                                                    | Re-evaluate after G5                                                                                                                    |
 | B3 RLS implementation             | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)                                                                 | SQL migrations only; no policies in this PR                                                                                             |

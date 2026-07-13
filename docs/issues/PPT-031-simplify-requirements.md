@@ -5,15 +5,15 @@
 
 ## Document ↔ issue registry
 
-| Document                                                                         | Issue                                                                 | Track            | Status           |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- | ---------------- |
-| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)         | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)         | Epic             | Active           |
-| [`../design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md)                 | [#30](https://github.com/Elmorralito/save-ma-money/issues/30)         | A — v0 audit     | Draft            |
-| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)         | B — Supabase     | Active           |
-| `../design/PPT-031-v1-schema.md` _(planned)_                                     | [#32](https://github.com/Elmorralito/save-ma-money/issues/32)         | A — v1–v3 schema | Pending          |
-| `../design/PPT-031-api-model-mapping.md` _(planned)_                             | [#33](https://github.com/Elmorralito/save-ma-money/issues/33)         | C — API spec     | Pending          |
-| `../design/PPT-031-migration-runbook.md`                                         | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)         | D — Migration    | **Written (v0)** |
-| `../design/PPT-031-auth-contract.md` _(planned)_                                 | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth             | Pending          |
+| Document                                                                                                                                     | Issue                                                                 | Track            | Status           |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------- | ---------------- |
+| [`PPT-031-simplify-requirements.md`](./PPT-031-simplify-requirements.md)                                                                     | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)         | Epic             | Active           |
+| [`../design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30) | [#30](https://github.com/Elmorralito/save-ma-money/issues/30)         | A — v0 audit     | Draft            |
+| [`PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md)                                                             | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)         | B — Supabase     | Active           |
+| `../design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32` _(planned)_                                                          | [#32](https://github.com/Elmorralito/save-ma-money/issues/32)         | A — v1–v3 schema | Pending          |
+| `../design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33` _(planned)_                                                             | [#33](https://github.com/Elmorralito/save-ma-money/issues/33)         | C — API spec     | Pending          |
+| `../design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`                                                                         | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)         | D — Migration    | **Written (v0)** |
+| `../design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` _(planned)_                                                               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E | Auth             | Pending          |
 
 **Related issues:** [#24](https://github.com/Elmorralito/save-ma-money/issues/24) tenancy · [#25](https://github.com/Elmorralito/save-ma-money/issues/25) API impl · [#17](https://github.com/Elmorralito/save-ma-money/issues/17) superseded · [#11](https://github.com/Elmorralito/save-ma-money/issues/11) versioning
 
@@ -158,7 +158,7 @@ Deliver a **frozen v3 target schema** (3NF), a **tenancy strategy** (closing #24
 
 #### Step A1: v0 audit document
 
-Create `docs/design/PPT-031-v0-audit.md` covering:
+Create `docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30` covering:
 
 - Every table: columns, PKs, FKs, indexes
 - Normalization analysis per table (1NF / 2NF / 3NF violations)
@@ -266,7 +266,7 @@ Define the auth layer end-to-end before implementing `/auth/*` routes.
 | Refresh / logout | Spec endpoints exist                                      | Stateless JWT only, or refresh token + denylist |
 | API dependencies | Missing `python-multipart` for OAuth2 form login          | Add to `modules/api/pyproject.toml`             |
 
-**Deliverable:** `docs/design/PPT-031-auth-contract.md` covering FR-10, FR-11.
+**Deliverable:** `docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` covering FR-10, FR-11.
 
 ---
 
@@ -399,7 +399,7 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 - Flag breaking renames early (categories → types).
 - Align auth request/response shapes with `Users` model fields.
 
-**Acceptance:** `docs/design/PPT-031-api-model-mapping.md` reviewed and linked from this issue; #25 scoped to MVP list only.
+**Acceptance:** `docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33` reviewed and linked from this issue; #25 scoped to MVP list only.
 
 ---
 
@@ -655,7 +655,7 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 **Developer notes:**
 
 - Regenerate Postgres ER after v3 migration on Docker.
-- Add `docs/design/PPT-031-api-model-mapping.md` as tabular complement to ER.
+- Add `docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33` as tabular complement to ER.
 
 **Acceptance:** Files linked in issue comment at v3 freeze.
 
@@ -773,7 +773,7 @@ Tracks **E** (auth) and **F** (reports) are scoped in this issue; implement via 
 
 ## Acceptance criteria (issue closure)
 
-- [x] `docs/design/PPT-031-v0-audit.md` merged ([#30](https://github.com/Elmorralito/save-ma-money/issues/30))
+- [x] `docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30` merged ([#30](https://github.com/Elmorralito/save-ma-money/issues/30))
 - [ ] v3 target schema approved (comment sign-off by maintainer) ([#32](https://github.com/Elmorralito/save-ma-money/issues/32))
 - [ ] Tenancy strategy documented (FR-02); [#24](https://github.com/Elmorralito/save-ma-money/issues/24) ready to close
 - [ ] Types identity rules documented (FR-15)
@@ -803,7 +803,7 @@ Tracks **E** (auth) and **F** (reports) are scoped in this issue; implement via 
 
 - [`docs/issues/README.md`](./README.md) — issue document index
 - [`docs/design/README.md`](../design/README.md) — design document registry
-- [`docs/design/PPT-031-v0-audit.md`](../design/PPT-031-v0-audit.md) — [#30](https://github.com/Elmorralito/save-ma-money/issues/30)
+- [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30) — [#30](https://github.com/Elmorralito/save-ma-money/issues/30)
 - [`docs/issues/PPT-031-C-supabase-decision-brief.md`](./PPT-031-C-supabase-decision-brief.md) — [#31](https://github.com/Elmorralito/save-ma-money/issues/31)
 
 ### Code

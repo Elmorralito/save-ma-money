@@ -4,7 +4,7 @@ Welcome to the **backbone of financial data integrity** for the **save-ma-money*
 
 ![PostgreSQL ER diagram — papita_transactions v3 core + balance read models](../../docs/postgres_papita_transactions_v4.png)
 
-Entity-relationship diagram for schema `papita_transactions`: **v3 core tables** (users, accounts, categories, transaction templates, transactions, account extensions, financing) plus **materialized balance views** (`account_balances`, `owner_*_balances`). DDL authority: [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md). Post-MVP additive tables (budgets, splits, recurrence, reconciliation): [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md).
+Entity-relationship diagram for schema `papita_transactions`: **v3 core tables** (users, accounts, categories, transaction templates, transactions, account extensions, financing) plus **materialized balance views** (`account_balances`, `owner_*_balances`). DDL authority: [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32). Post-MVP additive tables (budgets, splits, recurrence, reconciliation): [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a).
 
 ## Overview
 
@@ -37,7 +37,7 @@ Personal and small-business finance rarely starts in one clean database. Data ar
 
 ## From v0 to v3
 
-PPT-031 ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) redesigned the model for **Third Normal Form**, API alignment, and PostgreSQL-only operation. The v3 baseline ships as Alembic revision `a75354933e79` (see [migration runbook](../../docs/design/PPT-031-migration-runbook.md)).
+PPT-031 ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) redesigned the model for **Third Normal Form**, API alignment, and PostgreSQL-only operation. The v3 baseline ships as Alembic revision `a75354933e79` (see [migration runbook](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)).
 
 | v0 pattern                                         | v3 replacement                                     | Why it changed                                  |
 | :------------------------------------------------- | :------------------------------------------------- | :---------------------------------------------- |
@@ -48,7 +48,7 @@ PPT-031 ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) redesign
 | Phantom `balance` column on accounts               | `account_balances` materialized view               | Read model without denormalizing writes (FR-12) |
 | DuckDB + PostgreSQL dual dialect                   | PostgreSQL only                                    | Platform decision B0/B1                         |
 
-**Design authority:** [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md) · **as-is audit:** [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md)
+**Design authority:** [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) · **as-is audit:** [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../../docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)
 
 ### Entity relationship (v3)
 
@@ -104,13 +104,13 @@ Templates (`transaction_templates`) hold planned name, amount, and schedule; pos
 
 **Strategy B (denormalized `owner_id`)** on hot tables — fast tenant-filtered scans without joining through `accounts` on every ledger query. Extension detail tables derive tenancy via `account_id → accounts.owner_id` and do not carry their own `owner_id`.
 
-| Rule                                      | Enforcement                                                                                                     |
-| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| All owned writes require `owner=UsersDTO` | `BaseService._ensure_owner`; `OwnedTableRepository`                                                             |
-| Cross-tenant ID access                    | Repository filters return empty / upsert denied                                                                 |
-| Global categories (`owner_id IS NULL`)    | Readable by all tenants; **writes blocked** in `CategoriesService`                                              |
-| Category identity (FR-15)                 | Composite unique `(owner_id, name, category_kind)` with `NULLS NOT DISTINCT`                                    |
-| Auth (Track E)                            | `UsersService.register` / `verify_credentials`; see [auth contract](../../docs/design/PPT-031-auth-contract.md) |
+| Rule                                      | Enforcement                                                                                                                                   |
+| :---------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| All owned writes require `owner=UsersDTO` | `BaseService._ensure_owner`; `OwnedTableRepository`                                                                                           |
+| Cross-tenant ID access                    | Repository filters return empty / upsert denied                                                                                               |
+| Global categories (`owner_id IS NULL`)    | Readable by all tenants; **writes blocked** in `CategoriesService`                                                                            |
+| Category identity (FR-15)                 | Composite unique `(owner_id, name, category_kind)` with `NULLS NOT DISTINCT`                                                                  |
+| Auth (Track E)                            | `UsersService.register` / `verify_credentials`; see [auth contract](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) |
 
 Live-DB tenancy tests: `tests/tests_papita_txnsmodel/integration/test_tenancy_live_db.py` (require `DATABASE_URL` PostgreSQL).
 
@@ -193,7 +193,7 @@ The **primary API for application code**. Instantiate with optional shared `conn
 | `ReportService.spending` / `cash_flow` / `trends` / `export` | FR-12 MVP report aggregations                       |
 | `refresh_balance_materialized_views`                         | Called after transaction create/delete/upsert       |
 
-Endpoint mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) (32 MVP routes → these services).
+Endpoint mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) (32 MVP routes → these services).
 
 ### 4. Handler layer (`src/papita_txnsmodel/handlers/`)
 
@@ -387,18 +387,18 @@ DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
 
 ## Related documentation
 
-| Document                                                                                                     | Description                                                                                       |
-| :----------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
-| [`docs/design/README.md`](../../docs/design/README.md)                                                       | PPT-031 design program index                                                                      |
-| [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md)                                 | v3 frozen schema, constraints, G1 checklist                                                       |
-| [`docs/design/PPT-031-v0-audit.md`](../../docs/design/PPT-031-v0-audit.md)                                   | v0 inventory, 3NF analysis, NF register                                                           |
-| [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)) |
-| [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md)                         | Local JWT + `UsersService` flows                                                                  |
-| [`docs/design/PPT-031-migration-runbook.md`](../../docs/design/PPT-031-migration-runbook.md)                 | B0/B1 validation, rollback, FR-14                                                                 |
-| [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../../docs/issues/PPT-031-C-supabase-decision-brief.md) | B0/B1 platform; B2/B3 deferred                                                                    |
-| [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)                         | Budgets, splits, recurrence (post-MVP)                                                            |
-| [`modules/api/README.md`](../api/README.md)                                                                  | FastAPI scaffold and target REST contract                                                         |
-| [`README.md`](../../README.md)                                                                               | Monorepo overview and quick start                                                                 |
-| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                         | Issue and release tracker                                                                         |
+| Document                                                                                                                                                             | Description                                                                                       |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| [`docs/design/README.md`](../../docs/design/README.md)                                                                                                               | PPT-031 design program index                                                                      |
+| [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 frozen schema, constraints, G1 checklist                                                       |
+| [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../../docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)               | v0 inventory, 3NF analysis, NF register                                                           |
+| [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)) |
+| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Local JWT + `UsersService` flows                                                                  |
+| [`docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)                 | B0/B1 validation, rollback, FR-14                                                                 |
+| [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../../docs/issues/PPT-031-C-supabase-decision-brief.md)                                                         | B0/B1 platform; B2/B3 deferred                                                                    |
+| [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)                                                            |
+| [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI scaffold and target REST contract                                                         |
+| [`README.md`](../../README.md)                                                                                                                                       | Monorepo overview and quick start                                                                 |
+| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                                 | Issue and release tracker                                                                         |
 
 Package version: [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).

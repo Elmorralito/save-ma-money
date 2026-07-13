@@ -33,22 +33,22 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 
 ### v3 alignment at a glance
 
-| Resource                                 | v3 backing                                                                                 | MVP |
-| :--------------------------------------- | :----------------------------------------------------------------------------------------- | :-- |
-| `/categories/*`                          | `categories` (income/expense taxonomy)                                                     | Yes |
-| `/accounts/*`                            | `accounts` + extension tables; `balance` from `account_balances` MV                        | Yes |
-| `/transactions/*`                        | `transactions` (`transaction_kind`: INCOME, EXPENSE, TRANSFER)                             | Yes |
-| `/movements/*`                           | **Alias** — same rows where `transaction_kind = TRANSFER`                                  | Yes |
-| `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                      | Yes |
-| `/budgets/*`                             | Deferred — v4.1 ([`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)) | 501 |
-| `/auth/refresh`, `/auth/logout`          | Deferred — stateless JWT MVP (FR-11)                                                       | 501 |
-| `/transactions/{id}/split`               | Deferred — v4 `transaction_splits`                                                         | 501 |
+| Resource                                 | v3 backing                                                                                                                                                                 | MVP |
+| :--------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-- |
+| `/categories/*`                          | `categories` (income/expense taxonomy)                                                                                                                                     | Yes |
+| `/accounts/*`                            | `accounts` + extension tables; `balance` from `account_balances` MV                                                                                                        | Yes |
+| `/transactions/*`                        | `transactions` (`transaction_kind`: INCOME, EXPENSE, TRANSFER)                                                                                                             | Yes |
+| `/movements/*`                           | **Alias** — same rows where `transaction_kind = TRANSFER`                                                                                                                  | Yes |
+| `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                                                                                                      | Yes |
+| `/budgets/*`                             | Deferred — v4.1 ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)) | 501 |
+| `/auth/refresh`, `/auth/logout`          | Deferred — stateless JWT MVP (FR-11)                                                                                                                                       | 501 |
+| `/transactions/{id}/split`               | Deferred — v4 `transaction_splits`                                                                                                                                         | 501 |
 
 **Enum convention:** API JSON uses lowercase slugs (`expense`, `checking`); PostgreSQL stores uppercase enums (`EXPENSE`, `CHECKING`).
 
 **Dependencies:** add `python-multipart` to `pyproject.toml` before OAuth2 form login routes ship.
 
-Further mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) · schema: [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md) · model detail: [`modules/model/README.md`](../model/README.md).
+Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) · schema: [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) · model detail: [`modules/model/README.md`](../model/README.md).
 
 ---
 
@@ -78,7 +78,7 @@ Further mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 
-**Spec validation (PPT-033 / [#43](https://github.com/Elmorralito/save-ma-money/issues/43)):** The v3 model aligns with this README. See the [coverage matrix](../../docs/design/PPT-033-api-coverage-matrix.md) for endpoint × service status and API-layer gaps before PPT-034–040.
+**Spec validation (PPT-033 / [#43](https://github.com/Elmorralito/save-ma-money/issues/43)):** The v3 model aligns with this README. See the [coverage matrix](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) for endpoint × service status and API-layer gaps before PPT-034–040.
 
 **MVP scope:** **32** endpoints (health, auth register/login, accounts, categories, transactions, movements, four reports). **11** deferred (501).
 
@@ -261,7 +261,7 @@ Use the same `uvicorn` command with `DATABASE_URL` pointing at the transaction p
 
 ### Authentication
 
-Local JWT (HS256) backed by `papita_transactions.users`. Full contract: [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md).
+Local JWT (HS256) backed by `papita_transactions.users`. Full contract: [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
 
 **Register** — returns **201**, no token; client must log in separately.
 
@@ -426,7 +426,7 @@ Liveness probe for Kubernetes.
 
 ## Authentication Endpoints
 
-> **Auth contract:** [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md) (FR-10, FR-11, G5).
+> **Auth contract:** [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) (FR-10, FR-11, G5).
 > **Platform:** Local JWT (HS256) + `papita_transactions.users`. Supabase Auth (B2) deferred.
 
 ### Auth strategy summary
@@ -521,7 +521,7 @@ password: SecurePass1!
 
 ### POST /auth/refresh
 
-> **MVP status: Deferred (501).** Stateless HS256 JWT has no refresh token pair (FR-11). See [`PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md) §6. Response below is **reference only** — MVP returns 501.
+> **MVP status: Deferred (501).** Stateless HS256 JWT has no refresh token pair (FR-11). See [`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) §6. Response below is **reference only** — MVP returns 501.
 
 Refresh access token.
 
@@ -833,7 +833,7 @@ Delete a category.
 
 ## Budget Endpoints
 
-> **MVP status: Deferred (501).** No v3 tables. Full design in [`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md) §4.1 (v4.1 migration). Endpoints retained below for post-MVP reference only.
+> **MVP status: Deferred (501).** No v3 tables. Full design in [`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) §4.1 (v4.1 migration). Endpoints retained below for post-MVP reference only.
 
 ### GET /budgets
 
@@ -1172,7 +1172,7 @@ Delete a transaction.
 
 ### POST /transactions/{transaction_id}/split
 
-> **MVP status: Deferred (501).** Requires v4 `transaction_splits` table ([`PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)).
+> **MVP status: Deferred (501).** Requires v4 `transaction_splits` table ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)).
 
 Split a transaction into multiple parts.
 
@@ -1500,7 +1500,7 @@ Export report data.
 
 ## MVP implementation order ([#42](https://github.com/Elmorralito/save-ma-money/issues/42))
 
-Full mapping: [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md) §6.
+Full mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §6.
 
 | Priority | Endpoints                                                                       |
 | -------- | ------------------------------------------------------------------------------- |
@@ -1578,7 +1578,7 @@ Returned for deferred MVP endpoints (budgets, auth refresh/logout, transaction s
 
 ```json
 {
-  "detail": "Not implemented in MVP — see PPT-031-api-model-mapping.md",
+  "detail": "Not implemented in MVP — see ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33",
   "deferred_reason": "FR-09 budgets deferred to v4.1"
 }
 ```
@@ -1628,13 +1628,13 @@ X-RateLimit-Reset: 1707058440
 
 ## Related documentation
 
-| Document                                                                                         | Purpose                                                                                   |
-| :----------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
-| [`modules/model/README.md`](../model/README.md)                                                  | v3 schema, services, handlers, testing                                                    |
-| [`docs/design/PPT-033-api-coverage-matrix.md`](../../docs/design/PPT-033-api-coverage-matrix.md) | PPT-033 validation matrix ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) |
-| [`docs/design/PPT-031-api-model-mapping.md`](../../docs/design/PPT-031-api-model-mapping.md)     | Endpoint → Service → DTO → SQLModel                                                       |
-| [`docs/design/PPT-031-auth-contract.md`](../../docs/design/PPT-031-auth-contract.md)             | JWT and auth flows                                                                        |
-| [`docs/design/PPT-031-v1-schema.md`](../../docs/design/PPT-031-v1-schema.md)                     | v3 DDL and constraints                                                                    |
-| [`docs/design/PPT-031-v4-extensions.md`](../../docs/design/PPT-031-v4-extensions.md)             | Budgets, splits (post-MVP)                                                                |
-| [`../../README.md`](../../README.md)                                                             | Monorepo quick start                                                                      |
-| [`../../CHANGELOG.md`](../../CHANGELOG.md)                                                       | Issue tracker                                                                             |
+| Document                                                                                                                                                             | Purpose                                                                                   |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| [`modules/model/README.md`](../model/README.md)                                                                                                                      | v3 schema, services, handlers, testing                                                    |
+| [`docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43`](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43)                     | PPT-033 validation matrix ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) |
+| [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO → SQLModel                                                       |
+| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | JWT and auth flows                                                                        |
+| [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 DDL and constraints                                                                    |
+| [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits (post-MVP)                                                                |
+| [`../../README.md`](../../README.md)                                                                                                                                 | Monorepo quick start                                                                      |
+| [`../../CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                           | Issue tracker                                                                             |

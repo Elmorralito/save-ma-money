@@ -25,7 +25,7 @@ Production-grade Python monorepo for personal/professional financial transaction
 
 ```
 save-ma-money/
-├── AGENTS.md · CLAUDE.md          tool adapters → this file (thin)
+├── .agents/ · .cursor/            tool adapters → this file (thin)
 ├── README.md                      human front door
 ├── modules/model/                 papita-txnsmodel (SQLModel, Alembic, services)
 ├── modules/api/                   papita-txnsapi (FastAPI settings, security)

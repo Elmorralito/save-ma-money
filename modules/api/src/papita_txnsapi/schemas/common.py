@@ -34,7 +34,7 @@ class DeferredResponse(BaseModel):
         deferred_reason: Optional override explaining why the route is not implemented.
     """
 
-    detail: str = "Not implemented in MVP — see PPT-031-api-model-mapping.md"
+    detail: str = "Not implemented in MVP — see docs/design/ARCHITECTURE.md Part IV"
     deferred_reason: str | None = None
 
 

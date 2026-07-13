@@ -82,13 +82,13 @@ Live API integration: `modules/api/tests/test_accounts_categories_live_db.py` (`
 
 ## Specs
 
-| Topic                  | File                                                   |
-| ---------------------- | ------------------------------------------------------ |
-| PPT-031 design program | `docs/design/README.md`                                |
-| v3 migration runbook   | `docs/design/PPT-031-migration-runbook.md`             |
-| Auth contract          | `docs/design/PPT-031-auth-contract.md`                 |
-| API ↔ model mapping    | `docs/design/PPT-031-api-model-mapping.md`             |
-| Module-level detail    | `architecture/<slug>.md` (add as subsystems stabilize) |
+| Topic                  | File                                                                   |
+| ---------------------- | ---------------------------------------------------------------------- |
+| PPT-031 design program | `docs/design/README.md`                                                |
+| v3 migration runbook   | `docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34` |
+| Auth contract          | `docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`   |
+| API ↔ model mapping    | `docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33` |
+| Module-level detail    | `architecture/<slug>.md` (add as subsystems stabilize)                 |
 
 ## The docs tree (grow on demand)
 

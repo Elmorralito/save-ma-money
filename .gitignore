@@ -53,7 +53,5 @@ duckdb:*
 
 .data/
 
-~$Setup.xlsx
-
 docs/.flake8/
 .DS_Store

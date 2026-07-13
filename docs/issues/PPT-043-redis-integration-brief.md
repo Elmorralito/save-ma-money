@@ -4,7 +4,7 @@
 
 Introduce **Redis as shared infrastructure** for `papita-txnsapi` after the FastAPI MVP epic closes. Redis replaces or extends current **single-instance, in-memory** patterns so the API can scale horizontally across replicas without losing rate-limit counters, cache coherence, or session/token state.
 
-Today the API uses `InMemoryRateLimiter` (`modules/api/src/papita_txnsapi/core/rate_limit.py`) for auth endpoint throttling — effective on B0 single-process deployments only. The auth contract defers `/auth/logout` token denylist and refresh-token storage to a future Redis-backed store ([`PPT-031-auth-contract.md` §6](docs/design/PPT-031-auth-contract.md)). This issue delivers the Redis foundation and P1 capabilities; worker fleets and real-time product features remain follow-on work.
+Today the API uses `InMemoryRateLimiter` (`modules/api/src/papita_txnsapi/core/rate_limit.py`) for auth endpoint throttling — effective on B0 single-process deployments only. The auth contract defers `/auth/logout` token denylist and refresh-token storage to a future Redis-backed store ([`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` §6](docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)). This issue delivers the Redis foundation and P1 capabilities; worker fleets and real-time product features remain follow-on work.
 
 ## Depends on
 
@@ -308,7 +308,7 @@ When PPT-036–038 land, apply cache-aside on hot GETs:
 ## References
 
 - [PPT-032 epic #42](https://github.com/Elmorralito/save-ma-money/issues/42)
-- [`docs/design/PPT-031-auth-contract.md`](docs/design/PPT-031-auth-contract.md) — §6 logout denylist deferral
+- [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) — §6 logout denylist deferral
 - [`modules/api/src/papita_txnsapi/core/rate_limit.py`](modules/api/src/papita_txnsapi/core/rate_limit.py) — current in-memory limiter
 - [`modules/api/src/papita_txnsapi/routers/v1/health.py`](modules/api/src/papita_txnsapi/routers/v1/health.py) — readiness probe extension point
 - [`docs/issues/PPT-031-C-supabase-decision-brief.md`](docs/issues/PPT-031-C-supabase-decision-brief.md) — B0/B1 platform model
