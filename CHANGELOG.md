@@ -10,11 +10,157 @@
 
 - [ ] [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 17:01:10+00:00</sub>_
+
+  > **Closed by** [_**#88**](https://github.com/Elmorralito/save-ma-money/pull/88): **feat(api): add transactions and movements CRUD endpoints (PPT-037)**
+
+  > ## Summary
+
+  >
+
+  > - Adds **PPT-037** tenant-scoped **/transactions** (INCOME/EXPENSE) and **/movements** (TRANSFER alias) CRUD on top of TransactionsService, with paginated list filters, bulk create, and scheduled transfer execute/cancel flows.
+
+  > - Extends the **model layer** with SQL-level pagination/count (BaseRepository.count_records), shared TransactionListFilterSpec query builders, and a typed AccountBalances ORM view mapping.
+
+  > - Relocates agent adapters from repo root to **.cursor/** (canonical), exposes **.agents/** symlinks for Strata validation, and updates strata_check.sh + docs accordingly.
+
+  >
+
+  > ## Motivation
+
+  >
+
+  > PPT-032 API epic ([#42](https://github.com/Elmorralito/save-ma-money/issues/42)) required transaction endpoints after PPT-036 accounts/categories ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)). The v3 ledger stores all posted rows in transactions; the REST surface splits INCOME/EXPENSE from TRANSFER while sharing one service layer.
+
+  >
+
+  > ## What changed
+
+  >
+
+  > ### API (papita_txnsapi)
+
+  >
+
+  > | Route | Behavior |
+
+  > |-------|----------|
+
+  > | GET/POST/PUT/DELETE /transactions | INCOME/EXPENSE CRUD; list excludes TRANSFER by default; G4 filters via Depends(get_transaction_list_query) |
+
+  > | POST /transactions/bulk | Bulk INCOME/EXPENSE create with per-row failure tolerance |
+
+  > | POST /transactions/{id}/split | Deferred **501** (v4) |
+
+  > | GET/POST/PUT/DELETE /movements | TRANSFER alias; create supports scheduled: true (PENDING) or immediate completion |
+
+  > | POST /movements/{id}/execute | Complete a pending scheduled transfer |
+
+  >
+
+  > New schemas: transactions.py, movements.py, query_params.py (TypedDict service_kwargs() for mypy-safe service delegation). Enum slug parsers added to converters.py. Mocked route tests in test_transactions.py and test_movements.py.
+
+  >
+
+  > ### Model (papita_txnsmodel)
+
+  >
+
+  > - query_filters.py — TransactionListFilterSpec + build_transaction_list_filters()
+
+  > - TransactionsService.list_transactions / list_transfers → (DataFrame, total) with SQL skip/limit/order_by
+
+  > - BaseRepository.count_records + pagination options on get_records
+
+  > - AccountBalances SQLModel + typed select() in AccountBalancesRepository
+
+  > - handlers/matching.py — Google docstrings for ingest reference matching
+
+  > - database/upsert.py — minor hardening (included in branch)
+
+  >
+
+  > ### Agent / Strata / CI docs
+
+  >
+
+  > - **Removed** root AGENTS.md / CLAUDE.md
+
+  > - **Canonical** adapters: .cursor/AGENTS.md, .cursor/CLAUDE.md (updated API status, lint patterns, adapter layout)
+
+  > - **Symlinks**: .agents/AGENTS.md → .cursor/AGENTS.md, .agents/CLAUDE.md → .cursor/CLAUDE.md
+
+  > - strata_check.sh validates .agents/ paths; strict pairing accepts .agents/** or .cursor/AGENTS.md / .cursor/CLAUDE.md
+
+  > - Updated: .github/CI.md, README.md, .strata/MANIFEST.md, strata-strict-pairing.md, project_adapters.mdc
+
+  >
+
+  > ## Design notes
+
+  >
+
+  > - **Separation of concerns:** /transactions rejects TRANSFER updates with **422** → use /movements; business logic stays in TransactionsService.
+
+  > - **List filters:** Query params bundled into Pydantic dependency classes; service kwargs use TypedDicts to satisfy mypy through **kwargs unpacking.
+
+  > - **Pagination:** Count + fetch happen in SQL, not in-memory DataFrame slicing.
+
+  > - **Agent adapters:** Single canonical source under .cursor/; .agents/ symlinks satisfy Strata without duplicating content.
+
+  >
+
+  > ## Out of scope
+
+  >
+
+  > - Transaction split (501)
+
+  > - /reports/* ([#48](https://github.com/Elmorralito/save-ma-money/issues/48))
+
+  > - Supabase B1 wiring ([#49](https://github.com/Elmorralito/save-ma-money/issues/49))
+
+  > - Budgets (501 stub unchanged)
+
+  >
+
+  > ## Test plan
+
+  >
+
+  > - [x] poetry run pytest modules/api/tests/test_transactions.py modules/api/tests/test_movements.py
+
+  > - [x] poetry run pytest modules/model/tests/tests_papita_txnsmodel/access/test_transaction_query_filters.py
+
+  > - [x] poetry run pytest modules/model/tests/tests_papita_txnsmodel/services/test_ppt041_services.py
+
+  > - [x] pre-commit run flake8 pylint mypy on touched API/model files
+
+  > - [x] /bin/bash .github/scripts/strata_check.sh
+
+  > - [ ] B0: live-DB integration against Docker Postgres (if not run locally)
+
+  > - [ ] B1: Supabase pooler smoke (when credentials available)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Parent epic: [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032)
+
+  > - Issue: [#47](https://github.com/Elmorralito/save-ma-money/issues/47) (PPT-037)
+
+  > - Depends on: [#46](https://github.com/Elmorralito/save-ma-money/issues/46) (PPT-036 accounts/categories)
+
+  > - Design: [docs/design/PPT-031-api-model-mapping.md](docs/design/PPT-031-api-model-mapping.md)
+
+  > - API spec: [modules/api/README.md](modules/api/README.md)
 
 - [x] [_**[#46](https://github.com/Elmorralito/save-ma-money/issues/46)**_] :: **feat/PPT-036: [api] Accounts and categories CRUD (v3 model)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:52+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 20:28:06+00:00</sub>_
 
