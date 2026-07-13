@@ -169,7 +169,7 @@ pre-commit install   # optional but recommended for commit-time hooks
 4. **Pytest + coverage** via [`deploy/test.sh`](../deploy/test.sh)
    - `testpaths`: `modules/model/tests`, `modules/api/tests`, `modules/registrar/tests` (registrar not in tree yet)
    - Coverage XML: `docs/coverage.xml`
-5. Codecov upload — **skipped** when `CODECOV_TOKEN` is unset; when set, uploads with `fail_ci_if_error: true`
+5. Codecov upload — **skipped** when `CODECOV_TOKEN` is unset; when set, uploads `docs/coverage.xml` with flag `unittests` per root [`codecov.yml`](../codecov.yml) (`fail_ci_if_error: true`). Validate YAML: `curl --data-binary @codecov.yml https://codecov.io/validate`
 
 **Code style enforced here:** Black (120 cols), isort (black profile), flake8, pylint, mypy (gradual), interrogate (≥90% doc coverage on `modules/*/src`), shellcheck, yamllint, markdownlint, actionlint, prettier. Configuration lives in [`pyproject.toml`](../pyproject.toml) and [`.cursor/rules/gen-custom/`](../.cursor/rules/gen-custom/).
 
@@ -313,7 +313,7 @@ See [Strata validation](#strata-validation) for the full rule set.
 **Steps:**
 
 1. [`update_todos.py`](./scripts/update_todos.py) — rebuild [`CHANGELOG.md`](../CHANGELOG.md) from GitHub issues/PRs (Jinja templates in `scripts/`)
-2. [`sync_coverage_badge.py`](./scripts/sync_coverage_badge.py) — fetch latest totals from [Codecov](https://app.codecov.io/github/Elmorralito/save-ma-money) and regenerate `docs/coverage-badge.svg` via `genbadge` (polls until the current commit is processed)
+2. [`sync_coverage_badge.py`](./scripts/sync_coverage_badge.py) — fetch latest totals from [Codecov](https://app.codecov.io/github/Elmorralito/save-ma-money) and regenerate `docs/coverage-badge.svg` via `genbadge` (polls until the current commit is processed). Uses the public Codecov API v2 for this public repo; optional `CODECOV_API_TOKEN` (Codecov **Settings → Access**) only if authenticated reads are needed. **Do not** pass `CODECOV_TOKEN` (upload token) to this step — it returns 401 on read endpoints.
 3. Regenerate `docs/flake8-badge.svg` via `genbadge`
 4. Commit changed files; push with `[skip ci]` message and `ci.skip` option to avoid recursive workflow runs
 

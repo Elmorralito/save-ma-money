@@ -50,9 +50,10 @@ jobs:
 
       - name: Sync coverage badge from Codecov
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
+          # Optional: CODECOV_API_TOKEN (Codecov Settings → Access) for private repos.
+          # Do not use CODECOV_TOKEN here — that is the upload token for codecov-action.
         run: poetry run python .github/scripts/sync_coverage_badge.py --retries 18 --delay-seconds 10
 
       - name: Update badges

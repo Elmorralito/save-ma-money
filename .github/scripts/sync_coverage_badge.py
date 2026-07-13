@@ -24,6 +24,40 @@ DEFAULT_README_PATH = Path("README.md")
 CODECOV_APP_URL_TEMPLATE = "https://app.codecov.io/github/{owner}/{repo}"
 
 
+def _resolve_api_token() -> str | None:
+    """Return a Codecov **API** token for read access, if configured.
+
+    CODECOV_TOKEN in GitHub Actions is the repository **upload** token used by
+    codecov-action. That token must not be sent to API v2 read endpoints — it
+    returns 401. Use CODECOV_API_TOKEN (Settings → Access in Codecov) when the
+    repo is private or authenticated reads are required.
+    """
+    api_token = os.environ.get("CODECOV_API_TOKEN", "").strip()
+    if api_token:
+        return api_token
+    return None
+
+
+def _request_json(url: str, token: str | None) -> dict[str, Any]:
+    headers: dict[str, str] = {"Accept": "application/json"}
+    if token:
+        headers["Authorization"] = f"bearer {token}"
+
+    response = requests.get(url, headers=headers, timeout=30)
+    if response.status_code == 401 and token:
+        logger.warning(
+            "Codecov API rejected bearer token (401). Upload tokens (CODECOV_TOKEN) "
+            "cannot read API v2 — retrying without auth for public repo access."
+        )
+        response = requests.get(url, headers={"Accept": "application/json"}, timeout=30)
+
+    response.raise_for_status()
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise TypeError(f"Unexpected Codecov payload type for {url}: {type(payload)!r}")
+    return payload
+
+
 def _parse_github_repository(value: str) -> tuple[str, str]:
     if "/" not in value:
         raise ValueError(f"Expected owner/repo format, got {value!r}")
@@ -31,18 +65,6 @@ def _parse_github_repository(value: str) -> tuple[str, str]:
     if not owner or not repo:
         raise ValueError(f"Expected owner/repo format, got {value!r}")
     return owner, repo
-
-
-def _request_json(url: str, token: str | None) -> dict[str, Any]:
-    headers: dict[str, str] = {"Accept": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    response = requests.get(url, headers=headers, timeout=30)
-    response.raise_for_status()
-    payload = response.json()
-    if not isinstance(payload, dict):
-        raise TypeError(f"Unexpected Codecov payload type for {url}: {type(payload)!r}")
-    return payload
 
 
 def _totals_from_commit_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -148,10 +170,14 @@ def write_badge(xml_path: Path, badge_path: Path) -> None:
     badge_path.parent.mkdir(parents=True, exist_ok=True)
     genbadge_cmd = shutil.which("genbadge")
     if genbadge_cmd is None:
-        raise RuntimeError("genbadge executable not found on PATH; install with poetry install --with development")
+        genbadge_cmd = "genbadge"
+        cmd_prefix: list[str] = ["poetry", "run", genbadge_cmd]
+    else:
+        cmd_prefix = [genbadge_cmd]
+
     subprocess.run(
         [
-            genbadge_cmd,
+            *cmd_prefix,
             "coverage",
             "-i",
             str(xml_path),
@@ -208,7 +234,7 @@ def main() -> int:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(levelname)s: %(message)s")
 
     owner, repo = _parse_github_repository(args.repository)
-    token = os.environ.get("CODECOV_TOKEN")
+    token = _resolve_api_token()
     commit = args.commit.strip() if args.commit else None
 
     totals = wait_for_codecov_totals(

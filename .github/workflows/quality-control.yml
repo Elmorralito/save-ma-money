@@ -97,3 +97,6 @@ jobs:
           files: "./docs/coverage.xml"
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+          flags: unittests
+          name: ci-quality-control
+          verbose: true

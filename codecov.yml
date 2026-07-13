@@ -1,0 +1,55 @@
+# Repository Codecov configuration — validate with:
+#   curl --data-binary @codecov.yml https://codecov.io/validate
+# Docs: https://docs.codecov.com/docs/codecov-yaml
+
+codecov:
+  branch: main
+  require_ci_to_pass: true
+  # CI uploads a single pytest-cov XML per commit; 12h default is sufficient.
+  max_report_age: 12h
+
+coverage:
+  precision: 2
+  round: down
+  range: 70..95
+
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+        if_ci_failed: error
+        informational: false
+    patch:
+      default:
+        target: auto
+        threshold: 0%
+        if_ci_failed: error
+        # Informational while PPT-032 API routers land; tighten when source --cov is enabled.
+        informational: true
+
+comment:
+  layout: "condensed_header, condensed_files, condensed_footer"
+  behavior: default
+  require_changes: false
+  require_base: true
+  require_head: true
+  hide_project_coverage: false
+
+flags:
+  unittests:
+    paths:
+      - modules/
+    carryforward: true
+
+ignore:
+  - "**/.venv/**"
+  - "**/node_modules/**"
+  - "docs/**"
+  - "deploy/**"
+  - "docker/**"
+  - ".github/**"
+  - ".strata/**"
+  - ".cursor/**"
+  - ".agents/**"
+  - "**/alembic/versions/**"
