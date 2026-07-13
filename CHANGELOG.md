@@ -2,17 +2,81 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
+- [ ] [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
+
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary:
 
 - [ ] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and CI dual-target gate (B0 + B1)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary:
 
 - [ ] [_**[#49](https://github.com/Elmorralito/save-ma-money/issues/49)**_] :: **ops/PPT-039: [api] Supabase B1 production wiring and dual-environment validation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:05+00:00</sub>_ :weary:
 
-- [ ] [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:49:15+00:00</sub>_
+
+  > **Closed by** [_**#90**](https://github.com/Elmorralito/save-ma-money/pull/90): **feat(api): add tenant-scoped reports and structured DB health probes (PPT-038)**
+
+  > Wire FR-12 report endpoints under /api/v1/reports so authenticated tenants can query spending, cash flow, trends, and CSV/JSON exports via ReportService, while budget performance remains a JWT-gated 501. At the same time, harden health database probing with allowlisted details and latency, and document follow-on API hardening (PPT-044 / #89) plus Conventional Commit issue-title guidance.
+
+  >
+
+  > Before: ReportService existed but was not mounted; health used a boolean SELECT 1 with limited client-safe signaling. After: reports are tenant-scoped (owner= required; foreign account_id rejected), cash-flow refreshes balance MVs by default (G9), and /health|/ready|/database report connectivity plus latency without echoing raw DB errors.
+
+  >
+
+  > Changes by file:
+
+  > - modules/api/src/papita_txnsapi/routers/v1/reports.py: new report routes
+
+  > - modules/api/src/papita_txnsapi/schemas/reports.py: report response envelopes
+
+  > - modules/api/src/papita_txnsapi/schemas/query_params.py: report query param deps
+
+  > - modules/api/src/papita_txnsapi/routers/v1/**init**.py: register reports router
+
+  > - modules/api/src/papita_txnsapi/routers/**init**.py: package docstring update
+
+  > - modules/model/src/papita_txnsmodel/services/reports.py: owner guards, account ownership, filters, G9 refresh
+
+  > - modules/api/tests/test_reports.py: unit/API contract tests
+
+  > - modules/api/tests/test_reports_live_db.py: B0 seeded + tenancy tests
+
+  > - modules/api/tests/test_supabase_b1_smoke.py: B1 reports smoke
+
+  > - modules/api/tests/conftest.py: reports_client fixture
+
+  > - modules/model/tests/.../test_ppt041_services.py: ReportService tenancy/totals
+
+  > - modules/api/src/papita_txnsapi/core/db_health.py: structured probe + latency
+
+  > - modules/api/src/papita_txnsapi/schemas/health.py: probe response models
+
+  > - modules/api/src/papita_txnsapi/routers/v1/health.py: /database + latency fields
+
+  > - modules/api/tests/test_health.py: health probe coverage
+
+  > - modules/api/README.md: reports/health contract updates
+
+  > - modules/api/src/papita_txnsapi/routers/v1/movements.py: Google docstrings
+
+  > - modules/api/src/papita_txnsapi/routers/v1/transactions.py: Google docstrings
+
+  > - docs/issues/PPT-044-api-hardening-brief.md: new hardening brief (#89)
+
+  > - docs/issues/README.md: index PPT-044 brief
+
+  > - .cursor/rules/gen-custom/github_issue_conventions.mdc: Conventional Commit types
+
+  > - .cursor/AGENTS.md, .cursor/CLAUDE.md, .strata/docs/ARCHITECTURE.md: API status
+
+  > - docs/coverage.xml: regenerated coverage artifact (prefer exclude from commit)
+
+  >
+
+  > Closes #48
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 17:01:10+00:00</sub>_
 
