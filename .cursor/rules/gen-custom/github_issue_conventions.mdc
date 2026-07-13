@@ -21,33 +21,45 @@ NOTE: Follow this rule when creating or editing GitHub issues via `gh issue crea
 
 | Part | Values | Example |
 |------|--------|---------|
-| `semantic` | `feat`, `docs`, `ops`, `test`, `harden`, `fix` | `feat/PPT-034` |
+| `semantic` | Prefer Conventional Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore` (+ repo extras `ops`, `ci` when apt) | `feat/PPT-034` |
 | `PPT-{NNN}` | Next program ID; label must match (`PPT-032`) | `PPT-041` |
 | `domain` | `[api]`, `[model]`, `[EPIC][api]` for epics only | `[model]` |
 | Epic | Prefix domain with `[EPIC]` | `feat/PPT-032: [EPIC][api] …` |
 
 **Do not** use `PPT-0##: semantic(api):` — semantic comes **before** the program ID.
 
+Issue/PR/commit type should track [Semantic Commit Messages](https://gist.github.com/joshbuchea/6f47e86d2510bce28f8e7f42ae84c716) / Conventional Commits. Map work as follows:
+
+| Work | Use | Avoid |
+|------|-----|--------|
+| New user-facing capability | `feat` | — |
+| Bug fix **or** security/posture hardening that changes production behavior | `fix` | `harden`, `perf` (unless truly performance-only) |
+| Docs-only | `docs` | — |
+| Tests-only | `test` | — |
+| No production code (tooling grunt) | `chore` | using `chore` for real API/security code changes |
+| Infra/runbooks/CI wiring | `ops` or `ci` (repo extras) | inventing new verbs |
+
 ```text
 ✅ feat/PPT-036: [api] Accounts and categories CRUD (v3 model)
-✅ harden/PPT-041: [model] Harden v3 data model for API readiness
+✅ fix/PPT-044: [api] Post-MVP API security and operational hardening
 ✅ feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL
-❌ PPT-039: ops(api): Supabase B1 production wiring
-❌ feat(api): FastAPI MVP
+❌ harden/PPT-044: [api] …          ← not an official commit type
+❌ PPT-039: ops(api): Supabase B1…  ← wrong ordering
+❌ feat(api): FastAPI MVP             ← missing PPT-NNN
 ```
 
 ## Labels
 
 Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `CI/CD`, `documentation`, etc.).
 
-## Code paths (feat / fix / harden)
+## Code paths (feat / fix / docs / test / ops)
 
 | Semantic | Domain | Primary paths |
 |----------|--------|---------------|
-| `feat`, `harden` | `[model]` | `modules/model/src/`, `modules/model/tests/`, `modules/model/alembic/` |
+| `feat`, `fix` | `[model]` | `modules/model/src/`, `modules/model/tests/`, `modules/model/alembic/` |
 | `feat`, `fix` | `[api]` | `modules/api/src/`, `modules/api/tests/` |
 | `feat`, `fix` | `[registrar]` | `modules/registrar/src/`, `modules/registrar/tests/` |
-| `ops`, `fix` | `[infra]` | `deploy/`, `docker/`, `.github/` |
+| `ops`, `fix`, `ci` | `[infra]` | `deploy/`, `docker/`, `.github/` |
 | `test` | any | `modules/**/tests/`, `.github/workflows/` |
 
 When closing code for a feature or fix, the PR/issue body should cite the touched paths under **Tasks / deliverables** or **References**.

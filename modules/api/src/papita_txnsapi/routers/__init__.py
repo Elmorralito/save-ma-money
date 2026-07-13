@@ -6,7 +6,7 @@ FastAPI application factory. Routers translate HTTP requests into calls on
 (``get_current_owner``) and passed through to service methods as ``owner=``.
 
 Subpackages:
-    v1: Version 1 REST routes (accounts, auth, categories, budgets, health).
+    v1: Version 1 REST routes (accounts, auth, categories, transactions, movements, reports, budgets, health).
 """
 
 from papita_txnsapi.routers.v1 import api_v1_router

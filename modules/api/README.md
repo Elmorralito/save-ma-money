@@ -385,7 +385,7 @@ Webhooks are **not implemented** (future: `transaction.created`, etc.).
 
 ### GET /health
 
-Check API health status.
+Check API health status (includes database connectivity and probe latency).
 
 **Response 200:**
 
@@ -394,9 +394,30 @@ Check API health status.
   "status": "healthy",
   "version": "1.0.0",
   "timestamp": "2026-02-04T15:14:00Z",
-  "database": "connected"
+  "database": "connected",
+  "database_latency_ms": 2.5
 }
 ```
+
+### GET /health/database
+
+Probe API↔database communication health (`SELECT 1` + round-trip latency).
+
+**Response 200:**
+
+```json
+{
+  "status": "healthy",
+  "connected": true,
+  "latency_ms": 2.5,
+  "checked_at": "2026-02-04T15:14:00Z",
+  "detail": "api-database link healthy"
+}
+```
+
+Returns **503** with `"status": "unhealthy"` and an allowlisted `detail` (never raw DB/exception text) when PostgreSQL is unreachable.
+
+Probe SQL is a constant parameterized expression (`select(literal(1))`); health routes take no query/body input that reaches the database.
 
 ### GET /health/ready
 
@@ -1504,7 +1525,7 @@ Full mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-
 
 | Priority | Endpoints                                                                       |
 | -------- | ------------------------------------------------------------------------------- |
-| P1       | `GET /health`, `/health/ready`, `/health/live`                                  |
+| P1       | `GET /health`, `/health/database`, `/health/ready`, `/health/live`              |
 | P2       | `POST /auth/register`, `POST /auth/login`                                       |
 | P3       | `/accounts/*` CRUD + balance                                                    |
 | P4       | `/categories/*`, `/transactions/*`, `/movements/*`                              |

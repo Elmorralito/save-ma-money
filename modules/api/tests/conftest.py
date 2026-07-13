@@ -123,3 +123,20 @@ def movements_client() -> tuple[TestClient, UsersDTO, MagicMock, MagicMock]:
     test_client = TestClient(app)
     yield test_client, owner, mock_transactions, mock_accounts
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def reports_client() -> tuple[TestClient, UsersDTO, MagicMock]:
+    """Authenticated client with mocked ReportService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_report_service
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    mock_service = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_report_service] = lambda: mock_service
+    test_client = TestClient(app)
+    yield test_client, owner, mock_service
+    app.dependency_overrides.clear()

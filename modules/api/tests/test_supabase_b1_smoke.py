@@ -74,3 +74,32 @@ class TestSupabaseB1Smoke:
         payload = listed.json()
         assert "items" in payload
         assert isinstance(payload["items"], list)
+
+    def test_reports_spending_after_register(self, b1_client: TestClient) -> None:
+        """PPT-038 B1 probe: authenticated empty spending report via pooler."""
+        suffix = uuid.uuid4().hex[:8]
+        register_payload = {
+            "username": f"b1_rpt_{suffix}",
+            "email": f"b1_rpt_{suffix}@example.local",
+            "password": _VALID_PASSWORD,
+        }
+        reg = b1_client.post("/api/v1/auth/register", json=register_payload)
+        assert reg.status_code == 201, reg.text
+
+        login = b1_client.post(
+            "/api/v1/auth/login",
+            data={"username": register_payload["username"], "password": _VALID_PASSWORD},
+        )
+        assert login.status_code == 200, login.text
+        token = login.json()["access_token"]
+
+        report = b1_client.get(
+            "/api/v1/reports/spending",
+            headers={"Authorization": f"Bearer {token}"},
+            params={"start_date": "2026-02-01", "end_date": "2026-02-28"},
+        )
+        assert report.status_code == 200, report.text
+        payload = report.json()
+        assert payload["total_spending"] == 0.0
+        assert payload["total_income"] == 0.0
+        assert payload["breakdown"] == []

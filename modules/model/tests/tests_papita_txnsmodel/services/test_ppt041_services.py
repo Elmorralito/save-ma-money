@@ -227,6 +227,7 @@ class TestReportService:
         """Spending totals ignore TRANSFER rows."""
         service = ReportService()
         service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
         service.transactions_service.get_records.return_value = pd.DataFrame(
             [
                 {
@@ -255,11 +256,144 @@ class TestReportService:
         result = service.spending(owner=owner)
         assert result["expense_total"] == 40.0
         assert result["income_total"] == 80.0
+        service.transactions_service.get_records.assert_called_once()
+        assert service.transactions_service.get_records.call_args.kwargs["owner"] is owner
+
+    def test_spending_filters_by_account_id(self, owner: UsersDTO):
+        """Optional account_id keeps matching legs only."""
+        account_a = uuid.uuid4()
+        account_b = uuid.uuid4()
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
+        service.accounts_service.get.return_value = MagicMock(id=account_a)
+        service.transactions_service.get_records.return_value = pd.DataFrame(
+            [
+                {
+                    "transaction_kind": TransactionKind.EXPENSE.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 40.0,
+                    "category_id": uuid.uuid4(),
+                    "from_account_id": account_a,
+                    "to_account_id": None,
+                    "transaction_ts": datetime.now(timezone.utc),
+                },
+                {
+                    "transaction_kind": TransactionKind.EXPENSE.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 25.0,
+                    "category_id": uuid.uuid4(),
+                    "from_account_id": account_b,
+                    "to_account_id": None,
+                    "transaction_ts": datetime.now(timezone.utc),
+                },
+            ]
+        )
+        result = service.spending(owner=owner, account_id=account_a)
+        assert result["expense_total"] == 40.0
+        service.accounts_service.get.assert_called_once_with(obj=account_a, owner=owner)
+
+    def test_spending_rejects_foreign_account_id(self, owner: UsersDTO):
+        """account_id not owned by the tenant raises before aggregation."""
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
+        service.accounts_service.get.return_value = None
+        with pytest.raises(ValueError, match="Account not found for tenant"):
+            service.spending(owner=owner, account_id=uuid.uuid4())
+        service.transactions_service.get_records.assert_not_called()
+
+    def test_require_owner_rejects_missing_tenant(self):
+        """Reports cannot run without a tenant owner id."""
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
+        with pytest.raises(ValueError, match="require owner"):
+            service.spending(owner=UsersDTO.model_construct(id=None))
+
+    def test_seeded_totals_match_fr12_rules(self, owner: UsersDTO):
+        """AC: correct totals against seeded ledger rows (COMPLETED + kind rules)."""
+        category_id = uuid.uuid4()
+        account_id = uuid.uuid4()
+        now = datetime(2026, 2, 15, tzinfo=timezone.utc)
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
+        service.accounts_service.get.return_value = MagicMock(id=account_id)
+        service.account_balances_service = MagicMock()
+        service.account_balances_service.get_balances.return_value = pd.DataFrame(
+            [{"account_id": account_id, "balance": 900.0}]
+        )
+        service.transactions_service.get_records.return_value = pd.DataFrame(
+            [
+                {
+                    "transaction_kind": TransactionKind.INCOME.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 500.0,
+                    "category_id": category_id,
+                    "from_account_id": None,
+                    "to_account_id": account_id,
+                    "transaction_ts": now,
+                },
+                {
+                    "transaction_kind": TransactionKind.EXPENSE.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 120.0,
+                    "category_id": category_id,
+                    "from_account_id": account_id,
+                    "to_account_id": None,
+                    "transaction_ts": now,
+                },
+                {
+                    "transaction_kind": TransactionKind.EXPENSE.value,
+                    "status": TransactionStatus.PENDING.value,
+                    "amount": 50.0,
+                    "category_id": category_id,
+                    "from_account_id": account_id,
+                    "to_account_id": None,
+                    "transaction_ts": now,
+                },
+                {
+                    "transaction_kind": TransactionKind.TRANSFER.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 75.0,
+                    "category_id": None,
+                    "from_account_id": account_id,
+                    "to_account_id": uuid.uuid4(),
+                    "transaction_ts": now,
+                },
+            ]
+        )
+
+        spending = service.spending(owner=owner)
+        assert spending["expense_total"] == 120.0
+        assert spending["income_total"] == 500.0
+
+        with patch("papita_txnsmodel.services.reports.refresh_balance_materialized_views") as mock_refresh:
+            cash_flow = service.cash_flow(owner=owner, account_id=account_id, refresh_balances=True)
+        mock_refresh.assert_called_once()
+        assert cash_flow["inflows"] == 575.0  # 500 income + 75 transfer
+        assert cash_flow["outflows"] == 195.0  # 120 expense + 75 transfer
+        assert cash_flow["net"] == 380.0
+        assert cash_flow["portfolio_total"] == 900.0
+        service.account_balances_service.get_balances.assert_called_once_with(owner=owner, account_id=account_id)
+
+        trends = service.trends(owner=owner, period="monthly")
+        assert trends["period"] == "monthly"
+        assert len(trends["series"]) == 2
+        by_kind = {row["transaction_kind"]: row["total"] for row in trends["series"]}
+        assert by_kind[TransactionKind.INCOME.value] == 500.0
+        assert by_kind[TransactionKind.EXPENSE.value] == 120.0
 
     def test_export_returns_csv_stub(self, owner: UsersDTO):
         """Export delegates to spending and returns CSV text."""
         service = ReportService()
-        with patch.object(ReportService, "spending", return_value={"expense_total": 1.0, "income_total": 2.0, "expenses": [], "group_by": "category"}):
+        service.accounts_service = MagicMock()
+        with patch.object(
+            ReportService,
+            "spending",
+            return_value={"expense_total": 1.0, "income_total": 2.0, "expenses": [], "group_by": "category"},
+        ):
             payload = service.export(owner=owner, report_type="spending", export_format="csv")
         assert isinstance(payload, str)
         assert "expense_total" in payload
