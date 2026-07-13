@@ -96,7 +96,7 @@ repos:
         # Runs on `git push` when pre-push hook is installed locally; never blocks; skipped in CI.
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.2.0
+    rev: v2.3.0
     hooks:
       - id: mypy
         exclude: "./tests/.*"
