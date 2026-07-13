@@ -1,32 +1,30 @@
 ---
 name: save-ma-money State
-description: PPT-039 repurposed to Supabase Auth; epic #42 Auth-first (pooler optional).
+description: PPT-039 Supabase Auth impl on ops/PPT-039; G5/Part VI + auth-smoke.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-13.** Executed Auth-first strategy: #49/#42 reissue docs,
-PPT-031-C G7 supersede, README/AGENTS/environments aligned. Next: implement Supabase
-JWT verify in API (PPT-039 code).
+**Session — 2026-07-13.** Auth runtime (JWKS, provision, pass-through) on `ops/PPT-039`.
+Follow-on: G5/Part VI rewrite, `make auth-smoke`, issue checklist sync.
 
 ### Last completed (this session)
 
-- `docs/issues/PPT-039-supabase-auth-reissue.md` + GH body drafts
-- Brief G7 supersede; epic/API docs no longer require Supabase PG
-- Pooler work marked optional ops
+- `AUTH_PROVIDER=supabase` JWKS + `ensure_from_auth_subject`
+- Part VI / `PPT-031-auth-contract.md` G5 supersede
+- `deploy/auth_smoke.sh` + `make auth-smoke`
 
 ### Next action
 
-- Publish `gh issue edit` for #49 / #42 if not yet applied
-- Implement Auth: JWKS verify, `get_current_owner` provision, env `SUPABASE_URL`
-- Update #50 secret contract
+- Set `AUTH_PROVIDER=supabase` in local/staging `.env` (keys already optional)
+- Run `make auth-smoke` against a live API
+- PR `ops/PPT-039` → `main`; wire #50 CI secrets to Auth smoke
 
 ### Prerequisites
 
 - `export PAPITA_ENV=local`
-- Supabase project for Auth (not necessarily for Postgres)
+- Supabase Auth project (`SUPABASE_URL`, `SUPABASE_ANON_KEY` for pass-through)
 
 ### Uncommitted / staging notes
 
-- Stage `.strata/` with docs/`modules`/`environments` changes
 - Do not commit `environments/**/.env`

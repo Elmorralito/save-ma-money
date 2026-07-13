@@ -161,7 +161,7 @@ PAPITA_ENV=staging /bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL_MI
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
 
-B1 staging checklist + smoke: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/PPT-039-supabase-auth-reissue.md`](../docs/issues/PPT-039-supabase-auth-reissue.md) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Env layout: [`environments/README.md`](../environments/README.md).
+B1 staging checklist + smoke: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/PPT-039-supabase-auth-reissue.md`](../docs/issues/PPT-039-supabase-auth-reissue.md) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md).
 
 When editing SQLModel classes, add an Alembic revision under `modules/model/alembic/versions/`.
 

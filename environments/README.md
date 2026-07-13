@@ -25,7 +25,8 @@ Deploy scripts also accept `--env <name>`:
 
 ```bash
 ./deploy/alembic.sh upgrade --env local
-PAPITA_ENV=staging make b1-smoke   # optional pooler connectivity; not Auth DoD
+PAPITA_ENV=local make auth-smoke     # Auth DoD (JWT → /auth/me + accounts)
+PAPITA_ENV=staging make b1-smoke     # optional pooler connectivity; not Auth DoD
 ```
 
 Compose:

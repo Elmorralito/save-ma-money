@@ -4,6 +4,8 @@
 
 **Status:** Issue scope **repurposed 2026-07-13** — Supabase **Auth only**. Prior B1 Postgres pooler ACs for PPT-039 are **waived** (optional ops; not MVP).
 
+**Impl status (branch `ops/PPT-039`):** JWKS verify + provision + env templates + G5/Part VI update landed; Auth smoke via `make auth-smoke`.
+
 See also: [PPT-031-C supersede note](./PPT-031-C-supabase-decision-brief.md#g7-supersede-2026-07-13--auth-first).
 
 ---
@@ -19,7 +21,7 @@ Replace local HS256 issuance (`AuthSecurityManager` + `JWT_SECRET_KEY`) with **S
 ## Depends on
 
 - #44 (PPT-035) — auth + tenant module (exists; this issue rewires it)
-- Soft: G5 auth-contract update noting Supabase Auth as MVP choice
+- Soft: G5 auth-contract update noting Supabase Auth as MVP choice ✅ (`docs/design/PPT-031-auth-contract.md` + ARCHITECTURE Part VI)
 - Soft: #89 for prod CORS/docs posture when Auth is public
 
 ## Blocks
@@ -37,31 +39,31 @@ Replace local HS256 issuance (`AuthSecurityManager` + `JWT_SECRET_KEY`) with **S
 
 ## Disposition of prior B1 DB work (landed)
 
-| Item                                                                                 | Disposition                                                                             |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| `environments/*` pooler templates, checklist, `pool_pre_ping` / `DATABASE_POOL_SIZE` | **Keep** as optional ops; not MVP AC                                                    |
-| `test_supabase_b1_smoke.py` / `make b1-smoke`                                        | **Park or narrow** to Auth smoke against Supabase JWT; DB pooler smoke → optional / #50 |
-| Epic wording “validate on Supabase pooler”                                           | **Remove** via #42 edit                                                                 |
+| Item                                                                                 | Disposition                                                      |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `environments/*` pooler templates, checklist, `pool_pre_ping` / `DATABASE_POOL_SIZE` | **Keep** as optional ops; not MVP AC                             |
+| `test_supabase_b1_smoke.py` / `make b1-smoke`                                        | Pooler smoke **parked** optional; Auth smoke → `make auth-smoke` |
+| Epic wording “validate on Supabase pooler”                                           | **Removed** via #42 edit                                         |
 
 ## Tasks / deliverables
 
 ### Settings & env (`PAPITA_ENV`)
 
-- [ ] Document `SUPABASE_URL`, JWT verification mode (JWKS preferred), deprecate app-issued `JWT_SECRET_KEY` for access tokens (or transitional feature flag)
-- [ ] Update `environments/{local,staging,production}/.env.example` — Auth vars primary; pooler URLs secondary/commented
+- [x] Document `SUPABASE_URL`, JWT verification mode (JWKS), `AUTH_PROVIDER` feature flag; local HS256 transitional
+- [x] Update `environments/{local,staging,production}/.env.example` — Auth vars primary; pooler URLs secondary/commented
 
 ### Runtime
 
-- [ ] `AuthSecurityManager.decode_token` (or successor) validates Supabase JWT (`aud` / `iss` / `sub`)
-- [ ] Register/login: prefer **client → Supabase Auth**, API verifies Bearer only; thin pass-through optional
-- [ ] `get_current_owner`: `sub` → ensure/link `UsersDTO` (provision-on-first-seen; prefer UUID alignment)
-- [ ] Keep `/health/live` DB-free; ready stays DB probe (unchanged)
+- [x] `AuthSecurityManager.decode_token` validates Supabase JWT (`aud` / `iss` / `sub`) via JWKS
+- [x] Register/login: client → Supabase Auth preferred; thin API pass-through when `SUPABASE_ANON_KEY` set
+- [x] `get_current_owner`: `sub` → `ensure_from_auth_subject` (UUID alignment)
+- [x] Keep `/health/live` DB-free; ready stays DB probe (unchanged)
 
 ### Tests & docs
 
-- [ ] Replace local JWT unit tests with JWKS/mock token fixtures
-- [ ] Auth smoke: obtain Supabase token → `/auth/me` + one tenant list
-- [ ] API README + auth contract Part VI + Strata; brief G7 supersede pointer
+- [x] JWKS/mock token fixtures (`test_auth_supabase.py`); local HS256 suite retained for `AUTH_PROVIDER=local`
+- [x] Auth smoke: `make auth-smoke` / `test_auth_smoke.py` (opt-in) → `/auth/me` + accounts
+- [x] API README + auth contract Part VI + Strata; brief G7 supersede pointer
 
 ## Out of scope
 
@@ -71,12 +73,12 @@ Replace local HS256 issuance (`AuthSecurityManager` + `JWT_SECRET_KEY`) with **S
 
 ## Acceptance criteria
 
-- [ ] Title/semantic `feat/PPT-039`; epic #42 no longer requires Supabase-hosted DB
-- [ ] Protected routes accept Supabase access JWT; local password JWT issuance removed or off by default
-- [ ] Tenant isolation still `owner_id` via `sub` mapping
-- [ ] Env templates document Auth secrets (values never in git)
-- [ ] Handoff to #50: `SUPABASE_URL` (+ JWKS); smoke entrypoint named
-- [ ] Prior pooler ACs explicitly waived or moved to parked ops
+- [x] Title/semantic `feat/PPT-039`; epic #42 no longer requires Supabase-hosted DB
+- [x] Protected routes accept Supabase access JWT; local mint off when `AUTH_PROVIDER=supabase`
+- [x] Tenant isolation still `owner_id` via `sub` mapping
+- [x] Env templates document Auth secrets (values never in git)
+- [x] Handoff to #50: `SUPABASE_URL` (+ JWKS); smoke entrypoint `make auth-smoke`
+- [x] Prior pooler ACs explicitly waived / parked ops
 
 ## References
 
@@ -86,11 +88,11 @@ Replace local HS256 issuance (`AuthSecurityManager` + `JWT_SECRET_KEY`) with **S
 
 ## Handoff to PPT-040 (#50)
 
-| Name                         | Role                                                                             |
-| ---------------------------- | -------------------------------------------------------------------------------- |
-| `SUPABASE_URL`               | Project URL for JWKS / Auth API                                                  |
-| (optional) Supabase anon key | Client-side Auth only — not required in API if clients talk to Supabase directly |
-| (optional) service role      | Server-only provisioning — never expose to clients                               |
-| `DATABASE_URL`               | Any Postgres (Docker or hosted) — **not** tied to Supabase Auth                  |
+| Name                         | Role                                                            |
+| ---------------------------- | --------------------------------------------------------------- |
+| `SUPABASE_URL`               | Project URL for JWKS / Auth API                                 |
+| (optional) Supabase anon key | Client-side Auth / API pass-through                             |
+| (optional) service role      | Server-only provisioning — never expose to clients              |
+| `DATABASE_URL`               | Any Postgres (Docker or hosted) — **not** tied to Supabase Auth |
 
-**Smoke entrypoint (target):** Auth JWT → `GET /api/v1/auth/me` (+ one tenant list). Pooler DB smoke remains optional.
+**Smoke entrypoint:** `make auth-smoke` — Auth JWT → `GET /api/v1/auth/me` (+ `/api/v1/accounts`). Pooler DB smoke remains optional (`make b1-smoke`).
