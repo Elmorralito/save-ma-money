@@ -70,20 +70,41 @@ class UsersDTO(TableDTO):
             )
         return v
 
+    @model_validator(mode="before")
+    @classmethod
+    def _assign_username_based_id(cls, data: object) -> object:
+        """Assign a deterministic username-based UUID when ``id`` is omitted.
+
+        Preserves an explicit ``id`` (e.g. Supabase Auth ``sub`` on provision, or
+        DAO → DTO round-trips) so Auth subjects stay aligned with ``users.id``.
+
+        Args:
+            data: Raw model input (dict or other).
+
+        Returns:
+            Input with ``id`` set from the username hash when missing.
+        """
+        if not isinstance(data, dict):
+            return data
+        if data.get("id") is not None:
+            return data
+        username = data.get("username")
+        if not username:
+            return data
+        assigned = dict(data)
+        assigned["id"] = uuid.uuid5(
+            uuid.NAMESPACE_URL,
+            hashlib.sha256(str(username).encode(DEFAULT_ENCODING)).hexdigest(),
+        )
+        return assigned
+
     @model_validator(mode="after")
     def _normalize_model(self) -> Self:
-        """Normalize the user model after initialization.
-
-        Generates a deterministic UUID based on the username hash to ensure
-        consistency across the system.
+        """Normalize timestamps after initialization.
 
         Returns:
             Self: The normalized user DTO instance.
         """
-        self.id = uuid.uuid5(
-            uuid.NAMESPACE_URL,
-            hashlib.sha256(self.username.encode(DEFAULT_ENCODING)).hexdigest(),
-        )
         now = datetime.now(timezone.utc)
         self.created_at = self.created_at or now
         self.updated_at = self.updated_at or now

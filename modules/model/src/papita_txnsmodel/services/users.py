@@ -10,6 +10,8 @@ Classes:
 """
 
 import logging
+import re
+import secrets
 import uuid
 from typing import Annotated
 
@@ -18,10 +20,13 @@ from pydantic import Field
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.access.users.repository import UsersRepository
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
+from papita_txnsmodel.model.contstants import USERNAME_REGEX
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.utils.hashutils import Argon2PasswordManager, PasswordManagerFactory
 
 logger = logging.getLogger(__name__)
+
+_USERNAME_RE = re.compile(USERNAME_REGEX)
 
 
 class UsersService(BaseService):
@@ -204,3 +209,100 @@ class UsersService(BaseService):
             UsersDTO if the user exists, None otherwise.
         """
         return self.get(obj=owner_id, owner=None)
+
+    @staticmethod
+    def username_from_auth_claims(*, subject: uuid.UUID, email: str, preferred_username: str | None = None) -> str:
+        """Derive a local ``users.username`` that satisfies ``USERNAME_REGEX``.
+
+        Prefers ``preferred_username`` when valid; otherwise the email local-part
+        sanitized to ``[A-Za-z0-9_]``; finally ``sb_<hex>`` from the Auth subject.
+
+        Args:
+            subject: Auth subject UUID (Supabase ``sub``).
+            email: Claim or signup email.
+            preferred_username: Optional username hint from the client / claims.
+
+        Returns:
+            Username string of length 6–255 matching ``USERNAME_REGEX``.
+        """
+        candidates: list[str] = []
+        if preferred_username:
+            candidates.append(preferred_username.strip())
+        local = (email or "").split("@", 1)[0]
+        if local:
+            sanitized = re.sub(r"[^A-Za-z0-9_]", "_", local)
+            candidates.append(sanitized)
+        candidates.append(f"sb_{subject.hex[:20]}")
+
+        for raw in candidates:
+            candidate = raw[:255]
+            if len(candidate) < 6:
+                candidate = (candidate + subject.hex)[:12]
+            if _USERNAME_RE.fullmatch(candidate):
+                return candidate
+        return f"sb_{subject.hex[:20]}"
+
+    def ensure_from_auth_subject(
+        self,
+        *,
+        subject: uuid.UUID,
+        email: str,
+        username: str | None = None,
+    ) -> UsersDTO:
+        """Load or create a local user row aligned to an external Auth ``sub``.
+
+        Used for Supabase JWT Bearer flows: the API does not store the Auth
+        password; an unusable Argon2 hash is persisted for schema compatibility.
+
+        Args:
+            subject: Auth subject UUID to use as ``users.id``.
+            email: User email from Auth claims (required for new rows).
+            username: Optional preferred username for new rows.
+
+        Returns:
+            Active ``UsersDTO`` for ``subject``.
+
+        Raises:
+            ValueError: When email is blank, or email/username collide with another user.
+        """
+        existing = self.get_owner(subject)
+        if existing is not None:
+            if not existing.active or existing.deleted_at is not None:
+                raise ValueError("User is inactive or deleted")
+            return existing
+
+        normalized_email = (email or "").strip().lower()
+        if not normalized_email:
+            raise ValueError("Auth subject is missing email")
+
+        self.ensure_password_manager()
+        preferred = self.username_from_auth_claims(
+            subject=subject,
+            email=normalized_email,
+            preferred_username=username,
+        )
+
+        email_owner = self._lookup_by_identifier(normalized_email, require_active=False)
+        if email_owner is not None and email_owner.id != subject:
+            raise ValueError("Email already registered")
+
+        username_owner = self._lookup_by_identifier(preferred, require_active=False)
+        if username_owner is not None and username_owner.id != subject:
+            # Collision on derived username — fall back to subject-based name.
+            preferred = f"sb_{subject.hex[:20]}"
+            username_owner = self._lookup_by_identifier(preferred, require_active=False)
+            if username_owner is not None and username_owner.id != subject:
+                raise ValueError("Username already registered")
+
+        # Plain random password is hashed once on DTO serialize; Auth password stays in Supabase.
+        # Must satisfy PASSWORD_REGEX charset (``@$!%*?&`` specials only — no ``-_``).
+        user = UsersDTO.model_validate(
+            {
+                "id": subject,
+                "username": preferred,
+                "email": normalized_email,
+                "password": f"Aa1!{secrets.token_hex(16)}",
+            }
+        )
+        logger.info("Provisioning local user from Auth subject user_id=%s", subject)
+        return self.create(obj=user, owner=None)

@@ -47,5 +47,6 @@ cp environments/staging/.env.example environments/staging/.env
 
 - Commit only `*.env.example` and this README.
 - Real `.env` files are gitignored (`environments/**/.env`).
+- `AUTH_PROVIDER=local` (default, API-issued HS256) or `supabase` (JWKS verify; set `SUPABASE_URL`, optional `SUPABASE_ANON_KEY` for `/auth` pass-through).
 - Decision brief (+ G7 supersede): [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../docs/issues/PPT-031-C-supabase-decision-brief.md)
 - Optional pooler checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md)

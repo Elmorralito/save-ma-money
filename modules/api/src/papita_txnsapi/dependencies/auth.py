@@ -1,7 +1,11 @@
 """Authentication dependencies — Bearer JWT to tenant owner.
 
-FastAPI ``Depends`` callables that extract OAuth2 bearer tokens, validate JWT claims,
-and resolve the active tenant owner via ``UsersService``. Used by protected v1 routes.
+FastAPI ``Depends`` callables that extract OAuth2 bearer tokens, validate JWT
+claims, and resolve the active tenant owner via ``UsersService``. Used by
+protected v1 routes.
+
+In ``AUTH_PROVIDER=supabase`` mode, missing local rows are provisioned from
+Auth claims (``sub`` → ``users.id``).
 
 Key exports:
     oauth2_scheme: Optional OAuth2 bearer extractor (``auto_error=False``).
@@ -32,7 +36,7 @@ def get_auth_manager(settings: Annotated[Settings, Depends(get_settings)]) -> Au
     """Return the singleton JWT manager configured from application settings.
 
     Args:
-        settings: Injected API settings (secret, algorithm, token type).
+        settings: Injected API settings (provider, secret, Supabase URL).
 
     Returns:
         Shared ``AuthSecurityManager`` instance bound to ``settings``.
@@ -47,13 +51,13 @@ def get_current_owner(
 ) -> UsersDTO:
     """Decode bearer JWT and resolve the active tenant owner for protected routes.
 
-    Validates token presence, signature, token-type claim, and ``sub`` UUID. Loads the
-    owner record and rejects inactive or soft-deleted users.
+    Local mode validates signature, token-type claim, and loads ``sub``. Supabase
+    mode validates JWKS claims and provisions a local ``UsersDTO`` on first seen.
 
     Args:
         token: Bearer token from the ``Authorization`` header (may be ``None``).
         settings: Injected API settings for JWT validation parameters.
-        users_service: Injected service used to load the owner by ID.
+        users_service: Injected service used to load/provision the owner.
 
     Returns:
         Active ``UsersDTO`` representing the authenticated tenant owner.
@@ -69,7 +73,8 @@ def get_current_owner(
         )
 
     auth_manager = AuthSecurityManager(settings)
-    payload = auth_manager.decode_token(token, expected_type=settings.JWT_TOKEN_TYPE)
+    expected_type = settings.JWT_TOKEN_TYPE if settings.AUTH_PROVIDER == "local" else None
+    payload = auth_manager.decode_token(token, expected_type=expected_type)
     if payload is None or "sub" not in payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -86,11 +91,23 @@ def get_current_owner(
             headers=_UNAUTHORIZED_HEADERS,
         ) from exc
 
-    owner = users_service.get_owner(owner_id)
-    if owner is None or not owner.active or owner.deleted_at is not None:
+    if settings.AUTH_PROVIDER == "supabase":
+        email = str(payload.get("email") or "").strip()
+        try:
+            owner = users_service.ensure_from_auth_subject(subject=owner_id, email=email)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers=_UNAUTHORIZED_HEADERS,
+            ) from exc
+        return owner
+
+    resolved = users_service.get_owner(owner_id)
+    if resolved is None or not resolved.active or resolved.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers=_UNAUTHORIZED_HEADERS,
         )
-    return owner
+    return resolved

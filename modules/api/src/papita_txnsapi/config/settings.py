@@ -91,10 +91,15 @@ class Settings(BaseSettings):
         LOG_FILE: Optional path to a logging YAML file; defaults to ``logger.yaml``.
         DATABASE_POOL_SIZE: SQLAlchemy connection pool size for PostgreSQL
             (wired into ``create_engine`` via PPT-039; default 5).
-        JWT_SECRET_KEY: Symmetric signing key for access tokens (required).
-        JWT_TOKEN_TYPE: Expected ``type`` claim for bearer tokens.
-        JWT_ALGORITHM: JWT signing algorithm (default HS256).
-        JWT_EXPIRATION_TIME_SECONDS: Access token lifetime in seconds.
+        JWT_SECRET_KEY: Symmetric signing key for local HS256 tokens (required when
+            ``AUTH_PROVIDER=local``; unused for verification when ``supabase``).
+        JWT_TOKEN_TYPE: Expected ``type`` claim for local bearer tokens.
+        JWT_ALGORITHM: Local JWT signing algorithm (default HS256).
+        JWT_EXPIRATION_TIME_SECONDS: Local access token lifetime in seconds.
+        AUTH_PROVIDER: ``local`` (API-issued HS256) or ``supabase`` (JWKS verify).
+        SUPABASE_URL: Project URL for JWKS / Auth API when ``AUTH_PROVIDER=supabase``.
+        SUPABASE_ANON_KEY: Optional anon key for register/login pass-through.
+        SUPABASE_JWT_AUDIENCE: Expected ``aud`` claim (default ``authenticated``).
         ALLOWED_ORIGINS: CORS allowed origins list.
         FALLBACK_ACTION: Behavior when optional model fallbacks trigger.
         AUTH_RATE_LIMIT_ENABLED: Toggle per-IP auth endpoint rate limiting (B0).
@@ -119,10 +124,14 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "DEBUG"
     LOG_FILE: str | None = None
     DATABASE_POOL_SIZE: int = 5
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = "local-dev-only-replace-me-min-32-chars"
     JWT_TOKEN_TYPE: Literal["bearer", "refresh"] = "bearer"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_TIME_SECONDS: int = 3600
+    AUTH_PROVIDER: Literal["local", "supabase"] = "local"
+    SUPABASE_URL: str | None = None
+    SUPABASE_ANON_KEY: str | None = None
+    SUPABASE_JWT_AUDIENCE: str = "authenticated"
     ALLOWED_ORIGINS: list[str] = ["*"]
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
@@ -154,13 +163,36 @@ class Settings(BaseSettings):
             return value.strip()
         return None
 
+    @field_validator("SUPABASE_URL", mode="before")
+    @classmethod
+    def coerce_supabase_url(cls, value: str | None) -> str | None:
+        """Normalize blank Supabase URLs to ``None``.
+
+        Args:
+            value: Raw env string or ``None``.
+
+        Returns:
+            Stripped URL or ``None``.
+        """
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() != "":
+            return value.strip().rstrip("/")
+        return None
+
     @model_validator(mode="after")
     def build_model(self) -> Self:
-        """Establish the DB connector with pooler-safe engine opts, then configure loggers.
+        """Validate Auth provider config, establish DB connector, configure loggers.
 
         Returns:
             The validated settings instance with ``DATABASE_URL`` as a connector class.
+
+        Raises:
+            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``.
         """
+        if self.AUTH_PROVIDER == "supabase" and not self.SUPABASE_URL:
+            raise ValueError("SUPABASE_URL is required when AUTH_PROVIDER=supabase")
+
         url_or_connector = self.DATABASE_URL
         if isinstance(url_or_connector, type) and issubclass(url_or_connector, SQLDatabaseConnector):
             connector: Type[SQLDatabaseConnector] = url_or_connector
@@ -181,7 +213,12 @@ class Settings(BaseSettings):
         log_config = Path(self.LOG_FILE) if self.LOG_FILE else LOGGER_CONFIG_PATH
         configure_logger(logger_name=MODEL_LIB_NAME, config=log_config, level=self.LOG_LEVEL)
         configure_logger(logger_name=API_LIB_NAME, config=log_config, level=self.LOG_LEVEL)
-        logger.info("Application %s %s initialized", self.APP_NAME, self.APP_VERSION)
+        logger.info(
+            "Application %s %s initialized (AUTH_PROVIDER=%s)",
+            self.APP_NAME,
+            self.APP_VERSION,
+            self.AUTH_PROVIDER,
+        )
         return self
 
 

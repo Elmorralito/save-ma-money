@@ -199,7 +199,8 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 poetry install
 
 cp environments/local/.env.example environments/local/.env
-# Set JWT_SECRET_KEY and DATABASE_URL (PostgreSQL URL required)
+# AUTH_PROVIDER=local + JWT_SECRET_KEY for B0; or AUTH_PROVIDER=supabase + SUPABASE_URL
+# DATABASE_URL (PostgreSQL URL required)
 export PAPITA_ENV=local
 
 # Migrate database
