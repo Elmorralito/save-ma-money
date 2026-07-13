@@ -11,10 +11,10 @@
 
 I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ignorance**. This project is a Python monorepo for personal and (hopefully in the future) professional financial data: type-safe PostgreSQL persistence, Alembic migrations, and a FastAPI REST surface. The goal is auditable, tenant-isolated finance data with a tested model layer and a shippable API.
 
-| Package              | Path                                          | Role                                                                                                                                                                  |
-| :------------------- | :-------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **papita-txnsmodel** | [`modules/model/`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations                                                                                                        |
-| **papita-txnsapi**   | [`modules/api/`](./modules/api/README.md)     | FastAPI scaffold; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| Package              | README                                                 | Role                                                                                                                                                                      |
+| :------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations                                                                                                            |
+| **papita-txnsapi**   | [`modules/api/README.md`](./modules/api/README.md)     | FastAPI REST surface; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 ---
 
@@ -36,7 +36,7 @@ save-ma-money treats finance as **structured domain data**, not ad hoc files. A 
 
 The architecture separates **how data is stored** from **how it is exposed**:
 
-- **`papita-txnsmodel`** — The system of record: migrations, handlers for ingestion, and business logic API routers will call — not reimplement.
+- **`papita-txnsmodel`** — The system of record: migrations, handlers for ingestion, and business logic API routers will call — not reimplement. See [`modules/model/README.md`](./modules/model/README.md) for schema, services, handlers, and testing.
 - **`papita-txnsapi`** — A thin FastAPI layer: request/response schemas, auth, and routing over existing services. The full REST contract lives in [`modules/api/README.md`](./modules/api/README.md) (endpoint catalog, integration guide, and target package layout in one place).
 
 That split keeps ingestion pipelines and REST endpoints aligned on one tested model, makes balances and reports derivable from the same ledger, and lets the API ship incrementally without forking financial rules into duplicate code paths.
@@ -67,13 +67,13 @@ flowchart TB
   SV --> RP --> DTO --> SM --> DB
 ```
 
-| Layer   | Location                     | Responsibility                                                                                                                                                     |
-| :------ | :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model   | `papita_txnsmodel/model/`    | Tables, relationships, soft delete (`active`, `deleted_at`)                                                                                                        |
-| Access  | `papita_txnsmodel/access/`   | DTO validation, repository CRUD, pandas DataFrames                                                                                                                 |
-| Service | `papita_txnsmodel/services/` | Business rules, transfers, reports, account extensions                                                                                                             |
-| Handler | `papita_txnsmodel/handlers/` | Load/dump pipelines for bulk ingest                                                                                                                                |
-| API     | `papita_txnsapi/`            | Settings, auth helpers, unified REST reference ([`README.md`](./modules/api/README.md)); routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| Layer   | Location                     | Responsibility                                                                                                                                                                     |
+| :------ | :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model   | `papita_txnsmodel/model/`    | Tables, relationships, soft delete (`active`, `deleted_at`) — see [`modules/model/README.md`](./modules/model/README.md)                                                           |
+| Access  | `papita_txnsmodel/access/`   | DTO validation, repository CRUD, pandas DataFrames                                                                                                                                 |
+| Service | `papita_txnsmodel/services/` | Business rules, transfers, reports, account extensions                                                                                                                             |
+| Handler | `papita_txnsmodel/handlers/` | Load/dump pipelines for bulk ingest                                                                                                                                                |
+| API     | `papita_txnsapi/`            | Settings, auth helpers, unified REST reference — see [`modules/api/README.md`](./modules/api/README.md); routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 **Platform:** PostgreSQL only — Docker Postgres locally (B0), Supabase for hosted environments (B1). DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)).
 
@@ -102,10 +102,11 @@ save-ma-money/
 ├── pyproject.toml              # workspace root (package-mode = false)
 ├── modules/
 │   ├── model/                  # papita-txnsmodel — primary implementation
+│   │   ├── README.md           # schema, services, handlers, migrations, testing
 │   │   ├── src/papita_txnsmodel/
 │   │   ├── alembic/            # migrations
 │   │   └── tests/
-│   └── api/                    # papita-txnsapi — scaffold + unified README
+│   └── api/                    # papita-txnsapi — FastAPI REST surface
 │       ├── README.md           # REST contract, integration guide, target layout
 │       └── src/papita_txnsapi/
 ├── deploy/                     # alembic.sh, test.sh, utils.sh
@@ -156,6 +157,8 @@ poetry run pytest
 /bin/bash ./deploy/test.sh
 ```
 
+Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](./modules/model/README.md).
+
 API route tests will be added with the [#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic. When routers land, start the dev server with:
 
 ```bash
@@ -168,19 +171,28 @@ See [`modules/api/README.md`](./modules/api/README.md) for env setup, auth flows
 
 ## Documentation hub
 
-| Document                                                                                 | Scope                                                                   |
-| :--------------------------------------------------------------------------------------- | :---------------------------------------------------------------------- |
-| [Root README](./README.md)                                                               | Monorepo overview (this file)                                           |
-| [`modules/model/README.md`](./modules/model/README.md)                                   | v3 schema, services, handlers, migrations, testing                      |
-| [`modules/api/README.md`](./modules/api/README.md)                                       | **Unified API reference** — architecture, integration, 32 MVP endpoints |
-| [`docs/postgres_papita_transactions_v4.png`](./docs/postgres_papita_transactions_v4.png) | ER diagram — v3 core + balance materialized views                       |
-| [`docs/design/README.md`](./docs/design/README.md)                                       | PPT-031 design program registry and gates                               |
-| [`docs/issues/`](./docs/issues/README.md)                                                | Issue-linked requirement briefs                                         |
-| [`docs/design/PPT-031-api-model-mapping.md`](./docs/design/PPT-031-api-model-mapping.md) | Endpoint → Service → DTO → SQLModel mapping                             |
-| [`docs/design/PPT-031-auth-contract.md`](./docs/design/PPT-031-auth-contract.md)         | Local JWT + users auth strategy                                         |
-| [`.github/CI.md`](./.github/CI.md)                                                       | CI workflows, pre-commit, PR checklist                                  |
-| [`AGENTS.md`](./AGENTS.md)                                                               | Agent and contributor operational guide                                 |
-| [CHANGELOG.md](./CHANGELOG.md)                                                           | Issue tracker and merged PR summaries                                   |
+### Module READMEs
+
+Each Poetry package has its own README with layer-specific setup, architecture, and reference material:
+
+| Module README                                          | Scope                                                                           |
+| :----------------------------------------------------- | :------------------------------------------------------------------------------ |
+| [`modules/model/README.md`](./modules/model/README.md) | **papita-txnsmodel** — v3 schema, services, handlers, migrations, testing       |
+| [`modules/api/README.md`](./modules/api/README.md)     | **papita-txnsapi** — unified API reference, integration guide, 32 MVP endpoints |
+
+### Design and operations
+
+| Document                                                                                 | Scope                                             |
+| :--------------------------------------------------------------------------------------- | :------------------------------------------------ |
+| [Root README](./README.md)                                                               | Monorepo overview (this file)                     |
+| [`docs/postgres_papita_transactions_v4.png`](./docs/postgres_papita_transactions_v4.png) | ER diagram — v3 core + balance materialized views |
+| [`docs/design/README.md`](./docs/design/README.md)                                       | PPT-031 design program registry and gates         |
+| [`docs/issues/`](./docs/issues/README.md)                                                | Issue-linked requirement briefs                   |
+| [`docs/design/PPT-031-api-model-mapping.md`](./docs/design/PPT-031-api-model-mapping.md) | Endpoint → Service → DTO → SQLModel mapping       |
+| [`docs/design/PPT-031-auth-contract.md`](./docs/design/PPT-031-auth-contract.md)         | Local JWT + users auth strategy                   |
+| [`.github/CI.md`](./.github/CI.md)                                                       | CI workflows, pre-commit, PR checklist            |
+| [`AGENTS.md`](./AGENTS.md)                                                               | Agent and contributor operational guide           |
+| [CHANGELOG.md](./CHANGELOG.md)                                                           | Issue tracker and merged PR summaries             |
 
 Legacy API filenames (`API_Endpoints.md.md`, `API_Documentation.md.md`) redirect to [`modules/api/README.md`](./modules/api/README.md).
 

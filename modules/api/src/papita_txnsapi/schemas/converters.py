@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TypeVar
 
-from papita_txnsmodel.model.enums import AccountKind, CategoryKind, LedgerSide
+from papita_txnsmodel.model.enums import AccountKind, CategoryKind, LedgerSide, TransactionKind, TransactionStatus
 
 E = TypeVar("E", bound=Enum)
 
@@ -92,3 +92,33 @@ def parse_category_kind(slug: str) -> CategoryKind:
         ValueError: When the slug is not a valid category kind.
     """
     return api_slug_to_enum(CategoryKind, slug)
+
+
+def parse_transaction_kind(slug: str) -> TransactionKind:
+    """Parse an API ``transaction_type`` slug to ``TransactionKind``.
+
+    Args:
+        slug: Lowercase transaction type from request JSON.
+
+    Returns:
+        Corresponding ``TransactionKind`` member.
+
+    Raises:
+        ValueError: When the slug is not a valid transaction kind.
+    """
+    return api_slug_to_enum(TransactionKind, slug)
+
+
+def parse_transaction_status(slug: str) -> TransactionStatus:
+    """Parse an API ``status`` slug to ``TransactionStatus``.
+
+    Args:
+        slug: Lowercase status from request JSON or query params.
+
+    Returns:
+        Corresponding ``TransactionStatus`` member.
+
+    Raises:
+        ValueError: When the slug is not a valid transaction status.
+    """
+    return api_slug_to_enum(TransactionStatus, slug)

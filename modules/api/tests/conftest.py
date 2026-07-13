@@ -87,3 +87,39 @@ def categories_client() -> tuple[TestClient, UsersDTO, MagicMock]:
     test_client = TestClient(app)
     yield test_client, owner, mock_service
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def transactions_client() -> tuple[TestClient, UsersDTO, MagicMock]:
+    """Authenticated client with mocked TransactionsService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_transactions_service
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    mock_service = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_transactions_service] = lambda: mock_service
+    test_client = TestClient(app)
+    yield test_client, owner, mock_service
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def movements_client() -> tuple[TestClient, UsersDTO, MagicMock, MagicMock]:
+    """Authenticated client with mocked TransactionsService and AccountsService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_accounts_service, get_transactions_service
+
+    get_settings.cache_clear()
+    app = create_app()
+    owner = make_user()
+    mock_transactions = MagicMock()
+    mock_accounts = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_transactions_service] = lambda: mock_transactions
+    app.dependency_overrides[get_accounts_service] = lambda: mock_accounts
+    test_client = TestClient(app)
+    yield test_client, owner, mock_transactions, mock_accounts
+    app.dependency_overrides.clear()

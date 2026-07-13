@@ -1,4 +1,20 @@
-"""Bulk reference matching for handler ingest pipelines."""
+"""Bulk reference matching for handler ingest pipelines.
+
+Builds in-memory lookup indexes from reference DataFrames (accounts, categories,
+transaction templates, and similar entities) and resolves ingest columns that contain
+human-readable names, tags, or primary-key identifiers to canonical record ids.
+
+Used by :class:`~papita_txnsmodel.handlers.transactions.TransactionsHandler` and
+related load handlers to map foreign-key columns before persistence. Matching supports
+exact lookups (id, normalized name, normalized tag) and optional fuzzy fallback via
+``rapidfuzz`` when exact resolution fails.
+
+Classes:
+    ReferenceIndex: In-memory id/name/tag index built from a reference DataFrame.
+
+Functions:
+    bulk_match_column: Vectorized column resolution with optional per-row fuzzy fallback.
+"""
 
 from __future__ import annotations
 
@@ -13,7 +29,19 @@ from papita_txnsmodel.utils.enums import OnMultipleMatchesDo
 
 
 class ReferenceIndex:  # pylint: disable=too-many-instance-attributes
-    """In-memory index for resolving id, name, or tag references to record ids."""
+    """In-memory index for resolving id, name, or tag references to record ids.
+
+    Indexes a reference DataFrame once so repeated lookups during bulk ingest avoid
+    per-row database queries. Names and tags are stored under normalized keys when
+    ``case_sensitive`` is ``False``; string UUID primary keys are also registered
+    under their parsed :class:`uuid.UUID` form for id-based lookups.
+
+    Attributes:
+        id_column: Primary-key column name used when indexing ``core_data``.
+        name_column: Human-readable name column used for exact and fuzzy name matching.
+        tags_column: Column holding tag iterables; each tag is indexed independently.
+        case_sensitive: When ``False``, name and tag keys are lowercased for matching.
+    """
 
     def __init__(
         self,
@@ -27,11 +55,13 @@ class ReferenceIndex:  # pylint: disable=too-many-instance-attributes
         """Build lookup maps from a reference DataFrame.
 
         Args:
-            core_data: Reference records (accounts, categories, templates, etc.).
-            id_column: Primary-key column name.
-            name_column: Human-readable name column.
-            tags_column: Tags list column.
-            case_sensitive: Whether name/tag matching is case-sensitive.
+            core_data: Reference records (accounts, categories, templates, etc.). An empty
+                frame yields an index with no entries; lookups then always return ``None``.
+            id_column: Primary-key column name whose values become canonical resolved ids.
+            name_column: Human-readable name column indexed for exact and fuzzy matching.
+            tags_column: Column containing tag iterables; missing or null values are treated
+                as empty tag lists.
+            case_sensitive: Whether name and tag matching uses case-sensitive keys.
         """
         self.id_column = id_column
         self.name_column = name_column
@@ -74,7 +104,18 @@ class ReferenceIndex:  # pylint: disable=too-many-instance-attributes
         return value
 
     def resolve_exact(self, value: str | uuid.UUID | None) -> str | uuid.UUID | None:
-        """Resolve a single value using exact id, name, or tag matching."""
+        """Resolve a single value using exact id, name, or tag matching.
+
+        Lookup order: raw id key, normalized id key (for string UUIDs), normalized name,
+        then normalized tag. Floating-point ``NaN`` and ``None`` inputs resolve to ``None``.
+
+        Args:
+            value: Reference string, UUID, or primary-key value from an ingest column.
+
+        Returns:
+            The canonical record id from ``id_column`` when a match is found, otherwise
+            ``None``.
+        """
         if value is None or (isinstance(value, float) and pd.isna(value)):
             return None
 
@@ -92,7 +133,21 @@ class ReferenceIndex:  # pylint: disable=too-many-instance-attributes
         return None
 
     def resolve_fuzzy(self, value: str | uuid.UUID, *, threshold: float) -> str | uuid.UUID | None:
-        """Resolve a single value using fuzzy name or tag matching."""
+        """Resolve a single value using fuzzy name or tag matching.
+
+        Exact id lookup is attempted first. When no id match exists, ``rapidfuzz`` ratio
+        scoring compares the input against indexed display names, then against tag keys.
+        The best candidate must meet or exceed ``threshold`` (0–1 scale; multiplied by 100
+        internally for the scorer).
+
+        Args:
+            value: Reference string or id from an ingest column.
+            threshold: Minimum similarity ratio in ``[0, 1]`` required to accept a fuzzy match.
+
+        Returns:
+            The canonical record id when a fuzzy name or tag match meets ``threshold``,
+            otherwise ``None``. ``None`` and floating-point ``NaN`` inputs return ``None``.
+        """
         if value is None or (isinstance(value, float) and pd.isna(value)):
             return None
 
@@ -123,9 +178,32 @@ def bulk_match_column(
     on_multiple_matches: OnMultipleMatchesDo = OnMultipleMatchesDo.FAIL,
     core_data: pd.DataFrame | None = None,
 ) -> pd.Series:
-    """Map a column of reference strings/ids to resolved ids using bulk exact matching.
+    """Map a column of reference strings or ids to resolved ids using bulk matching.
 
-    Unmatched rows optionally fall back to per-row fuzzy matching.
+    Applies :meth:`ReferenceIndex.resolve_exact` to every non-null element via
+    :meth:`pandas.Series.map`. When ``fuzzy_match`` is ``True``, rows that remain
+    unresolved after the exact pass are retried individually with
+    :meth:`ReferenceIndex.resolve_fuzzy`.
+
+    Args:
+        series: Ingest column containing names, tags, ids, or UUID strings to resolve.
+        index: Pre-built reference index for the target entity type.
+        fuzzy_match: When ``True``, run fuzzy fallback only for rows unmatched by exact lookup.
+        fuzzy_threshold: Minimum similarity ratio (0–1) passed to :meth:`ReferenceIndex.resolve_fuzzy`.
+        on_multiple_matches: Strategy when fuzzy resolution could match multiple reference rows.
+            Reserved for duplicate detection when ``core_data`` is supplied; the fuzzy path
+            currently accepts the first qualifying match regardless of this setting.
+        core_data: Optional reference DataFrame for duplicate detection during fuzzy matching.
+            When provided with a non-``FAIL`` ``on_multiple_matches`` value, duplicate handling
+            is intended but not yet implemented in the fuzzy branch.
+
+    Returns:
+        A :class:`pandas.Series` aligned to ``series.index`` containing resolved record ids.
+        Unmatched inputs remain ``NaN``. An empty input series is returned unchanged.
+
+    Note:
+        Exact matching is vectorized; fuzzy fallback iterates unmatched rows and may be slower
+        on large columns with many misses.
     """
     if series.empty:
         return series

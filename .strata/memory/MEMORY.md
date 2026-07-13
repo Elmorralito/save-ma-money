@@ -4,7 +4,7 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — PPT-036 committed; API docstring pass pending commit.
+- [Project state](project_state.md) — PPT-037 transactions/movements API in progress on feat/PPT-037.
 - [Active issues](../issues/ACTIVE.md) — nothing in progress.
 - [Open backlog](../issues/OPEN.md) — empty.
 
