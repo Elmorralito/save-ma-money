@@ -10,7 +10,7 @@
 
 - [ ] [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary:
 
-- [ ] [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
