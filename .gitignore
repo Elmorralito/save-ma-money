@@ -48,6 +48,8 @@ dist/
 *.swn
 
 .coverage
+docs/coverage.xml
+docs/coverage-codecov-sync.xml
 duckdb:*
 *.duckdb
 

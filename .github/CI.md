@@ -313,8 +313,9 @@ See [Strata validation](#strata-validation) for the full rule set.
 **Steps:**
 
 1. [`update_todos.py`](./scripts/update_todos.py) — rebuild [`CHANGELOG.md`](../CHANGELOG.md) from GitHub issues/PRs (Jinja templates in `scripts/`)
-2. Regenerate `docs/coverage-badge.svg` and `docs/flake8-badge.svg` via `genbadge`
-3. Commit changed files; push with `[skip ci]` message and `ci.skip` option to avoid recursive workflow runs
+2. [`sync_coverage_badge.py`](./scripts/sync_coverage_badge.py) — fetch latest totals from [Codecov](https://app.codecov.io/github/Elmorralito/save-ma-money) and regenerate `docs/coverage-badge.svg` via `genbadge` (polls until the current commit is processed)
+3. Regenerate `docs/flake8-badge.svg` via `genbadge`
+4. Commit changed files; push with `[skip ci]` message and `ci.skip` option to avoid recursive workflow runs
 
 **Files committed:** `CHANGELOG.md`, `README.md`, `docs/coverage-badge.svg`, `docs/flake8-badge.svg`
 
