@@ -241,17 +241,22 @@ class LinkedEntitiesService(BaseService):
 
         dto_fields = tuple(self.dto_type.model_fields.keys())
         logger.debug("DTO fields: %s", dto_fields)
-        updated_links = {
-            link_name: self.__links__[link_name].load_other_entity_service(service, reload=reload, **kwargs)
-            for link_name, service in links.items()
-            if link_name in self.__links__ and link_name in dto_fields
-        }
+        updated_links = dict(self.__links__)
+        for link_name, service in links.items():
+            if link_name not in self.__links__ or link_name not in dto_fields:
+                continue
+            updated_links[link_name] = self.__links__[link_name].load_other_entity_service(
+                service, reload=reload, **kwargs
+            )
         logger.debug("Updated links: %s", updated_links)
         setattr(self, "__links__", updated_links)
         return self
 
     def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
         """Create a new linked entity record in the database.
+
+        Optional FK fields whose value is ``None`` are skipped (no linked service call).
+        Non-null FK fields require the matching linked service to already be loaded.
 
         Args:
             obj: The object to create.
@@ -262,18 +267,21 @@ class LinkedEntitiesService(BaseService):
             TableDTO: The created object as a DTO with linked entity information.
 
         Raises:
-            TypeError: If a linked entity service has not been loaded.
+            TypeError: If a required linked entity service has not been loaded.
         """
         linked_dtos = {}
         for column_name, entity in self.__links__.items():
+            field_name = entity.own_entity_link_field_name
+            field_value = obj.get(field_name) if isinstance(obj, dict) else getattr(obj, field_name, None)
+            if field_value is None:
+                continue
+
             linked_service = entity.other_entity_service
             if not isinstance(linked_service, BaseService):
                 raise TypeError(f"Service of the linked enity in field {column_name} has not been loaded.")
 
-            linked_dto = linked_service.get_or_create(
-                obj=getattr(obj, entity.own_entity_link_field_name), owner=owner, **kwargs
-            )
-            linked_dtos[entity.own_entity_link_field_name] = linked_dto
+            linked_dto = linked_service.get_or_create(obj=field_value, owner=owner, **kwargs)
+            linked_dtos[field_name] = linked_dto
 
         dto = super().create(obj=obj, owner=owner, **kwargs)
         for field_name, linked_dto in linked_dtos.items():

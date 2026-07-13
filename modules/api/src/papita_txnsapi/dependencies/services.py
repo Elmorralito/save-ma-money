@@ -22,7 +22,7 @@ from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.reports import ReportService
-from papita_txnsmodel.services.transactions import TransactionsService
+from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.services.users import UsersService
 
 ServiceT = TypeVar("ServiceT", bound=BaseModel)
@@ -104,13 +104,28 @@ def get_transactions_service(
 ) -> TransactionsService:
     """Build ``TransactionsService`` for transaction CRUD and listing routes.
 
+    Wires linked entity services (accounts, categories, templates) so
+    ``LinkedEntitiesService.create`` can validate non-null foreign keys.
+    Optional ``template_id`` remains ``None`` without requiring a template row.
+
     Args:
         connector: Injected model database connector.
 
     Returns:
-        Configured ``TransactionsService`` instance.
+        Configured ``TransactionsService`` instance with link services loaded.
     """
-    return _service_factory(TransactionsService, connector)
+    accounts = _service_factory(AccountsService, connector)
+    categories = _service_factory(CategoriesService, connector)
+    templates = _service_factory(TransactionTemplatesService, connector)
+    service = _service_factory(TransactionsService, connector)
+    return service.load_link_services(
+        {
+            "template_id": templates,
+            "from_account_id": accounts,
+            "to_account_id": accounts,
+            "category_id": categories,
+        }
+    )
 
 
 def get_report_service(connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)]) -> ReportService:

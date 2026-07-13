@@ -72,11 +72,26 @@ class ReportService(BaseModel):
             raise ValueError("Account not found for tenant.")
 
     def _load_transactions(self, *, owner: UsersDTO, **kwargs) -> pd.DataFrame:
-        """Load tenant-scoped transactions for in-memory report filtering."""
+        """Load tenant-scoped transactions for in-memory report filtering.
+
+        ``BaseService.get_records`` may short-circuit to a single-column frame of
+        SQLModel DAO instances; flatten those into JSON-serialized DTO rows so
+        report filters can address ``transaction_ts`` / enum value columns.
+        """
         owner = self._require_owner(owner)
         if self.transactions_service is None:
             raise RuntimeError("transactions_service is not configured.")
-        return self.transactions_service.get_records(dto=None, owner=owner, **kwargs)
+        records = self.transactions_service.get_records(dto=None, owner=owner, **kwargs)
+        if getattr(records, "empty", True):
+            return pd.DataFrame()
+        if "transaction_ts" in records.columns:
+            return records
+
+        dto_type = self.transactions_service.dto_type
+        dao_type = dto_type.__dao_type__
+        if len(records.columns) == 1 and isinstance(records.iloc[0, 0], dao_type):
+            return pd.DataFrame([dto_type.from_dao(row).model_dump(mode="json") for row in records.iloc[:, 0].tolist()])
+        return pd.DataFrame()
 
     @staticmethod
     def _apply_date_window(
@@ -86,12 +101,20 @@ class ReportService(BaseModel):
         end_date: datetime | None,
     ) -> pd.DataFrame:
         """Filter a transaction frame to an inclusive ``transaction_ts`` window."""
-        if frame.empty:
+        if frame.empty or "transaction_ts" not in frame.columns:
             return frame
+        timestamps = pd.to_datetime(frame["transaction_ts"], utc=True)
         if start_date is not None:
-            frame = frame[frame["transaction_ts"] >= start_date]
+            start_ts = pd.Timestamp(start_date)
+            if start_ts.tzinfo is None:
+                start_ts = start_ts.tz_localize("UTC")
+            frame = frame[timestamps >= start_ts]
+            timestamps = timestamps.loc[frame.index]
         if end_date is not None:
-            frame = frame[frame["transaction_ts"] <= end_date]
+            end_ts = pd.Timestamp(end_date)
+            if end_ts.tzinfo is None:
+                end_ts = end_ts.tz_localize("UTC")
+            frame = frame[timestamps <= end_ts]
         return frame
 
     @staticmethod
