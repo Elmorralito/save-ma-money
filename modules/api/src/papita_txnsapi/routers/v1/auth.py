@@ -3,15 +3,15 @@
 Exposes identity endpoints under ``/auth``. Behavior depends on
 ``Settings.AUTH_PROVIDER``:
 
-* ``local`` — register / login against ``UsersService`` and issue HS256 JWTs.
-* ``supabase`` — optional Auth API pass-through (requires ``SUPABASE_ANON_KEY``);
-  preferred path is client → Supabase Auth, then Bearer on this API.
+* ``supabase`` — register/login via Supabase Auth (`sign_up` / `sign_in_with_password`);
+  protected routes verify access JWTs with JWKS.
+* ``local`` — register/login against ``UsersService`` and issue HS256 JWTs (tests / B0).
 
 Profile read (``/auth/me``) requires a valid JWT in both modes.
 
 Routes:
-    ``POST /auth/register`` — create user (local DB or Supabase signup).
-    ``POST /auth/login`` — OAuth2 password flow; issues/returns access JWT.
+    ``POST /auth/register`` — create user (Supabase Auth or local).
+    ``POST /auth/login`` — OAuth2 password flow; returns Auth or local access JWT.
     ``GET /auth/me`` — authenticated profile smoke test.
     ``POST /auth/refresh`` — deferred (501).
     ``POST /auth/logout`` — deferred (501).
@@ -20,16 +20,14 @@ Routes:
 from __future__ import annotations
 
 import logging
-import uuid
-from typing import Annotated, Any
+from typing import Annotated
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.core.supabase_auth import supabase_password_grant, supabase_sign_up
+from papita_txnsapi.core.supabase_auth import AuthApiError, AuthError, supabase_sign_in, supabase_sign_up
 from papita_txnsapi.dependencies.auth import get_auth_manager, get_current_owner
 from papita_txnsapi.dependencies.rate_limit import enforce_auth_login_rate_limit, enforce_auth_register_rate_limit
 from papita_txnsapi.dependencies.services import get_users_service
@@ -44,26 +42,17 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 _AUTH_DEFERRED = DeferredResponse(deferred_reason="FR-11 refresh/logout deferred — stateless JWT MVP")
 _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
-_SUPABASE_PROXY_REQUIRED = (
-    "AUTH_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_ANON_KEY for "
-    "API register/login pass-through; or obtain tokens from Supabase Auth directly"
-)
+_SUPABASE_AUTH_REQUIRED = "AUTH_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_ANON_KEY for register/login"
 
 
-def _supabase_user_id(payload: dict[str, Any]) -> uuid.UUID:
-    """Extract the Auth user UUID from a Supabase Auth JSON body."""
-    user = payload.get("user") if isinstance(payload.get("user"), dict) else payload
-    raw = (user or {}).get("id")
-    if raw is None:
-        raise ValueError("Supabase Auth response missing user id")
-    return uuid.UUID(str(raw))
+def _require_supabase_auth_settings(settings: Settings) -> None:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_AUTH_REQUIRED)
 
 
-def _supabase_email(payload: dict[str, Any], fallback: str) -> str:
-    """Extract email from Auth JSON, falling back to the request email."""
-    user = payload.get("user") if isinstance(payload.get("user"), dict) else payload
-    email = (user or {}).get("email") or fallback
-    return str(email).strip().lower()
+def _auth_error_detail(exc: Exception, *, fallback: str) -> str:
+    message = getattr(exc, "message", None) or str(exc) or fallback
+    return str(message)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
@@ -73,52 +62,45 @@ def register_user(
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> UserResponse:
-    """Register a new user.
+    """Register a new user via Supabase Auth (or local UsersService).
 
-    Local mode persists via ``UsersService`` (no JWT). Supabase mode signs up via
-    Auth then provisions a local ``users`` row with ``id = Auth sub``.
+    Supabase mode calls ``auth.sign_up``, then provisions a local ``users`` row
+    with ``id = Auth sub``. Local mode persists credentials in Postgres only.
 
     Args:
         body: Username, email, and password for the new account.
         _rate_limit: Side-effect dependency enforcing registration rate limits.
         settings: Application settings selecting Auth provider.
-        users_service: Injected users service for credential hashing and persistence.
+        users_service: Injected users service for local persistence / provisioning.
 
     Returns:
         Public user profile without secrets.
 
     Raises:
-        HTTPException: 503 when Supabase proxy is misconfigured; 401/400 on Auth errors.
+        HTTPException: 503 when Supabase Auth is misconfigured; 400 on Auth errors.
         ValueError: Propagated from the service layer on duplicate username/email.
     """
     if settings.AUTH_PROVIDER == "supabase":
-        if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_PROXY_REQUIRED)
+        _require_supabase_auth_settings(settings)
         try:
-            auth_body = supabase_sign_up(
-                supabase_url=settings.SUPABASE_URL,
-                anon_key=settings.SUPABASE_ANON_KEY,
+            auth_result = supabase_sign_up(
+                supabase_url=settings.SUPABASE_URL or "",
+                anon_key=settings.SUPABASE_ANON_KEY or "",
                 email=body.email,
                 password=body.password,
-            )
-            subject = _supabase_user_id(auth_body)
-            email = _supabase_email(auth_body, body.email)
-            user = users_service.ensure_from_auth_subject(
-                subject=subject,
-                email=email,
                 username=body.username,
             )
-        except httpx.HTTPStatusError as exc:
-            detail = "Supabase Auth registration failed"
-            try:
-                body_json = exc.response.json()
-                detail = body_json.get("msg") or body_json.get("error_description") or detail
-            except Exception:  # noqa: BLE001 — keep generic Auth failure detail
-                pass
-            logger.info("Supabase signup failed: %s", exc)
+            user = users_service.ensure_from_auth_subject(
+                subject=auth_result.user_id,
+                email=auth_result.email,
+                username=body.username,
+            )
+        except (AuthApiError, AuthError) as exc:
+            detail = _auth_error_detail(exc, fallback="Supabase Auth registration failed")
+            logger.info("Supabase sign_up failed: %s", detail)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail) from exc
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.exception("Supabase signup transport/provision error")
+        except ValueError as exc:
+            logger.exception("Supabase signup provision error")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
         return UserResponse.from_dto(user)
 
@@ -134,27 +116,26 @@ def login(
     users_service: Annotated[UsersService, Depends(get_users_service)],
     auth_manager: Annotated[AuthSecurityManager, Depends(get_auth_manager)],
 ) -> TokenResponse:
-    """OAuth2 password flow — form field ``username`` accepts email or username.
+    """OAuth2 password flow — Supabase Auth sign-in or local credential verify.
 
-    Local mode verifies against ``UsersService`` and mints an HS256 JWT. Supabase
-    mode proxies the password grant (email login) and returns the Auth access token.
+    Supabase mode requires email in the ``username`` form field and returns the
+    Auth access token. Local mode accepts email or username and mints HS256.
 
     Args:
         form: Standard OAuth2 password grant fields (``username``, ``password``).
         _rate_limit: Side-effect dependency enforcing login rate limits.
         settings: Application settings supplying token type and Auth provider.
-        users_service: Injected users service for credential verification.
-        auth_manager: JWT encoder bound to the configured secret and algorithm.
+        users_service: Injected users service for credential verification / provision.
+        auth_manager: Local JWT encoder (unused when ``AUTH_PROVIDER=supabase``).
 
     Returns:
         Bearer access token with expiry metadata for API authorization.
 
     Raises:
-        HTTPException: 401 when credentials do not match; 503 when proxy misconfigured.
+        HTTPException: 401 when credentials do not match; 503 when Auth misconfigured.
     """
     if settings.AUTH_PROVIDER == "supabase":
-        if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
-            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_PROXY_REQUIRED)
+        _require_supabase_auth_settings(settings)
         email = form.username.strip()
         if "@" not in email:
             raise HTTPException(
@@ -163,35 +144,31 @@ def login(
                 headers=_UNAUTHORIZED_HEADERS,
             )
         try:
-            token_body = supabase_password_grant(
-                supabase_url=settings.SUPABASE_URL,
-                anon_key=settings.SUPABASE_ANON_KEY,
+            auth_result = supabase_sign_in(
+                supabase_url=settings.SUPABASE_URL or "",
+                anon_key=settings.SUPABASE_ANON_KEY or "",
                 email=email,
                 password=form.password,
             )
-            access_token = token_body.get("access_token")
-            if not access_token:
-                raise ValueError("Supabase Auth response missing access_token")
-            subject = _supabase_user_id(token_body)
             users_service.ensure_from_auth_subject(
-                subject=subject,
-                email=_supabase_email(token_body, email),
+                subject=auth_result.user_id,
+                email=auth_result.email,
             )
-            expires_in = int(token_body.get("expires_in") or settings.JWT_EXPIRATION_TIME_SECONDS)
+            expires_in = int(auth_result.expires_in or settings.JWT_EXPIRATION_TIME_SECONDS)
             return TokenResponse(
-                access_token=str(access_token),
+                access_token=str(auth_result.access_token),
                 token_type=settings.JWT_TOKEN_TYPE,
                 expires_in=max(expires_in, 1),
             )
-        except httpx.HTTPStatusError as exc:
-            logger.info("Supabase login failed: %s", exc)
+        except (AuthApiError, AuthError) as exc:
+            logger.info("Supabase sign_in failed: %s", _auth_error_detail(exc, fallback="login failed"))
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers=_UNAUTHORIZED_HEADERS,
             ) from exc
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.exception("Supabase login transport/provision error")
+        except ValueError as exc:
+            logger.exception("Supabase login provision error")
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
     user = users_service.verify_credentials(form.username, form.password)

@@ -14,7 +14,7 @@ import logging
 import warnings
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Self, Type
+from typing import Any, Literal, Self, Type
 from urllib.parse import urlparse
 
 from pydantic import field_validator, model_validator
@@ -179,6 +179,30 @@ class Settings(BaseSettings):
         if isinstance(value, str) and value.strip() != "":
             return value.strip().rstrip("/")
         return None
+
+    @model_validator(mode="before")
+    @classmethod
+    def prefer_supabase_when_url_configured(cls, data: Any) -> Any:
+        """Default ``AUTH_PROVIDER=supabase`` when ``SUPABASE_URL`` is set and provider unset.
+
+        Keeps explicit ``AUTH_PROVIDER=local`` for unit tests. Staging/local env files
+        that only set ``SUPABASE_URL`` (+ anon key) activate Auth without a second flag.
+
+        Args:
+            data: Raw settings input mapping.
+
+        Returns:
+            Input with ``AUTH_PROVIDER`` filled when applicable.
+        """
+        if not isinstance(data, dict):
+            return data
+        provider = data.get("AUTH_PROVIDER")
+        if provider is not None and str(provider).strip() != "":
+            return data
+        url = data.get("SUPABASE_URL")
+        if isinstance(url, str) and url.strip() != "":
+            return {**data, "AUTH_PROVIDER": "supabase"}
+        return data
 
     @model_validator(mode="after")
     def build_model(self) -> Self:

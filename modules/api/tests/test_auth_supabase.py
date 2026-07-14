@@ -235,3 +235,99 @@ class TestSupabaseProtectedRoute:
         get_settings.cache_clear()
         monkeypatch.setenv("AUTH_PROVIDER", "local")
         monkeypatch.delenv("SUPABASE_URL", raising=False)
+
+
+class TestSupabaseAuthRoutes:
+    """Register/login delegate to Supabase Auth client helpers."""
+
+    def test_register_uses_supabase_sign_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        subject = uuid.uuid4()
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+
+        app = create_app()
+        mock_users = MagicMock()
+        provisioned = UsersDTO.model_construct(
+            id=subject,
+            username="johndoe",
+            email="john@example.local",
+            password="$argon2$hash",
+            active=True,
+            deleted_at=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        mock_users.ensure_from_auth_subject.return_value = provisioned
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+
+        auth_result = MagicMock()
+        auth_result.user_id = subject
+        auth_result.email = "john@example.local"
+
+        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_up", return_value=auth_result) as mock_sign_up:
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/auth/register",
+                json={"username": "johndoe", "email": "john@example.local", "password": "SecurePass1!"},
+            )
+
+        assert response.status_code == 201
+        assert response.json()["id"] == str(subject)
+        mock_sign_up.assert_called_once()
+        mock_users.ensure_from_auth_subject.assert_called_once()
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_login_uses_supabase_sign_in(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        subject = uuid.uuid4()
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.ensure_from_auth_subject.return_value = UsersDTO.model_construct(
+            id=subject,
+            username="johndoe",
+            email="john@example.local",
+            password="$argon2$hash",
+            active=True,
+            deleted_at=None,
+            created_at=datetime.now(timezone.utc),
+        )
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+
+        auth_result = MagicMock()
+        auth_result.user_id = subject
+        auth_result.email = "john@example.local"
+        auth_result.access_token = "supabase-access-token"
+        auth_result.expires_in = 3600
+
+        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_in", return_value=auth_result):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/auth/login",
+                data={"username": "john@example.local", "password": "SecurePass1!"},
+            )
+
+        assert response.status_code == 200
+        assert response.json()["access_token"] == "supabase-access-token"
+        mock_users.ensure_from_auth_subject.assert_called_once()
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)

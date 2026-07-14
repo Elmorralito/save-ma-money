@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn[standard] (>=0.51.0,<0.52.0)",
     "python-multipart (>=0.0.32,<0.0.33)",
     "httpx (>=0.28.1,<0.29.0)",
+    "supabase (>=2.13.0,<3.0.0)",
 ]
 
 [project.urls]

@@ -73,7 +73,7 @@ class TokenResponse(BaseModel):
     """OAuth2-compatible access token payload.
 
     Attributes:
-        access_token: Signed JWT issued by ``AuthSecurityManager``.
+        access_token: Supabase Auth JWT (``AUTH_PROVIDER=supabase``) or local HS256 JWT.
         token_type: Token scheme; always ``bearer`` for this API.
         expires_in: Token lifetime in seconds (must be positive).
     """

@@ -1,29 +1,28 @@
 ---
 name: save-ma-money State
-description: PPT-039 Supabase Auth impl on ops/PPT-039; G5/Part VI + auth-smoke.
+description: Register/login use supabase-py Auth; JWKS verify on protected routes.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-13.** Auth runtime (JWKS, provision, pass-through) on `ops/PPT-039`.
-Follow-on: G5/Part VI rewrite, `make auth-smoke`, issue checklist sync.
+**Session — 2026-07-13.** `/auth/register` and `/auth/login` call Supabase Auth
+(`sign_up` / `sign_in_with_password`). `SUPABASE_URL` auto-selects `AUTH_PROVIDER=supabase`.
 
 ### Last completed (this session)
 
-- `AUTH_PROVIDER=supabase` JWKS + `ensure_from_auth_subject`
-- Part VI / `PPT-031-auth-contract.md` G5 supersede
-- `deploy/auth_smoke.sh` + `make auth-smoke`
+- `supabase` dependency + `core/supabase_auth.py` client helpers
+- Router wires Auth module; local HS256 kept for unit tests
+- Env example Auth-first under `environments/local/`
 
 ### Next action
 
-- Set `AUTH_PROVIDER=supabase` in local/staging `.env` (keys already optional)
-- Run `make auth-smoke` against a live API
-- PR `ops/PPT-039` → `main`; wire #50 CI secrets to Auth smoke
+- Ensure local `.env` has `SUPABASE_URL` + `SUPABASE_ANON_KEY` (no `AUTH_PROVIDER=local`)
+- Run API + `make auth-smoke`
+- Open PR `ops/PPT-039` → `main`
 
 ### Prerequisites
 
-- `export PAPITA_ENV=local`
-- Supabase Auth project (`SUPABASE_URL`, `SUPABASE_ANON_KEY` for pass-through)
+- Supabase Auth email/password enabled (disable confirm email for local smoke if needed)
 
 ### Uncommitted / staging notes
 
