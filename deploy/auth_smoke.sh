@@ -64,9 +64,24 @@ if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_ANON_KEY:-}" ]]; then
 fi
 
 SUFFIX="$(python3 -c 'import uuid; print(uuid.uuid4().hex[:10])')"
-SMOKE_EMAIL="auth_smoke_${SUFFIX}@example.local"
-SMOKE_USER="smk_${SUFFIX}"
-SMOKE_PASS='SecurePass1!'
+# Supabase Auth rejects .local / example.* test domains and rate-limits default SMTP.
+# Prefer a real domain you control (or set AUTH_SMOKE_EMAIL to a full address).
+if [[ -n "${AUTH_SMOKE_EMAIL:-}" ]]; then
+  SMOKE_EMAIL="${AUTH_SMOKE_EMAIL}"
+  SMOKE_USER="${AUTH_SMOKE_USERNAME:-smk_${SUFFIX}}"
+else
+  SMOKE_DOMAIN="${AUTH_SMOKE_EMAIL_DOMAIN:-}"
+  if [[ -z "${SMOKE_DOMAIN}" ]]; then
+    log ERROR "Set AUTH_SMOKE_EMAIL or AUTH_SMOKE_EMAIL_DOMAIN in ${ENV_FILE}."
+    log ERROR "Supabase rejects test domains (e.g. example.com / .local)."
+    log ERROR "Also disable Auth → Providers → Email → Confirm email for local smoke,"
+    log ERROR "or configure custom SMTP (default SMTP is rate-limited)."
+    exit 1
+  fi
+  SMOKE_EMAIL="auth_smoke_${SUFFIX}@${SMOKE_DOMAIN}"
+  SMOKE_USER="smk_${SUFFIX}"
+fi
+SMOKE_PASS="${AUTH_SMOKE_PASSWORD:-SecurePass1!}"
 
 log INFO "API base: ${API_BASE}"
 log INFO "Registering smoke user via API pass-through (email=${SMOKE_EMAIL})"
@@ -117,6 +132,15 @@ ACC_CODE="$(
     -H "Authorization: Bearer ${TOKEN}" \
     "${API_BASE}/api/v1/accounts"
 )"
+if [[ "${ACC_CODE}" == "404" ]]; then
+  log ERROR "/accounts returned 404 — the API at ${API_BASE} does not expose domain routers."
+  log ERROR "OpenAPI on that process often only has health/auth/budgets (stale uvicorn/docker image)."
+  log ERROR "Restart the API from this branch, then re-run make auth-smoke:"
+  log ERROR "  export PAPITA_ENV=${PAPITA_ENV}"
+  log ERROR "  poetry run uvicorn papita_txnsapi.main:app --app-dir modules/api/src --reload --host 0.0.0.0 --port 8000"
+  log ERROR "Or: docker compose --env-file environments/${PAPITA_ENV}/.env -f docker/docker-compose.yml up --build api"
+  exit 1
+fi
 if [[ "${ACC_CODE}" != "200" ]]; then
   log ERROR "/accounts failed HTTP ${ACC_CODE}: $(cat /tmp/papita_auth_smoke_accounts.json)"
   exit 1

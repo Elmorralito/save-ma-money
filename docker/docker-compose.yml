@@ -83,10 +83,18 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
+      # App settings (compose --env-file environments/<env>/.env supplies these)
+      PAPITA_ENV: "${PAPITA_ENV:-local}"
+      AUTH_PROVIDER: "${AUTH_PROVIDER:-local}"
+      SUPABASE_URL: "${SUPABASE_URL:-}"
+      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}"
+      SUPABASE_JWT_AUDIENCE: "${SUPABASE_JWT_AUDIENCE:-authenticated}"
       JWT_SECRET_KEY: "${JWT_SECRET_KEY:-replace-with-long-random-secret-min-32-chars}"
+      # Tenant DB stays on Compose Postgres (Auth users live in Supabase Auth, not this DB)
       DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["*"]}'
+      DATABASE_POOL_SIZE: "${DATABASE_POOL_SIZE:-5}"
     depends_on:
       postgres-db:
         condition: service_healthy

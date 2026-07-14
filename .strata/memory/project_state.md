@@ -1,28 +1,24 @@
 ---
 name: save-ma-money State
-description: Register/login use supabase-py Auth; JWKS verify on protected routes.
+description: Compose API injects SUPABASE_*; Auth smoke needs real email domain.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Session — 2026-07-13.** `/auth/register` and `/auth/login` call Supabase Auth
-(`sign_up` / `sign_in_with_password`). `SUPABASE_URL` auto-selects `AUTH_PROVIDER=supabase`.
+Docker API lacked `AUTH_PROVIDER` / `SUPABASE_*`, so registers wrote only to local
+Postgres. Compose now injects Auth env. Supabase rejects `.local` / `example.com`
+and rate-limits default SMTP — set `AUTH_SMOKE_EMAIL` and disable Confirm email.
 
 ### Last completed (this session)
 
-- `supabase` dependency + `core/supabase_auth.py` client helpers
-- Router wires Auth module; local HS256 kept for unit tests
-- Env example Auth-first under `environments/local/`
+- `docker-compose.yml` passes Supabase Auth settings into `api`
+- Auth smoke requires `AUTH_SMOKE_EMAIL` or `AUTH_SMOKE_EMAIL_DOMAIN`
 
 ### Next action
 
-- Ensure local `.env` has `SUPABASE_URL` + `SUPABASE_ANON_KEY` (no `AUTH_PROVIDER=local`)
-- Run API + `make auth-smoke`
-- Open PR `ops/PPT-039` → `main`
-
-### Prerequisites
-
-- Supabase Auth email/password enabled (disable confirm email for local smoke if needed)
+- Add `AUTH_SMOKE_EMAIL=you+smoke@yourdomain.com` to `environments/local/.env`
+- Auth → Email → disable Confirm email (local)
+- `make auth-smoke` and confirm user appears in Supabase Auth dashboard
 
 ### Uncommitted / staging notes
 

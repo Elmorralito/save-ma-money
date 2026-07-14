@@ -53,7 +53,7 @@ class TestSupabaseAuthSmoke:
         """Pass-through register/login then protected me + accounts."""
         suffix = uuid.uuid4().hex[:8]
         username = f"smk_{suffix}"
-        email = f"smk_{suffix}@example.local"
+        email = f"smk_{suffix}@example.com"
         reg = auth_client.post(
             "/api/v1/auth/register",
             json={"username": username, "email": email, "password": _VALID_PASSWORD},
