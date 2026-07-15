@@ -8,11 +8,187 @@
 
 - [ ] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and CI dual-target gate (B0 + B1)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary:
 
-- [ ] [_**[#49](https://github.com/Elmorralito/save-ma-money/issues/49)**_] :: **ops/PPT-039: [api] Supabase B1 production wiring and dual-environment validation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:05+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#49](https://github.com/Elmorralito/save-ma-money/issues/49)**_] :: **feat/PPT-039: [api] Supabase Auth (replace local JWT issuance)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:05+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-15 17:45:38+00:00</sub>_
+
+  > **Closed by** [_**#91**](https://github.com/Elmorralito/save-ma-money/pull/91): **ops/PPT-039: [api] Supabase Auth (JWKS, OAuth, tenant link)**
+
+  > **Branch:** ops/PPT-039 (tracks origin/ops/PPT-039, clean)
+
+  > **Base:** origin/main (4f8a344…) · **6 commits** · **~92 files**
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Reissues **PPT-039 / #49** as **Supabase Auth ownership** (not pooler DB): FastAPI verifies Supabase JWTs, delegates register/login/refresh/logout/OAuth to GoTrue, and links papita_transactions.users.id to Auth sub. Local HS256 remains **tests-only**. Unifies PAPITA_ENV under environments/ and documents Auth-first MVP.
+
+  >
+
+  > **Out of scope:** requiring Supabase Postgres / transaction pooler for MVP; CI Supabase secrets hardening (**#50 / PPT-040**); live browser SSO polish beyond what unit tests cover.
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Environments / ops**
+
+  > - environments/{local,staging,production}/.env.example, environments/README.md, settings/PAPITA_ENV loading
+
+  > - Compose injects SUPABASE_* (incl. service role / OAuth) into the API service
+
+  > - deploy/auth_smoke.sh, B1/deploy helpers, untrack generated docs/coverage.xml
+
+  >
+
+  > **Model / migrations**
+
+  > - Alembic: link users to Auth + display_name / phone / provider_type
+
+  > - UsersService.ensure_from_auth_subject (provision, soft-delete guard, profile refresh)
+
+  > - ProviderType enum (email / google / github)
+
+  >
+
+  > **API**
+
+  > - JWKS verify + tenant provision; register/login via supabase-py
+
+  > - Google/GitHub OAuth (PKCE) + SSO token handoff; orphan Auth cleanup; client cache
+
+  > - Auth health probe on /health, /health/auth, /health/ready
+
+  > - Rate limits / cookie Secure / allowlisted redirect_to
+
+  >
+
+  > **Docs / memory**
+
+  > - docs/design/PPT-031-auth-contract.md, ARCHITECTURE Part VI, PPT-039 issue write-ups
+
+  > - Strata learning supabase-auth-ownership
+
+  >
+
+  > **Tests**
+
+  > - Expanded Auth/Supabase/health/settings coverage; model ensure_from_auth cases
+
+  >
+
+  > ## Commits
+
+  >
+
+  > | Hash | Subject |
+
+  > |------|---------|
+
+  > | 255bf82 | feat(api): unify environments and reissue PPT-039 as Supabase Auth |
+
+  > | 51822cc | feat(api): verify Supabase Auth JWTs and provision tenants (PPT-039) |
+
+  > | 7820724 | docs(api): finish PPT-039 Auth contract and auth-smoke entrypoint |
+
+  > | ade30ca | feat(api): register and login via Supabase Auth client |
+
+  > | 34eabad | fix(api): pass Supabase Auth env into Compose API |
+
+  > | ecb613f | feat(api): complete Supabase Auth OAuth, profile sync, and hardening (PPT-039) |
+
+  >
+
+  > _(Tip commit message still carries a local Draft: prefix from drafting — strip on squash/edit if desired.)_
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > Observed in development on this branch (not claiming remote CI green — gh GraphQL was forbidden here):
+
+  >
+
+  > - [x] Targeted unit tests passed locally during Auth work (e.g. test_supabase_auth_client, test_auth_supabase, test_users ensure/profile, health Auth paths)
+
+  > - [x] Pre-commit **pylint** failures on Auth modules fixed (rated 10/10 on those files after refactor)
+
+  > - [x] Alembic migrate blocker (ProviderType / postponed annotations) fixed for Docker migrate
+
+  > - [x] Earlier Docker/auth-fix smoke against a running stack passed after Desktop was up (ephemeral smoke scripts later removed)
+
+  > - [ ] Full pre-commit run --all-files / GitHub Actions status: **not verified in this pass**
+
+  > - [ ] Staging/prod migrate + end-to-end OAuth browser flow: **not claimed here**
+
+  > - [ ] make auth-smoke with a real AUTH_SMOKE_EMAIL: **optional; needs configured env**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] ./deploy/alembic.sh --env local (B0) applies both new Auth migrations cleanly
+
+  > - [ ] Register + login with email/password against real Supabase Auth; JWT works on a protected route (GET /auth/me)
+
+  > - [ ] Soft-deleted / inactive Auth-linked user cannot be reactivated via provision
+
+  > - [ ] Google (and/or GitHub) OAuth: GET /auth/oauth/{provider}?follow=true → callback → tokens; PKCE cookies cleared
+
+  > - [ ] Password login after Google signup does **not** overwrite provider_type to email
+
+  > - [ ] Orphan cleanup: provision failure after Auth signup deletes Auth user when service role set (register always; login only if recent)
+
+  > - [ ] /health, /health/auth, /health/ready reflect Auth up/down; local provider skips Auth as healthy
+
+  > - [ ] Compose API receives SUPABASE_URL / anon / service-role / OAuth redirect env
+
+  > - [ ] Confirm environments/**/.env (secrets) are **not** in the PR
+
+  > - [ ] CI secrets path deferred to #50 — note any local-only Auth keys in review comments
+
+  >
+
+  > ## Risks and caveats
+
+  >
+
+  > - **Migrations change users identity** (Auth sub alignment + profile columns). Run on a backup / disposable DB first; existing local password rows need a clear upgrade path.
+
+  > - **SUPABASE_SERVICE_ROLE_KEY** enables Admin orphan delete — server-only; misconfiguration skips cleanup and can leave Auth orphans.
+
+  > - **OAuth redirect_to allowlist** — only API callback + SUPABASE_OAUTH_REDIRECT_TO; mis-set env breaks IdP redirect.
+
+  > - **Email confirm / session null** on signup: API may return user without tokens depending on Supabase project settings.
+
+  > - Tip commit also includes large doc/coverage cleanup and docstring-only file churn — reviewers can skim those separately from Auth behavior.
+
+  > - **Blocks #50 (PPT-040)** for CI Auth secrets; pooler DB remains optional ops, not this PR’s AC.
+
+  >
+
+  > ## References
+
+  >
+
+  > - GitHub **#49** (PPT-039) · Epic **#42** (PPT-032) · Program **#28** (PPT-031)
+
+  > - [docs/issues/PPT-039-supabase-auth-reissue.md](docs/issues/PPT-039-supabase-auth-reissue.md)
+
+  > - [docs/design/PPT-031-auth-contract.md](docs/design/PPT-031-auth-contract.md)
+
+  > - Auth ownership learning: .strata/memory/learnings/supabase-auth-ownership.md
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:49:15+00:00</sub>_
 
