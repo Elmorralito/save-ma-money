@@ -313,9 +313,11 @@ class LinkedEntitiesService(BaseService):
                 field_value = getattr(dto, field_name, None)
                 if field_value is None:
                     continue
-                linked_dtos[field_name] = (
-                    link.other_entity_service.get(obj=field_value, owner=owner, **kwargs) or field_value
-                )
+                resolved = link.other_entity_service.get(obj=field_value, owner=owner, **kwargs)
+                if resolved is None:
+                    linked_dtos[field_name] = field_value
+                else:
+                    linked_dtos[field_name] = resolved
             if linked_dtos:
                 dto = self.dto_type.model_validate(dto.model_dump(mode="python") | linked_dtos)
 

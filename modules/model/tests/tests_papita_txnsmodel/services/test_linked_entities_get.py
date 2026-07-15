@@ -109,6 +109,31 @@ class TestLinkedEntitiesServiceGet:
 
         assert result is not None
         assert result.from_account_id == from_id
+        accounts_svc.get.assert_called_once_with(obj=from_id, owner=owner, include_linked_dtos=True)
+
+    def test_get_uses_resolved_dto_when_linked_service_hits(self, owner: UsersDTO) -> None:
+        """When linked get returns a DTO, embed it on the transaction field."""
+        service = _transactions_service()
+        from_id = uuid.uuid4()
+        expense = _expense(owner_id=owner.id, from_account_id=from_id)
+        account = AccountsDTO(
+            id=from_id,
+            name="Hit Wallet",
+            owner_id=owner.id,
+            account_kind=AccountKind.OTHER_ASSET,
+            ledger_side=LedgerSide.ASSET,
+            currency="USD",
+        )
+        accounts_svc = _accounts_service()
+        accounts_svc.get = MagicMock(return_value=account)
+        service.load_link_services({"from_account_id": accounts_svc})
+
+        with patch.object(BaseService, "get", return_value=expense):
+            result = service.get(obj=expense.id, owner=owner, include_linked_dtos=True)
+
+        assert result is not None
+        assert result.from_account_id is account
+        assert result.from_account_id.name == "Hit Wallet"
 
     def test_get_skips_links_when_include_linked_dtos_false(self, owner: UsersDTO) -> None:
         """include_linked_dtos=False returns the bare DTO without resolving FKs."""
