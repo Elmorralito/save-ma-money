@@ -48,6 +48,8 @@ PAPITA_ENV=staging make b1-smoke
 
 `make b1-smoke` **fails with a clear message** if `environments/staging/.env` is missing, points at local Docker (B0), or the pooler rejects `SELECT 1`. Plain `pytest` still **skips** when the gate fails so CI stays green without secrets ([#50](https://github.com/Elmorralito/save-ma-money/issues/50)).
 
+**CI (optional):** configure repo secret `SUPABASE_B1_DATABASE_URL` (pooler URL). Workflow [`.github/workflows/supabase-b1-smoke.yml`](../../../.github/workflows/supabase-b1-smoke.yml) runs on push to `main` and `workflow_dispatch`; skips cleanly when the secret is unset.
+
 ## Health contract
 
 | Probe                     | DB required | Fail surface                                       |

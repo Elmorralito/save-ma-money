@@ -43,7 +43,11 @@ else
   exit 2
 fi
 
-log INFO "Validating B1 pooler DATABASE_URL..."
+if [[ -n "${SUPABASE_B1_DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="${SUPABASE_B1_DATABASE_URL}"
+fi
+
+log INFO "Validating B1 pooler URL (SUPABASE_B1_DATABASE_URL or DATABASE_URL)..."
 python -m poetry run python - <<'PY'
 from __future__ import annotations
 
@@ -68,8 +72,8 @@ status = b1_gate_status()
 print(status.message)
 if not status.ok:
     print(
-        "\nFix: put a Supabase *transaction pooler* URL in environments/$PAPITA_ENV/.env\n"
-        "  PAPITA_ENV=staging make b1-smoke\n"
+        "\nFix: set SUPABASE_B1_DATABASE_URL (or DATABASE_URL) to a Supabase transaction pooler URL\n"
+        "  in environments/$PAPITA_ENV/.env, then: PAPITA_ENV=staging make b1-smoke\n"
         "Local Docker (PAPITA_ENV=local) will not pass this gate — use staging/production.",
         file=sys.stderr,
     )
@@ -81,6 +85,14 @@ if not os.environ.get("JWT_SECRET_KEY"):
         file=sys.stderr,
     )
 PY
+
+MIGRATIONS_URL="${DATABASE_URL_MIGRATIONS:-}"
+if [[ -n "${MIGRATIONS_URL}" ]] && [[ "${MIGRATIONS_URL}" != *"<"* ]]; then
+  log INFO "Running Alembic upgrade on DATABASE_URL_MIGRATIONS before B1 smoke..."
+  python -m poetry run alembic -c modules/model/alembic.ini -x "dbUrl=${MIGRATIONS_URL}" upgrade head
+else
+  log INFO "DATABASE_URL_MIGRATIONS unset or placeholder — skipping Alembic (schema must exist on pooler DB)."
+fi
 
 log INFO "Running modules/api/tests/test_supabase_b1_smoke.py"
 python -m poetry run pytest modules/api/tests/test_supabase_b1_smoke.py -q "$@"

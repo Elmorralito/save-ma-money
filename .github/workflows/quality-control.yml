@@ -75,6 +75,7 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
           JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters
+          AUTH_PROVIDER: local
           AUTH_RATE_LIMIT_ENABLED: "false"
         run: |
           /bin/bash "${GITHUB_WORKSPACE}/deploy/test.sh"

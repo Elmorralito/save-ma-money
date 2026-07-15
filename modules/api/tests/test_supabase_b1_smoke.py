@@ -23,14 +23,14 @@ from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "model" / "tests"))
 
-from postgres_gate import postgres_url, requires_supabase_b1
+from postgres_gate import b1_database_url, requires_supabase_b1
 
 from papita_txnsapi.config.settings import get_settings, postgres_engine_kwargs
 from papita_txnsapi.main import create_app
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.services.users import UsersService
 
-POSTGRES_URL = postgres_url()
+POSTGRES_URL = b1_database_url()
 
 _VALID_PASSWORD = "SecurePass1!"
 

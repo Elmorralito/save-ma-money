@@ -21,7 +21,7 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 ### Pytest Configuration
 
 - Use `pytest` with coverage reporting.
-- Coverage paths: `./modules/model/tests`, `./modules/registrar/tests`, `./modules/api/tests`.
+- Coverage paths (source packages, Codecov-aligned): `./modules/model/src`, `./modules/api/src`.
 - Coverage report: XML format to `docs/coverage.xml`.
 - Import mode: `importlib`.
 - Test paths: `./modules/api/tests`, `./modules/model/tests`, `./modules/registrar/tests`.

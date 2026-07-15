@@ -57,25 +57,23 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 
 **Current tree:** runnable FastAPI app with health probes, auth (register/login/me), shared infrastructure, and deferred 501 stubs ([#45](https://github.com/Elmorralito/save-ma-money/issues/45), [#44](https://github.com/Elmorralito/save-ma-money/issues/44)).
 
-| Implemented    | Location                                                                             |
-| :------------- | :----------------------------------------------------------------------------------- |
-| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers           |
-| Settings / env | `src/papita_txnsapi/config/settings.py`                                              |
-| JWT helpers    | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)                        |
-| Health (P1)    | `src/papita_txnsapi/routers/v1/health.py`                                            |
-| Auth (P2)      | `src/papita_txnsapi/routers/v1/auth.py` — register, login, `/me`, 501 refresh/logout |
-| Auth deps      | `src/papita_txnsapi/dependencies/auth.py` — `get_current_owner()`                    |
-| Shared schemas | `src/papita_txnsapi/schemas/common.py`, `converters.py`, `auth.py`                   |
-| Dependencies   | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`, `tenant.py`          |
-| Deferred 501   | `src/papita_txnsapi/routers/v1/budgets.py`, auth refresh/logout                      |
-| Route tests    | `modules/api/tests/` (26 tests)                                                      |
-| Logging        | `src/papita_txnsapi/config/logger.yaml`                                              |
+| Implemented        | Location                                                                             |
+| :----------------- | :----------------------------------------------------------------------------------- |
+| FastAPI app        | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers           |
+| Settings / env     | `src/papita_txnsapi/config/settings.py`                                              |
+| JWT helpers        | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)                        |
+| Health (P1)        | `src/papita_txnsapi/routers/v1/health.py`                                            |
+| Auth (P2)          | `src/papita_txnsapi/routers/v1/auth.py` — register, login, `/me`, 501 refresh/logout |
+| Auth deps          | `src/papita_txnsapi/dependencies/auth.py` — `get_current_owner()`                    |
+| Shared schemas     | `src/papita_txnsapi/schemas/common.py`, `converters.py`, `auth.py`                   |
+| Dependencies       | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`, `tenant.py`          |
+| Deferred 501       | `src/papita_txnsapi/routers/v1/budgets.py`, auth refresh/logout                      |
+| Route + live tests | `modules/api/tests/` (unit, B0 live-DB, optional B1 pooler smoke)                    |
+| Logging            | `src/papita_txnsapi/config/logger.yaml`                                              |
 
-| Not yet implemented               | Track via                                                                                                                   |
-| :-------------------------------- | :-------------------------------------------------------------------------------------------------------------------------- |
-| Domain routers (accounts, …)      | [#46](https://github.com/Elmorralito/save-ma-money/issues/46)–[#48](https://github.com/Elmorralito/save-ma-money/issues/48) |
-| Supabase Auth (replace local JWT) | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                               |
-| Full API integration CI           | [#50](https://github.com/Elmorralito/save-ma-money/issues/50)                                                               |
+| Remaining close-out              | Track via                                                                                      |
+| :------------------------------- | :--------------------------------------------------------------------------------------------- |
+| PPT-040 integration CI dual-gate | [#50](https://github.com/Elmorralito/save-ma-money/issues/50) — B0 in QC; optional B1 workflow |
 
 **Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
 
@@ -265,7 +263,15 @@ PAPITA_ENV=staging make b1-smoke
 
 Pooler modes: [PPT-031-C §2.2](../../docs/issues/PPT-031-C-supabase-decision-brief.md). **MVP Auth** is Supabase Auth — [#49](https://github.com/Elmorralito/save-ma-money/issues/49) / [reissue note](../../docs/issues/PPT-039-supabase-auth-reissue.md).
 
-**Testing today:** `poetry run pytest modules/api/tests` (health, pagination, budgets 501) plus `modules/model/tests`.
+### Testing (PPT-040)
+
+| Gate                       | How to run                                                                                                                                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                |
+| :------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B0** (Docker Postgres)   | `export DATABASE_URL=…` then `poetry run pytest modules/api/tests` or `./deploy/test.sh`                                                                  | Required in CI (`quality-control.yml`). Uses `AUTH_PROVIDER=local`.                                                                                                                                                                                                                                                                                                                                                  |
+| **B1** (optional pooler)   | `PAPITA_ENV=staging make b1-smoke` or `poetry run pytest modules/api/tests/test_supabase_b1_smoke.py -q` with pooler `SUPABASE_B1_DATABASE_URL` (`:6543`) | Skips in plain pytest without a pooler URL. One-time schema: set `DATABASE_URL_MIGRATIONS` (`:5432`) and run `./deploy/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"`. CI: [`.github/workflows/supabase-b1-smoke.yml`](../../.github/workflows/supabase-b1-smoke.yml) on `main` / `workflow_dispatch` when repo secrets `SUPABASE_B1_DATABASE_URL` (+ optional `SUPABASE_B1_DATABASE_URL_MIGRATIONS`) are set. |
+| **Supabase Auth** (manual) | Run API with `AUTH_PROVIDER=supabase`, then `make auth-smoke`                                                                                             | Not a B0 CI gate; see [PPT-039 reissue](../../docs/issues/PPT-039-supabase-auth-reissue.md).                                                                                                                                                                                                                                                                                                                         |
+
+Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `test_accounts_categories_live_db.py`, `test_transactions_movements_live_db.py`, `test_reports_live_db.py`. Coverage is collected from `modules/api/src` and `modules/model/src` (Codecov `docs/coverage.xml`).
 
 ---
 
