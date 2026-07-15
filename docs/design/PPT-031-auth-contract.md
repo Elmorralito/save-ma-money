@@ -5,17 +5,16 @@
 **Status (2026-07-13):** G5 revised for **PPT-039** — Supabase Auth is MVP. Local HS256 is transitional/tests only.
 
 | Topic               | Decision                                                                                                                                                       |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Access tokens       | Supabase JWT; API verifies via JWKS (`AUTH_PROVIDER=supabase`, `SUPABASE_URL`)                                                                                 |
 | Tenant key          | JWT `sub` → `papita_transactions.users.id` (provision-on-first-seen)                                                                                           |
 | Login identity      | **Email** is canonical; `users.username` is a derived handle (`USERNAME_REGEX`)                                                                                |
 | Register / login    | Prefer client → Supabase Auth; API pass-through with `SUPABASE_ANON_KEY`                                                                                       |
 | Auth errors         | Mapped to HTTP (`409` duplicate email, `429` rate limit, `401` bad credentials)                                                                                |
 | Orphan cleanup      | If Auth user is created but Papita provision fails: Admin delete via `SUPABASE_SERVICE_ROLE_KEY` (register always; login only if Auth user created within 15m) |
-| Google / GitHub SSO | Server PKCE: `GET /auth/oauth/{provider}` + `POST                                                                                                              | GET /auth/oauth/callback` (`exchange_code_for_session`); token handoff via `POST /auth/sso` |
-
-| Refresh / logout | `POST /auth/refresh` + `POST /auth/logout` when `AUTH_PROVIDER=supabase` |
-| Database | Any Postgres (Docker B0 or hosted); **not** coupled to Auth |
+| Google / GitHub SSO | Server PKCE: `GET /auth/oauth/{provider}` plus `POST` or `GET /auth/oauth/callback` (`exchange_code_for_session`); token handoff via `POST /auth/sso`          |
+| Refresh / logout    | `POST /auth/refresh` + `POST /auth/logout` when `AUTH_PROVIDER=supabase`                                                                                       |
+| Database            | Any Postgres (Docker B0 or hosted); **not** coupled to Auth                                                                                                    |
 
 ## OAuth SSO (dashboard + server PKCE)
 

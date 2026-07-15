@@ -16,9 +16,13 @@ Compose API now injects `AUTH_PROVIDER` / `SUPABASE_*`. Smoke needs a real email
 - Supabase Auth client register/login + JWKS verify
 - Compose Auth env wiring; smoke email guidance
 - Learning: `learnings/supabase-auth-ownership.md`
+- PR [#91](https://github.com/Elmorralito/save-ma-money/pull/91) babysit: CI fixes
+  (cryptography 48.0.1, migration comment, gitleaks allowlist, prettier Auth contract);
+  dismissed CodeQL OAuth-cookie FPs
 
 ### Next action
 
+- Confirm [#91](https://github.com/Elmorralito/save-ma-money/pull/91) CI green / merge-ready
 - Set `AUTH_SMOKE_EMAIL` in `environments/local/.env`
 - Disable Confirm email (local) → `make auth-smoke` → users appear in Supabase Auth
 - Do not reintroduce local password JWT as default

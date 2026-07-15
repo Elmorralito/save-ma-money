@@ -38,7 +38,7 @@ def upgrade() -> None:
             sa.String(length=32),
             nullable=False,
             server_default=sa.text("'email'"),
-            comment="Signup channel: email | phone",
+            comment="Signup channel: email | google | github",
         ),
         schema=SCHEMA_NAME,
     )

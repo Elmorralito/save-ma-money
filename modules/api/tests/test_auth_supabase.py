@@ -607,7 +607,7 @@ class TestSupabaseAuthRoutes:
         AuthSecurityManager.reset_instances()
 
         client = TestClient(create_app())
-        client.cookies.set("papita_oauth_cv", "pkce-verifier-0123456789abcdef")
+        client.cookies.set("papita_oauth_cv", "test-pkce-verifier-placeholder")
         response = client.get("/api/v1/auth/oauth/callback", params={"code": "auth-code"})
         assert response.status_code == 400
         assert "provider cookie" in response.json()["detail"]

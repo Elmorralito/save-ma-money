@@ -163,6 +163,12 @@ def _set_oauth_pkce_cookies(
     redirect_to: str,
     secure: bool,
 ) -> None:
+    """Store PKCE state in short-lived HttpOnly cookies for the browser callback.
+
+    ``redirect_to`` must already be allowlisted via ``_resolve_oauth_redirect_to``.
+    Cookies are HttpOnly, SameSite=Lax, path-scoped, and optionally Secure — not
+    clear-text password storage; the verifier is bound to the OAuth handshake.
+    """
     cookie_kwargs = {
         "max_age": _OAUTH_COOKIE_MAX_AGE,
         "httponly": True,
@@ -170,6 +176,7 @@ def _set_oauth_pkce_cookies(
         "secure": secure,
         "path": _OAUTH_COOKIE_PATH,
     }
+    # PKCE verifier + allowlisted redirect for GET /oauth/callback (browser flow).
     response.set_cookie(key=_OAUTH_VERIFIER_COOKIE, value=code_verifier, **cookie_kwargs)
     response.set_cookie(key=_OAUTH_PROVIDER_COOKIE, value=provider.value, **cookie_kwargs)
     response.set_cookie(key=_OAUTH_REDIRECT_COOKIE, value=redirect_to, **cookie_kwargs)

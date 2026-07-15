@@ -19,4 +19,6 @@ What does NOT qualify (keep noise out):
 
 ---
 
-_No entries yet._
+## 2026-07-15 — PPT-039 PR #91 babysit
+
+- **PPT-039 / #91** — Dismissed CodeQL alerts 4–5 (OAuth PKCE cookie FPs) and replied on GHAS review threads ([PR #91](https://github.com/Elmorralito/save-ma-money/pull/91)). Clears merge-blocking security check noise for intentional PKCE HttpOnly cookies.
