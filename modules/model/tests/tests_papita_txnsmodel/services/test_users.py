@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.enums import ProviderType
 from papita_txnsmodel.services.users import UsersService
 
 VALID_PASSWORD = "SecurePass1!"
@@ -19,6 +20,7 @@ def _stored_user(**overrides) -> UsersDTO:
         "username": "johndoe",
         "email": VALID_EMAIL,
         "password": "$argon2$hash",
+        "auth_provider": "local",
         "active": True,
         "deleted_at": None,
     }
@@ -165,6 +167,17 @@ class TestVerifyCredentials:
         assert service.verify_credentials("johndoe", "WrongPass1!") is None
 
     @patch.object(UsersService, "ensure_password_manager")
+    def test_verify_credentials_rejects_supabase_user(self, _mock_ensure, users_service):
+        """Supabase-managed rows cannot authenticate via local password verify."""
+        service, repo = users_service
+        repo.get_record_from_attributes.return_value = _stored_user(
+            auth_provider="supabase",
+            password=None,
+        )
+
+        assert service.verify_credentials("johndoe", VALID_PASSWORD) is None
+
+    @patch.object(UsersService, "ensure_password_manager")
     def test_verify_credentials_inactive_user(self, _mock_ensure, users_service):
         """Inactive users cannot authenticate."""
         service, repo = users_service
@@ -210,6 +223,9 @@ class TestRegister:
 
         assert result is expected
         mock_create.assert_called_once()
+        created_arg = mock_create.call_args.kwargs["obj"]
+        assert created_arg.auth_provider == "local"
+        assert created_arg.password is not None
 
     @patch.object(UsersService, "ensure_password_manager")
     @patch.object(UsersService, "create")
@@ -247,3 +263,98 @@ class TestRegister:
 
         with pytest.raises(ValueError, match="Email already registered"):
             service.register(username="newuser", email="taken@example.local", password=VALID_PASSWORD)
+
+
+class TestEnsureFromAuthSubject:
+    """Provision-on-first-seen must not revive soft-deleted tenants."""
+
+    @patch.object(UsersService, "create")
+    @patch.object(UsersService, "get_owner", return_value=None)
+    def test_rejects_inactive_primary_key(self, _mock_get_owner, mock_create, users_service):
+        """Inactive rows for the Auth subject must not be upserted back to active."""
+        service, repo = users_service
+        subject = uuid.uuid4()
+        repo.get_record_by_id.return_value = _stored_user(id=subject, active=False, auth_provider="supabase")
+
+        with pytest.raises(ValueError, match="User is inactive or deleted"):
+            service.ensure_from_auth_subject(subject=subject, email="john@example.local")
+
+        mock_create.assert_not_called()
+
+    @patch.object(UsersService, "create")
+    @patch.object(UsersService, "get_owner", return_value=None)
+    def test_rejects_soft_deleted_primary_key(self, _mock_get_owner, mock_create, users_service):
+        """Soft-deleted Auth subjects stay banned across login/OAuth."""
+        from datetime import datetime, timezone
+
+        service, repo = users_service
+        subject = uuid.uuid4()
+        repo.get_record_by_id.return_value = _stored_user(
+            id=subject,
+            active=False,
+            deleted_at=datetime.now(timezone.utc),
+            auth_provider="supabase",
+        )
+
+        with pytest.raises(ValueError, match="User is inactive or deleted"):
+            service.ensure_from_auth_subject(subject=subject, email="john@example.local")
+
+        mock_create.assert_not_called()
+
+    @patch.object(UsersService, "create")
+    @patch.object(UsersService, "_lookup_by_identifier", return_value=None)
+    def test_refreshes_profile_fields_on_existing(self, _mock_lookup, mock_create, users_service):
+        """Return visits update display_name / phone / provider when provided."""
+        service, _repo = users_service
+        subject = uuid.uuid4()
+        existing = _stored_user(
+            id=subject,
+            email="john@example.local",
+            password=None,
+            auth_provider="supabase",
+            display_name=None,
+            phone=None,
+            provider_type=ProviderType.EMAIL,
+        )
+        updated = _stored_user(
+            id=subject,
+            email="john@example.local",
+            password=None,
+            auth_provider="supabase",
+            display_name="John Doe",
+            phone="+15551212",
+            provider_type=ProviderType.GOOGLE,
+        )
+        mock_create.return_value = updated
+        with patch.object(UsersService, "get_owner", return_value=existing):
+            result = service.ensure_from_auth_subject(
+                subject=subject,
+                email="john@example.local",
+                display_name="John Doe",
+                phone="+15551212",
+                provider_type=ProviderType.GOOGLE,
+            )
+        assert result is updated
+        mock_create.assert_called_once()
+        written = mock_create.call_args.kwargs["obj"]
+        assert written.display_name == "John Doe"
+        assert written.phone == "+15551212"
+        assert written.provider_type == ProviderType.GOOGLE
+
+    @patch.object(UsersService, "create")
+    def test_skips_provider_refresh_when_omitted(self, mock_create, users_service):
+        """Password/login return visits must not overwrite OAuth provider_type."""
+        service, _repo = users_service
+        subject = uuid.uuid4()
+        existing = _stored_user(
+            id=subject,
+            email="john@example.local",
+            password=None,
+            auth_provider="supabase",
+            display_name="Ada",
+            provider_type=ProviderType.GOOGLE,
+        )
+        with patch.object(UsersService, "get_owner", return_value=existing):
+            result = service.ensure_from_auth_subject(subject=subject, email="john@example.local")
+        assert result is existing
+        mock_create.assert_not_called()

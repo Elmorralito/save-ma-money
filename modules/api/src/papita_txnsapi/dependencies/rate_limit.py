@@ -1,12 +1,13 @@
 """Rate-limit dependencies for authentication routes.
 
-FastAPI dependencies that enforce per-IP sliding-window limits on login and register
-endpoints. Emits ``X-RateLimit-*`` and ``Retry-After`` headers; no-ops when rate
-limiting is disabled in settings.
+FastAPI dependencies that enforce per-IP sliding-window limits on login, register,
+OAuth/SSO, and refresh endpoints. Emits ``X-RateLimit-*`` and ``Retry-After``
+headers; no-ops when rate limiting is disabled in settings.
 
 Key exports:
     enforce_auth_login_rate_limit: Guard ``/auth/login`` attempts.
     enforce_auth_register_rate_limit: Guard ``/auth/register`` attempts.
+    enforce_auth_oauth_rate_limit: Guard OAuth start/callback/SSO/refresh.
 """
 
 from __future__ import annotations
@@ -121,4 +122,25 @@ def enforce_auth_register_rate_limit(
         settings,
         scope="auth-register",
         limit=settings.AUTH_REGISTER_RATE_LIMIT_PER_MINUTE,
+    )
+
+
+def enforce_auth_oauth_rate_limit(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Enforce per-IP rate limits on OAuth start/callback, SSO, and refresh.
+
+    Args:
+        request: Incoming OAuth/SSO/refresh request.
+        settings: Injected API settings with OAuth limit and window configuration.
+
+    Raises:
+        HTTPException: 429 when attempts exceed ``AUTH_OAUTH_RATE_LIMIT_PER_MINUTE``.
+    """
+    _enforce_rate_limit(
+        request,
+        settings,
+        scope="auth-oauth",
+        limit=settings.AUTH_OAUTH_RATE_LIMIT_PER_MINUTE,
     )

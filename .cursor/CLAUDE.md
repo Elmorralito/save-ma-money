@@ -10,16 +10,16 @@ Project memory is repo-owned under `.strata/` (strata format, `layout_version: 3
 
 ## Claude Code quick context
 
-| Topic        | Summary                                                                                                                                                                             |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repo         | Python 3.12 Poetry monorepo — financial transaction data                                                                                                                            |
-| Packages     | `papita-txnsmodel` (implemented), `papita-txnsapi` (FastAPI MVP — routers wired)                                                                                                    |
-| DB           | PostgreSQL / schema `papita_transactions` — no new DuckDB work                                                                                                                      |
-| API status   | Runnable app: health, auth, accounts, categories, transactions, movements, reports ([#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic)                             |
-| Active work  | PPT-038 reports wired ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)); PPT-040 tests/CI dual-target ([#50](https://github.com/Elmorralito/save-ma-money/issues/50)) |
-| Design docs  | `docs/design/` (PPT-031 program), `docs/issues/` (briefs)                                                                                                                           |
-| Agent memory | `.strata/` — use strata plugin commands below                                                                                                                                       |
-| Adapters     | Canonical: `.cursor/AGENTS.md` + `.cursor/CLAUDE.md`; Strata validates `.agents/` symlinks                                                                                          |
+| Topic        | Summary                                                                                                                                                           |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Repo         | Python 3.12 Poetry monorepo — financial transaction data                                                                                                          |
+| Packages     | `papita-txnsmodel` (implemented), `papita-txnsapi` (FastAPI MVP — routers wired)                                                                                  |
+| DB           | PostgreSQL / schema `papita_transactions` — no new DuckDB work                                                                                                    |
+| API status   | Runnable app: health, auth, accounts, categories, transactions, movements, reports ([#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic)           |
+| Active work  | PPT-039 Supabase Auth ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); PPT-040 CI ([#50](https://github.com/Elmorralito/save-ma-money/issues/50)) |
+| Design docs  | `docs/design/` (PPT-031 program), `docs/issues/` (briefs)                                                                                                         |
+| Agent memory | `.strata/` — use strata plugin commands below                                                                                                                     |
+| Adapters     | Canonical: `.cursor/AGENTS.md` + `.cursor/CLAUDE.md`; Strata validates `.agents/` symlinks                                                                        |
 
 ---
 

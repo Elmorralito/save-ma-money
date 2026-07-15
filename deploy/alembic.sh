@@ -5,12 +5,12 @@ DOCKER_RM_FLAG=0
 USE_DOCKER_FLAG=1
 DB_URL=
 ENV_FILE=
+PAPITA_ENV_NAME=
 ALEMBIC_VERSION=
 MESSAGE=
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
 DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
-DEFAULT_DB_ENV_FILE="${PROJECT_PATH}/docker/database/.env"
 source "${PROJECT_PATH}/deploy/utils.sh"
 
 usage() {
@@ -21,6 +21,9 @@ PostgreSQL migration utility (Alembic via Poetry) with Docker Compose for local 
 
 By default, upgrade/downgrade/version start Docker Postgres from docker/database/
 unless --url or --skip-docker is set. DuckDB is not supported.
+
+Environment files live under environments/<name>/.env (see environments/README.md).
+Default PAPITA_ENV=local. Override with --env NAME or PAPITA_ENV.
 
 ACTIONS:
     version, autogenerate               Generate a new migration script
@@ -33,8 +36,9 @@ ACTIONS:
 OPTIONS:
     --message, --slug, -m MESSAGE       Migration message (version/autogenerate)
     --url, -u URL                       PostgreSQL SQLAlchemy URL (skips Docker)
+    --env NAME                          Environment name: local|staging|production
+    --env-file, -ef FILE                Explicit env file (overrides --env / PAPITA_ENV)
     --skip-docker                       Use env file DB vars; do not start Compose
-    --env-file, -ef FILE                Env file (default: docker/database/.env)
     --alembic-version, --version, -av VER
                                         Downgrade target (default: head^1)
     --docker-compose-file, -dcf FILE    Compose file (default: docker/database/docker-compose.yml)
@@ -43,17 +47,20 @@ OPTIONS:
 
 EXAMPLES:
     $(basename "$0") up
-    $(basename "$0") upgrade
+    $(basename "$0") upgrade --env local
     $(basename "$0") upgrade --docker-rm
     $(basename "$0") downgrade -av head^1
     $(basename "$0") upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+    # B1 / Supabase: use the direct (non-pooler) migrations URL — never :6543
+    $(basename "$0") upgrade --env staging --url "\$DATABASE_URL_MIGRATIONS"
     $(basename "$0") version -m "Add column" --skip-docker
     $(basename "$0") down --docker-frm
 
 PREREQUISITES:
     - Poetry workspace installed (poetry install)
     - Docker and Docker Compose for local Postgres
-    - docker/database/.env (copy DB_* vars from .env.example)
+    - environments/local/.env (cp from environments/local/.env.example)
+    - B1: environments/staging/.env with DATABASE_URL_MIGRATIONS (direct :5432)
 EOM
 )"
     log "TRACE" "$USAGE"
@@ -179,6 +186,10 @@ while [[ "$#" -gt 0 ]]; do
             USE_DOCKER_FLAG=0
             shift 1
             ;;
+        --env)
+            PAPITA_ENV_NAME="$2"
+            shift 2
+            ;;
         --env-file | -ef)
             ENV_FILE="$2"
             shift 2
@@ -200,7 +211,10 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 DOCKER_COMPOSE_FILE="${DOCKER_COMPOSE_FILE:-${DEFAULT_DB_COMPOSE_FILE}}"
-ENV_FILE="${ENV_FILE:-${DEFAULT_DB_ENV_FILE}}"
+if [[ -z "${ENV_FILE}" ]]; then
+    ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV_NAME:-${PAPITA_ENV:-local}}")" || exit 1
+fi
+export PAPITA_ENV="${PAPITA_ENV_NAME:-${PAPITA_ENV:-local}}"
 
 if [[ "${USE_DOCKER_FLAG}" -eq 1 ]] || [[ "${ACTION}" == "up" ]] || [[ "${ACTION}" == "halt" ]] || [[ "${ACTION}" == "stop" ]] || [[ "${ACTION}" == "down" ]]; then
     if [[ ! -f "${DOCKER_COMPOSE_FILE}" ]]; then
@@ -211,7 +225,7 @@ fi
 
 if [[ -z "${DB_URL}" ]]; then
     if [[ ! -f "${ENV_FILE}" ]]; then
-        log ERROR "Env file not found at ${ENV_FILE}. Copy DB_* vars from .env.example."
+        log ERROR "Env file not found at ${ENV_FILE}. Copy from environments/<name>/.env.example (see environments/README.md)."
         exit 1
     fi
     # shellcheck source=/dev/null

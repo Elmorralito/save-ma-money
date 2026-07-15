@@ -1,7 +1,21 @@
 # PPT-031-C: Supabase × FastAPI integration decision record
 
 **GitHub issue:** [#31](https://github.com/Elmorralito/save-ma-money/issues/31) · **Parent:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) · **Track:** B
-**Status:** Complete (2026-07-06) · **Gate G7:** **Proposed — B0 (local dev) + B1 (staging/prod); B2/B3 deferred** (awaiting maintainer sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28))
+**Status:** Complete (2026-07-06) · **Gate G7:** **Superseded in part (2026-07-13)** — see [G7 supersede](#g7-supersede-2026-07-13--auth-first) · Original: **Proposed — B0 (local) + B1 (stg/prod Postgres); B2/B3 deferred** (awaiting sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28))
+
+## G7 supersede (2026-07-13) — Auth-first
+
+**Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) pivot:** MVP Supabase usage is **Auth only** (former **B2**). **Supabase-hosted Postgres (B1 pooler) is no longer an epic acceptance requirement.** Database remains Docker Postgres locally (B0) or **any** Postgres URL in staging/prod.
+
+| Prior G7 (this brief)                             | Current epic direction                                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| B1 = required staging/prod DB via Supabase pooler | B1 DB = **optional** ops (pooler wiring may remain in tree)                                   |
+| B2 = Supabase Auth deferred                       | B2 Auth = **MVP** via PPT-039 ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)) |
+| Auth = local JWT on B0/B1                         | Auth = Supabase JWT verification; local HS256 issuance deprecated                             |
+
+Canonical reissue write-up: [`PPT-039-supabase-auth-reissue.md`](./PPT-039-supabase-auth-reissue.md). §2 pooler formats remain valid **if** operators choose Supabase as a Postgres host — they are not required for PPT-032 close-out.
+
+---
 
 ## Document ↔ issue cross-reference
 
@@ -145,23 +159,23 @@ DATABASE_URL="postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabas
 
 ### 2.3 SQLAlchemy engine guidance
 
-| Concern             | Transaction pooler (6543)                                                                                                                                     | Session / direct (5432)                        |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| Connection pooling  | Use modest `pool_size` when wired in #25; `DATABASE_POOL_SIZE` exists in Settings but is **not yet passed** to `create_engine()`                              | Standard SQLAlchemy pool                       |
-| Prepared statements | **psycopg2** (current driver): prefer `poolclass=NullPool` or Supabase transaction pooler guidance; `prepare_threshold` applies to **psycopg3 only** (future) | Default OK                                     |
-| Health checks       | `pool_pre_ping=True` on engine (recommended when implementing `main.py`)                                                                                      | Same                                           |
-| Migrations          | **Avoid** transaction pooler — use direct URL or session mode                                                                                                 | **Required** for `./deploy/alembic.sh upgrade` |
-| SSL                 | Supabase requires TLS in production                                                                                                                           | Add `?sslmode=require` if not implicit         |
+| Concern             | Transaction pooler (6543)                                                                                                                                   | Session / direct (5432)                        |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Connection pooling  | Modest `pool_size=DATABASE_POOL_SIZE` (default 5) + `max_overflow=0` on pooler URLs (PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)) | Standard SQLAlchemy pool                       |
+| Prepared statements | **psycopg2** (current driver): modest QueuePool is the default; switch to `NullPool` if PgBouncer timeouts appear; `prepare_threshold` is **psycopg3 only** | Default OK                                     |
+| Health checks       | `pool_pre_ping=True` on API engine (wired in Settings → `establish`, PPT-039)                                                                               | Same                                           |
+| Migrations          | **Avoid** transaction pooler — use direct URL or session mode                                                                                               | **Required** for `./deploy/alembic.sh upgrade` |
+| SSL                 | Supabase requires TLS in production                                                                                                                         | Add `?sslmode=require` if not implicit         |
 
-**Implementation note (future #25):** pass `pool_size=settings.DATABASE_POOL_SIZE` (and `pool_pre_ping=True`) into `SQLDatabaseConnector.establish()`; document a separate `DATABASE_URL_MIGRATIONS` for Alembic-only direct connections while API uses transaction pooler.
+**Implementation note (PPT-039):** API `Settings` passes `pool_pre_ping=True`, `pool_size=DATABASE_POOL_SIZE`, and (on transaction-pooler URLs) `max_overflow=0` into `SQLDatabaseConnector.establish()`. Use `DATABASE_URL_MIGRATIONS` for Alembic-only direct connections while the API uses the transaction pooler. Checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../ops/b1-supabase-deploy-checklist.md).
 
 ---
 
 ## 3. Environment variables (NFR-05)
 
-Template: [`.env.example`](../../.env.example) at repository root — **copy API vars into `modules/api/src/.env`** (where `Settings` loads them). **Never commit real `.env` files.**
+Template: [`environments/<name>/.env.example`](../../environments/README.md) — **copy to `environments/<name>/.env`** and set `PAPITA_ENV`. **Never commit real `.env` files.**
 
-`papita_txnsapi.Settings` loads from `modules/api/src/.env` (`PROJECT_ROOT` in `settings.py`). Alembic / Docker use `docker/database/.env` or exported `DB_*` vars.
+`papita_txnsapi.Settings` loads from `environments/$PAPITA_ENV/.env`. Alembic / Docker use the same file via `deploy/alembic.sh --env` and `docker compose --env-file`.
 
 ### 3.1 Variable reference
 
@@ -175,7 +189,7 @@ Template: [`.env.example`](../../.env.example) at repository root — **copy API
 | `SUPABASE_ANON_KEY`           | No       | —   | —   | ✓        | ✓   | Public key for client-side Supabase Auth                                                              |
 | `SUPABASE_SERVICE_ROLE_KEY`   | No       | —   | —   | Optional | ✓   | Server-side admin / bypass RLS (**never expose to client**)                                           |
 | `ALLOWED_ORIGINS`             | No       | ✓   | ✓   | ✓        | ✓   | CORS origins — JSON array in `.env` (e.g. `["http://localhost:3000"]`); pydantic-settings `list[str]` |
-| `DATABASE_POOL_SIZE`          | No       | ✓   | ✓   | ✓        | ✓   | Planned SQLAlchemy pool size (default 5); **not wired to engine yet** (#25)                           |
+| `DATABASE_POOL_SIZE`          | No       | ✓   | ✓   | ✓        | ✓   | SQLAlchemy pool size (default 5); wired in API Settings (PPT-039)                                     |
 | `LOG_LEVEL`                   | No       | ✓   | ✓   | ✓        | ✓   | API/model logging                                                                                     |
 | `HOST` / `PORT`               | No       | ✓   | ✓   | ✓        | ✓   | Uvicorn bind (default `0.0.0.0:8000`)                                                                 |
 
@@ -379,7 +393,7 @@ When v4 ships, extend policies to: `budgets`, `budget_allocations`, `transaction
 | B2 Supabase Auth                  | G7 phase 2                                                                                                                    | Re-evaluate after G5                                                                                                                    |
 | B3 RLS implementation             | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)                                                                 | SQL migrations only; no policies in this PR                                                                                             |
 | `UsersService.verify_credentials` | #25 / G5                                                                                                                      | Code change out of scope                                                                                                                |
-| `DATABASE_URL_MIGRATIONS` split   | #34 / #25                                                                                                                     | Direct URL for Alembic vs pooler for API                                                                                                |
+| `DATABASE_URL_MIGRATIONS` split   | PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                         | Direct URL for Alembic vs pooler for API; see [`docs/ops/b1-supabase-deploy-checklist.md`](../ops/b1-supabase-deploy-checklist.md)      |
 | FastAPI `main.py` + routers       | [#25](https://github.com/Elmorralito/save-ma-money/issues/25)                                                                 | Implementation blocked on G1                                                                                                            |
 
 ## References

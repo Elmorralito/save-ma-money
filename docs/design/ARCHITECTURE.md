@@ -3337,74 +3337,78 @@ Run after `./deploy/alembic.sh upgrade --docker-local`:
 
 ## Part VI — Auth contract (PPT-031 Track E)
 
+> **G5 supersede (2026-07-13 / PPT-039):** MVP Auth is **Supabase Auth**. FastAPI verifies access JWTs via JWKS (`AUTH_PROVIDER=supabase`). Local HS256 (`AUTH_PROVIDER=local`) remains for unit tests and transitional B0 only. See [`PPT-039-supabase-auth-reissue.md`](../issues/PPT-039-supabase-auth-reissue.md) and [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md).
+
 ### 1. Executive decision
 
-| Topic              | MVP decision                                                        |
-| ------------------ | ------------------------------------------------------------------- |
-| Identity store     | `papita_transactions.users` (PR #27)                                |
-| Token format       | Stateless **access JWT** (HS256, `JWT_SECRET_KEY`)                  |
-| Password hashing   | **Argon2** via `PasswordManagerFactory`                             |
-| Login identifier   | **Email or username** in OAuth2 form field `username`               |
-| Refresh / logout   | **Deferred (501)** — no refresh token store, no revocation denylist |
-| Tenant context     | JWT `sub` → `users.id` → `owner_id` on all protected routes         |
-| Supabase Auth (B2) | Deferred until post-MVP re-evaluation                               |
+| Topic            | MVP decision (post PPT-039)                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------- |
+| Identity store   | `papita_transactions.users` (linked to Supabase Auth `sub`)                                    |
+| Token format     | Supabase **access JWT** verified via JWKS (`SUPABASE_URL`); preferred `AUTH_PROVIDER=supabase` |
+| Password hashing | **Supabase Auth** holds passwords; local Argon2 only when `AUTH_PROVIDER=local`                |
+| Login identifier | Prefer **client → Supabase Auth**; optional API pass-through uses **email** + password         |
+| Refresh / logout | **Deferred (501)** — use Supabase session APIs / client SDK post-MVP                           |
+| Tenant context   | JWT `sub` → `users.id` (UUID aligned) → `owner_id` on all protected routes                     |
+| Local HS256      | Transitional / tests (`AUTH_PROVIDER=local` + `JWT_SECRET_KEY`) — not staging/prod MVP         |
 
 ---
 
 ### 2. Component map
 
 ```
-POST /auth/register
-  → RegisterRequest (API schema)
-  → UsersService.register()
-  → UsersDTO (validate + hash password on serialize)
-  → UsersRepository.upsert_record()
-  → users table
+Preferred client path
+  → Supabase Auth signUp / password grant
+  → Bearer access_token on Papita API
 
+Optional API pass-through (SUPABASE_ANON_KEY)
+POST /auth/register
+  → Supabase /auth/v1/signup
+  → UsersService.ensure_from_auth_subject(sub, email, username)
 POST /auth/login
-  → OAuth2PasswordRequestForm (username, password)
-  → UsersService.verify_credentials()
-  → AuthSecurityManager.authenticate_and_get_token()
-  → JWT access token
+  → Supabase /auth/v1/token?grant_type=password
+  → ensure_from_auth_subject + return Auth access_token
 
 Protected routes
-  → HTTPBearer / OAuth2 dependency
-  → AuthSecurityManager.decode_token()
-  → sub → uuid.UUID → UsersService.get_owner()
+  → OAuth2 Bearer
+  → AuthSecurityManager.decode_token()  # JWKS when AUTH_PROVIDER=supabase
+  → sub → UsersService.ensure_from_auth_subject() / get_owner()
   → owner_id injected into service calls
+
+Local / test path (AUTH_PROVIDER=local)
+POST /auth/register|login → UsersService + HS256 AuthSecurityManager.generate_token
 ```
 
-| Layer      | Module                                        | Responsibility                     |
-| ---------- | --------------------------------------------- | ---------------------------------- |
-| Router     | `papita_txnsapi/routers/auth.py`              | HTTP status codes, schema I/O      |
-| Security   | `papita_txnsapi/core/security.py`             | JWT encode/decode                  |
-| Settings   | `papita_txnsapi/config/settings.py`           | `JWT_*` env vars                   |
-| Service    | `papita_txnsmodel/services/users.py`          | Register, verify, `get_owner`      |
-| DTO        | `papita_txnsmodel/access/users/dto.py`        | Validation, Argon2 hash on persist |
-| Repository | `papita_txnsmodel/access/users/repository.py` | CRUD                               |
-| SQLModel   | `papita_txnsmodel/model/users.py`             | `users` table                      |
+| Layer      | Module                                        | Responsibility                                            |
+| ---------- | --------------------------------------------- | --------------------------------------------------------- |
+| Router     | `papita_txnsapi/routers/v1/auth.py`           | HTTP status codes; local vs Supabase pass-through         |
+| Security   | `papita_txnsapi/core/security.py`             | HS256 issue (local) / JWKS verify (supabase)              |
+| Supabase   | `papita_txnsapi/core/supabase_auth.py`        | Optional signup / password-grant HTTP helpers             |
+| Settings   | `papita_txnsapi/config/settings.py`           | `AUTH_PROVIDER`, `SUPABASE_*`, `JWT_*`                    |
+| Service    | `papita_txnsmodel/services/users.py`          | Register, verify, `get_owner`, `ensure_from_auth_subject` |
+| DTO        | `papita_txnsmodel/access/users/dto.py`        | Validation; preserves explicit Auth `sub` as `id`         |
+| Repository | `papita_txnsmodel/access/users/repository.py` | CRUD                                                      |
+| SQLModel   | `papita_txnsmodel/model/users.py`             | `users` table                                             |
 
 ---
 
 ### 3. User identity rules
 
-#### 3.1 `users.id` generation (frozen for MVP)
+#### 3.1 `users.id` generation
 
-```python
-id = uuid5(NAMESPACE_URL, sha256(username))
-```
+| Mode                         | `users.id` rule                                                          |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| **Supabase Auth (MVP)**      | Auth subject UUID (`sub`) — provision-on-first-seen                      |
+| **Local HS256 (tests / B0)** | Deterministic `uuid5(NAMESPACE_URL, sha256(username))` when `id` omitted |
 
-- **Deterministic** from `username` (not email).
-- Login and JWT `sub` use this UUID string.
-- Changing to uuid4 on register would break existing rows — **do not change** without migration.
+Explicit `id` on `UsersDTO` is **preserved** (DAO round-trips and Auth provisioning).
 
 #### 3.2 Field validation (from `UsersDTO`)
 
-| Field      | Rule                                                        | Storage                                                          |
-| ---------- | ----------------------------------------------------------- | ---------------------------------------------------------------- |
-| `username` | `USERNAME_REGEX`: `[a-zA-Z0-9_]{6,255}`, unique             | plain                                                            |
-| `email`    | `EMAIL_REGEX`, lowercased on validate, unique               | plain; TLD segment min **5** letters (e.g. `.local`, not `.com`) |
-| `password` | `PASSWORD_REGEX`: 8–128 chars, upper, lower, digit, special | **Argon2 hash**                                                  |
+| Field      | Rule                                                   | Storage                                                          |
+| ---------- | ------------------------------------------------------ | ---------------------------------------------------------------- |
+| `username` | `USERNAME_REGEX`: `[a-zA-Z0-9_]{6,255}`, unique        | plain                                                            |
+| `email`    | `EMAIL_REGEX`, lowercased on validate, unique          | plain; TLD segment min **5** letters (e.g. `.local`, not `.com`) |
+| `password` | `PASSWORD_REGEX` when local; unused for Auth-only rows | **Argon2 hash** (local / placeholder for Auth-provisioned rows)  |
 
 #### 3.3 Register request / response
 
@@ -3431,11 +3435,11 @@ id = uuid5(NAMESPACE_URL, sha256(username))
 
 **Business rules:**
 
-1. Call `UsersService.ensure_password_manager()` before any password operation.
-2. Reject duplicate `username` → **409 Conflict** (`detail: "Username already registered"`).
-3. Reject duplicate `email` → **409 Conflict** (`detail: "Email already registered"`).
-4. Validation errors from `UsersDTO` → **422 Unprocessable Entity**.
-5. Do **not** issue JWT on register (client must call `/auth/login`). Optional post-MVP: return token on register.
+1. **Supabase mode:** signup via Auth; local row `id = Auth sub`; API does not mint JWTs.
+2. **Local mode:** `UsersService.ensure_password_manager()` before password ops; hash on serialize.
+3. Reject duplicate `username` / `email` → **409** (local) or Auth/API mapping errors.
+4. Validation errors from `UsersDTO` → **422**.
+5. Prefer client → Supabase Auth; API register/login pass-through is optional (`SUPABASE_ANON_KEY`).
 
 ---
 
@@ -3445,14 +3449,12 @@ id = uuid5(NAMESPACE_URL, sha256(username))
 
 `POST /auth/login` uses `application/x-www-form-urlencoded`:
 
-| Form field | Semantics                                                            |
-| ---------- | -------------------------------------------------------------------- |
-| `username` | **Login identifier** — accepts `users.username` **or** `users.email` |
-| `password` | Plain-text password                                                  |
+| Form field | Local mode                            | Supabase pass-through                     |
+| ---------- | ------------------------------------- | ----------------------------------------- |
+| `username` | `users.username` **or** `users.email` | **Email required** (must contain `@`)     |
+| `password` | Plain-text verified against Argon2    | Forwarded to Supabase Auth password grant |
 
-FastAPI: `OAuth2PasswordRequestForm` requires `python-multipart` in `modules/api/pyproject.toml`.
-
-#### 4.2 `UsersService.verify_credentials` algorithm
+#### 4.2 Local `UsersService.verify_credentials` algorithm
 
 ```
 1. ensure_password_manager()
@@ -3466,23 +3468,10 @@ FastAPI: `OAuth2PasswordRequestForm` requires `python-multipart` in `modules/api
 6. if valid → return UsersDTO; else → return None
 ```
 
-**Security:**
-
-- Single failure path for unknown user vs bad password (mitigates user enumeration).
-- Only `active=true` and `deleted_at IS NULL` users may authenticate.
-- Log failures at `DEBUG`; never log passwords.
-
 #### 4.3 Token issuance
 
-```python
-token = AuthSecurityManager(settings).authenticate_and_get_token(
-    username=form.username,
-    password=form.password,
-    verify_credentials=lambda u, p: (
-        str(user.id) if (user := UsersService().verify_credentials(u, p)) else None
-    ),
-)
-```
+- **Supabase:** return Auth `access_token` / `expires_in` from password grant (API never HS256-signs).
+- **Local:** `AuthSecurityManager.generate_token(str(user.id))` with `JWT_SECRET_KEY`.
 
 **Response 200:**
 
@@ -3494,89 +3483,72 @@ token = AuthSecurityManager(settings).authenticate_and_get_token(
 }
 ```
 
-`expires_in` mirrors `Settings.JWT_EXPIRATION_TIME_SECONDS` (default **3600**).
-
-**Response 401** (invalid credentials):
-
-```json
-{
-  "detail": "Incorrect username or password"
-}
-```
-
-Use OAuth2-compatible `WWW-Authenticate: Bearer` header.
-
 ---
 
 ### 5. JWT contract
 
 #### 5.1 Access token claims
 
-| Claim  | Value           | Notes                         |
-| ------ | --------------- | ----------------------------- |
-| `sub`  | `str(users.id)` | UUID string; tenant root      |
-| `exp`  | Unix timestamp  | UTC                           |
-| `iat`  | Unix timestamp  | UTC                           |
-| `type` | `"bearer"`      | From `JWT_TOKEN_TYPE` setting |
+**Supabase Auth (MVP):**
 
-**Not included in MVP:** `jti`, `refresh`, roles/scopes, email.
+| Claim         | Value                     | Notes                            |
+| ------------- | ------------------------- | -------------------------------- |
+| `sub`         | Auth user UUID            | Must match / become `users.id`   |
+| `email`       | User email (when present) | Used for provision-on-first-seen |
+| `aud`         | `authenticated` (default) | `SUPABASE_JWT_AUDIENCE`          |
+| `iss`         | `{SUPABASE_URL}/auth/v1`  | Verified against project URL     |
+| `exp` / `iat` | Unix timestamps           | UTC                              |
+
+**Local HS256 (tests):** `sub`, `exp`, `iat`, `type=bearer`.
 
 #### 5.2 Validation (protected routes)
 
 ```python
-payload = AuthSecurityManager(settings).decode_token(credentials.credentials)
-if payload is None:
-    raise HTTPException(401, "Could not validate credentials")
-user_id = uuid.UUID(payload["sub"])
-owner = UsersService().get_owner(user_id)
-if owner is None:
-    raise HTTPException(401, "Could not validate credentials")
+payload = AuthSecurityManager(settings).decode_token(token, expected_type=...)
+owner_id = uuid.UUID(payload["sub"])
+if settings.AUTH_PROVIDER == "supabase":
+    owner = UsersService().ensure_from_auth_subject(subject=owner_id, email=payload.get("email") or "")
+else:
+    owner = UsersService().get_owner(owner_id)
 ```
 
-Pass `owner` (or `owner.id`) as `owner_id` / `owner=` to `OwnedTableRepository` services.
+Pass `owner` as `owner=` to owned-table services.
 
-#### 5.3 Token lifetime
+#### 5.3 Settings
 
-| Setting                       | Default      | Purpose                                    |
-| ----------------------------- | ------------ | ------------------------------------------ |
-| `JWT_SECRET_KEY`              | **required** | HS256 signing secret (min 32 random chars) |
-| `JWT_ALGORITHM`               | `HS256`      |                                            |
-| `JWT_EXPIRATION_TIME_SECONDS` | `3600`       | 1 hour access token                        |
-| `JWT_TOKEN_TYPE`              | `bearer`     |                                            |
+| Setting                       | Role                                               |
+| ----------------------------- | -------------------------------------------------- |
+| `AUTH_PROVIDER`               | `local` \| `supabase` (staging/prod: `supabase`)   |
+| `SUPABASE_URL`                | **required** when `supabase` — JWKS base           |
+| `SUPABASE_ANON_KEY`           | Optional — API `/auth` pass-through only           |
+| `SUPABASE_JWT_AUDIENCE`       | Default `authenticated`                            |
+| `JWT_SECRET_KEY`              | Local HS256 only (unused for Supabase verify)      |
+| `JWT_EXPIRATION_TIME_SECONDS` | Local mint TTL; Supabase returns Auth `expires_in` |
 
-After expiry, client must re-authenticate via `/auth/login`. No `/auth/refresh` in MVP.
+Smoke: `make auth-smoke` — Auth JWT → `GET /api/v1/auth/me` (+ tenant list).
 
 ---
 
 ### 6. Refresh and logout (FR-11 — deferred)
 
-| Endpoint             | MVP behavior                   | Future options                                              |
-| -------------------- | ------------------------------ | ----------------------------------------------------------- |
-| `POST /auth/refresh` | **501 Not Implemented**        | Short-lived access + httpOnly refresh cookie + server store |
-| `POST /auth/logout`  | **501** — client deletes token | Token denylist (Redis) or Supabase session revoke (B2)      |
+| Endpoint             | MVP behavior                   | Future options                                        |
+| -------------------- | ------------------------------ | ----------------------------------------------------- |
+| `POST /auth/refresh` | **501 Not Implemented**        | Supabase refresh session / short-lived access + store |
+| `POST /auth/logout`  | **501** — client deletes token | Supabase sign-out / Redis denylist (PPT-043)          |
 
-**Client guidance for MVP:** Store access token in memory or secure storage; on 401, redirect to login. No server-side logout.
+**Client guidance:** Prefer Supabase Auth SDK for session lifecycle; on 401, re-authenticate.
 
 ---
 
 ### 7. Password manager bootstrap (NFR-08)
 
-`UsersDTO._serialize()` calls `PasswordManagerFactory.password_manager`, which raises if Argon2 is not initialized.
-
-**Required before register or login:**
+Still required for **local** register/login and for hashing placeholder passwords on Auth provision:
 
 ```python
 UsersService.ensure_password_manager()  # → get_password_manager(keyword="argon2")
 ```
 
-**Recommended wiring (#25):**
-
-```python
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    UsersService.ensure_password_manager()
-    yield
-```
+Wire in FastAPI lifespan (already for API process).
 
 ---
 
@@ -3585,12 +3557,12 @@ async def lifespan(app: FastAPI):
 | Step | Mechanism                                                            |
 | ---- | -------------------------------------------------------------------- |
 | 1    | Decode JWT → `sub` = `owner_id`                                      |
-| 2    | API dependency provides `CurrentUser` with `id`, `username`, `email` |
+| 2    | `get_current_owner` provides `UsersDTO`                              |
 | 3    | All financial routes pass `owner=current_user` to services           |
 | 4    | `OwnedTableRepository` filters `owner_id` on reads/writes            |
 | 5    | Cross-tenant ID access returns **404** (not 403) to avoid ID leakage |
 
-RLS (B3) is optional defense-in-depth — see Supabase brief §6. MVP relies on app-layer scoping (Strategy B).
+RLS (B3) remains optional defense-in-depth. MVP relies on app-layer scoping.
 
 ---
 
@@ -3600,42 +3572,51 @@ RLS (B3) is optional defense-in-depth — see Supabase brief §6. MVP relies on 
 | ---- | ----------------------------- | ------------------------------------------------------------------- |
 | 201  | Register success              | —                                                                   |
 | 200  | Login success                 | —                                                                   |
-| 400  | Missing form fields           | `Invalid request`                                                   |
+| 400  | Supabase signup failure       | Auth error message / generic                                        |
 | 401  | Bad credentials / invalid JWT | `Incorrect username or password` / `Could not validate credentials` |
-| 409  | Duplicate username            | `Username already registered`                                       |
-| 409  | Duplicate email               | `Email already registered`                                          |
+| 409  | Duplicate username / email    | Local uniqueness errors                                             |
 | 422  | DTO validation                | Pydantic error list                                                 |
-| 501  | Refresh / logout              | `Not implemented in MVP — see PPT-031-auth-contract.md`             |
+| 501  | Refresh / logout              | DeferredResponse / FR-11                                            |
+| 503  | Supabase proxy misconfigured  | Missing `SUPABASE_URL` / `SUPABASE_ANON_KEY`                        |
 
 ---
 
 ### 10. Sequence diagrams
 
-#### Register + login
+#### Preferred: client Supabase Auth + API Bearer
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant SA as Supabase Auth
+    participant API as FastAPI
+    participant AM as AuthSecurityManager
+    participant US as UsersService
+
+    C->>SA: signUp / password grant
+    SA-->>C: access_token (sub, email)
+    C->>API: GET /auth/me (Authorization: Bearer)
+    API->>AM: decode_token (JWKS)
+    AM-->>API: sub, email
+    API->>US: ensure_from_auth_subject(sub, email)
+    US-->>API: UsersDTO
+    API-->>C: 200 UserResponse
+```
+
+#### Optional API pass-through login
 
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant API as FastAPI auth router
+    participant SA as Supabase Auth
     participant US as UsersService
-    participant PM as PasswordManagerFactory
-    participant DB as users table
-    participant AM as AuthSecurityManager
 
-    C->>API: POST /auth/register {username, email, password}
-    API->>US: ensure_password_manager()
-    US->>PM: get_password_manager(argon2)
-    API->>US: register(...)
-    US->>DB: upsert hashed password
-    API-->>C: 201 UserResponse (no password)
-
-    C->>API: POST /auth/login (form)
-    API->>US: verify_credentials(identifier, password)
-    US->>DB: lookup by email or username
-    US->>PM: verify_password
-    US-->>API: UsersDTO
-    API->>AM: generate_token(sub=user.id)
-    AM-->>C: 200 {access_token, expires_in}
+    C->>API: POST /auth/login (email, password)
+    API->>SA: /auth/v1/token?grant_type=password
+    SA-->>API: access_token + user.id
+    API->>US: ensure_from_auth_subject
+    API-->>C: 200 {access_token, expires_in}
 ```
 
 #### Protected resource
@@ -3651,7 +3632,7 @@ sequenceDiagram
     C->>API: GET /accounts (Authorization: Bearer ...)
     API->>AM: decode_token
     AM-->>API: payload.sub
-    API->>US: get_owner(sub)
+    API->>US: ensure_from_auth_subject / get_owner
     US-->>API: UsersDTO
     API->>SVC: get_records(owner=current_user)
     SVC-->>C: 200 accounts (tenant-scoped)
@@ -3659,51 +3640,49 @@ sequenceDiagram
 
 ---
 
-### 11. Supabase Auth bridge (B2 — not MVP)
+### 11. Local HS256 bridge (transitional — not staging MVP)
 
-If B2 is adopted later:
+| Supabase Auth (MVP)             | Local HS256 (`AUTH_PROVIDER=local`)      |
+| ------------------------------- | ---------------------------------------- |
+| `sub` = Auth user UUID          | `sub` = `users.id` (uuid5 from username) |
+| JWKS verify                     | `JWT_SECRET_KEY` HS256                   |
+| Optional `/auth/*` pass-through | Local register + mint                    |
 
-| Local JWT (MVP)                   | Supabase Auth                                        |
-| --------------------------------- | ---------------------------------------------------- |
-| `users.id` in `sub`               | Map `auth.users.id` ↔ `papita_transactions.users.id` |
-| `UsersService.verify_credentials` | Validate Supabase JWT via JWKS                       |
-| `POST /auth/register`             | Supabase `signUp` + sync row                         |
-
-No implementation until explicit G5 revision on [#28](https://github.com/Elmorralito/save-ma-money/issues/28).
+Unit tests keep `AUTH_PROVIDER=local`. Staging/production templates use `supabase`.
 
 ---
 
-### 12. Implementation checklist (#25)
+### 12. Implementation checklist (PPT-039)
 
-- [ ] Add `python-multipart` to `modules/api/pyproject.toml`
-- [ ] FastAPI `lifespan`: `UsersService.ensure_password_manager()`
-- [ ] `routers/auth.py`: register, login
-- [ ] `schemas/auth.py`: `RegisterRequest`, `UserResponse`, `TokenResponse`
-- [ ] `dependencies/auth.py`: `get_current_user` from Bearer token
-- [ ] Wire `JWT_EXPIRATION_TIME_SECONDS` into `expires_in` response
-- [ ] Mount auth router at `/api/v1/auth`
-- [ ] Integration tests: register → login → protected route → cross-tenant denial
-- [ ] Do **not** mount refresh/logout (or return 501)
+- [x] `AUTH_PROVIDER` + `SUPABASE_URL` / JWKS verify in `AuthSecurityManager`
+- [x] Optional Supabase register/login pass-through
+- [x] `get_current_owner` provision-on-first-seen (`ensure_from_auth_subject`)
+- [x] Preserve Auth `sub` as `users.id` on `UsersDTO`
+- [x] Unit tests with mock JWKS / RSA fixtures (`test_auth_supabase.py`)
+- [ ] Auth smoke: `make auth-smoke` → `/auth/me` + tenant list
+- [x] Do **not** treat Supabase Postgres pooler as Auth DoD
 
 ---
 
 ### 13. Requirements traceability
 
-| Requirement                         | Section              | Status                          |
-| ----------------------------------- | -------------------- | ------------------------------- |
-| FR-10 — Credential verification     | §4, §7               | ✓ Spec + `UsersService` methods |
-| FR-11 — Refresh/logout              | §6                   | ✓ Deferred with rationale       |
-| NFR-05 — Secrets via env            | §5.3, `.env.example` | ✓                               |
-| NFR-08 — Password manager bootstrap | §7                   | ✓                               |
+| Requirement                         | Section               | Status                                 |
+| ----------------------------------- | --------------------- | -------------------------------------- |
+| FR-10 — Credential verification     | §4, §7, §11           | ✓ Local + Supabase paths               |
+| FR-11 — Refresh/logout              | §6                    | ✓ Deferred; Supabase session follow-on |
+| NFR-05 — Secrets via env            | §5.3, `environments/` | ✓                                      |
+| NFR-08 — Password manager bootstrap | §7                    | ✓ Local / provision hashing            |
+| PPT-039 — Supabase Auth MVP         | §1–§5, §11            | ✓ Spec + code on `ops/PPT-039`         |
 
 ---
 
 ### References
 
-- Code: `modules/api/src/papita_txnsapi/core/security.py`, `modules/model/src/papita_txnsmodel/services/users.py`
-- API spec: [`modules/api/API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md) § Authentication
-- Mapping: [`PPT-031-api-model-mapping.md`](ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §4.5, §5.2
-- Supabase: [`PPT-031-C-supabase-decision-brief.md`](../issues/PPT-031-C-supabase-decision-brief.md) §5
+- Code: `modules/api/src/papita_txnsapi/core/security.py`, `supabase_auth.py`, `dependencies/auth.py`
+- Model: `modules/model/src/papita_txnsmodel/services/users.py`
+- Standalone summary: [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md)
+- Reissue: [`PPT-039-supabase-auth-reissue.md`](../issues/PPT-039-supabase-auth-reissue.md)
+- Supabase brief G7: [`PPT-031-C-supabase-decision-brief.md`](../issues/PPT-031-C-supabase-decision-brief.md)
 
 ---
 

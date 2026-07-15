@@ -27,13 +27,13 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 
 **save-ma-money** (also referred to as _save-ma-finances_ in README copy) is a Poetry monorepo for Papita financial transaction data: type-safe persistence, migrations, and a FastAPI REST surface.
 
-| Goal            | Detail                                                                                                                                               |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer and shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25)) |
-| Active packages | `papita-txnsmodel` (`modules/model`), `papita-txnsapi` (`modules/api`)                                                                               |
-| Not in tree yet | `registrar` / `papita-txnsregistrar` (referenced in pytest paths only)                                                                               |
-| Database        | **PostgreSQL only** — DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31))                                           |
-| Auth direction  | Local JWT via `AuthSecurityManager` (B0/B1); Supabase deferred — see `docs/issues/PPT-031-C-supabase-decision-brief.md`                              |
+| Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer and shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25))                                                                                                                                                                                                                                             |
+| Active packages | `papita-txnsmodel` (`modules/model`), `papita-txnsapi` (`modules/api`)                                                                                                                                                                                                                                                                                                                           |
+| Not in tree yet | `registrar` / `papita-txnsregistrar` (referenced in pytest paths only)                                                                                                                                                                                                                                                                                                                           |
+| Database        | **PostgreSQL only** — DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31))                                                                                                                                                                                                                                                                                       |
+| Auth direction  | **Supabase project owns user management + Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)): register/login via Supabase Auth; API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`). Compose must inject `SUPABASE_*`. See `docs/issues/PPT-039-supabase-auth-reissue.md` and learning `supabase-auth-ownership`. |
 
 ---
 
@@ -98,23 +98,21 @@ First-party import roots: `papita_txnsmodel`, `papita_txnsapi`, `papita_txnsregi
 
 ## Environment and secrets
 
-Never commit real secrets. Use templates only.
+Never commit real secrets. Templates live under [`environments/`](../environments/README.md).
 
-| File                              | Purpose                                                            |
-| --------------------------------- | ------------------------------------------------------------------ |
-| [`.env.example`](../.env.example) | Root template — copy values to the paths below                     |
-| `modules/api/src/.env`            | **Required** for API `Settings` (`JWT_SECRET_KEY`, `DATABASE_URL`) |
-| `docker/database/.env`            | Docker Compose Postgres credentials                                |
-
-Always set `DATABASE_URL` to a PostgreSQL URL. Omitting it can trigger legacy DuckDB fallback paths.
-
-Local Postgres:
+| Path                                                  | Purpose                                                |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| [`environments/README.md`](../environments/README.md) | How `PAPITA_ENV` / `--env` works                       |
+| `environments/<name>/.env.example`                    | Committed templates (`local`, `staging`, `production`) |
+| `environments/<name>/.env`                            | **Gitignored** secrets — copy from `.env.example`      |
 
 ```bash
-cp .env.example modules/api/src/.env   # edit JWT + DATABASE_URL
-# optional: docker/database/.env for Compose
-docker compose -f docker/database/docker-compose.yml up -d
+cp environments/local/.env.example environments/local/.env   # edit JWT + DATABASE_URL + DB_*
+export PAPITA_ENV=local   # default for API Settings, Alembic, Compose
+docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
 ```
+
+Always set `DATABASE_URL` to a PostgreSQL URL. Omitting it can trigger legacy DuckDB fallback paths.
 
 ---
 
@@ -152,13 +150,18 @@ Alembic lives under `modules/model/`. Use the deploy wrapper:
 
 ```bash
 # Docker Postgres (local)
-/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
 
 # Explicit URL
 /bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+
+# B1 Supabase: always use the direct migrations URL (never transaction pooler :6543)
+PAPITA_ENV=staging /bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
 ```
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
+
+B1 staging checklist + smoke: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/PPT-039-supabase-auth-reissue.md`](../docs/issues/PPT-039-supabase-auth-reissue.md) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md).
 
 When editing SQLModel classes, add an Alembic revision under `modules/model/alembic/versions/`.
 
@@ -250,7 +253,7 @@ The API is a **runnable FastAPI app** (`papita_txnsapi.main.create_app`, module-
 
 **Schemas:** `schemas/accounts.py`, `schemas/categories.py`, `schemas/transactions.py`, `schemas/movements.py`, `schemas/reports.py`, `schemas/query_params.py`; enum slugs via `schemas/converters.py`.
 
-**Auth:** JWT via `core/security.py` (`AuthSecurityManager`); protected routes use `dependencies/auth.get_current_owner` and pass `owner` to services per [`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
+**Auth:** Supabase project owns identity (register/login/session). API: `AUTH_PROVIDER=supabase` → JWKS verify + `ensure_from_auth_subject`. Local HS256 is tests only. See learning `supabase-auth-ownership` and [`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
 
 **Deferred stubs:** transaction split (501 on `POST /transactions/{id}/split`), `GET /reports/budget-performance`, export `xlsx`/`pdf`.
 

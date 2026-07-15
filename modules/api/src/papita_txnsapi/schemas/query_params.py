@@ -1,4 +1,23 @@
-"""Query-parameter helpers for transaction, movement, and report list routes."""
+"""FastAPI query-parameter models and dependencies for list and report routes.
+
+This module bridges HTTP query strings to service-layer keyword arguments for
+transactions, transfer movements, and reports. OpenAPI ``Query`` dependencies
+build Pydantic models; each model exposes ``service_kwargs()`` that normalizes
+enums, date windows, and defaults before calling ``TransactionsService`` /
+``ReportService``.
+
+Key types:
+    * ``TransactionListQuery`` / ``MovementListQuery`` — list filters.
+    * ``ReportSpendingQuery``, ``ReportCashFlowQuery``, ``ReportTrendsQuery``,
+      ``ReportExportQuery`` — report filters with window/enum validators.
+    * Matching ``*ServiceKwargs`` TypedDicts — typed kwargs for service methods.
+    * ``get_*_query`` helpers — FastAPI ``Depends`` factories for those models.
+
+Calendar dates for reports are converted to inclusive UTC day bounds via
+``date_to_start_datetime`` / ``date_to_end_datetime``. Export formats ``xlsx`` and
+``pdf`` are deferred (see ``DEFERRED_EXPORT_FORMATS``) and must be rejected by the
+router with HTTP 501 rather than forwarded to the service.
+"""
 
 from __future__ import annotations
 
@@ -16,21 +35,50 @@ _ALLOWED_SPENDING_GROUP_BY = frozenset({"category", "account"})
 _ALLOWED_TREND_PERIODS = frozenset({"daily", "weekly", "monthly", "yearly"})
 _ALLOWED_EXPORT_REPORT_TYPES = frozenset({"spending", "cash-flow", "trends"})
 _ALLOWED_EXPORT_FORMATS = frozenset({"csv", "json"})
+# Accepted in query validation but not implemented; routers should return HTTP 501.
 DEFERRED_EXPORT_FORMATS = frozenset({"xlsx", "pdf"})
 
 
 def date_to_start_datetime(value: date) -> datetime:
-    """Convert a calendar date to an inclusive UTC start-of-day timestamp."""
+    """Convert a calendar date to an inclusive UTC start-of-day timestamp.
+
+    Args:
+        value: Calendar date in the caller's report window (date-only, no time).
+
+    Returns:
+        Timezone-aware ``datetime`` at ``00:00:00.000000`` UTC on ``value``.
+    """
     return datetime.combine(value, time.min, tzinfo=timezone.utc)
 
 
 def date_to_end_datetime(value: date) -> datetime:
-    """Convert a calendar date to an inclusive UTC end-of-day timestamp."""
+    """Convert a calendar date to an inclusive UTC end-of-day timestamp.
+
+    Args:
+        value: Calendar date in the caller's report window (date-only, no time).
+
+    Returns:
+        Timezone-aware ``datetime`` at ``23:59:59.999999`` UTC on ``value``.
+    """
     return datetime.combine(value, time.max, tzinfo=timezone.utc)
 
 
 class TransactionListServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``TransactionsService.list_transactions``."""
+    """Keyword arguments accepted by ``TransactionsService.list_transactions``.
+
+    Attributes:
+        account_id: Optional primary account filter (from or to side).
+        category_id: Optional category filter.
+        transaction_kind: Parsed ``TransactionKind``, or ``None`` when omitted.
+        exclude_transfer: When ``True``, omit transfer rows (default list behavior
+            when ``transaction_type`` was not provided on the query).
+        status: Parsed ``TransactionStatus``, or ``None`` when omitted.
+        start_date: Inclusive lower bound as a calendar date, if any.
+        end_date: Inclusive upper bound as a calendar date, if any.
+        min_amount: Optional non-negative minimum amount.
+        max_amount: Optional non-negative maximum amount.
+        search: Optional description search string.
+    """
 
     account_id: uuid.UUID | None
     category_id: uuid.UUID | None
@@ -45,7 +93,15 @@ class TransactionListServiceKwargs(TypedDict):
 
 
 class MovementListServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``TransactionsService.list_transfers``."""
+    """Keyword arguments accepted by ``TransactionsService.list_transfers``.
+
+    Attributes:
+        source_account_id: Optional source (from) account filter.
+        destination_account_id: Optional destination (to) account filter.
+        status: Parsed ``TransactionStatus``, or ``None`` when omitted.
+        start_date: Inclusive lower bound as a calendar date, if any.
+        end_date: Inclusive upper bound as a calendar date, if any.
+    """
 
     source_account_id: uuid.UUID | None
     destination_account_id: uuid.UUID | None
@@ -55,7 +111,24 @@ class MovementListServiceKwargs(TypedDict):
 
 
 class TransactionListQuery(BaseModel):
-    """Bundled query parameters for ``GET /transactions``."""
+    """Bundled query parameters for ``GET /transactions``.
+
+    Holds OpenAPI-facing filter fields, then maps them to service kwargs via
+    ``service_kwargs()``. Enum-like strings are parsed with schema converters;
+    omitting ``transaction_type`` sets ``exclude_transfer=True`` so the default
+    list hides pure transfers (use movements for those).
+
+    Attributes:
+        account_id: Filter by primary account (from or to).
+        category_id: Filter by category.
+        transaction_type: Raw kind filter (``income`` / ``expense`` / ``transfer``).
+        status: Raw status filter (``pending`` / ``completed`` / ``cancelled``).
+        start_date: Inclusive start date filter.
+        end_date: Inclusive end date filter.
+        min_amount: Minimum amount (must be ``>= 0`` when set).
+        max_amount: Maximum amount (must be ``>= 0`` when set).
+        search: Substring search against transaction description.
+    """
 
     account_id: uuid.UUID | None = Field(default=None, description="Filter by primary account (from or to)")
     category_id: uuid.UUID | None = Field(default=None, description="Filter by category")
@@ -68,7 +141,18 @@ class TransactionListQuery(BaseModel):
     search: str | None = Field(default=None, description="Search in description")
 
     def service_kwargs(self) -> TransactionListServiceKwargs:
-        """Map API query parameters to ``TransactionsService.list_transactions`` kwargs."""
+        """Map API query parameters to ``TransactionsService.list_transactions`` kwargs.
+
+        Parses optional kind/status strings and sets ``exclude_transfer`` when no
+        ``transaction_type`` was supplied so the default ledger view omits transfers.
+
+        Returns:
+            Typed keyword arguments ready for ``list_transactions``.
+
+        Raises:
+            ValueError: When ``transaction_type`` or ``status`` cannot be parsed by
+                the shared converters.
+        """
         transaction_kind = parse_transaction_kind(self.transaction_type) if self.transaction_type else None
         return TransactionListServiceKwargs(
             account_id=self.account_id,
@@ -85,7 +169,17 @@ class TransactionListQuery(BaseModel):
 
 
 class MovementListQuery(BaseModel):
-    """Bundled query parameters for ``GET /movements``."""
+    """Bundled query parameters for ``GET /movements``.
+
+    Filters transfer-only rows by source/destination accounts, status, and date.
+
+    Attributes:
+        source_account_id: Filter by source account.
+        destination_account_id: Filter by destination account.
+        status: Raw status filter (``pending`` / ``completed`` / ``cancelled``).
+        start_date: Inclusive start date filter.
+        end_date: Inclusive end date filter.
+    """
 
     source_account_id: uuid.UUID | None = Field(default=None, description="Filter by source account")
     destination_account_id: uuid.UUID | None = Field(default=None, description="Filter by destination account")
@@ -94,7 +188,14 @@ class MovementListQuery(BaseModel):
     end_date: date | None = Field(default=None, description="Filter by end date")
 
     def service_kwargs(self) -> MovementListServiceKwargs:
-        """Map API query parameters to ``TransactionsService.list_transfers`` kwargs."""
+        """Map API query parameters to ``TransactionsService.list_transfers`` kwargs.
+
+        Returns:
+            Typed keyword arguments ready for ``list_transfers``.
+
+        Raises:
+            ValueError: When ``status`` is set but cannot be parsed.
+        """
         return MovementListServiceKwargs(
             source_account_id=self.source_account_id,
             destination_account_id=self.destination_account_id,
@@ -116,7 +217,22 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
     max_amount: Annotated[float | None, Query(description="Maximum amount filter", ge=0)] = None,
     search: Annotated[str | None, Query(description="Search in description")] = None,
 ) -> TransactionListQuery:
-    """FastAPI dependency that collects transaction list query parameters."""
+    """Collect ``GET /transactions`` query parameters for FastAPI dependency injection.
+
+    Args:
+        account_id: Filter by primary account (from or to).
+        category_id: Filter by category.
+        transaction_type: Filter by income/expense/transfer.
+        status: Filter by pending/completed/cancelled.
+        start_date: Inclusive start date.
+        end_date: Inclusive end date.
+        min_amount: Minimum amount (``>= 0``).
+        max_amount: Maximum amount (``>= 0``).
+        search: Description search string.
+
+    Returns:
+        Populated ``TransactionListQuery`` for the route handler.
+    """
     return TransactionListQuery(
         account_id=account_id,
         category_id=category_id,
@@ -138,7 +254,18 @@ def get_movement_list_query(
     start_date: Annotated[date | None, Query(description="Filter by start date")] = None,
     end_date: Annotated[date | None, Query(description="Filter by end date")] = None,
 ) -> MovementListQuery:
-    """FastAPI dependency that collects movement list query parameters."""
+    """Collect ``GET /movements`` query parameters for FastAPI dependency injection.
+
+    Args:
+        source_account_id: Filter by source account.
+        destination_account_id: Filter by destination account.
+        status: Filter by pending/completed/cancelled.
+        start_date: Inclusive start date.
+        end_date: Inclusive end date.
+
+    Returns:
+        Populated ``MovementListQuery`` for the route handler.
+    """
     return MovementListQuery(
         source_account_id=source_account_id,
         destination_account_id=destination_account_id,
@@ -149,7 +276,14 @@ def get_movement_list_query(
 
 
 class ReportSpendingServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``ReportService.spending``."""
+    """Keyword arguments accepted by ``ReportService.spending``.
+
+    Attributes:
+        start_date: Inclusive UTC start of the report window.
+        end_date: Inclusive UTC end of the report window.
+        group_by: Aggregation dimension (``category`` or ``account``).
+        account_id: Optional account scope filter.
+    """
 
     start_date: datetime
     end_date: datetime
@@ -158,7 +292,14 @@ class ReportSpendingServiceKwargs(TypedDict):
 
 
 class ReportCashFlowServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``ReportService.cash_flow``."""
+    """Keyword arguments accepted by ``ReportService.cash_flow``.
+
+    Attributes:
+        start_date: Inclusive UTC start of the report window.
+        end_date: Inclusive UTC end of the report window.
+        account_id: Optional account scope filter.
+        refresh_balances: When ``True``, refresh balance materialized views first.
+    """
 
     start_date: datetime
     end_date: datetime
@@ -167,7 +308,15 @@ class ReportCashFlowServiceKwargs(TypedDict):
 
 
 class ReportTrendsServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``ReportService.trends``."""
+    """Keyword arguments accepted by ``ReportService.trends``.
+
+    Attributes:
+        start_date: Inclusive UTC start of the analysis window.
+        end_date: Inclusive UTC end of the analysis window.
+        period: Bucket size (``daily``, ``weekly``, ``monthly``, or ``yearly``).
+        account_id: Optional account scope filter.
+        category_id: Optional category scope filter.
+    """
 
     start_date: datetime
     end_date: datetime
@@ -177,7 +326,17 @@ class ReportTrendsServiceKwargs(TypedDict):
 
 
 class ReportExportServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``ReportService.export``."""
+    """Keyword arguments accepted by ``ReportService.export``.
+
+    Attributes:
+        report_type: Which report payload to serialize.
+        export_format: Wire format (``csv`` or ``json`` only at the service layer).
+        start_date: Inclusive UTC start of the report window.
+        end_date: Inclusive UTC end of the report window.
+        account_id: Optional account scope filter.
+        group_by: Spending aggregation when ``report_type`` is ``spending``.
+        period: Trends bucket when ``report_type`` is ``trends``.
+    """
 
     report_type: Literal["spending", "cash-flow", "trends"]
     export_format: Literal["csv", "json"]
@@ -189,7 +348,17 @@ class ReportExportServiceKwargs(TypedDict):
 
 
 class ReportSpendingQuery(BaseModel):
-    """Bundled query parameters for ``GET /reports/spending``."""
+    """Bundled query parameters for ``GET /reports/spending``.
+
+    Validates that the date window is ordered and ``group_by`` is allowlisted,
+    then expands dates to inclusive UTC datetimes for the service.
+
+    Attributes:
+        start_date: Report window start (calendar date).
+        end_date: Report window end (calendar date).
+        group_by: Aggregation dimension; default ``category``.
+        account_id: Optional account filter.
+    """
 
     start_date: date = Field(description="Report start date")
     end_date: date = Field(description="Report end date")
@@ -205,7 +374,11 @@ class ReportSpendingQuery(BaseModel):
         return self
 
     def service_kwargs(self) -> ReportSpendingServiceKwargs:
-        """Map API query parameters to ``ReportService.spending`` kwargs."""
+        """Map API query parameters to ``ReportService.spending`` kwargs.
+
+        Returns:
+            Typed keyword arguments with UTC-bounded ``start_date`` / ``end_date``.
+        """
         return ReportSpendingServiceKwargs(
             start_date=date_to_start_datetime(self.start_date),
             end_date=date_to_end_datetime(self.end_date),
@@ -215,7 +388,17 @@ class ReportSpendingQuery(BaseModel):
 
 
 class ReportCashFlowQuery(BaseModel):
-    """Bundled query parameters for ``GET /reports/cash-flow``."""
+    """Bundled query parameters for ``GET /reports/cash-flow``.
+
+    Validates window ordering. ``refresh_balances`` defaults to ``True`` so
+    cash-flow reads can refresh account-balance MVs before querying (G9).
+
+    Attributes:
+        start_date: Report window start (calendar date).
+        end_date: Report window end (calendar date).
+        account_id: Optional account filter.
+        refresh_balances: Whether to refresh balance MVs before the query.
+    """
 
     start_date: date = Field(description="Report start date")
     end_date: date = Field(description="Report end date")
@@ -229,7 +412,11 @@ class ReportCashFlowQuery(BaseModel):
         return self
 
     def service_kwargs(self) -> ReportCashFlowServiceKwargs:
-        """Map API query parameters to ``ReportService.cash_flow`` kwargs."""
+        """Map API query parameters to ``ReportService.cash_flow`` kwargs.
+
+        Returns:
+            Typed keyword arguments with UTC-bounded dates and refresh flag.
+        """
         return ReportCashFlowServiceKwargs(
             start_date=date_to_start_datetime(self.start_date),
             end_date=date_to_end_datetime(self.end_date),
@@ -239,7 +426,20 @@ class ReportCashFlowQuery(BaseModel):
 
 
 class ReportTrendsQuery(BaseModel):
-    """Bundled query parameters for ``GET /reports/trends``."""
+    """Bundled query parameters for ``GET /reports/trends``.
+
+    Resolves the analysis window from explicit dates or from ``months`` ending at
+    ``end_date`` (default today). Mutates ``start_date`` / ``end_date`` on the
+    model during validation so later ``service_kwargs()`` always sees concrete dates.
+
+    Attributes:
+        months: Lookback length in months when dates are omitted (1–120; default 6).
+        period: Series bucket size (``daily`` / ``weekly`` / ``monthly`` / ``yearly``).
+        start_date: Explicit analysis start, or resolved during validation.
+        end_date: Explicit analysis end, or resolved during validation.
+        category_id: Optional category filter.
+        account_id: Optional account filter.
+    """
 
     months: int = Field(default=6, ge=1, le=120, description="Number of months to analyze")
     period: str = Field(default="monthly", description="Series bucket size")
@@ -261,7 +461,15 @@ class ReportTrendsQuery(BaseModel):
         return self
 
     def service_kwargs(self) -> ReportTrendsServiceKwargs:
-        """Map API query parameters to ``ReportService.trends`` kwargs."""
+        """Map API query parameters to ``ReportService.trends`` kwargs.
+
+        Returns:
+            Typed keyword arguments with UTC-bounded dates and allowlisted period.
+
+        Raises:
+            ValueError: If validation did not resolve ``start_date`` and ``end_date``
+                (defensive; normal construction always resolves them).
+        """
         if self.start_date is None or self.end_date is None:
             raise ValueError("start_date and end_date must be resolved")
         return ReportTrendsServiceKwargs(
@@ -274,7 +482,21 @@ class ReportTrendsQuery(BaseModel):
 
 
 class ReportExportQuery(BaseModel):
-    """Bundled query parameters for ``GET /reports/export``."""
+    """Bundled query parameters for ``GET /reports/export``.
+
+    Validates window order, report type, group/period allowlists, and export
+    format. Deferred formats (``xlsx``, ``pdf``) pass validation so the router can
+    return HTTP 501; ``service_kwargs()`` refuses them.
+
+    Attributes:
+        report_type: Report to export (``spending``, ``cash-flow``, or ``trends``).
+        export_format: Wire format (``csv`` / ``json``; ``xlsx`` / ``pdf`` deferred).
+        start_date: Report window start (calendar date).
+        end_date: Report window end (calendar date).
+        account_id: Optional account filter.
+        group_by: Spending ``group_by`` when ``report_type`` is ``spending``.
+        period: Trends period when ``report_type`` is ``trends``.
+    """
 
     report_type: str = Field(description="Report to export (spending, cash-flow, trends)")
     export_format: str = Field(description="Export format (csv or json; xlsx/pdf deferred)")
@@ -302,11 +524,22 @@ class ReportExportQuery(BaseModel):
 
     @property
     def is_deferred_format(self) -> bool:
-        """Return True when the requested export format is deferred (501)."""
+        """Return whether the requested export format is deferred (HTTP 501).
+
+        Returns:
+            ``True`` when ``export_format`` is in ``DEFERRED_EXPORT_FORMATS``.
+        """
         return self.export_format in DEFERRED_EXPORT_FORMATS
 
     def service_kwargs(self) -> ReportExportServiceKwargs:
-        """Map API query parameters to ``ReportService.export`` kwargs."""
+        """Map API query parameters to ``ReportService.export`` kwargs.
+
+        Returns:
+            Typed keyword arguments for an implemented export format.
+
+        Raises:
+            ValueError: When ``export_format`` is deferred (``xlsx`` / ``pdf``).
+        """
         if self.is_deferred_format:
             raise ValueError(f"Export format '{self.export_format}' is deferred")
         return ReportExportServiceKwargs(
@@ -327,7 +560,17 @@ def get_report_spending_query(  # pylint: disable=too-many-arguments
     group_by: Annotated[str, Query(description="Group by category or account")] = "category",
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
 ) -> ReportSpendingQuery:
-    """FastAPI dependency that collects spending report query parameters."""
+    """Collect ``GET /reports/spending`` query parameters for FastAPI injection.
+
+    Args:
+        start_date: Report start date (required).
+        end_date: Report end date (required).
+        group_by: Aggregation dimension; default ``category``.
+        account_id: Optional account filter.
+
+    Returns:
+        Populated ``ReportSpendingQuery`` (may raise ``ValueError`` via validators).
+    """
     return ReportSpendingQuery(
         start_date=start_date,
         end_date=end_date,
@@ -343,7 +586,17 @@ def get_report_cash_flow_query(
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
     refresh_balances: Annotated[bool, Query(description="Refresh balance MVs before query")] = True,
 ) -> ReportCashFlowQuery:
-    """FastAPI dependency that collects cash-flow report query parameters."""
+    """Collect ``GET /reports/cash-flow`` query parameters for FastAPI injection.
+
+    Args:
+        start_date: Report start date (required).
+        end_date: Report end date (required).
+        account_id: Optional account filter.
+        refresh_balances: Whether to refresh balance MVs before the query.
+
+    Returns:
+        Populated ``ReportCashFlowQuery`` (may raise ``ValueError`` via validators).
+    """
     return ReportCashFlowQuery(
         start_date=start_date,
         end_date=end_date,
@@ -361,7 +614,19 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
     category_id: Annotated[uuid.UUID | None, Query(description="Optional category filter")] = None,
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
 ) -> ReportTrendsQuery:
-    """FastAPI dependency that collects trends report query parameters."""
+    """Collect ``GET /reports/trends`` query parameters for FastAPI injection.
+
+    Args:
+        months: Lookback months when dates are omitted (1–120; default 6).
+        period: Series bucket size (default ``monthly``).
+        start_date: Optional explicit analysis start.
+        end_date: Optional explicit analysis end.
+        category_id: Optional category filter.
+        account_id: Optional account filter.
+
+    Returns:
+        Populated ``ReportTrendsQuery`` with resolved window after validation.
+    """
     return ReportTrendsQuery(
         months=months,
         period=period,
@@ -382,7 +647,22 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
     group_by: Annotated[str, Query(description="Spending group_by")] = "category",
     period: Annotated[str, Query(description="Trends period")] = "monthly",
 ) -> ReportExportQuery:
-    """FastAPI dependency that collects export report query parameters."""
+    """Collect ``GET /reports/export`` query parameters for FastAPI injection.
+
+    The OpenAPI query name for ``export_format`` is ``format`` (alias).
+
+    Args:
+        report_type: Report to export (``spending``, ``cash-flow``, or ``trends``).
+        export_format: Export format from the ``format`` query parameter.
+        start_date: Report start date (required).
+        end_date: Report end date (required).
+        account_id: Optional account filter.
+        group_by: Spending aggregation when exporting spending.
+        period: Trends bucket when exporting trends.
+
+    Returns:
+        Populated ``ReportExportQuery`` (deferred formats remain valid for 501 handling).
+    """
     return ReportExportQuery(
         report_type=report_type,
         export_format=export_format,

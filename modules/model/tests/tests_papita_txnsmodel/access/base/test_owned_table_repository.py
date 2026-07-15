@@ -31,6 +31,7 @@ def user_a() -> UsersDTO:
         username="user_a_test",
         email="user_a@example.local",
         password=_VALID_PASSWORD,
+        auth_provider="local",
     )
 
 
@@ -42,6 +43,7 @@ def user_b() -> UsersDTO:
         username="user_b_test",
         email="user_b@example.local",
         password=_VALID_PASSWORD,
+        auth_provider="local",
     )
 
 

@@ -17,7 +17,7 @@ def make_user(
     deleted_at: datetime | None = None,
 ) -> UsersDTO:
     """Build a valid UsersDTO for auth tests."""
-    user = UsersDTO(username=username, email=email, password=VALID_PASSWORD)
+    user = UsersDTO(username=username, email=email, password=VALID_PASSWORD, auth_provider="local")
     user.created_at = datetime.now(timezone.utc)
     user.active = active
     user.deleted_at = deleted_at

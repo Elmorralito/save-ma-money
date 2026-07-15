@@ -31,7 +31,10 @@ DB_URL_PATTERN = re.compile(
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
 
 DEFAULT_ENV_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docker", "alembic", "default.env"
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "environments",
+    os.environ.get("PAPITA_ENV", "local"),
+    ".env",
 )
 
 sys.path.append(MODEL_PATH)
@@ -162,8 +165,8 @@ def run_migrations_online() -> None:
         poolclass=sa.pool.NullPool,
     )
     with connectable.connect() as connection:
-        instpector = sa.inspect(connection)
-        if not context.get_x_argument(as_dictionary=True).get("upgrading") and not instpector.has_schema(
+        inspector = sa.inspect(connection)
+        if not context.get_x_argument(as_dictionary=True).get("upgrading") and not inspector.has_schema(
             target_metadata.schema
         ):
             template_args = {
@@ -178,6 +181,11 @@ def run_migrations_online() -> None:
                 "schema_setup": "",
             }
 
+        # SQLAlchemy 2 autobegin: inspect() opens an outer transaction; Alembic then uses a
+        # SAVEPOINT. Commit the inspect txn before migrating so upgrade DDL is not rolled back
+        # when the connection context exits.
+        connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
@@ -189,6 +197,7 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
+        connection.commit()
 
 
 if context.is_offline_mode():

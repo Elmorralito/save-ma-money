@@ -17,6 +17,8 @@ node_modules/
 .venv/
 .env
 .env.local
+environments/**/.env
+!environments/**/.env.example
 .dbversion
 # Build files
 build/
@@ -52,6 +54,10 @@ docs/coverage.xml
 docs/coverage-codecov-sync.xml
 duckdb:*
 *.duckdb
+
+# Local agent skill installs (Cursor / strata adapters); keep AGENTS.md / CLAUDE.md
+.agents/skills/
+skills-lock.json
 
 .data/
 

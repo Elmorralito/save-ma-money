@@ -1,6 +1,29 @@
 """Enumeration types for the Papita Transactions v3 schema."""
 
+from __future__ import annotations
+
 from enum import Enum
+
+
+class ProviderType(str, Enum):
+    """Signup / identity channel for ``users.provider_type``.
+
+    ``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``
+    are Supabase Auth OAuth providers; values match Supabase provider ids.
+    """
+
+    EMAIL = "email"
+    GOOGLE = "google"
+    GITHUB = "github"
+
+    @classmethod
+    def oauth_members(cls) -> frozenset[ProviderType]:
+        """Providers that complete via Supabase OAuth / ``POST /auth/sso``."""
+        return frozenset({cls.GOOGLE, cls.GITHUB})
+
+    def is_oauth(self) -> bool:
+        """Return whether this provider uses the OAuth/SSO path."""
+        return self in self.oauth_members()
 
 
 class AccountKind(str, Enum):

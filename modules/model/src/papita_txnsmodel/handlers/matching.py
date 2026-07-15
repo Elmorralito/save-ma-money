@@ -99,6 +99,7 @@ class ReferenceIndex:  # pylint: disable=too-many-instance-attributes
                 self._by_tag[normalized_tag] = record_id
 
     def _normalize(self, value: str | uuid.UUID) -> str | uuid.UUID:
+        """Normalize a UUID or string value to a string at lower case if not case sensitive."""
         if isinstance(value, str) and not self.case_sensitive:
             return value.lower()
         return value

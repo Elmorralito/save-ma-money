@@ -7,7 +7,10 @@ useDefault = true
 description = "Environment templates and documented placeholder values"
 paths = [
   '''(?i)(^|/)\.env\.example$''',
+  '''(?i)environments/.+/\.env\.example$''',
   '''(?i)modules/api/README\.md$''',
+  # Fake PKCE verifier fixtures in Auth unit tests (not live secrets).
+  '''(?i)modules/api/tests/test_auth_supabase\.py$''',
 ]
 
 regexes = [
@@ -18,4 +21,7 @@ regexes = [
   '''<region>''',
   '''eyJ\.\.\.''',
   '''"access_token": "eyJ[^"]*"''',
+  # Historical false positive from OAuth cookie unit test fixture (generic-api-key).
+  '''pkce-verifier-0123456789abcdef''',
+  '''test-pkce-verifier-placeholder''',
 ]
