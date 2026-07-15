@@ -131,7 +131,10 @@ class Settings(BaseSettings):
     AUTH_PROVIDER: Literal["local", "supabase"] = "local"
     SUPABASE_URL: str | None = None
     SUPABASE_ANON_KEY: str | None = None
+    # Server-only; used to delete orphan Auth users after failed provision.
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
+    SUPABASE_OAUTH_REDIRECT_TO: str | None = None
     ALLOWED_ORIGINS: list[str] = ["*"]
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
@@ -140,6 +143,9 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
     AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
     AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: int = 5
+    AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: int = 20
+    # When None, OAuth PKCE cookies use Secure when DEBUG is false.
+    AUTH_COOKIE_SECURE: bool | None = None
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -244,6 +250,16 @@ class Settings(BaseSettings):
             self.AUTH_PROVIDER,
         )
         return self
+
+    def oauth_cookie_secure(self) -> bool:
+        """Whether OAuth PKCE cookies should set the Secure flag.
+
+        Returns:
+            Explicit ``AUTH_COOKIE_SECURE`` when set; otherwise ``not DEBUG``.
+        """
+        if self.AUTH_COOKIE_SECURE is not None:
+            return self.AUTH_COOKIE_SECURE
+        return not self.DEBUG
 
 
 @lru_cache()

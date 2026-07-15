@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
-os.environ.setdefault("AUTH_PROVIDER", "local")
+# Force local HS256 for unit tests even when environments/local/.env has supabase Auth.
+os.environ["AUTH_PROVIDER"] = "local"
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 # Prefer process env over environments/$PAPITA_ENV/.env for unit tests (live tests set URLs explicitly).
 if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:

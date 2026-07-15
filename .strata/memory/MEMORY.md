@@ -4,16 +4,17 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — PPT-038 PR #90; txn link DI + report frame flatten fix.
-- [Active issues](../issues/ACTIVE.md) — PPT-038 reports in progress.
+- [Project state](project_state.md) — Supabase project owns Auth + user management (PPT-039).
+- [Active issues](../issues/ACTIVE.md) — PPT-039 Auth on `ops/PPT-039`.
 - [Open backlog](../issues/OPEN.md) — PPT-040 tests/CI; PPT-044 API hardening.
 
 ## Rules by trigger
 
 <!-- GENERATED at /strata:save from learnings/ frontmatter — do not hand-edit; edit learning files instead -->
 
-| When you are about to…                      | Read                                                           |
-| ------------------------------------------- | -------------------------------------------------------------- |
-| Commit under `modules/api/src`              | [api-pre-commit-lint.md](learnings/api-pre-commit-lint.md)     |
-| Commit when `modules/` or `deploy/` changed | [strata-strict-pairing.md](learnings/strata-strict-pairing.md) |
-| Wire `/reports/*` or ReportService          | [report-tenant-scoping.md](learnings/report-tenant-scoping.md) |
+| When you are about to…                                      | Read                                                               |
+| ----------------------------------------------------------- | ------------------------------------------------------------------ |
+| Change auth, register, login, users passwords, or JWT issue | [supabase-auth-ownership.md](learnings/supabase-auth-ownership.md) |
+| Commit under `modules/api/src`                              | [api-pre-commit-lint.md](learnings/api-pre-commit-lint.md)         |
+| Commit when `modules/` or `deploy/` changed                 | [strata-strict-pairing.md](learnings/strata-strict-pairing.md)     |
+| Wire `/reports/*` or ReportService                          | [report-tenant-scoping.md](learnings/report-tenant-scoping.md)     |

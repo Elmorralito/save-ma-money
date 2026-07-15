@@ -16,7 +16,7 @@ Key exports:
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -25,11 +25,45 @@ from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.enums import ProviderType
 from papita_txnsmodel.services.users import UsersService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
+
+
+def _profile_from_supabase_claims(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract optional Papita profile fields from a Supabase access-token payload.
+
+    Missing keys are omitted so ``ensure_from_auth_subject`` leaves stored values
+    unchanged. ``provider_type`` is taken from ``app_metadata.provider`` when it
+    matches a known ``ProviderType``.
+    """
+    profile: dict[str, Any] = {}
+    meta = payload.get("user_metadata")
+    if isinstance(meta, dict):
+        for key in ("display_name", "full_name", "name"):
+            value = meta.get(key)
+            if isinstance(value, str) and value.strip():
+                profile["display_name"] = value.strip()
+                break
+        phone = meta.get("phone")
+        if isinstance(phone, str) and phone.strip():
+            profile["phone"] = phone.strip()
+    claim_phone = payload.get("phone")
+    if "phone" not in profile and isinstance(claim_phone, str) and claim_phone.strip():
+        profile["phone"] = claim_phone.strip()
+
+    app_meta = payload.get("app_metadata")
+    if isinstance(app_meta, dict):
+        raw_provider = app_meta.get("provider")
+        if isinstance(raw_provider, str):
+            try:
+                profile["provider_type"] = ProviderType(raw_provider.lower())
+            except ValueError:
+                pass
+    return profile
 
 
 def get_auth_manager(settings: Annotated[Settings, Depends(get_settings)]) -> AuthSecurityManager:
@@ -93,8 +127,15 @@ def get_current_owner(
 
     if settings.AUTH_PROVIDER == "supabase":
         email = str(payload.get("email") or "").strip()
+        profile = _profile_from_supabase_claims(payload)
         try:
-            owner = users_service.ensure_from_auth_subject(subject=owner_id, email=email)
+            owner = users_service.ensure_from_auth_subject(
+                subject=owner_id,
+                email=email,
+                display_name=profile.get("display_name"),
+                phone=profile.get("phone"),
+                provider_type=profile.get("provider_type"),
+            )
         except ValueError as exc:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

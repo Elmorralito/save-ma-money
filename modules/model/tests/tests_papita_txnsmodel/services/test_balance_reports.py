@@ -21,6 +21,7 @@ def owner() -> UsersDTO:
         username="user_a_test",
         email="user_a@example.local",
         password=_VALID_PASSWORD,
+        auth_provider="local",
     )
 
 

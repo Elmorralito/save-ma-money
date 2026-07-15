@@ -30,6 +30,7 @@ def _user(user_id: uuid.UUID, label: str) -> UsersDTO:
         username=f"ppt041_{label}",
         email=f"ppt041_{label}@example.local",
         password=_VALID_PASSWORD,
+        auth_provider="local",
     )
 
 
@@ -107,14 +108,12 @@ class TestLiveDbTenancyIsolation:
         user_a = _user(integration_owner_ids["user_a"], "user_a")
         global_id = uuid.uuid4()
         db_session.execute(
-            text(
-                """
+            text("""
                 INSERT INTO papita_transactions.categories
                     (id, owner_id, parent_id, name, category_kind, description, tags, active, created_at, updated_at)
                 VALUES
                     (:id, NULL, NULL, :name, 'EXPENSE', 'seed', '{}', true, NOW(), NOW())
-                """
-            ),
+                """),
             {"id": str(global_id), "name": f"Global Utilities {global_id.hex[:8]}"},
         )
         db_session.commit()

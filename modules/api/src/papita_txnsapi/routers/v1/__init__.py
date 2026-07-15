@@ -5,8 +5,8 @@ application. Registration order places unauthenticated probes first, then auth, 
 tenant-scoped CRUD routes.
 
 Routes exposed (prefix relative to app mount):
-    ``/health`` — liveness, readiness, database communication, and composite health (no tenant scope).
-    ``/auth`` — register, login, profile; refresh/logout deferred (FR-11).
+    ``/health`` — liveness, readiness, database, Auth, and composite health (no tenant scope).
+    ``/auth`` — register, login, profile; refresh/logout via Supabase Auth sessions.
     ``/accounts`` — tenant-scoped account CRUD via :class:`~papita_txnsmodel.services.accounts.AccountsService`.
     ``/categories`` — tenant + global seed categories via
         :class:`~papita_txnsmodel.services.categories.CategoriesService`.

@@ -1,24 +1,27 @@
 ---
 name: save-ma-money State
-description: Compose API injects SUPABASE_*; Auth smoke needs real email domain.
+description: Auth + user management owned by Supabase project; Compose injects SUPABASE_*.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-Docker API lacked `AUTH_PROVIDER` / `SUPABASE_*`, so registers wrote only to local
-Postgres. Compose now injects Auth env. Supabase rejects `.local` / `example.com`
-and rate-limits default SMTP — set `AUTH_SMOKE_EMAIL` and disable Confirm email.
+**Standing rule:** move / keep **user management and authentication in the Supabase
+project**. Papita API verifies JWTs + links `users` by `sub` — it is not the IdP.
+
+Compose API now injects `AUTH_PROVIDER` / `SUPABASE_*`. Smoke needs a real email
+(`AUTH_SMOKE_EMAIL`) and Confirm email off (or custom SMTP) for local.
 
 ### Last completed (this session)
 
-- `docker-compose.yml` passes Supabase Auth settings into `api`
-- Auth smoke requires `AUTH_SMOKE_EMAIL` or `AUTH_SMOKE_EMAIL_DOMAIN`
+- Supabase Auth client register/login + JWKS verify
+- Compose Auth env wiring; smoke email guidance
+- Learning: `learnings/supabase-auth-ownership.md`
 
 ### Next action
 
-- Add `AUTH_SMOKE_EMAIL=you+smoke@yourdomain.com` to `environments/local/.env`
-- Auth → Email → disable Confirm email (local)
-- `make auth-smoke` and confirm user appears in Supabase Auth dashboard
+- Set `AUTH_SMOKE_EMAIL` in `environments/local/.env`
+- Disable Confirm email (local) → `make auth-smoke` → users appear in Supabase Auth
+- Do not reintroduce local password JWT as default
 
 ### Uncommitted / staging notes
 
