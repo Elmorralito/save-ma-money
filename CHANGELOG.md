@@ -6,11 +6,53 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary:
 
-- [ ] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and CI dual-target gate (B0 + B1)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and B0 CI gate (Auth-first)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-16 14:10:20+00:00</sub>_
+
+  > **Closed by** [_**#92**](https://github.com/Elmorralito/save-ma-money/pull/92): **test/PPT-040: [api] Integration suite and B0 CI (Auth-first)**
+
+  > ## Summary
+
+  > - Closes PPT-040 / [#50](https://github.com/Elmorralito/save-ma-money/issues/50) under the **Auth-first** platform rule from epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) / PPT-039: **Supabase = users, Auth, tokens only** — not application storage.
+
+  > - **B0 required:** Docker Postgres live-DB + CI (quality-control.yml), including transactions/movements tenancy tests.
+
+  > - **Supabase validation:** manual make auth-smoke (JWT → /auth/me). No CI job against Supabase Postgres.
+
+  > - Codecov measures modules/{api,model}/src; QC pins AUTH_PROVIDER=local.
+
+  > - Model fix: skip null FKs in LinkedEntitiesService.get for expense/transfer linked DTOs.
+
+  > - Pooler smoke (make b1-smoke) remains as **parked optional ops** only — not an acceptance criterion.
+
+  >
+
+  > ## Test plan
+
+  > - [x] poetry run pytest modules/api/tests — B0 Docker Postgres
+
+  > - [ ] CI quality-control on this PR
+
+  > - [ ] Optional: make auth-smoke against a running API with AUTH_PROVIDER=supabase
+
+  >
+
+  > ## Out of scope
+
+  > - Migrating app schema onto Supabase Postgres / pooler secrets / SUPABASE_B1_DATABASE_URL as a gate
+
+  >
+
+  > ## References
+
+  > - Parent epic: #42
+
+  > - Issue: #50
+
+  > - Auth reissue: PPT-039 / #49
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#49](https://github.com/Elmorralito/save-ma-money/issues/49)**_] :: **feat/PPT-039: [api] Supabase Auth (replace local JWT issuance)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:05+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-15 17:45:38+00:00</sub>_
 
