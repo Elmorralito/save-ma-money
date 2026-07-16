@@ -6,7 +6,7 @@ Everything `status: open`, grouped by area, severity first. Consulted on demand 
 
 ## modules/api
 
-| Id          | Type        | Sev | What                                                                |
-| ----------- | ----------- | --- | ------------------------------------------------------------------- |
-| 20260713-02 | task        | med | PPT-040 [#50] API tests + CI dual-target (B0/B1), including reports |
-| 20260713-03 | improvement | med | PPT-044 [#89] post-MVP API security/ops hardening                   |
+| Id          | Type        | Sev | What                                                               |
+| ----------- | ----------- | --- | ------------------------------------------------------------------ |
+| 20260713-02 | task        | med | PPT-040 [#50] API tests + B0 CI (Auth-first); Codecov patch on #92 |
+| 20260713-03 | improvement | med | PPT-044 [#89] post-MVP API security/ops hardening                  |

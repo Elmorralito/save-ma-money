@@ -19,14 +19,17 @@ coverage:
         target: auto
         threshold: 1%
         if_ci_failed: error
-        informational: false
+        # Soft while PPT-040 switches measurement from test paths → modules/*/src
+        # (expects a large rebaseline). Set informational: false after the new
+        # source report is the Codecov base on main.
+        informational: true
     patch:
       default:
         target: auto
         threshold: 0%
         if_ci_failed: error
-        # Informational while PPT-032 API routers land; tighten when source --cov is enabled.
-        informational: true
+        # Source packages measured via pytest --cov=modules/{model,api}/src (PPT-040).
+        informational: false
 
 comment:
   layout: "condensed_header, condensed_files, condensed_footer"

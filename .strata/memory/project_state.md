@@ -13,20 +13,18 @@ Compose API now injects `AUTH_PROVIDER` / `SUPABASE_*`. Smoke needs a real email
 
 ### Last completed (this session)
 
-- Supabase Auth client register/login + JWKS verify
-- Compose Auth env wiring; smoke email guidance
-- Learning: `learnings/supabase-auth-ownership.md`
-- PR [#91](https://github.com/Elmorralito/save-ma-money/pull/91) babysit: CI fixes
-  (cryptography 48.0.1, migration comment, gitleaks allowlist, prettier Auth contract);
-  dismissed CodeQL OAuth-cookie FPs
+- PPT-040 PR [#92](https://github.com/Elmorralito/save-ma-money/pull/92): B0 live txn/movement tests,
+  Auth-first docs, source-package Codecov measurement
+- Diagnosed `codecov/patch` fail: suite mutates class-level `LinkedEntity.other_entity_service`,
+  hiding isinstance-continue; tests now clone unloaded links + ternary resolve/fallback
 
 ### Next action
 
-- Confirm [#91](https://github.com/Elmorralito/save-ma-money/pull/91) CI green / merge-ready
-- Set `AUTH_SMOKE_EMAIL` in `environments/local/.env`
-- Disable Confirm email (local) → `make auth-smoke` → users appear in Supabase Auth
-- Do not reintroduce local password JWT as default
+- Commit + push Codecov isolation fix on `test/PPT-050` → confirm `codecov/patch` green on #92
+- Merge #92 → close #50; optional `make auth-smoke` against staging Auth
+- Do not reintroduce local password JWT as default; do not gate on Supabase PG/pooler
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
+- Pending: `extends.py` + `test_linked_entities_get.py` + this strata update

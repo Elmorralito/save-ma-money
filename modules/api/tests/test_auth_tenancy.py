@@ -1,4 +1,8 @@
-"""Live-DB tenancy tests for auth + cross-tenant isolation (NFR-04)."""
+"""Live-DB tenancy tests for auth + cross-tenant isolation (NFR-04).
+
+HTTP-layer companion to model ``test_owned_table_repository.py``: register/login
+two tenants and prove User B cannot resolve User A's owned rows.
+"""
 
 from __future__ import annotations
 

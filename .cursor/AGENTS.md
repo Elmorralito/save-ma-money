@@ -136,7 +136,7 @@ poetry run pytest
 /bin/bash .github/scripts/strata_check.sh
 ```
 
-Coverage output: `docs/coverage.xml`. Pre-commit config: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
+Coverage output: `docs/coverage.xml` from `--cov=modules/{model,api}/src` (Codecov-aligned). B0 CI uses `AUTH_PROVIDER=local` against Docker Postgres. **Supabase is Auth-only** (users/tokens) — validate with `make auth-smoke`; do not treat Supabase PG/pooler as an epic or PPT-040 gate. Pre-commit: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
 **Note:** `poetry.lock` is gitignored — CI resolves deps via `poetry install` at run time.
 

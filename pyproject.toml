@@ -48,7 +48,7 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=./modules/model/tests --cov=./modules/registrar/tests --cov=./modules/api/tests --cov-report xml:docs/coverage.xml"
+addopts = "--import-mode=importlib -raqvs --cov=./modules/model/src --cov=./modules/api/src --cov-report xml:docs/coverage.xml"
 testpaths = [
     "./modules/api/tests",
     "./modules/model/tests",

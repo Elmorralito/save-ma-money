@@ -304,15 +304,20 @@ class LinkedEntitiesService(BaseService):
         """
         dto = super().get(obj=obj, owner=owner, **kwargs)
         if kwargs.get("include_linked_dtos", True) and isinstance(dto, self.dto_type):
-            linked_dtos = {
-                link.own_entity_link_field_name: link.other_entity_service.get(
-                    obj=getattr(dto, link.own_entity_link_field_name), owner=owner, **kwargs
-                )
-                or getattr(dto, link.own_entity_link_field_name)
-                for link in self.__links__.values()
-                if isinstance(link.other_entity_service, link.expected_other_entity_service_type)
-            }
-            dto = self.dto_type.model_validate(dto.model_dump(mode="python") | linked_dtos)
+            # Skip null FKs (e.g. expense has from_account only; transfer has no category).
+            linked_dtos: dict[str, Any] = {}
+            for link in self.__links__.values():
+                if not isinstance(link.other_entity_service, link.expected_other_entity_service_type):
+                    continue
+                field_name = link.own_entity_link_field_name
+                field_value = getattr(dto, field_name, None)
+                if field_value is None:
+                    continue
+                resolved = link.other_entity_service.get(obj=field_value, owner=owner, **kwargs)
+                # Keep raw FK when linked get misses (explicit ternary for branch coverage).
+                linked_dtos[field_name] = field_value if resolved is None else resolved
+            if linked_dtos:
+                dto = self.dto_type.model_validate(dto.model_dump(mode="python") | linked_dtos)
 
         return dto
 

@@ -46,7 +46,7 @@ PAPITA_ENV=staging make b1-smoke
 # equivalent: /bin/bash ./deploy/b1_smoke.sh --env staging
 ```
 
-`make b1-smoke` **fails with a clear message** if `environments/staging/.env` is missing, points at local Docker (B0), or the pooler rejects `SELECT 1`. Plain `pytest` still **skips** when the gate fails so CI stays green without secrets ([#50](https://github.com/Elmorralito/save-ma-money/issues/50)).
+`make b1-smoke` **fails with a clear message** if `environments/staging/.env` is missing, points at local Docker (B0), or the pooler rejects `SELECT 1`. Plain `pytest` still **skips** when the gate fails. This path is **parked optional ops** — [#50](https://github.com/Elmorralito/save-ma-money/issues/50) / epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) do **not** require Supabase-hosted Postgres (Auth-first: Supabase = users/Auth/tokens only).
 
 ## Health contract
 

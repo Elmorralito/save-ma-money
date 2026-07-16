@@ -33,9 +33,16 @@ def postgres_url() -> str | None:
     return str(url)
 
 
-def postgres_available() -> bool:
-    """Return True only when DATABASE_URL is set and the server accepts connections."""
-    url = postgres_url()
+def b1_database_url() -> str | None:
+    """Return the B1 pooler URL, preferring ``SUPABASE_B1_DATABASE_URL`` when set."""
+    url = os.environ.get("SUPABASE_B1_DATABASE_URL") or postgres_url()
+    if not url or not str(url).startswith("postgresql"):
+        return None
+    return str(url)
+
+
+def postgres_available_for_url(url: str | None) -> bool:
+    """Return True when ``url`` points at a reachable PostgreSQL server."""
     if url is None:
         return False
 
@@ -51,6 +58,11 @@ def postgres_available() -> bool:
         return False
 
 
+def postgres_available() -> bool:
+    """Return True only when DATABASE_URL is set and the server accepts connections."""
+    return postgres_available_for_url(postgres_url())
+
+
 def is_supabase_pooler_url(url: str | None) -> bool:
     """Return True when the URL targets a Supabase transaction pooler (B1)."""
     if not url:
@@ -64,12 +76,12 @@ def is_supabase_pooler_url(url: str | None) -> bool:
 
 def b1_gate_status() -> B1GateStatus:
     """Classify why B1 smoke can or cannot run (no secrets in the message)."""
-    url = postgres_url()
+    url = b1_database_url()
     if url is None:
         return B1GateStatus(
             ok=False,
             message=(
-                "B1 gate: DATABASE_URL is unset or not a postgresql* URL "
+                "B1 gate: SUPABASE_B1_DATABASE_URL or DATABASE_URL is unset or not a postgresql* URL "
                 "(export it or add it to environments/$PAPITA_ENV/.env)."
             ),
         )
@@ -81,13 +93,13 @@ def b1_gate_status() -> B1GateStatus:
         return B1GateStatus(
             ok=False,
             message=(
-                f"B1 gate: DATABASE_URL points at {host}:{port}, which is not a "
+                f"B1 gate: pooler URL points at {host}:{port}, which is not a "
                 "Supabase transaction pooler. Need host *.pooler.supabase.com or port 6543 "
                 "(local Docker :5432/:5435 is B0 and will skip)."
             ),
         )
 
-    if not postgres_available():
+    if not postgres_available_for_url(url):
         return B1GateStatus(
             ok=False,
             message=(
