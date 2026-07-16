@@ -14,6 +14,7 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import AccountKind, LedgerSide, TransactionKind, TransactionStatus
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.base import BaseService
+from papita_txnsmodel.services.extends import LinkedEntity
 from papita_txnsmodel.services.transactions import TransactionsService
 
 _VALID_PASSWORD = "Password1!"
@@ -31,10 +32,31 @@ def owner() -> UsersDTO:
     )
 
 
+def _fresh_transaction_links() -> dict[str, LinkedEntity]:
+    """Clone link defs with unloaded services.
+
+    ``load_link_services`` mutates class-level ``LinkedEntity`` instances in place. Other
+    suite tests can leave those services loaded, which hides the
+    ``not isinstance(...): continue`` branch from Codecov when this file runs later.
+    """
+    return {
+        name: LinkedEntity(
+            expected_other_entity_service_type=link.expected_other_entity_service_type,
+            other_entity_link_column_name=link.other_entity_link_column_name,
+            other_entity_link_field_name=link.other_entity_link_field_name,
+            own_entity_link_column_name=link.own_entity_link_column_name,
+            own_entity_link_field_name=link.own_entity_link_field_name,
+            other_entity_service=None,
+        )
+        for name, link in TransactionsService.__links__.items()
+    }
+
+
 def _transactions_service() -> TransactionsService:
     with patch("papita_txnsmodel.services.transactions.TransactionsRepository"):
         service = TransactionsService()
         service._repository = MagicMock()
+        service.__links__ = _fresh_transaction_links()
         return service
 
 

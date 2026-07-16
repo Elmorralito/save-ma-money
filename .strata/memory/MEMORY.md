@@ -5,8 +5,8 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 ## Live pointers
 
 - [Project state](project_state.md) — Supabase project owns Auth + user management (PPT-039).
-- [Active issues](../issues/ACTIVE.md) — PPT-039 Auth on `ops/PPT-039`.
-- [Open backlog](../issues/OPEN.md) — PPT-040 tests/CI; PPT-044 API hardening.
+- [Active issues](../issues/ACTIVE.md) — (none; PPT-040 open on #92).
+- [Open backlog](../issues/OPEN.md) — PPT-040 B0 CI / Codecov patch; PPT-044 API hardening.
 
 ## Rules by trigger
 

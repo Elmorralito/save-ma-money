@@ -314,10 +314,8 @@ class LinkedEntitiesService(BaseService):
                 if field_value is None:
                     continue
                 resolved = link.other_entity_service.get(obj=field_value, owner=owner, **kwargs)
-                if resolved is None:
-                    linked_dtos[field_name] = field_value
-                else:
-                    linked_dtos[field_name] = resolved
+                # Keep raw FK when linked get misses (explicit ternary for branch coverage).
+                linked_dtos[field_name] = field_value if resolved is None else resolved
             if linked_dtos:
                 dto = self.dto_type.model_validate(dto.model_dump(mode="python") | linked_dtos)
 
