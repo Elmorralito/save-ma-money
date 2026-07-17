@@ -2,15 +2,127 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
-- [ ] [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
+- [ ] [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary:
+- [ ] [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
 
-- [x] [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and B0 CI gate (Auth-first)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-16 14:10:20+00:00</sub>_
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 22:40:06+00:00</sub>_
+
+  > **Closed by** [_**#94**](https://github.com/Elmorralito/save-ma-money/pull/94): **feat(PPT-043): integrate Redis for cache, sessions, and rate limits (PPT-…**
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-043 / #83**: optional Redis for papita_txnsapi so cache-aside GETs, distributed rate limits, JWT denylist, and idempotent transaction creates work across replicas. Postgres stays source of truth; with REDIS_ENABLED=false the API keeps in-memory rate limits and skips cache/denylist. Also includes B0 Compose Redis, smoke/ops docs, Free/Pro/Enterprise API quotas, and a mixed-in **PPT-045 / #93** uvicorn packaging brief plus auth/schema docstring polish.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Full background worker fleet / real queue consumers (core/broker.py is scaffold only)
+
+  > - Live pub/sub product features
+
+  > - PPT-045 uvicorn process packaging implementation (issue/brief only — #93)
+
+  > - Managed B1 Redis provider provisioning (runbook placeholders only)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Versioned tenant cache (papita:{PAPITA_ENV}:…) with per-route TTLs and X-Cache
+
+  > - Atomic Lua sliding-window rate limits; tenant Free/Pro/Enterprise quotas + X-RateLimit-*
+
+  > - Logout JWT denylist fail-closed when Redis is required (503 if unavailable)
+
+  > - Idempotency-Key on POST /transactions (+ bulk)
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **API core**
+
+  >
+
+  > - Pool lifecycle, keys, cache-aside, session denylist, idempotency, tier helpers, broker scaffold
+
+  > - Atomic Redis rate limiter (auth + tenant API); in-memory fallback when Redis off
+
+  > - Settings: REDIS__, per-namespace cache TTLs, idempotency TTL, API_RATE_LIMIT__
+
+  >
+
+  > **API surface**
+
+  >
+
+  > - Cache + invalidation on accounts / categories / reports / transactions GETs
+
+  > - Tenant rate limits on ledger/report routers; middleware stamps rate-limit headers
+
+  > - Auth logout → denylist; denylist check on get_current_owner
+
+  > - /health/redis and ready includes Redis when enabled
+
+  > - Idempotency on transaction create/bulk
+
+  >
+
+  > **Ops / compose**
+
+  >
+
+  > - Redis 7 service + docker/redis/redis.conf; Compose wires API REDIS_URL
+
+  > - make redis-up / stack-up / redis-smoke; deploy/redis_smoke.sh; ops checklist
+
+  >
+
+  > **Docs / env / strata**
+
+  >
+
+  > - environments/*/.env.example, environments/README.md, modules/api/README.md
+
+  > - PPT-045 brief + issues README map; strata architecture/project_state notes
+
+  > - Auth/schema docstring polish; interrogate badge refresh
+
+  >
+
+  > **Tests / deps**
+
+  >
+
+  > - fakeredis[lua] + redis client; Redis/cache/denylist/tier/idempotency/health coverage
+
+  > - Conftest disables Redis / API rate limits by default
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~56 files)</summary>
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and B0 CI gate (Auth-first)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-16 14:10:20+00:00</sub>_
 
   > **Closed by** [_**#92**](https://github.com/Elmorralito/save-ma-money/pull/92): **test/PPT-040: [api] Integration suite and B0 CI (Auth-first)**
 
