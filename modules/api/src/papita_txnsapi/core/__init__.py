@@ -1,5 +1,5 @@
 """Core API infrastructure shared across routers and dependencies.
 
-Includes JWT security, exception handlers, database health probes, and in-process
-rate limiting used by authentication routes.
+Includes JWT security, exception handlers, database/Auth/Redis health probes,
+in-process and Redis rate limiting, and cache-aside helpers.
 """

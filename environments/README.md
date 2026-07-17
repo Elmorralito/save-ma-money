@@ -32,9 +32,26 @@ PAPITA_ENV=staging make b1-smoke     # optional pooler connectivity; not Auth Do
 Compose:
 
 ```bash
+# Full stack (Postgres + Redis + API). Redis is enabled for the API container by default.
 docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
+# Or: make stack-up
+
+# Postgres + Redis only (host uvicorn)
 docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
+# Or: make redis-up   # Redis service only
+
+make redis-smoke   # GET /health/ready + /health/redis against a running API
 ```
+
+### Redis (PPT-043)
+
+| Context                      | `REDIS_URL`                        | Notes                                                   |
+| ---------------------------- | ---------------------------------- | ------------------------------------------------------- |
+| Compose `api` service        | `redis://redis:6379/0` (hardcoded) | `REDIS_ENABLED` / rate-limit default **true**           |
+| Host uvicorn + Compose Redis | `redis://localhost:6379/0`         | Set in `environments/local/.env`                        |
+| Staging / production         | Managed `rediss://…`               | Placeholders in `staging` / `production` `.env.example` |
+
+Config file: [`docker/redis/redis.conf`](../docker/redis/redis.conf) (AOF, 256mb maxmemory, allkeys-lru).
 
 ## Setup
 

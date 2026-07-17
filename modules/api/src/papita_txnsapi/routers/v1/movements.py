@@ -26,9 +26,13 @@ from datetime import timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from redis import Redis
 
+from papita_txnsapi.core.cache import CacheNamespace, bump_cache_versions
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
+from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
+from papita_txnsapi.dependencies.redis import get_optional_redis
 from papita_txnsapi.dependencies.services import get_accounts_service, get_transactions_service
 from papita_txnsapi.schemas.common import PaginatedResponse
 from papita_txnsapi.schemas.movements import (
@@ -46,7 +50,22 @@ from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.transactions import TransactionsService
 
-router = APIRouter(prefix="/movements", tags=["Movements"])
+router = APIRouter(
+    prefix="/movements",
+    tags=["Movements"],
+    dependencies=[Depends(enforce_tenant_api_rate_limit)],
+)
+
+
+def _invalidate_ledger_caches(redis: Redis | None, owner: UsersDTO) -> None:
+    """Bump transactions, reports, and accounts caches after transfer mutations."""
+    bump_cache_versions(
+        redis,
+        owner.id,
+        CacheNamespace.TRANSACTIONS,
+        CacheNamespace.REPORTS,
+        CacheNamespace.ACCOUNTS,
+    )
 
 
 def _movement_not_found() -> HTTPException:
@@ -220,6 +239,7 @@ def create_movement(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> MovementResponse:
     """Create a transfer between two tenant-owned accounts.
 
@@ -231,6 +251,7 @@ def create_movement(
         owner: Authenticated tenant that will own the transfer.
         transactions_service: Injected service for create/complete helpers.
         accounts_service: Injected service used to validate account ownership.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         MovementResponse for the created (and possibly completed) transfer.
@@ -249,16 +270,18 @@ def create_movement(
     created = transactions_service.create_transfer(obj=dto, owner=owner)
     if not body.scheduled:
         created = transactions_service.complete_transfer(transaction_id=created, owner=owner)
+    _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(created)
 
 
 @router.put("/{movement_id}", response_model=MovementResponse)
-def update_movement(
+def update_movement(  # pylint: disable=too-many-positional-arguments
     movement_id: uuid.UUID,
     body: MovementUpdate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> MovementResponse:
     """Update a pending transfer via upsert of the merged DTO.
 
@@ -268,6 +291,7 @@ def update_movement(
         owner: Authenticated tenant that must own the transfer.
         transactions_service: Injected service for load and upsert.
         accounts_service: Injected service used to re-validate account legs.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         MovementResponse for the updated transfer row.
@@ -292,6 +316,7 @@ def update_movement(
         currency=merged.currency,
     )
     updated = transactions_service.create(obj=merged, owner=owner)
+    _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(updated)
 
 
@@ -300,6 +325,7 @@ def delete_movement(
     movement_id: uuid.UUID,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> None:
     """Cancel a pending transfer by setting status to CANCELLED.
 
@@ -310,6 +336,7 @@ def delete_movement(
         movement_id: Transfer primary key from the path.
         owner: Authenticated tenant that must own the transfer.
         transactions_service: Injected service providing ``cancel``.
+        redis: Optional Redis client for cache invalidation.
 
     Raises:
         HTTPException: 404 when missing or cancel fails; 422 when not PENDING.
@@ -320,6 +347,7 @@ def delete_movement(
         transactions_service.cancel(transaction_id=movement_id, owner=owner)
     except ValueError as exc:
         raise _movement_not_found() from exc
+    _invalidate_ledger_caches(redis, owner)
 
 
 @router.post("/{movement_id}/execute", response_model=MovementExecuteResponse)
@@ -327,6 +355,7 @@ def execute_movement(
     movement_id: uuid.UUID,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> MovementExecuteResponse:
     """Complete a pending scheduled transfer.
 
@@ -334,6 +363,7 @@ def execute_movement(
         movement_id: Transfer primary key from the path.
         owner: Authenticated tenant that must own the transfer.
         transactions_service: Injected service providing ``complete_transfer``.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         MovementExecuteResponse with completed status and execution timestamp.
@@ -351,6 +381,7 @@ def execute_movement(
     executed_at = completed.transaction_ts
     if executed_at.tzinfo is None:
         executed_at = executed_at.replace(tzinfo=timezone.utc)
+    _invalidate_ledger_caches(redis, owner)
     return MovementExecuteResponse(
         id=_require_uuid(completed.id),
         status="completed",

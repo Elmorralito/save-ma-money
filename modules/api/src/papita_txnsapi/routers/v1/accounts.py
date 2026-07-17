@@ -27,10 +27,21 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from redis import Redis
 
+from papita_txnsapi.config.settings import Settings, get_settings
+from papita_txnsapi.core.cache import (
+    CacheNamespace,
+    bump_cache_versions,
+    get_versioned_cached_json,
+    set_versioned_cached_json,
+    ttl_for_namespace,
+)
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
+from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
+from papita_txnsapi.dependencies.redis import get_optional_redis
 from papita_txnsapi.dependencies.services import get_accounts_service
 from papita_txnsapi.schemas.accounts import (
     AccountCreate,
@@ -48,7 +59,11 @@ from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.accounts import AccountsService
 
-router = APIRouter(prefix="/accounts", tags=["Accounts"])
+router = APIRouter(
+    prefix="/accounts",
+    tags=["Accounts"],
+    dependencies=[Depends(enforce_tenant_api_rate_limit)],
+)
 
 
 def _account_not_found() -> HTTPException:
@@ -136,11 +151,19 @@ def _balance_for_account(
     return 0.0
 
 
+def _invalidate_account_caches(redis: Redis | None, owner: UsersDTO) -> None:
+    """Bump accounts + reports cache versions after account or balance-affecting writes."""
+    bump_cache_versions(redis, owner.id, CacheNamespace.ACCOUNTS, CacheNamespace.REPORTS)
+
+
 @router.get("", response_model=PaginatedResponse[AccountResponse])
-def list_accounts(
+def list_accounts(  # pylint: disable=too-many-arguments,too-many-positional-arguments,too-many-locals
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     pagination: Annotated[PaginationParams, Depends(get_pagination)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+    response: Response,
     *,
     account_kind: Annotated[str | None, Query(description="Filter by account kind slug")] = None,
     ledger_side: Annotated[str | None, Query(description="Filter by asset or liability")] = None,
@@ -148,10 +171,16 @@ def list_accounts(
 ) -> PaginatedResponse[AccountResponse]:
     """List tenant accounts with optional filters and balances from ``account_balances``.
 
+    When Redis is enabled, responses are cached per owner and query params (cache-aside).
+    Mutations bump the accounts namespace version so prior entries miss.
+
     Args:
         owner: Authenticated tenant from JWT.
         pagination: Skip/limit window for the response page.
         accounts_service: Injected accounts service scoped to the request lifecycle.
+        settings: Application settings (cache TTL).
+        redis: Optional Redis client when ``REDIS_ENABLED``.
+        response: FastAPI response used to set ``X-Cache`` status.
         account_kind: Optional filter by account kind slug.
         ledger_side: Optional filter by asset or liability slug.
         is_active: Optional filter by active status.
@@ -159,6 +188,24 @@ def list_accounts(
     Returns:
         Paginated account rows enriched with effective balances per item.
     """
+    cache_params = {
+        "skip": pagination.skip,
+        "limit": pagination.limit,
+        "account_kind": account_kind,
+        "ledger_side": ledger_side,
+        "is_active": is_active,
+    }
+    owner_id = owner.id
+    if owner_id is not None:
+        cached, cache_status = get_versioned_cached_json(
+            redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", cache_params
+        )
+        response.headers["X-Cache"] = cache_status
+        if cached is not None:
+            return PaginatedResponse[AccountResponse].model_validate(cached)
+    else:
+        response.headers["X-Cache"] = "BYPASS"
+
     filter_dto = _build_account_filter_dto(
         account_kind=account_kind,
         ledger_side=ledger_side,
@@ -177,12 +224,23 @@ def list_accounts(
         AccountResponse.from_dto(account, balance=effective_account_balance(account, balance_map=balance_map))
         for account in accounts
     ]
-    return PaginatedResponse(
+    payload: PaginatedResponse[AccountResponse] = PaginatedResponse(
         items=items,
         total=total,
         skip=pagination.skip,
         limit=pagination.limit,
     )
+    if owner_id is not None:
+        set_versioned_cached_json(
+            redis,
+            owner_id,
+            CacheNamespace.ACCOUNTS,
+            "accounts:list",
+            cache_params,
+            value=payload.model_dump(mode="json"),
+            ttl_seconds=ttl_for_namespace(settings, CacheNamespace.ACCOUNTS),
+        )
+    return payload
 
 
 @router.get("/{account_id}", response_model=AccountResponse)
@@ -221,6 +279,7 @@ def create_account(
     body: AccountCreate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> AccountResponse:
     """Create an account and optional kind-specific extension row.
 
@@ -228,6 +287,7 @@ def create_account(
         body: Validated create payload including core account fields and extension data.
         owner: Authenticated tenant from JWT; used as ``owner_id`` on the new record.
         accounts_service: Injected accounts service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         Created account with extension details and initial effective balance.
@@ -245,6 +305,7 @@ def create_account(
     created_id = _require_uuid(created.id)
     _, extension = accounts_service.get_with_extension(obj=created_id, owner=owner)
     balance = _balance_for_account(accounts_service, owner, created_id, account=created)
+    _invalidate_account_caches(redis, owner)
     return AccountResponse.from_dto(created, balance=balance, extension=extension)
 
 
@@ -254,6 +315,7 @@ def update_account(
     body: AccountUpdate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> AccountResponse:
     """Update an account and optional extension row.
 
@@ -262,6 +324,7 @@ def update_account(
         body: Partial update payload merged onto the existing DTO.
         owner: Authenticated tenant from JWT.
         accounts_service: Injected accounts service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         Updated account with extension details and current effective balance.
@@ -283,6 +346,7 @@ def update_account(
     updated_id = _require_uuid(updated.id)
     _, extension = accounts_service.get_with_extension(obj=updated_id, owner=owner)
     balance = _balance_for_account(accounts_service, owner, updated_id, account=updated)
+    _invalidate_account_caches(redis, owner)
     return AccountResponse.from_dto(updated, balance=balance, extension=extension)
 
 
@@ -291,6 +355,7 @@ def delete_account(
     account_id: uuid.UUID,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> None:
     """Soft-delete an account owned by the authenticated tenant.
 
@@ -298,6 +363,7 @@ def delete_account(
         account_id: Primary key of the account to delete.
         owner: Authenticated tenant from JWT.
         accounts_service: Injected accounts service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         ``None``; response body is empty on success.
@@ -309,6 +375,7 @@ def delete_account(
     if existing is None:
         raise _account_not_found()
     accounts_service.delete(obj=AccountsDTO.model_construct(id=account_id), owner=owner)
+    _invalidate_account_caches(redis, owner)
 
 
 @router.get("/{account_id}/balance", response_model=BalanceResponse)

@@ -9,10 +9,12 @@ Passwords are accepted on write paths only and are never serialized on
 ``users.username`` is a derived handle for the schema unique constraint.
 ``AUTH_PROVIDER=local`` (tests) uses HS256 tokens; production uses Supabase Auth.
 
-Public models:
-    ``RegisterRequest``, ``RefreshRequest``, ``LogoutRequest``,
-    ``OAuthStartResponse``, ``OAuthCodeExchangeRequest``, ``SsoSessionRequest``,
-    ``UserResponse``, ``TokenResponse``.
+Key exports:
+    AuthProviderType: Wire literal for credential store (``supabase`` | ``local``).
+    RegisterRequest: ``POST /auth/register`` body.
+    RefreshRequest / LogoutRequest: Session rotation and revoke bodies.
+    OAuthStartResponse / OAuthCodeExchangeRequest / SsoSessionRequest: OAuth/SSO.
+    UserResponse / TokenResponse: Public profile and OAuth2 token envelopes.
 """
 
 from __future__ import annotations
@@ -66,6 +68,8 @@ class RegisterRequest(BaseModel):
 class RefreshRequest(BaseModel):
     """JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).
 
+    Local Auth mode does not accept this body meaningfully (route returns 501).
+
     Attributes:
         refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.
     """
@@ -74,12 +78,15 @@ class RefreshRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    """JSON body for ``POST /auth/logout`` (Supabase Auth session revoke).
+    """JSON body for ``POST /auth/logout`` (session revoke).
+
+    Under Supabase, ``refresh_token`` is required for GoTrue ``sign_out``.
+    ``access_token`` may also be supplied via ``Authorization: Bearer`` on the
+    route when omitted here. When Redis is enabled, the access JWT is denylisted.
 
     Attributes:
         refresh_token: Refresh token to invalidate at Supabase Auth.
-        access_token: Optional access JWT; when present, Auth can revoke that
-            session more precisely.
+        access_token: Optional access JWT for precise session revoke / denylist.
     """
 
     refresh_token: str = Field(min_length=1, max_length=4096)
@@ -201,7 +208,8 @@ class UserResponse(BaseModel):
         """Build an API response from a model ``UsersDTO``.
 
         Maps ``provider_type`` (including legacy ``phone`` → ``email``) and
-        normalizes ``auth_provider`` to the wire literal.
+        normalizes ``auth_provider`` to the wire literal. Any non-local
+        ``auth_provider`` value is treated as ``supabase``.
 
         Args:
             user: Persisted tenant user from ``UsersService``.
@@ -237,6 +245,9 @@ class UserResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     """OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.
+
+    Local login sets ``refresh_token`` to ``None``. Supabase paths populate both
+    access and refresh tokens when Auth issues a session.
 
     Attributes:
         access_token: Bearer JWT for protected API routes.

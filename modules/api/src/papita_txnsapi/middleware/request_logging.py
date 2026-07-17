@@ -40,6 +40,11 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         """
         start = time.perf_counter()
         response = await call_next(request)
+        rate_headers = getattr(request.state, "rate_limit_headers", None)
+        if isinstance(rate_headers, dict):
+            for header_name, header_value in rate_headers.items():
+                if header_name not in response.headers:
+                    response.headers[header_name] = str(header_value)
         elapsed_ms = (time.perf_counter() - start) * 1000
         logger.info(
             "%s %s -> %s (%.1f ms)",

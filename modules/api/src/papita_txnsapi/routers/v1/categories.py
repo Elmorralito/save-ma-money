@@ -27,10 +27,21 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from redis import Redis
 
+from papita_txnsapi.config.settings import Settings, get_settings
+from papita_txnsapi.core.cache import (
+    CacheNamespace,
+    bump_cache_versions,
+    get_versioned_cached_json,
+    set_versioned_cached_json,
+    ttl_for_namespace,
+)
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
+from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
+from papita_txnsapi.dependencies.redis import get_optional_redis
 from papita_txnsapi.dependencies.services import get_categories_service
 from papita_txnsapi.schemas.categories import (
     CategoryCreate,
@@ -45,7 +56,11 @@ from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.categories import CategoriesService
 
-router = APIRouter(prefix="/categories", tags=["Categories"])
+router = APIRouter(
+    prefix="/categories",
+    tags=["Categories"],
+    dependencies=[Depends(enforce_tenant_api_rate_limit)],
+)
 
 _GLOBAL_CATEGORY_MESSAGES = frozenset(
     {
@@ -78,20 +93,33 @@ def _reject_global_category(category) -> None:
         raise _category_not_found()
 
 
+def _invalidate_category_caches(redis: Redis | None, owner: UsersDTO) -> None:
+    """Bump categories + reports versions after category mutations."""
+    bump_cache_versions(redis, owner.id, CacheNamespace.CATEGORIES, CacheNamespace.REPORTS)
+
+
 @router.get("", response_model=PaginatedResponse[CategoryResponse])
-def list_categories(
+def list_categories(  # pylint: disable=too-many-positional-arguments,too-many-locals
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     pagination: Annotated[PaginationParams, Depends(get_pagination)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+    response: Response,
     parent_id: Annotated[uuid.UUID | None, Query(description="Filter by parent category")] = None,
     category_type: Annotated[str | None, Query(description="Filter by income or expense")] = None,
 ) -> PaginatedResponse[CategoryResponse]:
     """List tenant and global seed categories with optional hierarchy nesting.
 
+    When Redis is enabled, list responses are cache-aside with versioned keys.
+
     Args:
         owner: Authenticated tenant from JWT.
         pagination: Skip/limit window for the response page.
         categories_service: Injected categories service scoped to the request lifecycle.
+        settings: Application settings (cache TTL).
+        redis: Optional Redis client when ``REDIS_ENABLED``.
+        response: FastAPI response used to set ``X-Cache`` status.
         parent_id: Optional parent category id; when omitted, returns top-level categories
             with nested subcategory summaries.
         category_type: Optional income/expense slug filter.
@@ -100,6 +128,23 @@ def list_categories(
         Paginated categories; top-level rows include embedded subcategory lists when
         ``parent_id`` is not set.
     """
+    cache_params = {
+        "skip": pagination.skip,
+        "limit": pagination.limit,
+        "parent_id": str(parent_id) if parent_id is not None else None,
+        "category_type": category_type,
+    }
+    owner_id = owner.id
+    if owner_id is not None:
+        cached, cache_status = get_versioned_cached_json(
+            redis, owner_id, CacheNamespace.CATEGORIES, "categories:list", cache_params
+        )
+        response.headers["X-Cache"] = cache_status
+        if cached is not None:
+            return PaginatedResponse[CategoryResponse].model_validate(cached)
+    else:
+        response.headers["X-Cache"] = "BYPASS"
+
     records_df = categories_service.get_records(None, owner=owner)
     all_categories = categories_from_dataframe(records_df)
 
@@ -112,6 +157,7 @@ def list_categories(
 
     subcategory_map = build_subcategory_map(all_categories)
 
+    payload: PaginatedResponse[CategoryResponse]
     if parent_id is None:
         top_level = [category for category in filtered if category.parent_id is None]
         page = top_level[pagination.skip : pagination.skip + pagination.limit]
@@ -122,21 +168,33 @@ def list_categories(
             )
             for category in page
         ]
-        return PaginatedResponse(
+        payload = PaginatedResponse(
             items=items,
             total=len(top_level),
             skip=pagination.skip,
             limit=pagination.limit,
         )
+    else:
+        page = filtered[pagination.skip : pagination.skip + pagination.limit]
+        items = [CategoryResponse.from_dto(category) for category in page]
+        payload = PaginatedResponse(
+            items=items,
+            total=len(filtered),
+            skip=pagination.skip,
+            limit=pagination.limit,
+        )
 
-    page = filtered[pagination.skip : pagination.skip + pagination.limit]
-    items = [CategoryResponse.from_dto(category) for category in page]
-    return PaginatedResponse(
-        items=items,
-        total=len(filtered),
-        skip=pagination.skip,
-        limit=pagination.limit,
-    )
+    if owner_id is not None:
+        set_versioned_cached_json(
+            redis,
+            owner_id,
+            CacheNamespace.CATEGORIES,
+            "categories:list",
+            cache_params,
+            value=payload.model_dump(mode="json"),
+            ttl_seconds=ttl_for_namespace(settings, CacheNamespace.CATEGORIES),
+        )
+    return payload
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)
@@ -169,6 +227,7 @@ def create_category(
     body: CategoryCreate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> CategoryResponse:
     """Create a tenant-owned category.
 
@@ -176,6 +235,7 @@ def create_category(
         body: Validated create payload converted to a categories DTO.
         owner: Authenticated tenant from JWT.
         categories_service: Injected categories service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         Newly created category owned by the authenticated tenant.
@@ -190,6 +250,7 @@ def create_category(
         if str(exc) in _GLOBAL_CATEGORY_MESSAGES:
             raise _category_not_found() from exc
         raise
+    _invalidate_category_caches(redis, owner)
     return CategoryResponse.from_dto(created)
 
 
@@ -199,6 +260,7 @@ def update_category(
     body: CategoryUpdate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> CategoryResponse:
     """Update a tenant-owned category.
 
@@ -207,6 +269,7 @@ def update_category(
         body: Partial update payload merged onto the existing DTO.
         owner: Authenticated tenant from JWT.
         categories_service: Injected categories service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         Updated category owned by the authenticated tenant.
@@ -227,6 +290,7 @@ def update_category(
         if str(exc) in _GLOBAL_CATEGORY_MESSAGES:
             raise _category_not_found() from exc
         raise
+    _invalidate_category_caches(redis, owner)
     return CategoryResponse.from_dto(updated)
 
 
@@ -235,6 +299,7 @@ def delete_category(
     category_id: uuid.UUID,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     categories_service: Annotated[CategoriesService, Depends(get_categories_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> None:
     """Soft-delete a tenant-owned category.
 
@@ -242,6 +307,7 @@ def delete_category(
         category_id: Primary key of the category to delete.
         owner: Authenticated tenant from JWT.
         categories_service: Injected categories service scoped to the request lifecycle.
+        redis: Optional Redis client for cache invalidation.
 
     Returns:
         ``None``; response body is empty on success.
@@ -254,3 +320,4 @@ def delete_category(
         raise _category_not_found()
     _reject_global_category(existing)
     categories_service.delete(obj=CategoriesDTO.model_construct(id=category_id), owner=owner)
+    _invalidate_category_caches(redis, owner)

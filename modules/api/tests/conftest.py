@@ -16,6 +16,9 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characte
 # Force local HS256 for unit tests even when environments/local/.env has supabase Auth.
 os.environ["AUTH_PROVIDER"] = "local"
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("API_RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("REDIS_ENABLED", "false")
+os.environ.setdefault("REDIS_RATE_LIMIT_ENABLED", "false")
 # Prefer process env over environments/$PAPITA_ENV/.env for unit tests (live tests set URLs explicitly).
 if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = ""
@@ -152,3 +155,11 @@ def reports_client() -> tuple[TestClient, UsersDTO, MagicMock]:
     test_client = TestClient(app)
     yield test_client, owner, mock_service
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def fake_redis():
+    """In-memory Redis client for unit tests (decode_responses=True)."""
+    import fakeredis
+
+    return fakeredis.FakeRedis(decode_responses=True)

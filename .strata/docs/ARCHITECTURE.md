@@ -5,9 +5,9 @@ The codemap: where things happen, coarse module by coarse module — a map of a 
 ## Map
 
 - **`modules/model`** — `papita_txnsmodel`: SQLModel tables under `src/papita_txnsmodel/model/` (composite indexes on `accounts`, `transactions`, `transaction_templates`, `account_financing`), DTOs/repositories in `access/`, business logic in `services/`, loaders in `handlers/`. Balance report MVs in `views/balance_reports/` (SQL + `views.py` entities); MV fetch indexes in `views/indexes.py`. Generic balance report reads: `config/data/balance_report_filters.yaml`, `config/balance_report_specs.py`, `access/balance_reports/`, `services/balance_reports.py`, `handlers/balance_reports.py`. Partition + MV registry: `config/transaction_partitions.py`, `config/materialized_views.py`. Alembic under `alembic/`.
-- **`modules/api`** — `papita_txnsapi`: FastAPI app — health ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)) including `/health/database` (API↔DB latency probe via `core/db_health.probe_database`), auth + tenant ([#44](https://github.com/Elmorralito/save-ma-money/issues/44)); **accounts + categories CRUD** ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)); transactions/movements ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)); **reports** ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)).
+- **`modules/api`** — `papita_txnsapi`: FastAPI app — health ([#45](https://github.com/Elmorralito/save-ma-money/issues/45)) including `/health/database` (API↔DB latency probe via `core/db_health.probe_database`) and optional Redis probes (`core/redis`, PPT-043 / [#83](https://github.com/Elmorralito/save-ma-money/issues/83)); auth + tenant ([#44](https://github.com/Elmorralito/save-ma-money/issues/44)); **accounts + categories CRUD** ([#46](https://github.com/Elmorralito/save-ma-money/issues/46)); transactions/movements ([#47](https://github.com/Elmorralito/save-ma-money/issues/47)); **reports** ([#48](https://github.com/Elmorralito/save-ma-money/issues/48)). Optional Redis for cache-aside + distributed auth rate limits (`REDIS_*` settings; in-memory fallback when disabled).
 - **`deploy/`** — shared shell utilities, `alembic.sh`, `test.sh`, `transaction_partitions.sh` (monthly partition ensure + retention archive).
-- **`docker/database/`** — local PostgreSQL 15 via Compose for dev and migration CI.
+- **`docker/`** — local PostgreSQL 15 + Redis 7 via Compose for B0 API/dev (`docker/docker-compose.yml`, `docker/database/`).
 
 Registrar package is referenced in pytest config but not present in the tree yet.
 
@@ -68,7 +68,7 @@ Extension routing map: `services/account_extension_routing.py`. Live-DB tenancy 
 | `/api/v1/transactions` | `routers/v1/transactions.py` | `TransactionsService` — INCOME/EXPENSE CRUD + bulk (PPT-037 / #47)               |
 | `/api/v1/movements`    | `routers/v1/movements.py`    | `TransactionsService` — TRANSFER alias (PPT-037 / #47)                           |
 | `/api/v1/reports`      | `routers/v1/reports.py`      | `ReportService` — spending/cash-flow/trends/export; budget-performance 501 (#48) |
-| `/api/v1/health`       | `routers/v1/health.py`       | `probe_database` — readiness + `/database` latency (allowlisted details)         |
+| `/api/v1/health`       | `routers/v1/health.py`       | `probe_database` + Auth + optional Redis readiness (`/redis`)                    |
 
 Schemas: `schemas/accounts.py`, `schemas/categories.py`, `schemas/transactions.py`, `schemas/movements.py`,
 `schemas/reports.py`, `schemas/query_params.py`; enum slugs via `schemas/converters.py`.

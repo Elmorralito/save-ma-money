@@ -1651,19 +1651,93 @@ Returned for deferred MVP endpoints (budgets, auth refresh/logout, transaction s
 
 ## Rate Limiting
 
+**Auth** (`/auth/login`, `/auth/register`, OAuth) uses a **per-IP** sliding window
+(`AUTH_*_RATE_LIMIT_*`). **Protected CRUD/report routes** use **tenant-scoped**
+Free / Pro / Enterprise quotas (`API_RATE_LIMIT_*`) keyed by `owner_id` (minute + day
+windows). Counters are in-memory by default; with `REDIS_ENABLED=true` and
+`REDIS_RATE_LIMIT_ENABLED=true` they are shared across replicas via Redis.
+
 | Tier       | Requests/Minute | Requests/Day |
 | ---------- | --------------- | ------------ |
 | Free       | 60              | 1,000        |
 | Pro        | 300             | 10,000       |
 | Enterprise | Unlimited       | Unlimited    |
 
-Rate limit headers:
+Default tier is `API_RATE_LIMIT_DEFAULT_TIER` (usually `free`). Optional Redis override:
+`papita:{env}:{owner_id}:api_tier` → `free` \| `pro` \| `enterprise`. Disable tenant
+quotas with `API_RATE_LIMIT_ENABLED=false`.
+
+Rate limit headers (success and 429):
 
 ```
 X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 45
 X-RateLimit-Reset: 1707058440
+X-RateLimit-Tier: free
+Retry-After: 12   # on 429 only
 ```
+
+---
+
+## Redis (PPT-043)
+
+Optional shared infrastructure for cache-aside, distributed rate limits, and
+(session denylist / broker scaffolds). PostgreSQL remains the source of truth.
+
+```
+[ Client ] → [ API Server ] → [ Redis ]     (hit: fast return)
+                    ↓ miss
+            [ PostgreSQL B0/B1 ]
+```
+
+| Variable                               | Default                                     | Purpose                                           |
+| -------------------------------------- | ------------------------------------------- | ------------------------------------------------- |
+| `REDIS_URL`                            | unset                                       | Redis connection URL (`redis://…` / `rediss://…`) |
+| `REDIS_ENABLED`                        | `false` (unit tests) / `true` (Compose API) | Init pool + include Redis in `/health/ready`      |
+| `REDIS_DEFAULT_TTL_SECONDS`            | `60`                                        | Legacy; unused — prefer per-namespace TTLs below  |
+| `REDIS_CACHE_TTL_ACCOUNTS_SECONDS`     | `60`                                        | `GET /accounts` list TTL                          |
+| `REDIS_CACHE_TTL_CATEGORIES_SECONDS`   | `300`                                       | `GET /categories` list TTL                        |
+| `REDIS_CACHE_TTL_REPORTS_SECONDS`      | `180`                                       | Reports TTL (tune 120–300s)                       |
+| `REDIS_CACHE_TTL_TRANSACTIONS_SECONDS` | `15`                                        | Short TTL for `GET /transactions` list/detail     |
+| `REDIS_IDEMPOTENCY_TTL_SECONDS`        | `86400`                                     | Replay window for `Idempotency-Key` on creates    |
+| `REDIS_RATE_LIMIT_ENABLED`             | `false` (unit tests) / `true` (Compose API) | Use Redis for auth/API rate-limit counters        |
+| `REDIS_MAX_CONNECTIONS`                | `10`                                        | Connection pool size                              |
+
+B0 deploy: `make stack-up` (or `make redis-up` + host uvicorn). Compose API always
+uses `redis://redis:6379/0`. Host uvicorn uses `REDIS_URL=redis://localhost:6379/0`
+from `environments/local/.env`. Smoke: `make redis-smoke`. Checklist:
+[`docs/ops/redis-deploy-checklist.md`](../../docs/ops/redis-deploy-checklist.md).
+
+When `REDIS_ENABLED=false`, the API keeps in-memory rate limiting and skips
+caching/denylist; unit tests remain green without Redis.
+
+**Key prefix:** all Redis keys are `papita:{PAPITA_ENV}:…` so local/staging/production
+do not collide on shared Redis.
+
+**Fail policy:** cache and rate limits **fail open** (miss / allow) on Redis errors.
+JWT denylist **fails closed** when Redis is required (`REDIS_ENABLED=true`): Redis
+errors → HTTP 503 on protected routes so a blip cannot resurrect a revoked token.
+
+**Client model:** sync `redis` via lifespan; fine while most handlers are sync
+(threadpool). Prefer `redis.asyncio` when more routes are async-heavy.
+
+Protected cache keys are tenant-scoped, env-prefixed, and **versioned**:
+`papita:{env}:{owner_id}:{route}:v{version}:{hash(params)}`. Mutations bump a
+per-tenant namespace counter so prior entries miss without SCAN. Successful GETs
+may return `X-Cache: HIT|MISS|BYPASS`.
+
+| Mutation                      | Invalidates                                      |
+| ----------------------------- | ------------------------------------------------ |
+| Account create/update/delete  | `accounts`, `reports`                            |
+| Category create/update/delete | `categories`, `reports`                          |
+| Transaction / movement writes | `transactions`, `reports`, `accounts` (balances) |
+
+`POST /transactions` and `POST /transactions/bulk` accept optional
+`Idempotency-Key` (when Redis is enabled) so safe retries replay the original
+201 body without double-inserting.
+
+Logout denylists access tokens in Redis (local + Supabase); protected routes
+reject revoked JWTs until TTL expires.
 
 ---
 

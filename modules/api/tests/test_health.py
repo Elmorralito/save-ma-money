@@ -102,6 +102,8 @@ class TestHealthEndpoints:
         assert payload["database_latency_ms"] == 2.5
         assert payload["auth"] == "skipped"
         assert payload["auth_detail"] == AuthProbeDetail.SKIPPED_LOCAL
+        assert payload["redis"] == "skipped"
+        assert payload["redis_detail"] == "redis disabled"
         assert "version" in payload
         assert "timestamp" in payload
 
