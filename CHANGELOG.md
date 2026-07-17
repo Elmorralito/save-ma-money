@@ -6,9 +6,233 @@
 
 - [ ] [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 23:17:31+00:00</sub>_
+
+  > **Closed by** [_**#95**](https://github.com/Elmorralito/save-ma-money/pull/95): **docs/PPT-032: [api] Consolidate API and issue documentation for epic close-out**
+
+  > ## Summary
+
+  >
+
+  > Reconciles operator and program documentation with the delivered **PPT-032** FastAPI MVP (children **#43–#50** and prerequisite **#51** closed). Prior docs still described a scaffold-only API, duplicated Auth/platform briefs, and pointed at removed legacy specs. After this change, modules/api/README.md is the human API SSOT, Auth detail lives in ARCHITECTURE.md Part VI, and issue briefs are consolidated into docs/issues/README.md Parts I–V under Auth-first platform rules (Supabase = Auth only; B0 Postgres gate).
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Closing GitHub epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) on the remote (in-repo Part III is updated; sync/gh issue edit not done here)
+
+  > - Application/runtime code, migrations, or CI workflow changes
+
+  > - Post-MVP briefs still separate: PPT-044 (#89), PPT-045 (#93)
+
+  > - Requiring Supabase-hosted Postgres / pooler for MVP
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Epic body (Part III) marks children/ACs delivered for maintainer close-out
+
+  > - Root README no longer claims “API scaffold only”
+
+  > - Obsolete deploy/github_apply_ppt039_reissue.sh removed
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **API / operator docs**
+
+  >
+
+  > - modules/api/README.md: status for closed #43–#51; shipped routers; Supabase Auth + refresh/logout; package layout; related-docs map
+
+  > - environments/README.md, modules/model/README.md: Auth-first / Part II–IV pointers
+
+  >
+
+  > **Design**
+
+  >
+
+  > - docs/design/ARCHITECTURE.md: Part V post-delivery note; Part VI Auth (SSO/smoke/orphan cleanup); retarget legacy API_Endpoints links
+
+  > - Remove docs/design/PPT-031-auth-contract.md (merged into Part VI)
+
+  > - docs/design/README.md: snapshot / G5–G7 Auth-first wording
+
+  >
+
+  > **Issue briefs**
+
+  >
+
+  > - Expand docs/issues/README.md Parts I–V (simplify, Supabase G7, epic #42, PPT-039, Redis)
+
+  > - Remove standalone: simplify, PPT-031-C, PPT-039 reissue, PPT-043 Redis, _gh_body_PPT-032, _gh_body_PPT-039
+
+  >
+
+  > **Root / agents / ops**
+
+  >
+
+  > - Root README.md: runnable MVP + consolidated docs map
+
+  > - .cursor/AGENTS.md, .cursor/CLAUDE.md, pr-description skill/examples
+
+  > - Ops B1 checklists (docs + .strata copy): link retargets
+
+  > - Delete deploy/github_apply_ppt039_reissue.sh
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~21 files, uncommitted)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md
+
+  > .cursor/CLAUDE.md
+
+  > .cursor/skills/pr-description/SKILL.md
+
+  > .cursor/skills/pr-description/examples.md
+
+  > .strata/docs/ops/b1-supabase-deploy-checklist.md
+
+  > README.md
+
+  > deploy/github_apply_ppt039_reissue.sh (deleted)
+
+  > docs/design/ARCHITECTURE.md
+
+  > docs/design/PPT-031-auth-contract.md (deleted)
+
+  > docs/design/README.md
+
+  > docs/issues/PPT-031-C-supabase-decision-brief.md (deleted)
+
+  > docs/issues/PPT-031-simplify-requirements.md (deleted)
+
+  > docs/issues/PPT-039-supabase-auth-reissue.md (deleted)
+
+  > docs/issues/PPT-043-redis-integration-brief.md (deleted)
+
+  > docs/issues/README.md
+
+  > docs/issues/_gh_body_PPT-032-epic.md (deleted)
+
+  > docs/issues/_gh_body_PPT-039.md (deleted)
+
+  > docs/ops/b1-supabase-deploy-checklist.md
+
+  > environments/README.md
+
+  > modules/api/README.md
+
+  > modules/model/README.md
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > None yet vs origin/main (0 commits). Working tree holds the full docs consolidation pending commit.
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Manual doc reconcile against epic #42 children status (#43–#50, #51 closed) and Auth-first pivot — **done in session**
+
+  > - Link retarget / broken-path cleanup for removed briefs — **done in session**
+
+  > - Automated test suite / CI for this docs-only change — **not run** (docs-only; unverified)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Commit and push docs changes on feat/PPT-032
+
+  > - [ ] Spot-check anchors: docs/issues/README.md Parts I–V, ARCHITECTURE.md Part VI, modules/api/README.md Status
+
+  > - [ ] Confirm no remaining links to deleted paths (except historical CHANGELOG.md)
+
+  > - [ ] Optional: sync GitHub #42 body from docs/issues/README.md Part III, then close epic if ACs accepted
+
+  > - [ ] Open PR and confirm GitHub renders <details> / alert blocks
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Large doc merge: reviewers may miss epic Part III AC checkboxes vs live GitHub #42 until the issue body is synced.
+
+  > > - Deep links/bookmarks to removed files (PPT-039-supabase-auth-reissue.md, etc.) will 404; new anchors are under docs/issues/README.md.
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Docs-only; does not change runtime Auth/API behavior.
+
+  > > - Part I still contains historical FR prose naming old API_Endpoints.md.md paths (archival); operator SSOT is modules/api/README.md.
+
+  > > - PPT-044 / PPT-045 remain separate files under docs/issues/.
+
+  >
+
+  > ## References
+
+  >
+
+  > - Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032) · children #43–#50 · PPT-041 [#51](https://github.com/Elmorralito/save-ma-money/issues/51)
+
+  > - Auth [#49](https://github.com/Elmorralito/save-ma-money/issues/49) · program [#28](https://github.com/Elmorralito/save-ma-money/issues/28)
+
+  > - [modules/api/README.md](modules/api/README.md) · [docs/issues/README.md](docs/issues/README.md) · [docs/design/ARCHITECTURE.md](docs/design/ARCHITECTURE.md) Part VI
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 22:40:06+00:00</sub>_
 
