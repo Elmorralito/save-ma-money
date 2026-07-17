@@ -1,13 +1,12 @@
-"""Rate-limit dependencies for authentication routes.
+"""Rate-limit dependencies for auth (per-IP) and tenant API tiers (PPT-043).
 
-FastAPI dependencies that enforce per-IP sliding-window limits on login, register,
-OAuth/SSO, and refresh endpoints. Emits ``X-RateLimit-*`` and ``Retry-After``
-headers; no-ops when rate limiting is disabled in settings.
+Auth endpoints use a per-IP sliding window. Protected CRUD/report routes use
+tenant-scoped Free/Pro/Enterprise quotas (minute + day windows) with Redis when
+``REDIS_RATE_LIMIT_ENABLED`` is on.
 
 Key exports:
-    enforce_auth_login_rate_limit: Guard ``/auth/login`` attempts.
-    enforce_auth_register_rate_limit: Guard ``/auth/register`` attempts.
-    enforce_auth_oauth_rate_limit: Guard OAuth start/callback/SSO/refresh.
+    enforce_auth_login_rate_limit / register / oauth: Auth IP guards.
+    enforce_tenant_api_rate_limit: Tenant API tier guard for protected routers.
 """
 
 from __future__ import annotations
@@ -18,7 +17,11 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 
 from papita_txnsapi.config.settings import Settings, get_settings
-from papita_txnsapi.core.rate_limit import RateLimitResult, get_rate_limiter
+from papita_txnsapi.core.api_tier import limits_for_tier, resolve_api_tier
+from papita_txnsapi.core.rate_limit import RateLimitResult, get_rate_limiter_for_request
+from papita_txnsapi.core.redis import get_redis_from_app
+from papita_txnsapi.dependencies.auth import get_current_owner
+from papita_txnsmodel.access.users.dto import UsersDTO
 
 
 def _client_ip(request: Request) -> str:
@@ -69,7 +72,7 @@ def _enforce_rate_limit(request: Request, settings: Settings, *, scope: str, lim
         return
 
     key = f"{scope}:{_client_ip(request)}"
-    result = get_rate_limiter().check(
+    result = get_rate_limiter_for_request(request, settings).check(
         key,
         limit=limit,
         window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -144,3 +147,85 @@ def enforce_auth_oauth_rate_limit(
         scope="auth-oauth",
         limit=settings.AUTH_OAUTH_RATE_LIMIT_PER_MINUTE,
     )
+
+
+def _merge_limit_headers(minute: RateLimitResult, day: RateLimitResult) -> dict[str, str]:
+    """Prefer the tighter remaining quota for response headers."""
+    if minute.limit <= 0 and day.limit <= 0:
+        return {}
+    if minute.limit <= 0:
+        return _rate_limit_headers(day)
+    if day.limit <= 0:
+        return _rate_limit_headers(minute)
+    # Report the window with fewer remaining requests (normalized by limit).
+    minute_ratio = minute.remaining / minute.limit if minute.limit else 1.0
+    day_ratio = day.remaining / day.limit if day.limit else 1.0
+    chosen = minute if minute_ratio <= day_ratio else day
+    return _rate_limit_headers(chosen)
+
+
+def enforce_tenant_api_rate_limit(
+    request: Request,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Enforce tenant-scoped Free/Pro/Enterprise API quotas on protected routes.
+
+    Applies rolling per-minute and per-day windows keyed by ``owner_id``. Stores
+    ``X-RateLimit-*`` headers on ``request.state`` for response middleware. Enterprise
+    (unlimited) is a no-op. When ``API_RATE_LIMIT_ENABLED`` is false, skips checks.
+
+    Args:
+        request: Incoming HTTP request.
+        owner: Authenticated tenant from JWT.
+        settings: API settings with tier quotas and feature flags.
+
+    Raises:
+        HTTPException: 401 when owner id is missing; 429 when a quota is exceeded.
+    """
+    if not settings.API_RATE_LIMIT_ENABLED:
+        return
+    if owner.id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    redis = get_redis_from_app(request.app) if settings.REDIS_ENABLED else None
+    tier = resolve_api_tier(settings, owner.id, redis)
+    limits = limits_for_tier(settings, tier)
+    if limits.unlimited:
+        request.state.rate_limit_headers = {
+            "X-RateLimit-Limit": "0",
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": "0",
+            "X-RateLimit-Tier": tier.value,
+        }
+        return
+
+    limiter = get_rate_limiter_for_request(request, settings)
+    owner_key = str(owner.id)
+    minute = limiter.check(
+        f"api:{owner_key}:min",
+        limit=limits.per_minute,
+        window_seconds=60,
+    )
+    day = limiter.check(
+        f"api:{owner_key}:day",
+        limit=limits.per_day,
+        window_seconds=86_400,
+    )
+    headers = {**_merge_limit_headers(minute, day), "X-RateLimit-Tier": tier.value}
+    request.state.rate_limit_headers = headers
+
+    if not minute.allowed or not day.allowed:
+        denied = minute if not minute.allowed else day
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="API rate limit exceeded for your plan. Try again later.",
+            headers={
+                **headers,
+                "Retry-After": str(max(1, denied.reset_at - int(time.time()))),
+            },
+        )

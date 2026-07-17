@@ -1,22 +1,21 @@
 """FastAPI query-parameter models and dependencies for list and report routes.
 
-This module bridges HTTP query strings to service-layer keyword arguments for
-transactions, transfer movements, and reports. OpenAPI ``Query`` dependencies
-build Pydantic models; each model exposes ``service_kwargs()`` that normalizes
-enums, date windows, and defaults before calling ``TransactionsService`` /
-``ReportService``.
+Bridges HTTP query strings to service-layer keyword arguments for transactions,
+transfer movements, and reports. OpenAPI ``Query`` dependencies build Pydantic
+models; each model exposes ``service_kwargs()`` that normalizes enums, date
+windows, and defaults before calling ``TransactionsService`` / ``ReportService``.
 
-Key types:
-    * ``TransactionListQuery`` / ``MovementListQuery`` — list filters.
-    * ``ReportSpendingQuery``, ``ReportCashFlowQuery``, ``ReportTrendsQuery``,
-      ``ReportExportQuery`` — report filters with window/enum validators.
-    * Matching ``*ServiceKwargs`` TypedDicts — typed kwargs for service methods.
-    * ``get_*_query`` helpers — FastAPI ``Depends`` factories for those models.
-
-Calendar dates for reports are converted to inclusive UTC day bounds via
+Calendar dates for reports become inclusive UTC day bounds via
 ``date_to_start_datetime`` / ``date_to_end_datetime``. Export formats ``xlsx`` and
-``pdf`` are deferred (see ``DEFERRED_EXPORT_FORMATS``) and must be rejected by the
+``pdf`` are deferred (``DEFERRED_EXPORT_FORMATS``) and must be rejected by the
 router with HTTP 501 rather than forwarded to the service.
+
+Key exports:
+    DEFERRED_EXPORT_FORMATS: ``xlsx`` / ``pdf`` formats for router 501 handling.
+    date_to_start_datetime / date_to_end_datetime: Inclusive UTC day bounds.
+    TransactionListQuery / MovementListQuery (+ ``*ServiceKwargs``, ``get_*``).
+    ReportSpendingQuery / ReportCashFlowQuery / ReportTrendsQuery /
+    ReportExportQuery (+ matching TypedDicts and ``get_report_*_query`` helpers).
 """
 
 from __future__ import annotations
@@ -37,6 +36,12 @@ _ALLOWED_EXPORT_REPORT_TYPES = frozenset({"spending", "cash-flow", "trends"})
 _ALLOWED_EXPORT_FORMATS = frozenset({"csv", "json"})
 # Accepted in query validation but not implemented; routers should return HTTP 501.
 DEFERRED_EXPORT_FORMATS = frozenset({"xlsx", "pdf"})
+"""Export formats that validate on the query model but must not reach the service.
+
+Routers check ``ReportExportQuery.is_deferred_format`` (or membership in this set)
+and respond with HTTP 501. ``service_kwargs()`` raises ``ValueError`` if called
+for these formats.
+"""
 
 
 def date_to_start_datetime(value: date) -> datetime:
@@ -378,6 +383,10 @@ class ReportSpendingQuery(BaseModel):
 
         Returns:
             Typed keyword arguments with UTC-bounded ``start_date`` / ``end_date``.
+
+        Note:
+            Call after model validation; invalid windows or ``group_by`` values
+            raise ``ValueError`` during construction, not here.
         """
         return ReportSpendingServiceKwargs(
             start_date=date_to_start_datetime(self.start_date),
@@ -416,6 +425,10 @@ class ReportCashFlowQuery(BaseModel):
 
         Returns:
             Typed keyword arguments with UTC-bounded dates and refresh flag.
+
+        Note:
+            Call after model validation; an inverted date window raises
+            ``ValueError`` during construction, not here.
         """
         return ReportCashFlowServiceKwargs(
             start_date=date_to_start_datetime(self.start_date),
@@ -569,7 +582,11 @@ def get_report_spending_query(  # pylint: disable=too-many-arguments
         account_id: Optional account filter.
 
     Returns:
-        Populated ``ReportSpendingQuery`` (may raise ``ValueError`` via validators).
+        Populated ``ReportSpendingQuery`` for the route handler.
+
+    Raises:
+        ValueError: When the date window is inverted or ``group_by`` is not allowlisted
+            (raised by the model validator during construction).
     """
     return ReportSpendingQuery(
         start_date=start_date,
@@ -595,7 +612,10 @@ def get_report_cash_flow_query(
         refresh_balances: Whether to refresh balance MVs before the query.
 
     Returns:
-        Populated ``ReportCashFlowQuery`` (may raise ``ValueError`` via validators).
+        Populated ``ReportCashFlowQuery`` for the route handler.
+
+    Raises:
+        ValueError: When the date window is inverted (model validator).
     """
     return ReportCashFlowQuery(
         start_date=start_date,
@@ -626,6 +646,10 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
 
     Returns:
         Populated ``ReportTrendsQuery`` with resolved window after validation.
+
+    Raises:
+        ValueError: When ``period`` is not allowlisted or the resolved window is
+            inverted (model validator).
     """
     return ReportTrendsQuery(
         months=months,
@@ -661,7 +685,12 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
         period: Trends bucket when exporting trends.
 
     Returns:
-        Populated ``ReportExportQuery`` (deferred formats remain valid for 501 handling).
+        Populated ``ReportExportQuery``. Deferred formats remain constructible so
+        the router can return HTTP 501.
+
+    Raises:
+        ValueError: When the window, report type, or non-deferred format fields
+            fail allowlist validation (model validator).
     """
     return ReportExportQuery(
         report_type=report_type,

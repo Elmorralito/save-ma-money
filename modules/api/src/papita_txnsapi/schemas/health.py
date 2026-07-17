@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from papita_txnsapi.core.auth_health import AuthProbeDetail
 from papita_txnsapi.core.db_health import DatabaseProbeDetail
+from papita_txnsapi.core.redis import RedisProbeDetail
 
 __all__ = [
     "AuthHealthResponse",
@@ -26,6 +27,8 @@ __all__ = [
     "HealthResponse",
     "LivenessResponse",
     "ReadinessResponse",
+    "RedisHealthResponse",
+    "RedisProbeDetail",
 ]
 
 
@@ -41,6 +44,9 @@ class HealthResponse(BaseModel):
         auth: Supabase Auth connectivity (``connected``, ``disconnected``, or ``skipped``).
         auth_latency_ms: Auth probe latency when a live Auth check ran successfully.
         auth_detail: Allowlisted Auth probe detail.
+        redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).
+        redis_latency_ms: Redis probe latency when a live Redis check ran successfully.
+        redis_detail: Allowlisted Redis probe detail.
     """
 
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
@@ -53,6 +59,9 @@ class HealthResponse(BaseModel):
     auth: Literal["connected", "disconnected", "skipped"] = "skipped"
     auth_latency_ms: float | None = Field(default=None, ge=0.0, le=60_000.0)
     auth_detail: AuthProbeDetail = AuthProbeDetail.SKIPPED_LOCAL
+    redis: Literal["connected", "disconnected", "skipped"] = "skipped"
+    redis_latency_ms: float | None = Field(default=None, ge=0.0, le=60_000.0)
+    redis_detail: RedisProbeDetail = RedisProbeDetail.DISABLED
 
 
 class DatabaseHealthResponse(BaseModel):
@@ -100,6 +109,28 @@ class AuthHealthResponse(BaseModel):
     latency_ms: float | None = Field(default=None, ge=0.0, le=60_000.0)
     checked_at: datetime
     detail: AuthProbeDetail
+
+
+class RedisHealthResponse(BaseModel):
+    """API↔Redis communication health for ``GET /health/redis``.
+
+    Attributes:
+        status: ``healthy`` when Redis is up (or disabled skip); ``unhealthy`` otherwise.
+        reachable: Whether the Redis probe succeeded (disabled skip counts as reachable).
+        latency_ms: Round-trip Redis PING latency when a network probe ran.
+        checked_at: UTC time when the probe ran.
+        detail: Allowlisted explanation of Redis status (never raw errors).
+        required: Whether Redis is required for readiness (``REDIS_ENABLED``).
+    """
+
+    model_config = ConfigDict(extra="forbid", use_enum_values=True)
+
+    status: Literal["healthy", "unhealthy"]
+    reachable: bool
+    latency_ms: float | None = Field(default=None, ge=0.0, le=60_000.0)
+    checked_at: datetime
+    detail: RedisProbeDetail
+    required: bool = False
 
 
 class ReadinessResponse(BaseModel):

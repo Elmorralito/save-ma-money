@@ -106,6 +106,22 @@ class Settings(BaseSettings):
         AUTH_RATE_LIMIT_WINDOW_SECONDS: Sliding window length for auth limits.
         AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: Max login attempts per window per IP.
         AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: Max register attempts per window per IP.
+        REDIS_URL: Redis connection URL when shared infra is enabled (PPT-043).
+        REDIS_ENABLED: When ``True``, initialize a Redis pool and include Redis in readiness.
+        REDIS_DEFAULT_TTL_SECONDS: Legacy unused fallback; prefer per-namespace TTLs.
+        REDIS_CACHE_TTL_ACCOUNTS_SECONDS: Cache TTL for accounts list (default 60s).
+        REDIS_CACHE_TTL_CATEGORIES_SECONDS: Cache TTL for categories list (default 300s).
+        REDIS_CACHE_TTL_REPORTS_SECONDS: Cache TTL for reports (default 180s; range 120–300).
+        REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: Short cache TTL for transactions (default 15s).
+        REDIS_IDEMPOTENCY_TTL_SECONDS: TTL for ``Idempotency-Key`` replay records.
+        REDIS_RATE_LIMIT_ENABLED: When ``True`` (and Redis enabled), use distributed rate limits.
+        REDIS_MAX_CONNECTIONS: Max connections in the Redis pool.
+        API_RATE_LIMIT_ENABLED: Tenant-scoped Free/Pro/Enterprise API quotas on protected routes.
+        API_RATE_LIMIT_DEFAULT_TIER: Default plan when no Redis ``papita:{env}:{owner_id}:api_tier`` override.
+        API_RATE_LIMIT_FREE_PER_MINUTE: Free tier requests per rolling minute.
+        API_RATE_LIMIT_FREE_PER_DAY: Free tier requests per rolling day.
+        API_RATE_LIMIT_PRO_PER_MINUTE: Pro tier requests per rolling minute.
+        API_RATE_LIMIT_PRO_PER_DAY: Pro tier requests per rolling day.
     """
 
     model_config = SettingsConfigDict(env_file_encoding="utf-8", extra="ignore")
@@ -138,7 +154,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: list[str] = ["*"]
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
-    # Auth hardening — per-IP sliding window (single-instance B0; use Redis post-MVP)
+    # Auth hardening — per-IP sliding window (Redis when REDIS_RATE_LIMIT_ENABLED)
     AUTH_RATE_LIMIT_ENABLED: bool = True
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
     AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
@@ -146,6 +162,26 @@ class Settings(BaseSettings):
     AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: int = 20
     # When None, OAuth PKCE cookies use Secure when DEBUG is false.
     AUTH_COOKIE_SECURE: bool | None = None
+
+    # Redis (PPT-043) — optional; in-memory fallbacks when disabled
+    REDIS_URL: str | None = None
+    REDIS_ENABLED: bool = False
+    REDIS_DEFAULT_TTL_SECONDS: int = 60
+    REDIS_CACHE_TTL_ACCOUNTS_SECONDS: int = 60
+    REDIS_CACHE_TTL_CATEGORIES_SECONDS: int = 300
+    REDIS_CACHE_TTL_REPORTS_SECONDS: int = 180
+    REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: int = 15
+    REDIS_IDEMPOTENCY_TTL_SECONDS: int = 86_400
+    REDIS_RATE_LIMIT_ENABLED: bool = False
+    REDIS_MAX_CONNECTIONS: int = 10
+
+    # Tenant API rate limits (README Free / Pro / Enterprise)
+    API_RATE_LIMIT_ENABLED: bool = True
+    API_RATE_LIMIT_DEFAULT_TIER: Literal["free", "pro", "enterprise"] = "free"
+    API_RATE_LIMIT_FREE_PER_MINUTE: int = 60
+    API_RATE_LIMIT_FREE_PER_DAY: int = 1_000
+    API_RATE_LIMIT_PRO_PER_MINUTE: int = 300
+    API_RATE_LIMIT_PRO_PER_DAY: int = 10_000
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -186,6 +222,23 @@ class Settings(BaseSettings):
             return value.strip().rstrip("/")
         return None
 
+    @field_validator("REDIS_URL", mode="before")
+    @classmethod
+    def coerce_redis_url(cls, value: str | None) -> str | None:
+        """Normalize blank Redis URLs to ``None``.
+
+        Args:
+            value: Raw env string or ``None``.
+
+        Returns:
+            Stripped URL or ``None``.
+        """
+        if value is None:
+            return None
+        if isinstance(value, str) and value.strip() != "":
+            return value.strip()
+        return None
+
     @model_validator(mode="before")
     @classmethod
     def prefer_supabase_when_url_configured(cls, data: Any) -> Any:
@@ -218,10 +271,13 @@ class Settings(BaseSettings):
             The validated settings instance with ``DATABASE_URL`` as a connector class.
 
         Raises:
-            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``.
+            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``, or
+                when ``REDIS_ENABLED`` without ``REDIS_URL``.
         """
         if self.AUTH_PROVIDER == "supabase" and not self.SUPABASE_URL:
             raise ValueError("SUPABASE_URL is required when AUTH_PROVIDER=supabase")
+        if self.REDIS_ENABLED and not self.REDIS_URL:
+            raise ValueError("REDIS_URL is required when REDIS_ENABLED=true")
 
         url_or_connector = self.DATABASE_URL
         if isinstance(url_or_connector, type) and issubclass(url_or_connector, SQLDatabaseConnector):

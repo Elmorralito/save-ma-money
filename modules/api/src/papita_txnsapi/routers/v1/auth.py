@@ -8,7 +8,8 @@ Exposes identity endpoints under ``/api/v1/auth``. Behavior depends on
   Failed Papita provision after Auth signup may trigger Admin orphan cleanup when
   ``SUPABASE_SERVICE_ROLE_KEY`` is set.
 * ``local`` — register/login against ``UsersService`` and issue HS256 JWTs
-  (tests / B0 only). Refresh, logout, and OAuth/SSO return HTTP 501.
+  (tests / B0 only). Refresh and OAuth/SSO return HTTP 501. Logout returns 501
+  unless Redis is enabled (JWT denylist via PPT-043).
 
 Routes:
     ``POST /auth/register`` — create user (email + password; username derived).
@@ -19,11 +20,15 @@ Routes:
     ``POST /auth/sso`` — hand off when the client already holds session tokens.
     ``GET /auth/me`` — authenticated profile smoke test.
     ``POST /auth/refresh`` — Supabase session rotation (501 when local).
-    ``POST /auth/logout`` — Supabase session revoke (501 when local).
+    ``POST /auth/logout`` — Supabase session revoke and/or Redis JWT denylist.
 
-Rate limits apply to register, login, and OAuth/SSO/refresh helpers via FastAPI
+Rate limits apply to register, login, and OAuth/SSO/refresh via FastAPI
 dependencies. OAuth ``redirect_to`` is allowlisted to the API callback URL and
-optional ``SUPABASE_OAUTH_REDIRECT_TO``.
+optional ``SUPABASE_OAUTH_REDIRECT_TO``. Business logic stays in
+``papita_txnsmodel`` / ``core.supabase_auth``; this module maps HTTP ↔ helpers.
+
+Key exports:
+    router: FastAPI ``APIRouter`` mounted at ``/auth`` by the v1 package.
 """
 
 from __future__ import annotations
@@ -38,6 +43,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2Pas
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
+from papita_txnsapi.core.session_store import SessionStore
 from papita_txnsapi.core.supabase_auth import (
     AuthApiError,
     AuthError,
@@ -60,6 +66,7 @@ from papita_txnsapi.dependencies.rate_limit import (
     enforce_auth_register_rate_limit,
 )
 from papita_txnsapi.dependencies.services import get_users_service
+from papita_txnsapi.dependencies.session_store import get_session_store
 from papita_txnsapi.schemas.auth import (
     LogoutRequest,
     OAuthCodeExchangeRequest,
@@ -93,11 +100,28 @@ _OAUTH_COOKIE_PATH = "/api/v1/auth"
 
 
 def _require_supabase_auth_settings(settings: Settings) -> None:
+    """Ensure Supabase URL and anon key are configured for session Auth APIs.
+
+    Args:
+        settings: Application settings with ``SUPABASE_URL`` / ``SUPABASE_ANON_KEY``.
+
+    Raises:
+        HTTPException: 503 when either required Supabase Auth setting is missing.
+    """
     if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_AUTH_REQUIRED)
 
 
 def _auth_error_detail(exc: Exception, *, fallback: str) -> str:
+    """Extract a public-facing Auth error message from an SDK exception.
+
+    Args:
+        exc: Raised Auth or wrapper exception.
+        fallback: Detail when the exception carries no usable message.
+
+    Returns:
+        Non-empty detail string suitable for ``HTTPException.detail``.
+    """
     message = getattr(exc, "message", None) or str(exc) or fallback
     return str(message)
 
@@ -109,6 +133,17 @@ def _token_response_from_auth(
     expires_in: int | None,
     settings: Settings,
 ) -> TokenResponse:
+    """Build an OAuth2-compatible ``TokenResponse`` from Auth session fields.
+
+    Args:
+        access_token: Bearer access JWT from Supabase (or local issuer).
+        refresh_token: Opaque refresh token when issued; ``None`` for local login.
+        expires_in: Access TTL seconds from Auth, or ``None`` to use Settings default.
+        settings: Supplies ``JWT_TOKEN_TYPE`` and default expiration.
+
+    Returns:
+        ``TokenResponse`` with ``expires_in`` clamped to at least 1 second.
+    """
     resolved_expires = int(expires_in or settings.JWT_EXPIRATION_TIME_SECONDS)
     return TokenResponse(
         access_token=access_token,
@@ -119,6 +154,14 @@ def _token_response_from_auth(
 
 
 def _api_oauth_callback_url(request: Request) -> str:
+    """Absolute URL for the named ``GET /auth/oauth/callback`` route.
+
+    Args:
+        request: Incoming request used to reverse-lookup the callback path.
+
+    Returns:
+        Absolute callback URI (scheme/host from the request).
+    """
     return str(request.url_for("oauth_callback_get"))
 
 
@@ -168,6 +211,16 @@ def _set_oauth_pkce_cookies(
     ``redirect_to`` must already be allowlisted via ``_resolve_oauth_redirect_to``.
     Cookies are HttpOnly, SameSite=Lax, path-scoped, and optionally Secure — not
     clear-text password storage; the verifier is bound to the OAuth handshake.
+
+    Args:
+        response: Mutable response that receives ``Set-Cookie`` headers.
+        code_verifier: PKCE verifier from ``sign_in_with_oauth``.
+        provider: OAuth channel stored for the GET callback.
+        redirect_to: Allowlisted redirect URI used at authorize time.
+        secure: When ``True``, set the Secure cookie flag (HTTPS).
+
+    Returns:
+        None.
     """
     cookie_kwargs = {
         "max_age": _OAUTH_COOKIE_MAX_AGE,
@@ -183,11 +236,30 @@ def _set_oauth_pkce_cookies(
 
 
 def _clear_oauth_pkce_cookies(response: Response) -> None:
+    """Delete PKCE cookies after a successful browser OAuth callback.
+
+    Args:
+        response: Mutable response that clears the OAuth cookie names.
+
+    Returns:
+        None.
+    """
     for key in (_OAUTH_VERIFIER_COOKIE, _OAUTH_PROVIDER_COOKIE, _OAUTH_REDIRECT_COOKIE):
         response.delete_cookie(key=key, path=_OAUTH_COOKIE_PATH)
 
 
 def _parse_oauth_provider(raw: str) -> ProviderType:
+    """Parse a path/cookie provider string into an OAuth ``ProviderType``.
+
+    Args:
+        raw: Provider id such as ``google`` or ``github`` (case-insensitive).
+
+    Returns:
+        ``ProviderType`` that reports ``is_oauth()`` as true.
+
+    Raises:
+        HTTPException: 404 when the value is unknown or not an OAuth channel.
+    """
     try:
         oauth_provider = ProviderType(raw.strip().lower())
     except ValueError as exc:
@@ -198,6 +270,14 @@ def _parse_oauth_provider(raw: str) -> ProviderType:
 
 
 def _http_status_for_provision_error(exc: ValueError) -> int:
+    """Map Papita provision ``ValueError`` messages to HTTP status codes.
+
+    Args:
+        exc: Raised during ``ensure_from_auth_subject`` or related provision.
+
+    Returns:
+        409 for username/email conflicts, 401 for inactive/deleted users, else 502.
+    """
     message = str(exc)
     if message in {"Username already registered", "Email already registered"}:
         return status.HTTP_409_CONFLICT
@@ -215,12 +295,19 @@ def _cleanup_orphan_auth_user(
 ) -> None:
     """Best-effort Admin delete of a half-created Auth identity.
 
+    No-ops when the service role key is unset. Login cleanup can require the
+    Auth user to be younger than the orphan window so established accounts are
+    not wiped after a transient DB blip.
+
     Args:
         settings: Must include ``SUPABASE_SERVICE_ROLE_KEY`` for cleanup to run.
         user_id: Auth subject created before Papita provision failed.
         reason: Short label for logs (``register`` / ``login``).
         require_recent: When ``True`` (login), only delete Auth users younger than
             the orphan window so a transient DB blip does not wipe established accounts.
+
+    Returns:
+        None. Failures are logged; they do not raise to the client.
     """
     service_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
     if not service_key or not settings.SUPABASE_URL:
@@ -282,7 +369,8 @@ def _complete_oauth_provision(
         OAuth2-compatible ``TokenResponse`` with Supabase access/refresh tokens.
 
     Raises:
-        AuthApiError / AuthError: Supabase rejected the code exchange.
+        AuthApiError: Supabase rejected the code exchange (API error).
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Response missing user/session fields or provision failed.
     """
     auth_result = supabase_exchange_code_for_session(
@@ -322,6 +410,7 @@ def register_user(
 
     Args:
         body: Registration payload (email, password, optional profile fields).
+        _rate_limit: Per-IP register rate-limit dependency (side effect only).
         settings: Selects ``supabase`` vs ``local`` Auth mode.
         users_service: Creates or links the tenant ``users`` row.
 
@@ -407,6 +496,7 @@ def login(
 
     Args:
         form: OAuth2 password form (``username`` + ``password``).
+        _rate_limit: Per-IP login rate-limit dependency (side effect only).
         settings: Selects Auth mode and JWT/session defaults.
         users_service: Verifies credentials (local) or ensures Auth-linked user.
         auth_manager: Issues HS256 access tokens in local mode only.
@@ -507,6 +597,7 @@ def oauth_callback_post(
     Args:
         body: Provider, auth code, PKCE verifier, optional redirect and name.
         request: Used to allowlist ``redirect_to`` against the API callback URL.
+        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
         users_service: Provisions or refreshes the tenant profile.
 
@@ -565,6 +656,7 @@ def oauth_callback_get(
 
     Args:
         request: Incoming redirect; cookies supply verifier/provider/redirect.
+        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
         users_service: Provisions or refreshes the tenant profile.
         code: Authorization code query param from the IdP.
@@ -650,6 +742,7 @@ def start_oauth(
     Args:
         provider: Path segment (``google`` or ``github``).
         request: Used to resolve the allowlisted redirect URI.
+        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
         redirect_to: Optional allowlisted redirect override.
         follow: When ``True``, 302-redirect and set PKCE cookies.
@@ -715,6 +808,7 @@ def complete_sso(
 
     Args:
         body: Provider, access token, refresh token, optional display name.
+        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
         users_service: Provisions or refreshes the tenant profile.
 
@@ -768,13 +862,18 @@ def get_current_user(
     """Return the authenticated user profile (protected route smoke test).
 
     Uses ``get_current_owner``, which verifies the bearer JWT and may refresh
-    Auth-linked profile fields under Supabase mode.
+    Auth-linked profile fields under Supabase mode. When Redis is required,
+    revoked tokens are rejected (denylist fail-closed).
 
     Args:
         owner: Authenticated tenant user resolved from the bearer JWT.
 
     Returns:
         Public ``UserResponse`` for the current session user (never includes password).
+
+    Raises:
+        HTTPException: 401 when credentials are missing/invalid/revoked; 503 when
+            the Redis denylist is required but unavailable.
     """
     return UserResponse.from_dto(owner)
 
@@ -791,6 +890,7 @@ def refresh_token(
 
     Args:
         body: Current Supabase refresh token.
+        _rate_limit: Per-IP OAuth/refresh rate-limit dependency (side effect only).
         settings: Application settings selecting Auth provider.
 
     Returns:
@@ -834,32 +934,47 @@ def logout(
     body: LogoutRequest,
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)],
+    session_store: Annotated[SessionStore, Depends(get_session_store)],
 ) -> Response | JSONResponse:
-    """Revoke the Supabase Auth session (global sign-out).
+    """Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.
 
-    When ``AUTH_PROVIDER=local``, returns HTTP 501. Access token may be supplied
-    in the JSON body or as ``Authorization: Bearer``. On success returns 204 with
-    an empty body.
+    * ``AUTH_PROVIDER=supabase`` — calls Supabase ``sign_out``, then denylists the
+      access token when Redis is enabled so remaining JWT TTL cannot be reused.
+    * ``AUTH_PROVIDER=local`` — when Redis is enabled, denylists the access token
+      and returns 204; otherwise returns HTTP 501 (no refresh/session store).
+
+    Access token may be supplied in the JSON body or as ``Authorization: Bearer``.
 
     Args:
-        body: Refresh token (required) and optional access token.
+        body: Refresh token (required for Supabase) and optional access token.
         settings: Application settings selecting Auth provider.
         credentials: Optional bearer credentials for the access JWT.
+        session_store: Redis-backed JWT denylist (no-op when Redis disabled).
 
     Returns:
-        Empty 204 response on success, or deferred JSON with status 501 in local mode.
+        Empty 204 response on success, or deferred JSON with status 501 in local
+        mode without Redis.
 
     Raises:
         HTTPException: 400 when access token missing; 401 on Auth errors;
             503 when Auth misconfigured.
     """
-    if settings.AUTH_PROVIDER != "supabase":
-        return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
-
-    _require_supabase_auth_settings(settings)
     access_token = (body.access_token or "").strip() or (
         credentials.credentials.strip() if credentials and credentials.credentials else ""
     )
+
+    if settings.AUTH_PROVIDER != "supabase":
+        if not session_store.available:
+            return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
+        if not access_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="access_token is required (body.access_token or Authorization: Bearer)",
+            )
+        session_store.revoke(access_token, ttl_seconds=settings.JWT_EXPIRATION_TIME_SECONDS)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    _require_supabase_auth_settings(settings)
     if not access_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -879,4 +994,7 @@ def logout(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if session_store.available:
+        session_store.revoke(access_token, ttl_seconds=settings.JWT_EXPIRATION_TIME_SECONDS)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,8 +1,8 @@
 """FastAPI application factory for papita_txnsapi.
 
 Constructs the runnable API with CORS, request logging, global exception handlers,
-and v1 routers mounted at ``/api/v1``. Bootstraps password hashing on startup
-(NFR-08) via the application lifespan context.
+and v1 routers mounted at ``/api/v1``. Bootstraps password hashing and optional
+Redis on startup via the application lifespan context.
 
 Key exports:
     lifespan: Async context manager for startup/shutdown hooks.
@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.handlers import register_exception_handlers
+from papita_txnsapi.core.redis import close_redis, init_redis
 from papita_txnsapi.middleware.request_logging import RequestLoggingMiddleware
 from papita_txnsapi.routers.v1 import api_v1_router
 from papita_txnsmodel.services.users import UsersService
@@ -28,23 +29,36 @@ from papita_txnsmodel.services.users import UsersService
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Bootstrap shared resources on startup and log shutdown.
+def _build_lifespan(settings: Settings):
+    """Build a lifespan context that binds Redis to the given settings."""
 
-    Ensures ``UsersService`` password manager is initialized before auth routes accept
-    traffic (NFR-08).
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Bootstrap shared resources on startup and release them on shutdown.
 
-    Args:
-        _app: FastAPI application instance (unused; required by lifespan signature).
+        Ensures ``UsersService`` password manager is initialized before auth routes
+        accept traffic (NFR-08). Optionally opens a Redis pool when enabled (PPT-043).
 
-    Yields:
-        Control back to FastAPI while the application is serving requests.
-    """
-    UsersService.ensure_password_manager()
-    logger.info("Application lifespan started — password manager ready")
-    yield
-    logger.info("Application lifespan shutdown")
+        Args:
+            app: FastAPI application instance; ``app.state.redis`` is set when enabled.
+
+        Yields:
+            Control back to FastAPI while the application is serving requests.
+        """
+        UsersService.ensure_password_manager()
+        app.state.redis = init_redis(settings)
+        logger.info(
+            "Application lifespan started — password manager ready (redis=%s)",
+            "on" if app.state.redis is not None else "off",
+        )
+        try:
+            yield
+        finally:
+            close_redis(getattr(app.state, "redis", None))
+            app.state.redis = None
+            logger.info("Application lifespan shutdown")
+
+    return lifespan
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -65,11 +79,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title=app_settings.APP_NAME,
         version=app_settings.APP_VERSION,
         debug=app_settings.DEBUG,
-        lifespan=lifespan,
+        lifespan=_build_lifespan(app_settings),
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
     )
+    app.state.settings = app_settings
 
     app.add_middleware(
         CORSMiddleware,

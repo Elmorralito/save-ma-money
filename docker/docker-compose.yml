@@ -1,13 +1,17 @@
 ---
-# Full local stack: PostgreSQL + Alembic migrate + FastAPI API (B0)
+# Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API (B0)
 #
 #   cp environments/local/.env.example environments/local/.env
 #   docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
 #
 # API: http://localhost:8000/api/docs
 # Health: http://localhost:8000/api/v1/health/ready
+# Redis: enabled in the API container by default (redis://redis:6379/0)
 #
-# Database-only:
+# Host uvicorn against Compose Redis:
+#   REDIS_URL=redis://localhost:6379/0 REDIS_ENABLED=true
+#
+# Database + Redis only (no API):
 #   docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
 # Env layout: environments/README.md (PAPITA_ENV=local)
 
@@ -19,6 +23,8 @@ networks:
 
 volumes:
   papita-local-env:
+    driver: local
+  papita-redis-data:
     driver: local
 
 services:
@@ -50,6 +56,25 @@ services:
       PGPORT: "${DB_PORT:-5435}"
     volumes:
       - papita-local-env:/var/lib/postgresql/data:rw
+
+  redis:
+    container_name: "redis-${COMPOSE_NAME:-papita-transactions}"
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - papita-redis-data:/data:rw
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   migrate:
     build:
@@ -99,8 +124,23 @@ services:
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
       ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["*"]}'
       DATABASE_POOL_SIZE: "${DATABASE_POOL_SIZE:-5}"
+      # In-compose Redis DNS (do not reuse host REDIS_URL=localhost from .env)
+      REDIS_URL: "redis://redis:6379/0"
+      REDIS_ENABLED: "${REDIS_ENABLED:-true}"
+      REDIS_DEFAULT_TTL_SECONDS: "${REDIS_DEFAULT_TTL_SECONDS:-60}"
+      REDIS_CACHE_TTL_ACCOUNTS_SECONDS: "${REDIS_CACHE_TTL_ACCOUNTS_SECONDS:-60}"
+      REDIS_CACHE_TTL_CATEGORIES_SECONDS: "${REDIS_CACHE_TTL_CATEGORIES_SECONDS:-300}"
+      REDIS_CACHE_TTL_REPORTS_SECONDS: "${REDIS_CACHE_TTL_REPORTS_SECONDS:-180}"
+      REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: "${REDIS_CACHE_TTL_TRANSACTIONS_SECONDS:-15}"
+      REDIS_IDEMPOTENCY_TTL_SECONDS: "${REDIS_IDEMPOTENCY_TTL_SECONDS:-86400}"
+      REDIS_RATE_LIMIT_ENABLED: "${REDIS_RATE_LIMIT_ENABLED:-true}"
+      REDIS_MAX_CONNECTIONS: "${REDIS_MAX_CONNECTIONS:-10}"
+      API_RATE_LIMIT_ENABLED: "${API_RATE_LIMIT_ENABLED:-true}"
+      API_RATE_LIMIT_DEFAULT_TIER: "${API_RATE_LIMIT_DEFAULT_TIER:-free}"
     depends_on:
       postgres-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully

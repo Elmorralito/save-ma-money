@@ -1,8 +1,12 @@
 ---
-# Database-only Postgres (B0). Prefer full stack via docker/docker-compose.yml.
+# Database + Redis (B0). Prefer full stack via docker/docker-compose.yml.
 #
 #   cp environments/local/.env.example environments/local/.env
 #   docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
+#
+# Host API then uses:
+#   REDIS_URL=redis://localhost:6379/0
+#   REDIS_ENABLED=true
 #
 # Env layout: environments/README.md (PAPITA_ENV=local)
 
@@ -14,6 +18,8 @@ networks:
 
 volumes:
   papita-local-env:
+    driver: local
+  papita-redis-data:
     driver: local
 
 services:
@@ -44,3 +50,22 @@ services:
       PGPORT: "${POSTGRES_PORT:-${PGPORT:-${DB_PORT}}}"
     volumes:
       - "papita-local-env:/var/lib/postgresql/data:rw"
+
+  redis:
+    container_name: "redis-${COMPOSE_NAME:-papita-transactions-db}"
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ../redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - papita-redis-data:/data:rw
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s

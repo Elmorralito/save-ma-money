@@ -13,6 +13,7 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 | [`PPT-031-C-supabase-decision-brief.md`](PPT-031-C-supabase-decision-brief.md)                                                               | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) | **Complete — awaiting G7 sign-off on #28** |
 | [`PPT-043-redis-integration-brief.md`](PPT-043-redis-integration-brief.md)                                                                   | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) | Open (post-MVP)                            |
 | [`PPT-044-api-hardening-brief.md`](PPT-044-api-hardening-brief.md)                                                                           | [#89](https://github.com/Elmorralito/save-ma-money/issues/89) | Open (post-MVP API-wide hardening)         |
+| [`PPT-045-uvicorn-process-packaging-brief.md`](PPT-045-uvicorn-process-packaging-brief.md)                                                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93) | Open (uvicorn host/Compose packaging)      |
 
 See [`../design/README.md`](../design/README.md) for the full document registry including planned deliverables ([#32](https://github.com/Elmorralito/save-ma-money/issues/32)–[#34](https://github.com/Elmorralito/save-ma-money/issues/34)).
 

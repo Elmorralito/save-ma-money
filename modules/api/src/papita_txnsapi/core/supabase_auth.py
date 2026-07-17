@@ -1,20 +1,31 @@
 """Supabase Auth client helpers for register, login, OAuth, and sessions.
 
-When ``AUTH_PROVIDER=supabase``, API ``/auth/*`` delegates credential and session
-work to GoTrue via the official Supabase Python client:
+When ``AUTH_PROVIDER=supabase``, API ``/auth/*`` routes delegate credential and
+session work to GoTrue through the official Supabase Python client. This module
+normalizes SDK responses into Papita DTOs, maps Auth errors to stable HTTP
+status/detail pairs, and provides Admin helpers for orphan Auth-user cleanup.
 
-* Password: ``sign_up``, ``sign_in_with_password``, ``refresh_session``, ``sign_out``
-* OAuth PKCE: ``sign_in_with_oauth``, ``exchange_code_for_session``
-* SSO handoff: ``set_session`` + user lookup
-* Admin orphan cleanup: ``admin.delete_user`` / ``admin.get_user_by_id``
+Covered Auth operations:
+    * Password — ``sign_up``, ``sign_in_with_password``, ``refresh_session``, ``sign_out``
+    * OAuth PKCE — ``sign_in_with_oauth``, ``exchange_code_for_session``
+    * SSO handoff — ``set_session`` plus user lookup for email backfill
+    * Admin orphan cleanup — ``admin.delete_user`` / ``admin.get_user_by_id``
 
-JWT verification on protected routes still uses JWKS in
-:mod:`papita_txnsapi.core.security`. Anon and service-role clients are
-process-cached by ``(url, key)`` under a lock; call
+JWT verification on protected routes is **not** performed here; that stays in
+:mod:`papita_txnsapi.core.security` (JWKS). Anon and service-role clients are
+process-cached by ``(url, key)`` under a lock. Call
 :func:`clear_supabase_client_cache` in tests or after credential rotation.
 
-Public types:
-    ``SupabaseAuthResult``, ``SupabaseOAuthStart``, ``SupabaseSignUpProfile``.
+Key exports:
+    SupabaseAuthResult: Normalized Auth outcome for register/login/refresh/OAuth.
+    SupabaseOAuthStart: Authorize URL plus PKCE verifier for OAuth start.
+    SupabaseSignUpProfile: Optional Auth ``user_metadata`` / phone for ``sign_up``.
+    create_supabase_auth_client / create_supabase_admin_client: Cached SDK clients.
+    classify_supabase_auth_error: Map Auth exceptions to HTTP status + detail.
+    supabase_sign_up / supabase_sign_in / supabase_refresh_session / supabase_sign_out.
+    supabase_oauth_authorize_url / supabase_exchange_code_for_session.
+    supabase_establish_session: Attach an existing client-held session.
+    supabase_admin_delete_user / supabase_auth_user_created_recently: Orphan cleanup.
 """
 
 from __future__ import annotations
@@ -40,7 +51,10 @@ _ADMIN_CLIENT_CACHE: dict[tuple[str, str], Client] = {}
 
 @dataclass(frozen=True, slots=True)
 class SupabaseAuthResult:
-    """Normalized Auth outcome for Papita register/login/refresh/OAuth.
+    """Normalized Auth outcome for Papita register, login, refresh, and OAuth.
+
+    Routers map this into API token envelopes. Session fields may be absent when
+    Supabase requires email confirmation before issuing tokens.
 
     Attributes:
         user_id: Auth subject UUID (``auth.users.id`` / JWT ``sub``).
@@ -48,7 +62,7 @@ class SupabaseAuthResult:
         access_token: Bearer JWT when a session was issued; ``None`` on confirm-only signup.
         refresh_token: Opaque refresh token when a session was issued.
         expires_in: Access-token lifetime in seconds when provided by Auth.
-        raw: Underlying SDK response object for debugging / tests.
+        raw: Underlying SDK response object for debugging and tests.
     """
 
     user_id: uuid.UUID
@@ -63,6 +77,9 @@ class SupabaseAuthResult:
 class SupabaseOAuthStart:
     """Authorize URL plus PKCE verifier for a server-mediated OAuth start.
 
+    The caller must persist ``code_verifier`` (response body or HttpOnly cookie)
+    and present it to :func:`supabase_exchange_code_for_session` after redirect.
+
     Attributes:
         provider: Supabase provider id (e.g. ``google``, ``github``).
         url: Browser authorize URL including the PKCE challenge.
@@ -76,7 +93,10 @@ class SupabaseOAuthStart:
 
 @dataclass(frozen=True, slots=True)
 class SupabaseSignUpProfile:
-    """Optional Auth ``user_metadata`` / phone fields for ``sign_up``.
+    """Optional Auth ``user_metadata`` and phone fields for ``sign_up``.
+
+    Does not create a Papita ``users`` row; callers still provision via
+    ``UsersService.ensure_from_auth_subject`` after Auth succeeds.
 
     Attributes:
         username: Preferred handle stored in ``user_metadata.username``.
@@ -94,9 +114,11 @@ class SupabaseSignUpProfile:
 def clear_supabase_client_cache() -> None:
     """Drop cached anon and admin clients (tests or credential rotation).
 
-    Side Effects:
-        Clears process-local client caches under the shared lock. Subsequent
-        ``create_supabase_*_client`` calls build fresh SDK clients.
+    Thread-safe. Subsequent ``create_supabase_*_client`` calls build fresh SDK
+    clients for the next ``(url, key)`` lookup.
+
+    Returns:
+        None.
     """
     with _CLIENT_CACHE_LOCK:
         _AUTH_CLIENT_CACHE.clear()
@@ -106,8 +128,8 @@ def clear_supabase_client_cache() -> None:
 def create_supabase_auth_client(*, supabase_url: str, anon_key: str) -> Client:
     """Return a process-cached Supabase client for Auth API calls.
 
-    Clients are keyed by ``(url, anon_key)`` (URL trailing slash stripped) so
-    repeated register/login/refresh/OAuth avoid re-creating HTTP stacks per request.
+    Clients are keyed by ``(url, anon_key)`` with the URL trailing slash stripped
+    so register/login/refresh/OAuth reuse one HTTP stack per credential pair.
     Thread-safe via a module lock.
 
     Args:
@@ -130,8 +152,8 @@ def create_supabase_auth_client(*, supabase_url: str, anon_key: str) -> Client:
 def create_supabase_admin_client(*, supabase_url: str, service_role_key: str) -> Client:
     """Return a process-cached Supabase client with the service-role key.
 
-    Used only for Admin Auth operations (orphan delete / created_at inspection).
-    Never pass the service role key to browsers or anon Auth paths.
+    Used only for Admin Auth operations (orphan delete and ``created_at``
+    inspection). Never pass the service role key to browsers or anon Auth paths.
 
     Args:
         supabase_url: Project URL.
@@ -154,15 +176,16 @@ def classify_supabase_auth_error(exc: Exception, *, fallback: str) -> tuple[int,
     """Map a Supabase Auth exception to an HTTP status code and public detail.
 
     Recognizes conflict (email exists), rate limits, and invalid credentials so
-    routers can return stable client messages. Other 4xx Auth statuses are
-    passed through (422 coerced to 400); unknown failures become 502 + fallback.
+    routers can return stable client messages. Other 4xx Auth statuses are passed
+    through (422 coerced to 400). Unmapped or empty Auth messages become
+    ``502`` with ``fallback``.
 
     Args:
-        exc: Raised ``AuthApiError`` / ``AuthError`` (or wrapper).
+        exc: Raised ``AuthApiError``, ``AuthError``, or a wrapping exception.
         fallback: Detail used when the Auth message is empty or unmapped (502).
 
     Returns:
-        ``(http_status, detail)`` suitable for ``HTTPException``.
+        ``(http_status, detail)`` suitable for ``fastapi.HTTPException``.
     """
     message = str(getattr(exc, "message", None) or exc or fallback).strip() or fallback
     lower = message.lower()
@@ -189,15 +212,22 @@ def supabase_admin_delete_user(
 ) -> None:
     """Hard-delete an Auth user via the Admin API (orphan cleanup).
 
+    Invoked after Papita provision fails so Auth does not keep a user without a
+    matching local ``users`` row. Soft-delete is disabled.
+
     Args:
         supabase_url: Project URL.
         service_role_key: Service role key.
         user_id: Auth subject to delete.
         client: Optional pre-built admin client (tests).
 
+    Returns:
+        None.
+
     Raises:
-        AuthApiError / AuthError: Admin delete rejected.
-        ValueError: Missing service role key or user id.
+        ValueError: Missing service role key or empty ``user_id``.
+        AuthApiError: Admin delete rejected by GoTrue.
+        AuthError: Non-API Auth failure from the SDK.
     """
     if not service_role_key or not str(service_role_key).strip():
         raise ValueError("SUPABASE_SERVICE_ROLE_KEY is required to delete Auth users")
@@ -221,8 +251,9 @@ def supabase_auth_user_created_recently(
 ) -> bool:
     """Return whether an Auth user was created within ``max_age``.
 
-    Used to scope orphan cleanup on login (avoid deleting older Auth accounts
-    after a transient Papita provision failure).
+    Scopes orphan cleanup on login so older Auth accounts are not deleted after
+    a transient Papita provision failure. Failures consulting Admin Auth are
+    treated as “not recent” (returns ``False``).
 
     Args:
         supabase_url: Project URL.
@@ -232,8 +263,8 @@ def supabase_auth_user_created_recently(
         client: Optional pre-built admin client (tests).
 
     Returns:
-        ``True`` when ``created_at`` is within ``max_age``; ``False`` on missing
-        metadata or Admin API errors.
+        ``True`` when ``created_at`` is within ``max_age``; ``False`` when the
+        service role is missing, metadata is absent, or the Admin probe errors.
     """
     if not service_role_key or not str(service_role_key).strip():
         return False
@@ -346,15 +377,16 @@ def supabase_sign_up(
         anon_key: Anon key.
         email: User email.
         password: Plain-text password.
-        profile: Optional username / display_name / phone / provider metadata.
+        profile: Optional username, display_name, phone, and provider metadata.
         client: Optional pre-built client (tests).
 
     Returns:
-        Normalized Auth result (session tokens may be ``None`` when email confirm
-        is required).
+        Normalized Auth result. Session tokens may be ``None`` when email
+        confirmation is required before Auth issues a session.
 
     Raises:
-        AuthApiError / AuthError: Supabase Auth rejected the signup.
+        AuthApiError: Supabase Auth rejected the signup (API error).
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Response missing user id.
     """
     sign_up_profile = profile or SupabaseSignUpProfile()
@@ -394,7 +426,8 @@ def supabase_sign_in(
         Normalized Auth result including access and refresh tokens.
 
     Raises:
-        AuthApiError / AuthError: Invalid credentials or Auth failure.
+        AuthApiError: Invalid credentials or Auth API failure.
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Response missing user id or access token.
     """
     auth_client = client or create_supabase_auth_client(supabase_url=supabase_url, anon_key=anon_key)
@@ -425,8 +458,9 @@ def supabase_refresh_session(
         New access/refresh pair and user id.
 
     Raises:
-        AuthApiError / AuthError: Refresh token rejected or expired.
-        ValueError: Response missing access token.
+        AuthApiError: Refresh token rejected or expired.
+        AuthError: Non-API Auth failure from the SDK.
+        ValueError: Empty ``refresh_token`` or response missing access token.
     """
     if not refresh_token or not refresh_token.strip():
         raise ValueError("refresh_token is required")
@@ -448,7 +482,7 @@ def supabase_sign_out(
     scope: str = "global",
     client: Client | None = None,
 ) -> None:
-    """Revoke the Supabase session via ``set_session`` + ``sign_out``.
+    """Revoke the Supabase session via ``set_session`` then ``sign_out``.
 
     Args:
         supabase_url: Project URL.
@@ -458,9 +492,13 @@ def supabase_sign_out(
         scope: Sign-out scope passed to GoTrue (``global`` or ``local``).
         client: Optional pre-built client (tests).
 
+    Returns:
+        None.
+
     Raises:
-        AuthApiError / AuthError: Auth rejected the sign-out.
-        ValueError: Missing tokens.
+        AuthApiError: Auth rejected the sign-out (API error).
+        AuthError: Non-API Auth failure from the SDK.
+        ValueError: Missing tokens, or ``set_session`` failed on a malformed JWT.
     """
     if not access_token or not access_token.strip():
         raise ValueError("access_token is required for logout")
@@ -486,11 +524,11 @@ def supabase_oauth_authorize_url(
     scopes: str | None = None,
     client: Client | None = None,
 ) -> SupabaseOAuthStart:
-    """Start Supabase OAuth (PKCE) and return the authorize URL + verifier.
+    """Start Supabase OAuth (PKCE) and return the authorize URL plus verifier.
 
     Uses ``sign_in_with_oauth`` / GoTrue authorize with ``code_challenge``. The
     SDK stores the PKCE verifier in client storage; this helper reads it back so
-    the API can return it (or set an HttpOnly cookie). The caller must present
+    the API can return it or set an HttpOnly cookie. The caller must present
     ``code_verifier`` later to :func:`supabase_exchange_code_for_session`.
 
     Args:
@@ -505,7 +543,8 @@ def supabase_oauth_authorize_url(
         ``SupabaseOAuthStart`` with authorize URL and PKCE ``code_verifier``.
 
     Raises:
-        AuthApiError / AuthError: Auth rejected the OAuth start.
+        AuthApiError: Auth rejected the OAuth start (API error).
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Response missing URL or PKCE verifier in client storage.
     """
     auth_client = client or create_supabase_auth_client(supabase_url=supabase_url, anon_key=anon_key)
@@ -557,7 +596,8 @@ def supabase_exchange_code_for_session(
         Normalized Auth result with access/refresh tokens and email.
 
     Raises:
-        AuthApiError / AuthError: Code or verifier rejected.
+        AuthApiError: Code or verifier rejected by Auth.
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Missing inputs or response missing session/email.
     """
     if not auth_code or not auth_code.strip():
@@ -605,7 +645,7 @@ def supabase_establish_session(
 
     Used when the client already holds Auth tokens (e.g. after a client-side
     OAuth hash/fragment flow). Prefer :func:`supabase_exchange_code_for_session`
-    when the App receives an authorization ``code``.
+    when the app receives an authorization ``code``.
 
     Args:
         supabase_url: Project URL.
@@ -618,7 +658,8 @@ def supabase_establish_session(
         Normalized Auth result including tokens and email.
 
     Raises:
-        AuthApiError / AuthError: Session rejected.
+        AuthApiError: Session rejected by Auth.
+        AuthError: Non-API Auth failure from the SDK.
         ValueError: Missing tokens or user email.
     """
     if not access_token or not access_token.strip():

@@ -23,7 +23,9 @@ from fastapi.security import OAuth2PasswordBearer
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
+from papita_txnsapi.core.session_store import SessionStore, SessionStoreUnavailableError
 from papita_txnsapi.dependencies.services import get_users_service
+from papita_txnsapi.dependencies.session_store import get_session_store
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import ProviderType
 from papita_txnsmodel.services.users import UsersService
@@ -82,22 +84,29 @@ def get_current_owner(
     token: Annotated[str | None, Depends(oauth2_scheme)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
+    session_store: Annotated[SessionStore, Depends(get_session_store)],
 ) -> UsersDTO:
     """Decode bearer JWT and resolve the active tenant owner for protected routes.
 
     Local mode validates signature, token-type claim, and loads ``sub``. Supabase
     mode validates JWKS claims and provisions a local ``UsersDTO`` on first seen.
+    When Redis is enabled, revoked access tokens in the denylist are rejected
+    (PPT-043). Denylist checks **fail closed** when Redis is required: Redis
+    errors or a missing client yield HTTP 503 so a blip cannot resurrect a
+    revoked token (unlike cache/rate-limit fail-open).
 
     Args:
         token: Bearer token from the ``Authorization`` header (may be ``None``).
         settings: Injected API settings for JWT validation parameters.
         users_service: Injected service used to load/provision the owner.
+        session_store: Optional Redis-backed JWT denylist.
 
     Returns:
         Active ``UsersDTO`` representing the authenticated tenant owner.
 
     Raises:
-        HTTPException: 401 when the token is missing, invalid, or the owner is not active.
+        HTTPException: 401 when the token is missing, invalid, revoked, or the
+            owner is not active; 503 when Redis denylist is required but unavailable.
     """
     if not token:
         raise HTTPException(
@@ -105,6 +114,21 @@ def get_current_owner(
             detail="Could not validate credentials",
             headers=_UNAUTHORIZED_HEADERS,
         )
+
+    try:
+        if settings.REDIS_ENABLED and not session_store.available:
+            raise SessionStoreUnavailableError("JWT denylist Redis client unavailable")
+        if session_store.is_revoked(token):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers=_UNAUTHORIZED_HEADERS,
+            )
+    except SessionStoreUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Token revocation store unavailable",
+        ) from exc
 
     auth_manager = AuthSecurityManager(settings)
     expected_type = settings.JWT_TOKEN_TYPE if settings.AUTH_PROVIDER == "local" else None
