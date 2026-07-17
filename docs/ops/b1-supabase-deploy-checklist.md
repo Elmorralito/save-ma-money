@@ -1,10 +1,10 @@
 # B1 / hosted Postgres pooler checklist (optional ops)
 
-> **Note (2026-07-13):** Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) treat **Supabase Auth** as MVP. This checklist is for **optional** Supabase (or other) **Postgres pooler** hosting — **not** an epic acceptance gate. Auth reissue: [`docs/issues/PPT-039-supabase-auth-reissue.md`](../issues/PPT-039-supabase-auth-reissue.md). Auth smoke: `make auth-smoke`.
+> **Note (2026-07-13):** Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) treat **Supabase Auth** as MVP. This checklist is for **optional** Supabase (or other) **Postgres pooler** hosting — **not** an epic acceptance gate. Auth reissue: [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49). Auth smoke: `make auth-smoke`.
 
 Staging/production cutover for **database hosting only** when you choose a transaction pooler. Not Supabase Auth (PPT-039) or RLS (B3).
 
-Canonical pooler guidance: [PPT-031-C §2.2](../issues/PPT-031-C-supabase-decision-brief.md). Env layout: [`environments/README.md`](../../environments/README.md). API notes: [`modules/api/README.md`](../../modules/api/README.md) § B1.
+Canonical pooler guidance: [PPT-031-C §2.2](../issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31). Env layout: [`environments/README.md`](../../environments/README.md). API notes: [`modules/api/README.md`](../../modules/api/README.md) § B1.
 
 ## Secrets (names only — never commit values)
 

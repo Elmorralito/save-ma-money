@@ -81,15 +81,15 @@ flowchart TB
 
 ## Current status and roadmap
 
-| Area                          | Status                                                                                                                                                                                                                                                               |
-| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **v3 schema & migrations**    | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI                                                                                  |
-| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                                                                |
-| **Model hardening (PPT-041)** | **Closed** ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards, live-DB integration tests                                                                                                       |
-| **Design program (PPT-031)**  | **Closed** ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md) (v0 audit, v3 schema, API mapping, coverage matrix, auth, migrations)                                         |
-| **API documentation**         | Consolidated in [`modules/api/README.md`](./modules/api/README.md) — replaces `API_Endpoints.md.md`, `API_Documentation.md.md`, and project-structure notes (redirect stubs remain for old links)                                                                    |
-| **API implementation**        | Scaffold only: `Settings`, `AuthSecurityManager`, logging — no `main.py` or routers yet                                                                                                                                                                              |
-| **API epic (PPT-032)**        | **Active** ([#42](https://github.com/Elmorralito/save-ma-money/issues/42)) — FastAPI MVP (32 endpoints); model gates cleared; sub-issues [#43](https://github.com/Elmorralito/save-ma-money/issues/43)–[#50](https://github.com/Elmorralito/save-ma-money/issues/50) |
+| Area                          | Status                                                                                                                                                                                                                            |
+| :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v3 schema & migrations**    | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI                                               |
+| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                             |
+| **Model hardening (PPT-041)** | **Closed** ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards, live-DB integration tests                                                                    |
+| **Design program (PPT-031)**  | **Closed** ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md) (v0 audit, v3 schema, API mapping, coverage matrix, auth, migrations)      |
+| **API documentation**         | Consolidated in [`modules/api/README.md`](./modules/api/README.md) (replaces legacy `API_*.md.md` specs). Issue briefs: [`docs/issues/README.md`](./docs/issues/README.md)                                                        |
+| **API implementation**        | Runnable FastAPI MVP — health, auth, accounts, categories, transactions, movements, reports; OpenAPI at `/api/openapi.json`                                                                                                       |
+| **API epic (PPT-032)**        | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Auth = Supabase only ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); B0 Postgres gate |
 
 Post-MVP items (budgets, splits, recurrence) are documented in [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](./docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) and intentionally out of the v3 MVP scope.
 
@@ -107,12 +107,13 @@ save-ma-money/
 │   │   ├── alembic/            # migrations
 │   │   └── tests/
 │   └── api/                    # papita-txnsapi — FastAPI REST surface
-│       ├── README.md           # REST contract, integration guide, target layout
-│       └── src/papita_txnsapi/
+│       ├── README.md           # REST contract, integration guide, endpoint catalog
+│       ├── tests/              # unit + B0 live-DB + Auth smoke helpers
+│       └── src/papita_txnsapi/ # main.py, routers/v1, schemas, deps
 ├── deploy/                     # alembic.sh, test.sh, utils.sh
 ├── docker/database/            # local Postgres 15 Compose
 ├── docs/design/                # ARCHITECTURE.md (PPT-031) + README gates index
-├── docs/issues/                # Issue-linked requirement briefs
+├── docs/issues/                # consolidated issue briefs (README Parts I–V) + PPT-044/045
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
 └── .github/workflows/          # CI (quality, security, migrations, strata)
 ```
@@ -202,10 +203,10 @@ Each Poetry package has its own README with layer-specific setup, architecture, 
 | [III — v4 extensions](./docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)   |
 | [IV — API mapping](./docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)            | Endpoint → Service → DTO → SQLModel      |
 | [V — coverage matrix](./docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43)           | 32-endpoint validation status            |
-| [VI — auth contract](./docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)            | Local JWT + `UsersService` flows         |
-| [VII — migration runbook](./docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)     | B0/B1 validation, rollback, FR-14        |
+| [VI — auth contract](./docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)            | Supabase Auth (JWKS) + local HS256 tests |
+| [VII — migration runbook](./docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)     | B0 validation, rollback, FR-14           |
 
-Legacy filenames redirect to current docs: `API_Endpoints.md.md` / `API_Documentation.md.md` → [`modules/api/README.md`](./modules/api/README.md); former `PPT-031-*.md` design files → [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md).
+Issue briefs (PPT-031/032): [`docs/issues/README.md`](./docs/issues/README.md). Legacy names `API_Endpoints.md.md` / standalone `PPT-031-*.md` design files were merged into [`modules/api/README.md`](./modules/api/README.md) and [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md).
 
 ---
 

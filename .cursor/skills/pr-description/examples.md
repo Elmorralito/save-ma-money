@@ -51,7 +51,7 @@ Reissues **PPT-039 / #49** as **Supabase Auth ownership** (not pooler DB): FastA
 
 **Docs / memory**
 
-- `docs/design/PPT-031-auth-contract.md`, ARCHITECTURE Part VI, PPT-039 issue write-ups
+- `docs/design/ARCHITECTURE.md` Part VI (auth contract), PPT-039 issue write-ups
 - Strata learning `supabase-auth-ownership`
 
 **Tests**
@@ -127,7 +127,7 @@ Observed in development on this branch (not claiming remote CI green — `gh` Gr
 ## References
 
 - GitHub **#49** (PPT-039) · Epic **#42** (PPT-032) · Program **#28** (PPT-031)
-- [`docs/issues/PPT-039-supabase-auth-reissue.md`](docs/issues/PPT-039-supabase-auth-reissue.md)
-- [`docs/design/PPT-031-auth-contract.md`](docs/design/PPT-031-auth-contract.md)
+- [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)
+- [`docs/design/ARCHITECTURE.md` Part VI](docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)
 - Auth ownership learning: `.strata/memory/learnings/supabase-auth-ownership.md`
 ```

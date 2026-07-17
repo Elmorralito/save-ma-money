@@ -6,11 +6,11 @@ All runtime secrets and Compose variables live under **`environments/<name>/`**.
 
 | Folder       | Database                           | Auth (MVP)                                                    | Typical use                       |
 | ------------ | ---------------------------------- | ------------------------------------------------------------- | --------------------------------- |
-| `local`      | B0 Docker Postgres                 | Supabase Auth (or transitional local JWT until PPT-039 lands) | Day-to-day host uvicorn + Compose |
+| `local`      | B0 Docker Postgres                 | Supabase Auth (MVP); `AUTH_PROVIDER=local` for B0 pytest only | Day-to-day host uvicorn + Compose |
 | `staging`    | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Staging                           |
 | `production` | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Production (tighter CORS)         |
 
-**Epic direction (2026-07-13):** Supabase is **Auth-only** for MVP ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Supabase-hosted Postgres is optional — see [`docs/issues/PPT-039-supabase-auth-reissue.md`](../docs/issues/PPT-039-supabase-auth-reissue.md).
+**Epic direction (2026-07-13):** Supabase is **Auth-only** for MVP ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Supabase-hosted Postgres is optional — see [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49).
 
 ## Selecting the active environment
 
@@ -57,7 +57,7 @@ Config file: [`docker/redis/redis.conf`](../docker/redis/redis.conf) (AOF, 256mb
 
 ```bash
 cp environments/local/.env.example environments/local/.env
-# edit JWT / DATABASE_URL / DB_* ; add SUPABASE_URL when wiring Auth (PPT-039)
+# set DATABASE_URL / DB_* ; for day-to-day Auth set SUPABASE_URL + SUPABASE_ANON_KEY (PPT-039 landed)
 
 cp environments/staging/.env.example environments/staging/.env
 # fill Auth + optional pooler / migrations URLs (never commit)
@@ -65,6 +65,8 @@ cp environments/staging/.env.example environments/staging/.env
 
 - Commit only `*.env.example` and this README.
 - Real `.env` files are gitignored (`environments/**/.env`).
-- `AUTH_PROVIDER` — omit or set `supabase` when `SUPABASE_URL` is set (auto); use `local` only for HS256 tests. Register/login call Supabase Auth `sign_up` / `sign_in_with_password`.
-- Decision brief (+ G7 supersede): [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../docs/issues/PPT-031-C-supabase-decision-brief.md)
+- `AUTH_PROVIDER` — omit or set `supabase` when `SUPABASE_URL` is set (auto); use `local` only for HS256 tests/CI. Register/login call Supabase Auth `sign_up` / `sign_in_with_password`.
+- API package docs: [`modules/api/README.md`](../modules/api/README.md)
+- Auth reissue: [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)
+- Decision brief (+ G7 supersede): [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
 - Optional pooler checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md)

@@ -9,7 +9,7 @@ This document is the **single API reference**: architecture, integration pattern
 1. [Overview](#overview)
 2. [Status and roadmap](#status-and-roadmap)
 3. [Architecture](#architecture)
-4. [Target package layout](#target-package-layout)
+4. [Package layout](#package-layout)
 5. [Model layer integration](#model-layer-integration)
 6. [Stack and local setup](#stack-and-local-setup)
 7. [Integration guide](#integration-guide)
@@ -29,7 +29,7 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | Base URL (prod)         | `https://api.savemamoney.com/api/v1`                                                                                                                                        |
 | OpenAPI (when deployed) | `/api/openapi.json`                                                                                                                                                         |
 | Database                | PostgreSQL only — Docker locally (B0); any hosted Postgres in staging/prod (Supabase PG optional)                                                                           |
-| Auth                    | **Supabase Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)); local HS256 issuance being replaced                                            |
+| Auth                    | **Supabase Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)); `AUTH_PROVIDER=local` HS256 for B0 tests only                                  |
 | Design program          | PPT-031 closed ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)); implementation epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032) |
 
 ### v3 alignment at a glance
@@ -42,12 +42,12 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | `/movements/*`                           | **Alias** — same rows where `transaction_kind = TRANSFER`                                                                                                                  | Yes |
 | `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                                                                                                      | Yes |
 | `/budgets/*`                             | Deferred — v4.1 ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)) | 501 |
-| `/auth/refresh`, `/auth/logout`          | Deferred — stateless JWT MVP (FR-11)                                                                                                                                       | 501 |
+| `/auth/refresh`, `/auth/logout`          | **Supabase:** implemented (session rotate / sign-out + optional Redis denylist). **Local HS256:** 501                                                                      | —   |
 | `/transactions/{id}/split`               | Deferred — v4 `transaction_splits`                                                                                                                                         | 501 |
 
 **Enum convention:** API JSON uses lowercase slugs (`expense`, `checking`); PostgreSQL stores uppercase enums (`EXPENSE`, `CHECKING`).
 
-**Dependencies:** add `python-multipart` to `pyproject.toml` before OAuth2 form login routes ship.
+**Dependencies:** `python-multipart` is present (OAuth2 form login).
 
 Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) · schema: [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) · model detail: [`modules/model/README.md`](../model/README.md).
 
@@ -55,31 +55,44 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 
 ## Status and roadmap
 
-**Current tree:** runnable FastAPI app with health probes, auth (register/login/me), shared infrastructure, and deferred 501 stubs ([#45](https://github.com/Elmorralito/save-ma-money/issues/45), [#44](https://github.com/Elmorralito/save-ma-money/issues/44)).
+**Current tree (2026-07-17):** runnable FastAPI MVP — all PPT-032 child issues **#43–#50** and prerequisite **#51** are **closed**. Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) remains open for formal close-out only. OpenAPI at `/api/openapi.json` is the runtime contract; this README is the human catalog.
 
-| Implemented        | Location                                                                                       |
-| :----------------- | :--------------------------------------------------------------------------------------------- |
-| FastAPI app        | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers                     |
-| Settings / env     | `src/papita_txnsapi/config/settings.py`                                                        |
-| JWT helpers        | `src/papita_txnsapi/core/security.py` (`AuthSecurityManager`)                                  |
-| Health (P1)        | `src/papita_txnsapi/routers/v1/health.py`                                                      |
-| Auth (P2)          | `src/papita_txnsapi/routers/v1/auth.py` — register, login, `/me`, 501 refresh/logout           |
-| Auth deps          | `src/papita_txnsapi/dependencies/auth.py` — `get_current_owner()`                              |
-| Shared schemas     | `src/papita_txnsapi/schemas/common.py`, `converters.py`, `auth.py`                             |
-| Dependencies       | `src/papita_txnsapi/dependencies/pagination.py`, `services.py`, `tenant.py`                    |
-| Deferred 501       | `src/papita_txnsapi/routers/v1/budgets.py`, auth refresh/logout                                |
-| Route + live tests | `modules/api/tests/` (unit + B0 Docker Postgres live-DB; Auth unit/mock + optional Auth smoke) |
-| Logging            | `src/papita_txnsapi/config/logger.yaml`                                                        |
+| Child   | Issue                                                         | Delivered                                                                                                         |
+| :------ | :------------------------------------------------------------ | :---------------------------------------------------------------------------------------------------------------- |
+| PPT-033 | [#43](https://github.com/Elmorralito/save-ma-money/issues/43) | Spec ↔ v3 validation; [coverage matrix](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) |
+| PPT-034 | [#45](https://github.com/Elmorralito/save-ma-money/issues/45) | App scaffold, middleware, health probes                                                                           |
+| PPT-035 | [#44](https://github.com/Elmorralito/save-ma-money/issues/44) | Auth routes + tenant (`get_current_owner`)                                                                        |
+| PPT-036 | [#46](https://github.com/Elmorralito/save-ma-money/issues/46) | Accounts + categories CRUD                                                                                        |
+| PPT-037 | [#47](https://github.com/Elmorralito/save-ma-money/issues/47) | Transactions + movements TRANSFER alias                                                                           |
+| PPT-038 | [#48](https://github.com/Elmorralito/save-ma-money/issues/48) | Reports (spending, cash-flow, trends, export)                                                                     |
+| PPT-039 | [#49](https://github.com/Elmorralito/save-ma-money/issues/49) | Supabase Auth (JWKS); local HS256 = tests                                                                         |
+| PPT-040 | [#50](https://github.com/Elmorralito/save-ma-money/issues/50) | Integration tests + B0 CI (Auth-first)                                                                            |
+| PPT-041 | [#51](https://github.com/Elmorralito/save-ma-money/issues/51) | Model hardening (prerequisite)                                                                                    |
 
-| Remaining close-out      | Track via                                                                                             |
-| :----------------------- | :---------------------------------------------------------------------------------------------------- |
-| PPT-040 integration + CI | [#50](https://github.com/Elmorralito/save-ma-money/issues/50) — B0 QC; Supabase = Auth only (PPT-039) |
+| Implemented    | Location                                                                                      |
+| :------------- | :-------------------------------------------------------------------------------------------- |
+| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers                    |
+| Settings / env | `src/papita_txnsapi/config/settings.py`, `config/environment.py`                              |
+| Auth / JWT     | `core/security.py`, `core/supabase_auth.py` — JWKS (`supabase`) or HS256 (`local`)            |
+| Health         | `routers/v1/health.py` — `/`, `/ready`, `/live`, `/database`, `/auth`, `/redis`               |
+| Auth           | `routers/v1/auth.py` — register, login, `/me`, OAuth/SSO, refresh/logout (Supabase)           |
+| Accounts       | `routers/v1/accounts.py`                                                                      |
+| Categories     | `routers/v1/categories.py`                                                                    |
+| Transactions   | `routers/v1/transactions.py` — bulk; split → 501                                              |
+| Movements      | `routers/v1/movements.py` — TRANSFER alias + execute                                          |
+| Reports        | `routers/v1/reports.py` — budget-performance → 501                                            |
+| Deferred 501   | `routers/v1/budgets.py`; split; budget-performance; refresh/logout when `AUTH_PROVIDER=local` |
+| Schemas / deps | `schemas/*`, `dependencies/auth.py`, `pagination.py`, `services.py`, `tenant.py`              |
+| Tests          | `modules/api/tests/` — unit + B0 live-DB; Auth mock + `make auth-smoke`                       |
 
-**Model readiness (PPT-041):** `AccountsService`, `TransactionsService`, `ReportService`, `UsersService.register` / `verify_credentials`, and live-DB tenancy tests are implemented in `papita-txnsmodel` — routers should call these services directly (no duplicate business logic).
+| Remaining (post-MVP / epic hygiene) | Track via                                                                                                                                                                                                           |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Formal epic #42 close               | Maintainer AC on [#42](https://github.com/Elmorralito/save-ma-money/issues/42)                                                                                                                                      |
+| Redis / rate-limit / packaging      | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043, [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044, [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045 |
 
-**Spec validation (PPT-033 / [#43](https://github.com/Elmorralito/save-ma-money/issues/43)):** The v3 model aligns with this README. See the [coverage matrix](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) for endpoint × service status and API-layer gaps before PPT-034–040.
+**Model readiness (PPT-041):** closed — routers call `papita-txnsmodel` services only (no duplicate business logic).
 
-**MVP scope:** **32** endpoints (health, auth register/login, accounts, categories, transactions, movements, four reports). **11** deferred (501).
+**MVP scope:** **32** catalog endpoints (health, auth register/login, accounts, categories, transactions, movements, four reports). Deferred 501: budgets, transaction split, budget-performance; refresh/logout only when `AUTH_PROVIDER=local`.
 
 ---
 
@@ -91,7 +104,7 @@ flowchart TB
     WEB[Web / mobile / scripts]
   end
 
-  subgraph api [papita_txnsapi — target]
+  subgraph api [papita_txnsapi]
     R[routers/v1/]
     SCH[schemas/]
     DEP[dependencies/]
@@ -119,41 +132,25 @@ flowchart TB
 | **Services**     | `papita_txnsmodel/services/`   | Business rules, DTO validation, MV refresh                    |
 | **Repositories** | `papita_txnsmodel/access/`     | SQL, soft delete, tenant filters                              |
 
-**FR-17:** Until `main.py` ships, this README is the canonical human-readable contract; then OpenAPI JSON from the running app becomes the runtime source of truth.
+**FR-17:** OpenAPI at `/api/openapi.json` is the runtime contract. This README is the human-readable catalog and integration guide (former `API_Endpoints.md.md` / `API_Documentation.md.md` merged here).
 
 ---
 
-## Target package layout
-
-**Implemented today** vs **target** for PPT-032:
+## Package layout
 
 ```
 modules/api/
 ├── pyproject.toml
-├── README.md                          # this file
+├── README.md                          # this file (canonical API reference)
+├── tests/                             # unit + B0 live-DB + Auth smoke helpers
 └── src/papita_txnsapi/
-    ├── __init__.py
-    ├── __meta__.py
-    ├── config/
-    │   ├── settings.py                # ✓ implemented
-    │   └── logger.yaml                # ✓ implemented
-    ├── core/
-    │   └── security.py                # ✓ implemented
-    ├── main.py                        # ✓ FastAPI app factory
-    ├── dependencies/                  # ✓ pagination + service factories
-    │   ├── pagination.py
-    │   └── services.py
-    ├── schemas/                       # ✓ common + converters (+ health)
-    │   ├── common.py, converters.py, health.py
-    │   └── auth.py, account.py, …     # target — PPT-035+
-    └── routers/
-        └── v1/
-            ├── health.py              # ✓ implemented
-            ├── budgets.py             # ✓ 501 deferred stub
-            ├── auth.py                # target — PPT-035
-            ├── accounts.py, categories.py
-            ├── transactions.py, movements.py
-            └── reports.py
+    ├── main.py                        # create_app, lifespan, ASGI app
+    ├── config/                        # settings, environment, logger.yaml
+    ├── core/                          # security, supabase_auth, db/redis health, rate limit
+    ├── dependencies/                  # auth, pagination, services, tenant, redis
+    ├── middleware/                    # request logging
+    ├── schemas/                       # auth, accounts, categories, transactions, movements, reports, …
+    └── routers/v1/                    # health, auth, accounts, categories, transactions, movements, reports, budgets
 ```
 
 Monorepo migrations live under [`modules/model/alembic/`](../model/README.md#database-migrations), not in the API package.
@@ -183,31 +180,27 @@ Routers **must not** embed SQL or duplicate DTO validation. Use model services w
 
 ## Stack and local setup
 
-| Component         | Version / note                                |
-| :---------------- | :-------------------------------------------- |
-| FastAPI           | `>=0.135.0,<0.140.0`                          |
-| Starlette         | `>=1.3.1,<2.0.0`                              |
-| Pydantic Settings | `>=2.13.1`                                    |
-| PyJWT             | HS256 tokens via `AuthSecurityManager`        |
-| Uvicorn           | `>=0.41.0`                                    |
-| Data layer        | `papita-transactions-model` (path dependency) |
+| Component         | Version / note                                                |
+| :---------------- | :------------------------------------------------------------ |
+| FastAPI           | `>=0.135.0,<0.140.0`                                          |
+| Starlette         | `>=1.3.1,<2.0.0`                                              |
+| Pydantic Settings | `>=2.13.1`                                                    |
+| Auth              | Supabase JWKS (`AUTH_PROVIDER=supabase`) or local HS256 tests |
+| Uvicorn           | `>=0.41.0`                                                    |
+| Data layer        | `papita-transactions-model` (path dependency)                 |
 
 ```bash
 # From repository root
 poetry install
 
 cp environments/local/.env.example environments/local/.env
-# AUTH_PROVIDER=local + JWT_SECRET_KEY for B0; or AUTH_PROVIDER=supabase + SUPABASE_URL
+# Prefer AUTH_PROVIDER=supabase + SUPABASE_URL (+ ANON_KEY); use AUTH_PROVIDER=local + JWT_SECRET_KEY for B0 pytest only
 # DATABASE_URL (PostgreSQL URL required)
 export PAPITA_ENV=local
 
 # Migrate database
 /bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
-```
 
-When routers land:
-
-```bash
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
 # Docs: http://localhost:8000/api/docs
 # OpenAPI: http://localhost:8000/api/openapi.json
@@ -261,11 +254,11 @@ PAPITA_ENV=staging make b1-smoke
 
 **Engine opts:** API `Settings` pass `pool_pre_ping=True` and `pool_size=DATABASE_POOL_SIZE` into `SQLDatabaseConnector.establish`. On pooler URLs (`:6543` / `pgbouncer=true`), `max_overflow=0`.
 
-Pooler modes: [PPT-031-C §2.2](../../docs/issues/PPT-031-C-supabase-decision-brief.md). **MVP Auth** is Supabase Auth — [#49](https://github.com/Elmorralito/save-ma-money/issues/49) / [reissue note](../../docs/issues/PPT-039-supabase-auth-reissue.md).
+Pooler modes: [PPT-031-C §2.2](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31). **MVP Auth** is Supabase Auth — [#49](https://github.com/Elmorralito/save-ma-money/issues/49) / [reissue note](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49).
 
 ### Testing (PPT-040)
 
-**Platform rule (Auth-first):** Supabase owns **users / Auth / tokens only**. Application data lives in Docker Postgres (B0) or any app Postgres URL — **not** Supabase-hosted storage. See [PPT-039 reissue](../../docs/issues/PPT-039-supabase-auth-reissue.md) and epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42).
+**Platform rule (Auth-first):** Supabase owns **users / Auth / tokens only**. Application data lives in Docker Postgres (B0) or any app Postgres URL — **not** Supabase-hosted storage. See [PPT-039 reissue](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) and epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42).
 
 | Gate                       | How to run                                                                               | Notes                                                                                                                |
 | :------------------------- | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
@@ -281,9 +274,11 @@ Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `te
 
 ### Authentication
 
-Local JWT (HS256) backed by `papita_transactions.users`. Full contract: [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
+**MVP:** Supabase Auth owns identity; the API verifies access JWTs (JWKS) and maps `sub` → `papita_transactions.users` / tenant `owner`. Prefer the Supabase client SDK for session lifecycle; API register/login are optional pass-through when `SUPABASE_ANON_KEY` is set. Full contract: [`ARCHITECTURE.md` Part VI](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
 
-**Register** — returns **201**, no token; client must log in separately.
+`AUTH_PROVIDER=local` (HS256 + `JWT_SECRET_KEY`) is for **B0 pytest / CI only**.
+
+**Register** — returns **201**, no token; client must log in (or obtain a Supabase session) separately.
 
 ```bash
 curl -X POST "$BASE/auth/register" \
@@ -305,7 +300,7 @@ curl -X POST "$BASE/auth/login" \
 curl -X GET "$BASE/accounts" -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-JWT `sub` = `str(users.id)`. Refresh/logout return **501** in MVP — re-login on 401; discard token client-side on sign-out.
+JWT `sub` maps to `users.id`. With `AUTH_PROVIDER=supabase`, `POST /auth/refresh` and `POST /auth/logout` call Supabase session APIs (logout may also denylist the access JWT when Redis is enabled). With `AUTH_PROVIDER=local`, refresh is **501**; logout is **501** unless Redis denylist is enabled.
 
 ### Request conventions
 
@@ -371,14 +366,14 @@ curl -X POST "$BASE/movements" \
 
 ### Error handling
 
-| HTTP | Typical cause                                                       |
-| :--- | :------------------------------------------------------------------ |
-| 401  | Invalid/expired JWT or bad login                                    |
-| 403  | Insufficient permissions                                            |
-| 404  | Not found (including other tenant's IDs)                            |
-| 409  | Duplicate username/email on register                                |
-| 422  | Pydantic / DTO validation                                           |
-| 501  | Deferred MVP endpoint (budgets, refresh, split, budget-performance) |
+| HTTP | Typical cause                                                                |
+| :--- | :--------------------------------------------------------------------------- |
+| 401  | Invalid/expired JWT or bad login                                             |
+| 403  | Insufficient permissions                                                     |
+| 404  | Not found (including other tenant's IDs)                                     |
+| 409  | Duplicate username/email on register                                         |
+| 422  | Pydantic / DTO validation                                                    |
+| 501  | Deferred endpoint (budgets, split, budget-performance; local refresh/logout) |
 
 Webhooks are **not implemented** (future: `transaction.created`, etc.).
 
@@ -467,22 +462,23 @@ Liveness probe for Kubernetes.
 
 ## Authentication Endpoints
 
-> **Auth contract:** [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) (FR-10, FR-11, G5).
-> **Platform:** **Supabase Auth** for access JWTs (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Local HS256 issuance is being replaced. Database remains Docker / any Postgres (Supabase PG optional).
+> **Auth contract:** [`ARCHITECTURE.md` Part VI](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) (FR-10, FR-11, G5) · [#49](https://github.com/Elmorralito/save-ma-money/issues/49).
+> **Platform:** **Supabase Auth** for access JWTs. Local HS256 = tests only. App DB = Docker / any Postgres (Supabase PG optional).
 
 ### Auth strategy summary
 
-| Topic            | MVP behavior                                                                       |
-| ---------------- | ---------------------------------------------------------------------------------- |
-| Register         | `username` + `email` + `password` → `UsersService.register()` → **201** (no token) |
-| Login            | OAuth2 form → `UsersService.verify_credentials()` → JWT access token               |
-| Login identifier | Form field `username` accepts **email or username**                                |
-| JWT `sub`        | `str(users.id)` — deterministic uuid5 from username hash                           |
-| Token TTL        | `JWT_EXPIRATION_TIME_SECONDS` (default **3600** s)                                 |
-| Protected routes | `Authorization: Bearer <token>` → decode → `get_owner(sub)` → tenant scope         |
-| Refresh / logout | **501** — stateless JWT; client discards token on logout                           |
+| Topic            | MVP behavior                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| Identity         | Supabase Auth (`AUTH_PROVIDER=supabase`); provision `users` via `ensure_from_auth_subject` |
+| Register         | Prefer client → Supabase; API pass-through → **201** (no token)                            |
+| Login            | Prefer client → Supabase; API OAuth2 form → access (+ refresh) token                       |
+| Login identifier | Form field `username` accepts **email or username**                                        |
+| JWT `sub`        | Auth subject UUID → `users.id` (local mode: `str(users.id)` from HS256 mint)               |
+| Protected routes | `Authorization: Bearer` → JWKS/HS256 verify → `get_current_owner()` → tenant `owner_id`    |
+| Refresh          | Supabase: rotate session. Local: **501**                                                   |
+| Logout           | Supabase: Auth sign-out (+ optional Redis denylist). Local: denylist if Redis else **501** |
 
-**Bootstrap:** FastAPI lifespan must call `UsersService.ensure_password_manager()` before auth routes (NFR-08).
+**Bootstrap:** FastAPI lifespan calls `UsersService.ensure_password_manager()` (still required for local + provision hashing; NFR-08).
 
 ### POST /auth/register
 
@@ -562,15 +558,22 @@ password: SecurePass1!
 
 ### POST /auth/refresh
 
-> **MVP status: Deferred (501).** Stateless HS256 JWT has no refresh token pair (FR-11). See [`ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) §6. Response below is **reference only** — MVP returns 501.
+Rotate Supabase Auth access/refresh tokens (`AUTH_PROVIDER=supabase`). Returns **501** when `AUTH_PROVIDER=local`.
 
-Refresh access token.
+**Request body:**
+
+```json
+{
+  "refresh_token": "…"
+}
+```
 
 **Response 200:**
 
 ```json
 {
   "access_token": "eyJ...",
+  "refresh_token": "…",
   "token_type": "bearer",
   "expires_in": 3600
 }
@@ -578,17 +581,18 @@ Refresh access token.
 
 ### POST /auth/logout
 
-> **MVP status: Deferred (501).** No server-side token revocation denylist in MVP (FR-11). Client discards token locally. Response below is **reference only** — MVP returns 501.
+Supabase: Auth sign-out using refresh token; optional Redis denylist for the access JWT. Local: **204** if Redis denylist is enabled, else **501**. Access token may be in the JSON body or `Authorization: Bearer`.
 
-Invalidate current token.
-
-**Response 200:**
+**Request body (Supabase):**
 
 ```json
 {
-  "message": "Successfully logged out"
+  "refresh_token": "…",
+  "access_token": "…"
 }
 ```
+
+**Response:** **204 No Content** on success.
 
 ---
 
@@ -1539,19 +1543,19 @@ Export report data.
 
 ---
 
-## MVP implementation order ([#42](https://github.com/Elmorralito/save-ma-money/issues/42))
+## MVP delivery order ([#42](https://github.com/Elmorralito/save-ma-money/issues/42))
 
-Full mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §6.
+All rows below are **shipped** (child issues closed). Mapping: [`ARCHITECTURE.md` Part IV](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §6.
 
-| Priority | Endpoints                                                                       |
-| -------- | ------------------------------------------------------------------------------- |
-| P1       | `GET /health`, `/health/database`, `/health/ready`, `/health/live`              |
-| P2       | `POST /auth/register`, `POST /auth/login`                                       |
-| P3       | `/accounts/*` CRUD + balance                                                    |
-| P4       | `/categories/*`, `/transactions/*`, `/movements/*`                              |
-| P5       | `/reports/spending`, `/reports/cash-flow`, `/reports/trends`, `/reports/export` |
+| Priority | Endpoints                                                                                | Issue                                                                                                                        |
+| -------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| P1       | `GET /health`, `/health/database`, `/health/ready`, `/health/live` (+ `/auth`, `/redis`) | [#45](https://github.com/Elmorralito/save-ma-money/issues/45)                                                                |
+| P2       | `POST /auth/register`, `POST /auth/login`, `/me`, OAuth/SSO; Supabase refresh/logout     | [#44](https://github.com/Elmorralito/save-ma-money/issues/44), [#49](https://github.com/Elmorralito/save-ma-money/issues/49) |
+| P3       | `/accounts/*` CRUD + balance                                                             | [#46](https://github.com/Elmorralito/save-ma-money/issues/46)                                                                |
+| P4       | `/categories/*`, `/transactions/*`, `/movements/*`                                       | [#46](https://github.com/Elmorralito/save-ma-money/issues/46), [#47](https://github.com/Elmorralito/save-ma-money/issues/47) |
+| P5       | `/reports/spending`, `/reports/cash-flow`, `/reports/trends`, `/reports/export`          | [#48](https://github.com/Elmorralito/save-ma-money/issues/48)                                                                |
 
-**Excluded from MVP (501):** `/auth/refresh`, `/auth/logout`, all `/budgets/*`, `POST /transactions/{id}/split`, `GET /reports/budget-performance`.
+**Still 501:** all `/budgets/*`, `POST /transactions/{id}/split`, `GET /reports/budget-performance`. Refresh/logout **501 only** when `AUTH_PROVIDER=local` (without Redis denylist for logout).
 
 ---
 
@@ -1615,7 +1619,7 @@ Registration conflicts (duplicate username or email):
 
 ### 501 Not Implemented
 
-Returned for deferred MVP endpoints (budgets, auth refresh/logout, transaction split, budget-performance report).
+Returned for deferred endpoints (budgets, transaction split, budget-performance report) and for auth refresh/logout when `AUTH_PROVIDER=local` (see Auth section).
 
 ```json
 {
@@ -1745,11 +1749,19 @@ reject revoked JWTs until TTL expires.
 
 | Document                                                                                                                                                             | Purpose                                                                                   |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------- |
+| This file                                                                                                                                                            | **Canonical** API reference (status, setup, integration, endpoint catalog)                |
+| [`environments/README.md`](../../environments/README.md)                                                                                                             | `PAPITA_ENV`, Auth/DB/Redis env layout                                                    |
 | [`modules/model/README.md`](../model/README.md)                                                                                                                      | v3 schema, services, handlers, testing                                                    |
-| [`docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43`](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43)                     | PPT-033 validation matrix ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) |
+| [`docs/design/README.md`](../../docs/design/README.md)                                                                                                               | PPT-031 design program index                                                              |
 | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO → SQLModel                                                       |
-| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | JWT and auth flows                                                                        |
+| [`docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43`](../../docs/design/ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43)                     | PPT-033 validation matrix ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)) |
+| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Supabase Auth contract (G5) — SSO, smoke, JWT/tenant rules                                |
+| [`docs/issues/README.md` Part IV](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)                                                             | Auth-only pivot ([#49](https://github.com/Elmorralito/save-ma-money/issues/49))           |
+| [`docs/issues/README.md` Part II](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)                                                      | B0/B1/B2/B3 + G7 supersede                                                                |
+| [`docs/ops/b1-supabase-deploy-checklist.md`](../../docs/ops/b1-supabase-deploy-checklist.md)                                                                         | Optional hosted PG / pooler                                                               |
 | [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 DDL and constraints                                                                    |
 | [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits (post-MVP)                                                                |
+| [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md)                                                                                                                       | Agent ops: routers, test commands, PR checklist                                           |
 | [`../../README.md`](../../README.md)                                                                                                                                 | Monorepo quick start                                                                      |
 | [`../../CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                           | Issue tracker                                                                             |
+| Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)                                                                                                   | PPT-032 program tracker                                                                   |
