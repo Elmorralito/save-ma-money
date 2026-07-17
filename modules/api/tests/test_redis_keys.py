@@ -46,3 +46,23 @@ class TestBrokerKeyPrefix:
         broker = RedisBroker(fake_redis, BrokerSettings(enabled=True))
         assert broker.enqueue("job-1") is True
         assert fake_redis.llen(redis_key("jobs")) == 1
+
+    def test_publish_prefixes_channel(self, fake_redis: object, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("PAPITA_ENV", "local")
+        broker = RedisBroker(fake_redis, BrokerSettings(enabled=True))
+        assert broker.publish("invalidate", "accounts") is True
+        assert broker.publish("papita:local:channel:custom", "msg") is True
+
+    def test_disabled_and_redis_errors(self) -> None:
+        from unittest.mock import MagicMock
+
+        from redis.exceptions import RedisError
+
+        assert RedisBroker(None, BrokerSettings(enabled=True)).enqueue("x") is False
+        assert RedisBroker(MagicMock(), BrokerSettings(enabled=False)).publish("c", "m") is False
+        client = MagicMock()
+        client.lpush.side_effect = RedisError("boom")
+        client.publish.side_effect = RedisError("boom")
+        broker = RedisBroker(client, BrokerSettings(enabled=True))
+        assert broker.enqueue("x") is False
+        assert broker.publish("c", "m") is False

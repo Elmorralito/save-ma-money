@@ -64,9 +64,63 @@ class TestApiTierHelpers:
         fake_redis.set(redis_key(owner.id, "api_tier"), "pro")
         assert resolve_api_tier(settings, owner.id, fake_redis) is ApiTier.PRO
 
+    def test_resolve_ignores_invalid_redis_tier(self, fake_redis: object) -> None:
+        settings = get_settings()
+        owner = make_user()
+        fake_redis.set(redis_key(owner.id, "api_tier"), "gold")
+        assert resolve_api_tier(settings, owner.id, fake_redis) == ApiTier(
+            settings.API_RATE_LIMIT_DEFAULT_TIER
+        )
+
+    def test_resolve_redis_error_falls_back(self) -> None:
+        settings = get_settings()
+        owner = make_user()
+        client = MagicMock()
+        from redis.exceptions import RedisError
+
+        client.get.side_effect = RedisError("boom")
+        assert resolve_api_tier(settings, owner.id, client) == ApiTier(settings.API_RATE_LIMIT_DEFAULT_TIER)
+
+    def test_resolve_invalid_default_tier_is_free(self) -> None:
+        settings = MagicMock()
+        settings.API_RATE_LIMIT_DEFAULT_TIER = "not-a-tier"
+        owner = make_user()
+        assert resolve_api_tier(settings, owner.id) is ApiTier.FREE
+
+
+class TestMergeLimitHeaders:
+    """Unit coverage for minute/day header selection."""
+
+    def test_merge_limit_header_branches(self) -> None:
+        from papita_txnsapi.core.rate_limit import RateLimitResult
+        from papita_txnsapi.dependencies.rate_limit import _client_ip, _merge_limit_headers
+
+        unlimited = RateLimitResult(allowed=True, limit=0, remaining=0, reset_at=1)
+        minute = RateLimitResult(allowed=True, limit=10, remaining=2, reset_at=10)
+        day = RateLimitResult(allowed=True, limit=100, remaining=90, reset_at=20)
+        assert _merge_limit_headers(unlimited, unlimited) == {}
+        assert _merge_limit_headers(unlimited, day)["X-RateLimit-Limit"] == "100"
+        assert _merge_limit_headers(minute, unlimited)["X-RateLimit-Limit"] == "10"
+        assert _merge_limit_headers(minute, day)["X-RateLimit-Remaining"] == "2"
+
+        request = MagicMock()
+        request.client = None
+        assert _client_ip(request) == "unknown"
+
 
 class TestTenantApiRateLimit:
     """HTTP tests for tenant-scoped API quotas on protected routers."""
+
+    def test_missing_owner_id_returns_401(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _enable_api_limits(monkeypatch, per_minute=10)
+        owner = make_user()
+        owner.id = None
+        client, _, _ = _accounts_client_with_owner(owner=owner)
+        try:
+            assert client.get("/api/v1/accounts").status_code == 401
+        finally:
+            get_settings.cache_clear()
+            monkeypatch.setenv("API_RATE_LIMIT_ENABLED", "false")
 
     def test_allows_under_limit_and_sets_headers(self, monkeypatch: pytest.MonkeyPatch) -> None:
         _enable_api_limits(monkeypatch, per_minute=3)

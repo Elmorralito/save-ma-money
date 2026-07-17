@@ -179,3 +179,33 @@ class TestCategoriesCache:
         assert second.status_code == 200
         assert second.headers.get("X-Cache") == "HIT"
         assert mock_service.get_records.call_count == 1
+
+    def test_list_categories_with_parent_filter(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        parent_id = uuid.uuid4()
+        child = _sample_category(owner.id)
+        child.parent_id = parent_id
+        mock_service = MagicMock()
+        mock_service.get_records.return_value = pd.DataFrame([child.model_dump(mode="python")])
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_categories_service] = lambda: mock_service
+            with TestClient(app) as client:
+                response = client.get("/api/v1/categories", params={"parent_id": str(parent_id)})
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert response.status_code == 200
+        assert response.json()["total"] == 1

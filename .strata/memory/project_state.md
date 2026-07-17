@@ -10,14 +10,14 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-043 transactions Redis:
-  - Short-TTL cache on `GET /transactions` list + detail (`transactions` namespace, 30s)
-  - Ledger writes invalidate `transactions` + `reports` + `accounts`
-  - `Idempotency-Key` on `POST /transactions` and `/bulk` (`core/idempotency.py`)
+- PPT-043 Redis on PR #94; Codecov patch was ~74% (target ~97.7% auto)
+- Added API unit/route tests for patch gaps: idempotency, redis client, cache
+  fail-open, broker, rate-limit edges, session store, transactions/reports Redis
+- Local: `modules/api/tests` — 242 passed, 21 skipped (live DB / B1 / Auth smoke)
 
 ### Next action
 
-- Optional: tenant-scoped API rate limits (Free/Pro tiers)
+- Push coverage commit; confirm `codecov/patch` green on #94
 - Staging: managed `REDIS_URL` when enabling horizontal scale
 - Do not commit `environments/**/.env`
 

@@ -47,3 +47,17 @@ class TestSessionStore:
         client.exists.side_effect = RedisError("boom")
         store = SessionStore(client, default_ttl_seconds=60, fail_closed=False)
         assert store.is_revoked("token") is False
+
+    def test_revoke_empty_token_and_redis_error(self) -> None:
+        store = SessionStore(MagicMock(), default_ttl_seconds=60)
+        assert store.revoke("") is False
+        client = MagicMock()
+        client.setex.side_effect = RedisError("boom")
+        assert SessionStore(client, default_ttl_seconds=60).revoke("token") is False
+
+    def test_is_revoked_empty_token(self) -> None:
+        assert SessionStore(MagicMock(), default_ttl_seconds=60).is_revoked("") is False
+
+    def test_fail_closed_property(self) -> None:
+        store = SessionStore(None, default_ttl_seconds=60, fail_closed=True)
+        assert store.fail_closed is True

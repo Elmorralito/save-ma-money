@@ -163,3 +163,290 @@ class TestTransactionIdempotency:
         assert replay.state == "hit"
         assert replay.payload is not None
         assert replay.payload["amount"] == 1.0
+
+    def test_create_without_owner_id_returns_401(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        owner.id = None
+        expense = _sample_expense(uuid.uuid4())
+        mock_service = MagicMock()
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                response = client.post("/api/v1/transactions", json=_create_body(expense))
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert response.status_code == 401
+
+    def test_create_conflict_returns_409(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        mock_service.create.return_value = expense
+        begin_idempotency(
+            fake_redis, owner.id, scope="transactions:create", key="pending-key", ttl_seconds=60
+        )
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                blocked = client.post(
+                    "/api/v1/transactions",
+                    json=_create_body(expense),
+                    headers={"Idempotency-Key": "pending-key"},
+                )
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert blocked.status_code == 409
+        assert mock_service.create.call_count == 0
+
+    def test_create_failure_clears_pending(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        mock_service.create.side_effect = RuntimeError("db down")
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            headers = {"Idempotency-Key": "fail-then-retry"}
+            with TestClient(app, raise_server_exceptions=False) as client:
+                first = client.post("/api/v1/transactions", json=_create_body(expense), headers=headers)
+            mock_service.create.side_effect = None
+            mock_service.create.return_value = expense
+            with TestClient(app) as client:
+                second = client.post("/api/v1/transactions", json=_create_body(expense), headers=headers)
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert first.status_code == 500
+        assert second.status_code == 201
+        assert mock_service.create.call_count == 2
+
+    def test_detail_cache_hit(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        mock_service.get.return_value = expense
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                first = client.get(f"/api/v1/transactions/{expense.id}")
+                second = client.get(f"/api/v1/transactions/{expense.id}")
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert second.headers.get("X-Cache") == "HIT"
+        assert mock_service.get.call_count == 1
+
+    def test_bulk_create_idempotent_replay(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        mock_service.create.return_value = expense
+        body = {"transactions": [_create_body(expense)]}
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            headers = {"Idempotency-Key": "bulk-1"}
+            with TestClient(app) as client:
+                first = client.post("/api/v1/transactions/bulk", json=body, headers=headers)
+                second = client.post("/api/v1/transactions/bulk", json=body, headers=headers)
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert first.status_code == 201
+        assert second.status_code == 201
+        assert first.json()["created"] == second.json()["created"] == 1
+        assert mock_service.create.call_count == 1
+
+    def test_bulk_conflict_returns_409(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        begin_idempotency(
+            fake_redis, owner.id, scope="transactions:bulk", key="bulk-pending", ttl_seconds=60
+        )
+        mock_service = MagicMock()
+        body = {"transactions": [_create_body(expense)]}
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                blocked = client.post(
+                    "/api/v1/transactions/bulk",
+                    json=body,
+                    headers={"Idempotency-Key": "bulk-pending"},
+                )
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert blocked.status_code == 409
+        assert mock_service.create.call_count == 0
+
+    def test_bulk_unexpected_error_clears_pending(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        # Raise outside ValueError/TypeError so the outer except clears the lock.
+        mock_service.create.side_effect = RuntimeError("boom")
+        body = {"transactions": [_create_body(expense)]}
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            headers = {"Idempotency-Key": "bulk-fail"}
+            with TestClient(app, raise_server_exceptions=False) as client:
+                first = client.post("/api/v1/transactions/bulk", json=body, headers=headers)
+            mock_service.create.side_effect = None
+            mock_service.create.return_value = expense
+            with TestClient(app) as client:
+                second = client.post("/api/v1/transactions/bulk", json=body, headers=headers)
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert first.status_code == 500
+        assert second.status_code == 201
+
+    def test_detail_not_found(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        mock_service = MagicMock()
+        mock_service.get.return_value = None
+        missing_id = uuid.uuid4()
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                response = client.get(f"/api/v1/transactions/{missing_id}")
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert response.status_code == 404
+
+    def test_bulk_partial_failure_counts_failed(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        expense = _sample_expense(owner.id)
+        mock_service = MagicMock()
+        mock_service.create.side_effect = [expense, ValueError("bad row")]
+        body = {"transactions": [_create_body(expense), _create_body(expense)]}
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_transactions_service] = lambda: mock_service
+            with TestClient(app) as client:
+                response = client.post("/api/v1/transactions/bulk", json=body)
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert response.status_code == 201
+        assert response.json()["created"] == 1
+        assert response.json()["failed"] == 1
