@@ -1419,7 +1419,7 @@ financing_share: Annotated[float, Field(le=1, gt=0, default=1.0)]
 - Migrations: [`modules/model/alembic/versions/`](../../modules/model/alembic/versions/)
 - Handlers: [`modules/model/src/papita_txnsmodel/handlers/`](../../modules/model/src/papita_txnsmodel/handlers/)
 - ER (stale): [`docs/postgres_papita_transactions.png`](../postgres_papita_transactions.png)
-- Requirements: [`docs/issues/PPT-031-simplify-requirements.md`](../issues/PPT-031-simplify-requirements.md)
+- Requirements: [`docs/issues/README.md#part-i--ppt-031-simplify-requirements-28`](../issues/README.md#part-i--ppt-031-simplify-requirements-28)
 
 ---
 
@@ -1597,7 +1597,7 @@ Rename `financed_asset_accounts` → `account_financing`:
 
 ### 2. v2 — Revised schema (API domain review)
 
-v2 incorporates API vocabulary from `modules/api/API_Endpoints.md.md`. Full endpoint mapping delivered in [`PPT-031-api-model-mapping.md`](ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) ([#33](https://github.com/Elmorralito/save-ma-money/issues/33)).
+v2 incorporates API vocabulary from the API contract (now [`modules/api/README.md`](../../modules/api/README.md)). Full endpoint mapping delivered in [Part IV](#part-iv--api--model-mapping-ppt-031-c-33) ([#33](https://github.com/Elmorralito/save-ma-money/issues/33)).
 
 #### 2.1 Categories vs `types` (FR-13)
 
@@ -1611,7 +1611,7 @@ v2 incorporates API vocabulary from `modules/api/API_Endpoints.md.md`. Full endp
 | `is_active`     | `categories.active`                   | BaseSQLModel                               |
 | `subcategories` | API computed                          | Not stored — child rows via `parent_id`    |
 
-**API route decision:** Keep `/categories/*` in spec; map to `categories` table. Deprecate v0 `/types` concept for API consumers. Resolved in [`PPT-031-api-model-mapping.md`](ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §4.2 and [`API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md) (breaking-change notice in mapping §8).
+**API route decision:** Keep `/categories/*` in spec; map to `categories` table. Deprecate v0 `/types` concept for API consumers. Resolved in [Part IV](#part-iv--api--model-mapping-ppt-031-c-33) §4.2 and [`modules/api/README.md`](../../modules/api/README.md) (breaking-change notice in mapping §8).
 
 **v0 `types` migration:**
 
@@ -1636,7 +1636,7 @@ API `/movements/*` describes **inter-account transfers**. v2 maps movements to *
 | `scheduled`              | `status = PENDING`                                  |                                         |
 | `execute` endpoint       | Update `status` → `COMPLETED`, set `transaction_ts` |                                         |
 
-**API route decision:** Implement `/movements/*` as a **router alias** over transfer transactions (filter `transaction_kind = TRANSFER`). Do **not** create a `movements` table. Resolved in [`PPT-031-api-model-mapping.md`](ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) §5.7 — alias router; `GET /transactions` excludes TRANSFER by default; filter `?transaction_type=transfer` also supported.
+**API route decision:** Implement `/movements/*` as a **router alias** over transfer transactions (filter `transaction_kind = TRANSFER`). Do **not** create a `movements` table. Resolved in [Part IV](#part-iv--api--model-mapping-ppt-031-c-33) §5.7 — alias router; `GET /transactions` excludes TRANSFER by default; filter `?transaction_type=transfer` also supported.
 
 #### 2.3 Budgets (FR-09)
 
@@ -2250,7 +2250,7 @@ FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-09 (defer), FR-14 (outline), FR-15,
 
 - v0 audit: [`PPT-031-v0-audit.md`](ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)
 - Parent: [#28](https://github.com/Elmorralito/save-ma-money/issues/28)
-- API spec: [`modules/api/API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md)
+- API spec: [`modules/api/README.md`](../../modules/api/README.md)
 - v0 ER: referenced in v0 audit §2.2 (predates `users`; PNG not committed in repo — regenerate from v0 schema if needed)
 - v4 extensions: [`PPT-031-v4-extensions.md`](ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) — post-MVP additive schema (budgets, splits, reconciliation, …)
 
@@ -2673,9 +2673,9 @@ Each revision: PostgreSQL DDL + downgrade notes per NFR-01.
 
 ### References
 
-- v3 freeze: [`PPT-031-v1-schema.md`](ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)
+- v3 freeze: [Part II](#part-ii--target-schema-v1v3-ppt-031-a2a4-32)
 - v0 audit gaps: [`PPT-031-v0-audit.md`](ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30) §4.5, §14
-- API spec: [`modules/api/API_Endpoints.md.md`](../../modules/api/API_Endpoints.md.md)
+- API spec: [`modules/api/README.md`](../../modules/api/README.md)
 - ER (v4): [`docs/postgres_papita_transactions_v4.svg`](../postgres_papita_transactions_v4.svg)
 
 ---
@@ -2684,7 +2684,7 @@ Each revision: PostgreSQL DDL + downgrade notes per NFR-01.
 
 ### 1. Executive summary
 
-This document maps every endpoint in the canonical API spec (`modules/api/API_Endpoints.md.md`) to the **v3 target schema** defined in [`PPT-031-v1-schema.md`](ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) §3. It unblocks [#25](https://github.com/Elmorralito/save-ma-money/issues/25) API CRUD implementation and satisfies **FR-07**, **FR-09**, **FR-13**, and **FR-17**.
+This document maps every endpoint in the canonical API spec ([`modules/api/README.md`](../../modules/api/README.md)) to the **v3 target schema** defined in [Part II](#part-ii--target-schema-v1v3-ppt-031-a2a4-32) §3. It unblocks [#25](https://github.com/Elmorralito/save-ma-money/issues/25) API CRUD implementation and satisfies **FR-07**, **FR-09**, **FR-13**, and **FR-17**.
 
 #### Key decisions (resolved)
 
@@ -2720,7 +2720,7 @@ HTTP Request
 
 **FR-17 rules:**
 
-- [`modules/api/README.md`](../../modules/api/README.md) is the **canonical human-readable spec** (endpoint contracts + integration guide) until FastAPI `main.py` ships; then OpenAPI JSON from the running app becomes the runtime source of truth. Legacy paths `API_Endpoints.md.md` and `API_Documentation.md.md` redirect to README sections.
+- [`modules/api/README.md`](../../modules/api/README.md) is the **canonical human-readable spec** (endpoint contracts + integration guide). OpenAPI JSON from the running app (`/api/openapi.json`) is the runtime source of truth. Legacy paths `API_Endpoints.md.md` / `API_Documentation.md.md` were merged into the README.
 - **Validation matrix (PPT-033):** [`PPT-033-api-coverage-matrix.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) — endpoint × field × service × status audit ([#43](https://github.com/Elmorralito/save-ma-money/issues/43)).
 - API schemas map 1:1 to model DTOs; validators live in DTOs, not duplicated in API layer.
 - Add `python-multipart` to `modules/api/pyproject.toml` before implementing OAuth2 form login.
@@ -2799,7 +2799,7 @@ HTTP Request
 
 #### 4.5 Auth
 
-Full contract: [`PPT-031-auth-contract.md`](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
+Full contract: [Part VI — Auth contract](#part-vi--auth-contract-ppt-031-track-e).
 
 | API field                   | v3 column                     | Notes                                   |
 | --------------------------- | ----------------------------- | --------------------------------------- |
@@ -3026,39 +3026,39 @@ schemas/
 
 ### 9. Open questions (deferred)
 
-| Item                                             | Gate                                                                                         | Owner                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| Auth refresh/logout semantics                    | G5 — [`PPT-031-auth-contract.md`](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) §6 | **Written** — deferred 501                             |
-| `UsersService.verify_credentials` / `register`   | G5                                                                                           | **Implemented** in model — wire in #25 routers         |
-| `/transaction-templates/*` nested CRUD           | Post-MVP                                                                                     | #25 follow-up                                          |
-| `/account-financing/*` CRUD (asset ↔ loan links) | Post-MVP                                                                                     | #25 follow-up — v3 table exists, no API routes in MVP  |
-| Budget routes: 501 vs unmounted                  | G4 maintainer preference                                                                     | #28                                                    |
-| OpenAPI as sole source of truth                  | After `main.py` ships                                                                        | #25                                                    |
-| `python-multipart` dependency                    | #25 implementation                                                                           | Add to `modules/api/pyproject.toml` before auth routes |
+| Item                                             | Gate                                                       | Owner                                                  |
+| ------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
+| Auth refresh/logout semantics                    | G5 — [Part VI](#part-vi--auth-contract-ppt-031-track-e) §6 | **Supabase path**; local 501                           |
+| `UsersService.verify_credentials` / `register`   | G5                                                         | **Implemented** in model — wire in #25 routers         |
+| `/transaction-templates/*` nested CRUD           | Post-MVP                                                   | #25 follow-up                                          |
+| `/account-financing/*` CRUD (asset ↔ loan links) | Post-MVP                                                   | #25 follow-up — v3 table exists, no API routes in MVP  |
+| Budget routes: 501 vs unmounted                  | G4 maintainer preference                                   | #28                                                    |
+| OpenAPI as sole source of truth                  | After `main.py` ships                                      | #25                                                    |
+| `python-multipart` dependency                    | #25 implementation                                         | Add to `modules/api/pyproject.toml` before auth routes |
 
 ---
 
 ### 10. Requirements traceability
 
-| Requirement                     | Section                                                                                          | Status     |
-| ------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
-| FR-07 — API 1:1 model map       | §5                                                                                               | ✓          |
-| FR-09 — Budgets decision        | §5.5, §6                                                                                         | ✓ Deferred |
-| FR-13 — Category taxonomy       | §4.2, §5.4                                                                                       | ✓          |
-| FR-17 — Single canonical spec   | §2, `API_Endpoints.md.md` + v3 `API_Documentation.md.md`                                         | ✓          |
-| FR-10 — Auth field alignment    | §4.5, §5.2, [`PPT-031-auth-contract.md`](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e) | ✓          |
-| FR-11 — Refresh/logout deferred | §5.2, auth contract §6                                                                           | ✓          |
-| FR-12 — Reports read model      | §5.8                                                                                             | ✓          |
-| NFR-06 — Mapping doc in docs/   | This file                                                                                        | ✓          |
+| Requirement                     | Section                                                        | Status     |
+| ------------------------------- | -------------------------------------------------------------- | ---------- |
+| FR-07 — API 1:1 model map       | §5                                                             | ✓          |
+| FR-09 — Budgets decision        | §5.5, §6                                                       | ✓ Deferred |
+| FR-13 — Category taxonomy       | §4.2, §5.4                                                     | ✓          |
+| FR-17 — Single canonical spec   | §2, [`modules/api/README.md`](../../modules/api/README.md)     | ✓          |
+| FR-10 — Auth field alignment    | §4.5, §5.2, [Part VI](#part-vi--auth-contract-ppt-031-track-e) | ✓          |
+| FR-11 — Refresh/logout deferred | §5.2, auth contract §6                                         | ✓          |
+| FR-12 — Reports read model      | §5.8                                                           | ✓          |
+| NFR-06 — Mapping doc in docs/   | This file                                                      | ✓          |
 
 ---
 
 ### References
 
-- v3 schema: [`PPT-031-v1-schema.md`](ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)
+- v3 schema: [Part II](#part-ii--target-schema-v1v3-ppt-031-a2a4-32)
 - v0 audit API gaps: [`PPT-031-v0-audit.md`](ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30) §10
 - v4 budgets: [`PPT-031-v4-extensions.md`](ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) §4
-- Supabase platform: [`PPT-031-C-supabase-decision-brief.md`](../issues/PPT-031-C-supabase-decision-brief.md)
+- Supabase platform: [`docs/issues/README.md` Part II](../issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
 - Canonical API spec: [`modules/api/README.md`](../../modules/api/README.md)
 - PPT-033 coverage matrix: [`PPT-033-api-coverage-matrix.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) ([#43](https://github.com/Elmorralito/save-ma-money/issues/43))
 - Design index: [`README.md`](README.md)
@@ -3067,29 +3067,31 @@ schemas/
 
 ## Part V — API coverage matrix (PPT-033, #43)
 
+> **Post-delivery update (2026-07-17):** PPT-033–040 (#43–#50) and PPT-041 (#51) are **closed**. All MVP routers are mounted under `papita_txnsapi/routers/v1/`. Treat the **Impl** column in §4 as historical (#43-era “model ready / API not wired”); **current wiring status lives in [`modules/api/README.md`](../../modules/api/README.md)**. Auth is Supabase-first (PPT-039); B1 pooler is optional ops, not an epic gate. Remaining nuance is response-shape enrichment (reports) and deferred 501 routes — not missing routers.
+
 ### 1. Readiness verdict
 
-**Can #43 close?** **Yes — with this matrix merged.** Prerequisites [#34](https://github.com/Elmorralito/save-ma-money/issues/34) (v3 migration) and [#51](https://github.com/Elmorralito/save-ma-money/issues/51) (PPT-041 model hardening) are **closed**. The canonical API contract in [`modules/api/README.md`](../../modules/api/README.md) aligns with the implemented v3 model in `modules/model`. Remaining gaps are **expected API-layer wiring** (routers, schemas, response shaping) and belong to PPT-034–040 — they do **not** block closing the validation issue.
+**Can #43 close?** **Yes — closed.** Prerequisites [#34](https://github.com/Elmorralito/save-ma-money/issues/34) (v3 migration) and [#51](https://github.com/Elmorralito/save-ma-money/issues/51) (PPT-041 model hardening) are **closed**. The canonical API contract in [`modules/api/README.md`](../../modules/api/README.md) aligns with the implemented v3 model in `modules/model`.
 
-**Can PPT-034 (#45) start?** **Yes.** Model services, DTOs, migrations, and materialized views are ready. PPT-034 should treat this matrix as the implementation checklist.
+**Can PPT-034 (#45) start?** **Yes — and PPT-034–040 have since shipped.** Model services, DTOs, migrations, and materialized views were ready at #43 close.
 
-| Gate                                 | Status                                     |
-| ------------------------------------ | ------------------------------------------ |
-| #34 v3 migration applied             | ✅ Closed                                  |
-| #51 PPT-041 services + live-DB tests | ✅ Closed                                  |
-| FR-17 doc canonical source           | ✅ Unified `modules/api/README.md`         |
-| 32 MVP endpoints mapped to model     | ✅ See §4                                  |
-| Deferred endpoints marked 501        | ✅ Documented in README                    |
-| B0 validation plan                   | ✅ Defined §6                              |
-| B1 validation plan                   | ⚠️ Deferred to PPT-039/#50 (env-dependent) |
+| Gate                                 | Status                                   |
+| ------------------------------------ | ---------------------------------------- |
+| #34 v3 migration applied             | ✅ Closed                                |
+| #51 PPT-041 services + live-DB tests | ✅ Closed                                |
+| FR-17 doc canonical source           | ✅ Unified `modules/api/README.md`       |
+| 32 MVP endpoints mapped to model     | ✅ See §4                                |
+| Deferred endpoints marked 501        | ✅ Documented in README                  |
+| B0 validation plan                   | ✅ Defined §6; executed in PPT-040       |
+| Auth / optional B1                   | ✅ Auth = PPT-039; pooler = optional ops |
 
 ---
 
 ### 2. Executive summary
 
-The v3 model layer implements the domain semantics the API spec requires: `account_kind` / `category_kind` / `transaction_kind`, view-backed `balance`, transfer alias semantics, local JWT auth via `UsersService`, and FR-12 report aggregations via `ReportService`. PPT-041 delivered the service orchestration (#51) that #43 blocked on.
+The v3 model layer implements the domain semantics the API spec requires: `account_kind` / `category_kind` / `transaction_kind`, view-backed `balance`, transfer alias semantics, auth via `UsersService` (+ Supabase Auth subject provision), and FR-12 report aggregations via `ReportService`. PPT-041 delivered the service orchestration (#51) that #43 blocked on. API routers for PPT-034–040 are now in tree.
 
-**Doc consolidation (FR-17):** `API_Endpoints.md.md` and `API_Documentation.md.md` are redirect stubs; content lives in the unified [`modules/api/README.md`](../../modules/api/README.md). `README.md - Project Structure.md` is also a redirect. No DuckDB references remain in API docs.
+**Doc consolidation (FR-17):** Legacy `API_Endpoints.md.md` / `API_Documentation.md.md` were merged into [`modules/api/README.md`](../../modules/api/README.md). No DuckDB references remain in API docs.
 
 **Primary drift areas** (⚠️ — resolve in API layer, not model):
 
@@ -3098,7 +3100,7 @@ The v3 model layer implements the domain semantics the API spec requires: `accou
 3. **Transfer `scheduled` flag** — `create_transfer` always sets `PENDING`; router must set `COMPLETED` when `scheduled: false`.
 4. **`account_id` API field** — derivation from `transaction_kind` is an API-schema concern; DTO uses `from_account_id` / `to_account_id`.
 5. **Accounts list `balance`** — compose `AccountsService.get_records` + `AccountBalancesService.get_balances` in router/schema layer.
-6. **`python-multipart`** — not yet in `modules/api/pyproject.toml` (required before auth routes).
+6. **`python-multipart`** — **resolved** in API package (auth form login).
 
 **G1 extension MVP scope (resolved):** Extension tables required for `CHECKING`, `SAVINGS`, `CASH`, `INVESTMENT_BROKERAGE`, `REAL_ESTATE`, `CREDIT_CARD`, `LOAN_MORTGAGE`. `OTHER_ASSET` / `OTHER_LIABILITY` have no extension row. Routed by `account_extension_routing.py` + `AccountsService.create_account`.
 
@@ -3112,38 +3114,20 @@ The v3 model layer implements the domain semantics the API spec requires: `accou
 - [x] Publish coverage matrix (this file)
 - [x] Record cross-doc findings and B0/B1 validation plan
 
-#### Phase B — Doc hygiene (optional small PR)
+#### Phase B — Doc hygiene ✅ (ongoing)
 
-| Task                                                                                          | Owner issue   | Effort |
-| --------------------------------------------------------------------------------------------- | ------------- | ------ |
-| Update `PPT-031-api-model-mapping.md` service names (`AccountsService`, not `AccountService`) | #43 follow-up | S      |
-| Add pointer in mapping doc §2: canonical spec = `modules/api/README.md`                       | #43 follow-up | S      |
-| Link this matrix from #42 epic body and `modules/api/README.md` related docs                  | #43           | S      |
+Canonical spec = [`modules/api/README.md`](../../modules/api/README.md); mapping lives in Part IV of this file (standalone `PPT-031-api-model-mapping.md` removed).
 
-#### Phase C — PPT-034 scaffold + health (#45)
+#### Phase C — PPT-034 scaffold + health (#45) ✅
 
-- FastAPI `main.py`, lifespan (`UsersService.ensure_password_manager()`)
-- Health routers: connector ping + `SELECT 1`
-- Add `python-multipart` dependency
-- Validate B0: `/health/ready` against Docker Postgres
+#### Phase D — PPT-035 auth (#44) ✅ → rewired by PPT-039 (#49) ✅
 
-#### Phase D — PPT-035 auth (#44)
+#### Phase E — PPT-036–038 domain routers (#46–#48) ✅
 
-- Wire `UsersService.register` / `verify_credentials` + `AuthSecurityManager`
-- Map `ValueError` duplicates → HTTP 409 per auth contract
-- JWT `sub` = `str(users.id)`; `get_current_user` → `get_owner`
+#### Phase F — PPT-039 Auth + PPT-040 tests (#49, #50) ✅
 
-#### Phase E — PPT-036–038 domain routers (#46–#48)
-
-- Implement schema converters (`account_type` ↔ `account_kind`, movement field aliases)
-- Compose balance reads for account list/detail
-- Movement router: honor `scheduled` → status mapping
-- Report routers: map `ReportService` payloads to spec response shapes; stub `insights` / `xlsx` / `pdf` where acceptable
-
-#### Phase F — PPT-039 / #50 dual-target (#49, #50)
-
-- B1 Supabase pooler `:6543` smoke on health + one CRUD path per domain
-- CI integration tests with tenant isolation
+- Supabase Auth JWKS (Auth-only); B1 pooler smoke remains **optional ops**
+- B0 CI integration tests with tenant isolation (`AUTH_PROVIDER=local` in QC)
 
 ---
 
@@ -3238,7 +3222,7 @@ The v3 model layer implements the domain semantics the API spec requires: `accou
 | `CategoriesService`      | CRUD + global write guard                                                     | ✅          | `test_ppt041_services.py`, FR-15 tests |
 | `TransactionsService`    | CRUD, `list_transfers`, `create_transfer`, `complete_transfer`, `cancel`      | ✅          | `test_ppt041_services.py`              |
 | `ReportService`          | `spending`, `cash_flow`, `trends`, `export`                                   | ✅          | `test_ppt041_services.py`              |
-| `AuthSecurityManager`    | `generate_token`, `decode_token`, `authenticate_and_get_token`                | ✅          | API unit tests TBD (#50)               |
+| `AuthSecurityManager`    | `generate_token`, `decode_token`, `authenticate_and_get_token`                | ✅          | API unit + Auth tests (#50 / #49)      |
 
 ---
 
@@ -3251,7 +3235,7 @@ The v3 model layer implements the domain semantics the API spec requires: `accou
 | Deferred endpoints marked 501                  | ✅ README throughout                                                                            |
 | DuckDB in API README / Project Structure       | ✅ **Removed** — redirects only; PostgreSQL-only stated                                         |
 | Mapping doc §5 service names match code        | ⚠️ Uses `AccountService`, `CategoryService`, `TransactionService` (singular) — code uses plural |
-| Issue #43 references `API_Endpoints.md.md`     | ⚠️ File is redirect stub — update issue template to cite README                                 |
+| Issue #43 references `API_Endpoints.md.md`     | ✅ Resolved — cite [`modules/api/README.md`](../../modules/api/README.md)                       |
 
 ---
 
@@ -3285,49 +3269,47 @@ Run after `./deploy/alembic.sh upgrade --docker-local`:
 
 ### 9. Gap inventory → follow-on issues
 
-| Gap                                | Severity         | Absorb in     | Action                                               |
-| ---------------------------------- | ---------------- | ------------- | ---------------------------------------------------- |
-| No FastAPI app / routers           | Expected         | PPT-034 #45   | Scaffold `main.py`, health                           |
-| `python-multipart` missing         | Blocker for auth | PPT-034 #45   | Add to `modules/api/pyproject.toml`                  |
-| Auth HTTP status mapping           | Low              | PPT-035 #44   | Map `ValueError` → 409                               |
-| Account list balance join          | Medium           | PPT-036 #46   | Compose in router or add `list_with_balances` helper |
-| `account_id` ↔ leg derivation      | Medium           | PPT-037 #47   | `schemas/converters.py`                              |
-| `bulk_create` wrapper              | Low              | PPT-037 #47   | Thin wrapper over `upsert_records`                   |
-| TRANSFER list default exclude      | Low              | PPT-037 #47   | Repository filter in router                          |
-| Movement `scheduled` status        | Medium           | PPT-037 #47   | Router sets status after `create_transfer`           |
-| Report response enrichment         | Medium           | PPT-038 #48   | API schemas map service dicts → spec JSON            |
-| Report `group_by` day/week/month   | Low              | PPT-038 #48   | Extend `ReportService` or stub in API                |
-| Export xlsx/pdf                    | Low              | PPT-038 #48   | 501 for non-CSV in MVP                               |
-| Mapping doc singular service names | Low              | #43 follow-up | Doc-only fix                                         |
-| B1 pooler smoke                    | Medium           | PPT-039 #49   | Env + CI                                             |
-| API integration tests              | Medium           | PPT-040 #50   | Router tests on B0 (+ B1 optional)                   |
+| Gap                                | Severity | Absorb in   | Status (2026-07-17)                                   |
+| ---------------------------------- | -------- | ----------- | ----------------------------------------------------- |
+| No FastAPI app / routers           | Expected | PPT-034 #45 | ✅ Shipped                                            |
+| `python-multipart` missing         | Blocker  | PPT-034 #45 | ✅ Shipped                                            |
+| Auth HTTP status mapping           | Low      | PPT-035 #44 | ✅ Shipped (+ PPT-039 Supabase)                       |
+| Account list balance join          | Medium   | PPT-036 #46 | ✅ Shipped                                            |
+| `account_id` ↔ leg derivation      | Medium   | PPT-037 #47 | ✅ Shipped (`schemas/converters.py`)                  |
+| `bulk_create` wrapper              | Low      | PPT-037 #47 | ✅ Shipped (`POST /transactions/bulk`)                |
+| TRANSFER list default exclude      | Low      | PPT-037 #47 | ✅ Shipped                                            |
+| Movement `scheduled` status        | Medium   | PPT-037 #47 | ✅ Shipped                                            |
+| Report response enrichment         | Medium   | PPT-038 #48 | ✅ Routers shipped; enrich further post-MVP if needed |
+| Report `group_by` day/week/month   | Low      | PPT-038 #48 | Partial / accept MVP service `group_by`               |
+| Export xlsx/pdf                    | Low      | PPT-038 #48 | ✅ 501 / unsupported for non-CSV                      |
+| Mapping doc singular service names | Low      | Part IV     | Historical — Part IV is canonical                     |
+| B1 pooler smoke                    | Medium   | PPT-039 #49 | ⚠️ Optional ops only (Auth-first pivot)               |
+| API integration tests              | Medium   | PPT-040 #50 | ✅ Shipped (B0 CI)                                    |
 
 ---
 
 ### 10. Top gaps (highest impact)
 
-| Rank | Gap                                  | Status | Blocks PPT-034?           |
-| ---- | ------------------------------------ | ------ | ------------------------- |
-| 1    | FastAPI scaffold absent              | 🔴     | No — that's PPT-034 scope |
-| 2    | `python-multipart` not in API deps   | ⚠️     | Yes — add in first API PR |
-| 3    | Report API response vs service shape | ⚠️     | No — PPT-038              |
-| 4    | Movement `scheduled` → status        | ⚠️     | No — PPT-037 router logic |
-| 5    | Account list balance composition     | ⚠️     | No — PPT-036              |
-| 6    | Mapping doc service name drift       | ⚠️     | No — doc-only             |
+| Rank | Gap                                  | Status    | Notes                         |
+| ---- | ------------------------------------ | --------- | ----------------------------- |
+| 1    | FastAPI scaffold absent              | ✅ Closed | PPT-034                       |
+| 2    | `python-multipart` not in API deps   | ✅ Closed | PPT-034                       |
+| 3    | Report API response vs service shape | ⚠️ Accept | MVP routers map service dicts |
+| 4–6  | Movement / accounts / mapping drift  | ✅ Closed | PPT-036–037 + Part IV         |
 
 ---
 
 ### 11. Next concrete step
 
-**Start PPT-034 (#45):** Create `modules/api/src/papita_txnsapi/main.py` with lifespan bootstrap, mount health router, add `python-multipart`, and validate `/health/ready` on Docker Postgres (B0).
+**Epic hygiene:** Confirm [#42](https://github.com/Elmorralito/save-ma-money/issues/42) acceptance criteria against [`modules/api/README.md`](../../modules/api/README.md) + OpenAPI, then close the epic. Post-MVP: Redis/hardening/packaging (PPT-043–045).
 
 ---
 
 ### References
 
 - Canonical API spec: [`modules/api/README.md`](../../modules/api/README.md)
-- API ↔ model mapping: [`PPT-031-api-model-mapping.md`](ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)
-- Auth contract: [`PPT-031-auth-contract.md`](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)
+- API ↔ model mapping: [Part IV](#part-iv--api--model-mapping-ppt-031-c-33)
+- Auth contract: [Part VI](#part-vi--auth-contract-ppt-031-track-e)
 - Model services: `modules/model/src/papita_txnsmodel/services/`
 - PPT-041 tests: `modules/model/tests/tests_papita_txnsmodel/services/test_ppt041_services.py`
 - Live-DB tenancy: `modules/model/tests/tests_papita_txnsmodel/integration/test_tenancy_live_db.py`
@@ -3337,19 +3319,28 @@ Run after `./deploy/alembic.sh upgrade --docker-local`:
 
 ## Part VI — Auth contract (PPT-031 Track E)
 
-> **G5 supersede (2026-07-13 / PPT-039):** MVP Auth is **Supabase Auth**. FastAPI verifies access JWTs via JWKS (`AUTH_PROVIDER=supabase`). Local HS256 (`AUTH_PROVIDER=local`) remains for unit tests and transitional B0 only. See [`PPT-039-supabase-auth-reissue.md`](../issues/PPT-039-supabase-auth-reissue.md) and [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md).
+> **G5 supersede (2026-07-13 / PPT-039):** MVP Auth is **Supabase Auth**. FastAPI verifies access JWTs via JWKS (`AUTH_PROVIDER=supabase`). Local HS256 (`AUTH_PROVIDER=local`) remains for unit tests and B0 CI only.
+>
+> **Status:** PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) **closed**. Operator docs: [`modules/api/README.md`](../../modules/api/README.md). Reissue: [`docs/issues/README.md` Part IV](../issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49). G7 Auth-first: [`docs/issues/README.md` Part II](../issues/README.md#g7-supersede-2026-07-13--auth-first).
+>
+> Former standalone `PPT-031-auth-contract.md` is merged into this part.
 
 ### 1. Executive decision
 
-| Topic            | MVP decision (post PPT-039)                                                                    |
-| ---------------- | ---------------------------------------------------------------------------------------------- |
-| Identity store   | `papita_transactions.users` (linked to Supabase Auth `sub`)                                    |
-| Token format     | Supabase **access JWT** verified via JWKS (`SUPABASE_URL`); preferred `AUTH_PROVIDER=supabase` |
-| Password hashing | **Supabase Auth** holds passwords; local Argon2 only when `AUTH_PROVIDER=local`                |
-| Login identifier | Prefer **client → Supabase Auth**; optional API pass-through uses **email** + password         |
-| Refresh / logout | **Deferred (501)** — use Supabase session APIs / client SDK post-MVP                           |
-| Tenant context   | JWT `sub` → `users.id` (UUID aligned) → `owner_id` on all protected routes                     |
-| Local HS256      | Transitional / tests (`AUTH_PROVIDER=local` + `JWT_SECRET_KEY`) — not staging/prod MVP         |
+| Topic               | MVP decision (post PPT-039)                                                                                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Identity store      | `papita_transactions.users` (linked to Supabase Auth `sub`)                                                                                                    |
+| Access tokens       | Supabase JWT; API verifies via JWKS (`AUTH_PROVIDER=supabase`, `SUPABASE_URL`)                                                                                 |
+| Password hashing    | **Supabase Auth** holds passwords; local Argon2 only when `AUTH_PROVIDER=local`                                                                                |
+| Login identity      | **Email** is canonical; `users.username` is a derived handle (`USERNAME_REGEX`)                                                                                |
+| Register / login    | Prefer **client → Supabase Auth**; optional API pass-through with `SUPABASE_ANON_KEY`                                                                          |
+| Tenant context      | JWT `sub` → `users.id` (provision-on-first-seen) → `owner_id` on all protected routes                                                                          |
+| Auth errors         | Mapped to HTTP (`409` duplicate email, `429` rate limit, `401` bad credentials)                                                                                |
+| Orphan cleanup      | If Auth user is created but Papita provision fails: Admin delete via `SUPABASE_SERVICE_ROLE_KEY` (register always; login only if Auth user created within 15m) |
+| Google / GitHub SSO | Server PKCE: `GET /auth/oauth/{provider}` + `POST`/`GET /auth/oauth/callback`; legacy handoff `POST /auth/sso`                                                 |
+| Refresh / logout    | `POST /auth/refresh` + `POST /auth/logout` when `AUTH_PROVIDER=supabase`; local mode mostly **501**                                                            |
+| Database            | Any Postgres (Docker B0 or hosted); **not** coupled to Auth                                                                                                    |
+| Local HS256         | Tests / CI only (`AUTH_PROVIDER=local` + `JWT_SECRET_KEY`) — not staging/prod MVP                                                                              |
 
 ---
 
@@ -3483,6 +3474,23 @@ Explicit `id` on `UsersDTO` is **preserved** (DAO round-trips and Auth provision
 }
 ```
 
+#### 4.4 Google / GitHub OAuth SSO (dashboard + server PKCE)
+
+1. Supabase → **Authentication** → **Providers** → enable **Google** and/or **GitHub**.
+2. Add redirect URL(s) to the IdP + Supabase Auth → URL Configuration. Prefer the API callback:
+   `http://localhost:8000/api/v1/auth/oauth/callback` (or set `SUPABASE_OAUTH_REDIRECT_TO`).
+   API `redirect_to` is allowlisted to that configured URI or the API callback only.
+3. Server flow (recommended):
+   - `GET /api/v1/auth/oauth/{google|github}` → `{ url, code_verifier }`
+   - Browser opens `url`; after redirect, client receives `?code=...`
+   - `POST /api/v1/auth/oauth/callback` with `{ provider, auth_code, code_verifier }`
+     (GoTrue `exchange_code_for_session`)
+   - Or `GET /api/v1/auth/oauth/{provider}?follow=true` then land on `GET /oauth/callback`
+     (PKCE verifier + provider + redirect_to in HttpOnly cookies; `Secure` when not DEBUG).
+4. Soft-deleted / inactive `users` rows are **not** reactivated by OAuth/login provisioning.
+5. Legacy token handoff: `POST /api/v1/auth/sso` with `{ provider, access_token, refresh_token }`.
+6. `users.provider_type` uses `ProviderType` (`email` | `google` | `github`).
+
 ---
 
 ### 5. JWT contract
@@ -3524,19 +3532,29 @@ Pass `owner` as `owner=` to owned-table services.
 | `SUPABASE_JWT_AUDIENCE`       | Default `authenticated`                            |
 | `JWT_SECRET_KEY`              | Local HS256 only (unused for Supabase verify)      |
 | `JWT_EXPIRATION_TIME_SECONDS` | Local mint TTL; Supabase returns Auth `expires_in` |
+| `SUPABASE_SERVICE_ROLE_KEY`   | Orphan Auth-user cleanup after failed provision    |
+| `SUPABASE_OAUTH_REDIRECT_TO`  | Optional allowlisted OAuth redirect URI            |
 
-Smoke: `make auth-smoke` — Auth JWT → `GET /api/v1/auth/me` (+ tenant list).
+#### 5.4 Auth smoke
+
+```bash
+export PAPITA_ENV=local   # or staging
+# environments/$PAPITA_ENV/.env must set AUTH_PROVIDER=supabase, SUPABASE_URL, SUPABASE_ANON_KEY
+make auth-smoke
+```
+
+Target: Auth access JWT → `GET /api/v1/auth/me` (+ `GET /api/v1/accounts`).
 
 ---
 
-### 6. Refresh and logout (FR-11 — deferred)
+### 6. Refresh and logout (FR-11)
 
-| Endpoint             | MVP behavior                   | Future options                                        |
-| -------------------- | ------------------------------ | ----------------------------------------------------- |
-| `POST /auth/refresh` | **501 Not Implemented**        | Supabase refresh session / short-lived access + store |
-| `POST /auth/logout`  | **501** — client deletes token | Supabase sign-out / Redis denylist (PPT-043)          |
+| Endpoint             | `AUTH_PROVIDER=supabase`                                  | `AUTH_PROVIDER=local`                           |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------------- |
+| `POST /auth/refresh` | Supabase session rotate → new access (+ refresh) tokens   | **501** (no refresh-token store)                |
+| `POST /auth/logout`  | Supabase sign-out; optional Redis denylist for access JWT | **204** if Redis denylist enabled; else **501** |
 
-**Client guidance:** Prefer Supabase Auth SDK for session lifecycle; on 401, re-authenticate.
+**Client guidance:** Prefer Supabase Auth SDK for session lifecycle; on 401, re-authenticate. Smoke: `make auth-smoke`.
 
 ---
 
@@ -3574,9 +3592,10 @@ RLS (B3) remains optional defense-in-depth. MVP relies on app-layer scoping.
 | 200  | Login success                 | —                                                                   |
 | 400  | Supabase signup failure       | Auth error message / generic                                        |
 | 401  | Bad credentials / invalid JWT | `Incorrect username or password` / `Could not validate credentials` |
-| 409  | Duplicate username / email    | Local uniqueness errors                                             |
+| 409  | Duplicate username / email    | Local uniqueness errors / Auth conflict mapping                     |
 | 422  | DTO validation                | Pydantic error list                                                 |
-| 501  | Refresh / logout              | DeferredResponse / FR-11                                            |
+| 429  | Auth / OAuth rate limited     | Rate-limit middleware on auth routes                                |
+| 501  | Refresh / logout (local mode) | DeferredResponse when `AUTH_PROVIDER=local` (no Supabase session)   |
 | 503  | Supabase proxy misconfigured  | Missing `SUPABASE_URL` / `SUPABASE_ANON_KEY`                        |
 
 ---
@@ -3666,23 +3685,24 @@ Unit tests keep `AUTH_PROVIDER=local`. Staging/production templates use `supabas
 
 ### 13. Requirements traceability
 
-| Requirement                         | Section               | Status                                 |
-| ----------------------------------- | --------------------- | -------------------------------------- |
-| FR-10 — Credential verification     | §4, §7, §11           | ✓ Local + Supabase paths               |
-| FR-11 — Refresh/logout              | §6                    | ✓ Deferred; Supabase session follow-on |
-| NFR-05 — Secrets via env            | §5.3, `environments/` | ✓                                      |
-| NFR-08 — Password manager bootstrap | §7                    | ✓ Local / provision hashing            |
-| PPT-039 — Supabase Auth MVP         | §1–§5, §11            | ✓ Spec + code on `ops/PPT-039`         |
+| Requirement                         | Section               | Status                                                                 |
+| ----------------------------------- | --------------------- | ---------------------------------------------------------------------- |
+| FR-10 — Credential verification     | §4, §7, §11           | ✓ Local + Supabase paths                                               |
+| FR-11 — Refresh/logout              | §6                    | ✓ Supabase path; local 501 (unless Redis logout)                       |
+| NFR-05 — Secrets via env            | §5.3, `environments/` | ✓                                                                      |
+| NFR-08 — Password manager bootstrap | §7                    | ✓ Local / provision hashing                                            |
+| PPT-039 — Supabase Auth MVP         | §1–§5, §11            | ✓ [#49](https://github.com/Elmorralito/save-ma-money/issues/49) closed |
 
 ---
 
 ### References
 
-- Code: `modules/api/src/papita_txnsapi/core/security.py`, `supabase_auth.py`, `dependencies/auth.py`
+- Code: `modules/api/src/papita_txnsapi/core/security.py`, `supabase_auth.py`, `dependencies/auth.py`, `routers/v1/auth.py`
 - Model: `modules/model/src/papita_txnsmodel/services/users.py`
-- Standalone summary: [`PPT-031-auth-contract.md`](PPT-031-auth-contract.md)
-- Reissue: [`PPT-039-supabase-auth-reissue.md`](../issues/PPT-039-supabase-auth-reissue.md)
-- Supabase brief G7: [`PPT-031-C-supabase-decision-brief.md`](../issues/PPT-031-C-supabase-decision-brief.md)
+- Operator API docs: [`modules/api/README.md`](../../modules/api/README.md)
+- Reissue: [`docs/issues/README.md` Part IV](../issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)
+- Supabase brief G7: [`docs/issues/README.md` Part II](../issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
+- Epic: [#42](https://github.com/Elmorralito/save-ma-money/issues/42) · Auth issue: [#49](https://github.com/Elmorralito/save-ma-money/issues/49)
 
 ---
 
@@ -3705,10 +3725,10 @@ Unit tests keep `AUTH_PROVIDER=local`. Staging/production templates use `supabas
 
 #### Gates
 
-| Gate                         | Status                                                                                                      | Notes                                            |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| **G1** — v3 schema freeze    | **Implemented** (awaiting formal sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28)) | Code follows `PPT-031-v1-schema.md` §3–§5        |
-| **G6** — Legacy data (FR-14) | **Superseded**                                                                                              | Squashed to v3 seed; dev DBs use wipe-and-reload |
+| Gate                         | Status                                                                                                      | Notes                                                                      |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **G1** — v3 schema freeze    | **Implemented** (awaiting formal sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28)) | Code follows [Part II](#part-ii--target-schema-v1v3-ppt-031-a2a4-32) §3–§5 |
+| **G6** — Legacy data (FR-14) | **Superseded**                                                                                              | Squashed to v3 seed; dev DBs use wipe-and-reload                           |
 
 #### Current migration head
 
@@ -3997,8 +4017,8 @@ The pre-squash revisions are no longer in the repository. Production rollback re
 ### References
 
 - [#34](https://github.com/Elmorralito/save-ma-money/issues/34) — Track D issue
-- [#32](https://github.com/Elmorralito/save-ma-money/issues/32) / [`PPT-031-v1-schema.md`](ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32) — v3 target + §5 outline
+- [#32](https://github.com/Elmorralito/save-ma-money/issues/32) / [Part II](#part-ii--target-schema-v1v3-ppt-031-a2a4-32) — v3 target + §5 outline
 - [#30](https://github.com/Elmorralito/save-ma-money/issues/30) / [`PPT-031-v0-audit.md`](ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30) — v0 baseline
 - [#31](https://github.com/Elmorralito/save-ma-money/issues/31) — Supabase B0/B1 decision
-- [`PPT-031-simplify-requirements.md`](../issues/PPT-031-simplify-requirements.md) — FR/NFR traceability
+- [`docs/issues/README.md` Part I](../issues/README.md#part-i--ppt-031-simplify-requirements-28) — FR/NFR traceability
 - [`AGENTS.md`](../../.agents/AGENTS.md) — Alembic wrapper commands

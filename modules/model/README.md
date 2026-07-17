@@ -24,7 +24,7 @@ Personal and small-business finance rarely starts in one clean database. Data ar
 
 1. **v3 consolidated schema (PPT-031)** — accounts carry an `account_kind` discriminator; at most one 1:1 extension row; categories replace v0 `types`; transfers are `transaction_kind = TRANSFER` (no separate movements table)
 2. **Strict type safety** — Pydantic v2 DTOs at the access layer; SQLModel + PostgreSQL CHECK constraints at persistence
-3. **PostgreSQL only** — Docker Postgres locally (B0); Supabase pooler for hosted (B1). **DuckDB is deprecated** — see [platform decision](../../docs/issues/PPT-031-C-supabase-decision-brief.md)
+3. **PostgreSQL only** — Docker Postgres locally (B0); Supabase pooler for hosted (B1). **DuckDB is deprecated** — see [platform decision](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
 4. **Conflict-aware ingestion** — idempotent bulk loads via `PostgreSQLUpserter` and tolerance-aware `upsert_records`
 5. **API-ready services (PPT-041)** — account extension orchestration, transfer helpers, FR-12 report aggregations, materialized balance views, live-DB tenancy tests
 
@@ -395,7 +395,7 @@ DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
 | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)) |
 | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Local JWT + `UsersService` flows                                                                  |
 | [`docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)                 | B0/B1 validation, rollback, FR-14                                                                 |
-| [`docs/issues/PPT-031-C-supabase-decision-brief.md`](../../docs/issues/PPT-031-C-supabase-decision-brief.md)                                                         | B0/B1 platform; B2/B3 deferred                                                                    |
+| [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)             | B0/B1 platform; B2/B3 deferred                                                                    |
 | [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)                                                            |
 | [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI scaffold and target REST contract                                                         |
 | [`README.md`](../../README.md)                                                                                                                                       | Monorepo overview and quick start                                                                 |

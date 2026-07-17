@@ -72,11 +72,11 @@ do not quote the secret in the PR text.
 When present, **load and prefer** repo templates; merge skill sections into them
 (do not drop template-required headings):
 
-| Source                 | Path / pattern                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
-| GitHub PR template     | `.github/PULL_REQUEST_TEMPLATE.md` or `.github/PULL_REQUEST_TEMPLATE/*`                                      |
-| Issue / PR body drafts | `docs/issues/_gh_body_*.md`, `docs/issues/PPT-*.md` for linked work                                          |
-| Title notation         | `.cursor/rules/gen-custom/github_issue_conventions.mdc` → `{semantic}/PPT-{NNN}: [{domain}] {sentence case}` |
+| Source                 | Path / pattern                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| GitHub PR template     | `.github/PULL_REQUEST_TEMPLATE.md` or `.github/PULL_REQUEST_TEMPLATE/*`                                                       |
+| Issue / PR body drafts | [`docs/issues/README.md`](../../../docs/issues/README.md) Parts I–V; still-separate `docs/issues/PPT-044*.md` / `PPT-045*.md` |
+| Title notation         | `.cursor/rules/gen-custom/github_issue_conventions.mdc` → `{semantic}/PPT-{NNN}: [{domain}] {sentence case}`                  |
 
 If a template and this skill both define sections, keep the **template structure** and
 fill skill sections (Summary, Out of scope / Highlights, Changes, File changes,
