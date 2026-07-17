@@ -97,3 +97,26 @@ class TestSettingsEstablish:
         with pytest.warns(UserWarning, match="DATABASE_URL is None"):
             Settings(JWT_SECRET_KEY=_JWT, DATABASE_URL=None)
         mock_establish.assert_called_once_with(connection=None)
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_redis_enabled_requires_url(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.raises(ValueError, match="REDIS_URL is required"):
+            Settings(JWT_SECRET_KEY=_JWT, DATABASE_URL=None, REDIS_ENABLED=True, REDIS_URL="")
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_redis_enabled_with_url_ok(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(
+                JWT_SECRET_KEY=_JWT,
+                DATABASE_URL=None,
+                REDIS_ENABLED=True,
+                REDIS_URL="redis://localhost:6379/0",
+            )
+        assert settings.REDIS_ENABLED is True
+        assert settings.REDIS_URL == "redis://localhost:6379/0"

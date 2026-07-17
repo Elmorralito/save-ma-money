@@ -100,3 +100,35 @@ class TestRedisHealth:
         assert payload["detail"] == RedisProbeDetail.HEALTHY
         assert "checked_at" in payload
         datetime.fromisoformat(payload["checked_at"].replace("Z", "+00:00"))
+
+    @patch("papita_txnsapi.routers.v1.health.probe_database", return_value=_connected_db())
+    @patch("papita_txnsapi.routers.v1.health.probe_supabase_auth", return_value=_auth_skipped())
+    @patch(
+        "papita_txnsapi.routers.v1.health.ping_redis",
+        return_value=RedisProbeResult(
+            connected=False,
+            latency_ms=None,
+            detail=RedisProbeDetail.PROBE_FAILED,
+            required=True,
+        ),
+    )
+    def test_composite_health_degraded_when_redis_down(
+        self,
+        _mock_redis: object,
+        _mock_auth: object,
+        _mock_db: object,
+        monkeypatch: object,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        from papita_txnsapi.config.settings import get_settings
+
+        get_settings.cache_clear()
+        with patch("papita_txnsapi.main.init_redis", return_value=MagicMock()):
+            with TestClient(create_app()) as client:
+                response = client.get("/api/v1/health")
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert response.status_code == 200
+        assert response.json()["status"] == "degraded"
+        assert response.json()["redis"] == "disconnected"

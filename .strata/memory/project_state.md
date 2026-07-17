@@ -10,13 +10,12 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-043 Redis on PR #94; added Codecov patch-gap tests
-- CI fix: rate-limiter tests must set `REDIS_URL` when `REDIS_ENABLED=true`
-  (Settings model_validator); local `.env` masked the failure
+- PPT-043 PR #94: QC green after REDIS_URL test fix; Codecov patch ~95%
+- Added owner-id-none cache BYPASS + Settings Redis URL + health degraded tests
 
 ### Next action
 
-- Confirm `quality-control` + `codecov/patch` green on #94
+- Confirm `codecov/patch` ≥ ~97.7% on #94
 - Staging: managed `REDIS_URL` when enabling horizontal scale
 - Do not commit `environments/**/.env`
 
