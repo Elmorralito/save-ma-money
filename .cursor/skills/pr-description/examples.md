@@ -111,14 +111,14 @@ Observed in development on this branch (not claiming remote CI green — `gh` Gr
 - [ ] Confirm `environments/**/.env` (secrets) are **not** in the PR
 - [ ] CI secrets path deferred to #50 — note any local-only Auth keys in review comments
 
-> [!WARNING]
+> [!CAUTION]
 > ### Risks
 > - Migrations change `users` identity (Auth `sub` alignment + profile columns); run on a backup / disposable DB first.
 > - `SUPABASE_SERVICE_ROLE_KEY` enables Admin orphan delete (server-only); misconfiguration skips cleanup and can leave Auth orphans.
 > - OAuth `redirect_to` allowlist — only API callback + `SUPABASE_OAUTH_REDIRECT_TO`; mis-set env breaks IdP redirect.
 > - Blocks #50 (PPT-040) for CI Auth secrets.
 
-> [!CAUTION]
+> [!WARNING]
 > ### Caveats
 > - Email confirm / session null on signup: API may return user without tokens depending on Supabase project settings.
 > - Tip commit may include doc/coverage cleanup and docstring-only churn — skim separately from Auth behavior.

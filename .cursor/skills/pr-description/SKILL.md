@@ -135,11 +135,11 @@ Checkbox list of remaining or recommended verification.
 
 ### Risks (alert block)
 
-Use a GitHub **WARNING** alert for merge/ops risks (breaking changes, migrations,
+Use a GitHub **CAUTION** alert for merge/ops risks (breaking changes, migrations,
 secrets/env _variable names_ never values, follow-ups reviewers must not miss):
 
 ```markdown
-> [!WARNING]
+> [!CAUTION]
 >
 > ### Risks
 >
@@ -149,11 +149,11 @@ secrets/env _variable names_ never values, follow-ups reviewers must not miss):
 
 ### Caveats (alert block)
 
-Use a GitHub **CAUTION** alert for limitations, deferred behavior, and “works if…”
+Use a GitHub **WARNING** alert for limitations, deferred behavior, and “works if…”
 notes (separate from Risks):
 
 ```markdown
-> [!CAUTION]
+> [!WARNING]
 >
 > ### Caveats
 >
@@ -176,7 +176,7 @@ Issue IDs, design docs, parent epic — only if known from repo or user.
 - If unrelated concerns are mixed on the branch, call that out and suggest a split.
 - Do not invent test results, CI status, or issue links.
 - Keep the Summary short; put detail in Changes / Risks / Caveats / Out of scope.
-- Use `[!WARNING]` for Risks and `[!CAUTION]` for Caveats; put File changes in `<details>`.
+- Use `[!CAUTION]` for Risks and `[!WARNING]` for Caveats; put File changes in `<details>`.
 - Never reveal secrets, tokens, credentials, or sensitive values in the PR description.
 
 ## Additional resources
