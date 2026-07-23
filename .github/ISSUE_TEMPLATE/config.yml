@@ -1,0 +1,9 @@
+---
+blank_issues_enabled: true
+contact_links:
+  - name: Design & issue briefs (docs)
+    url: https://github.com/Elmorralito/save-ma-money/blob/main/docs/issues/README.md
+    about: Program briefs, epic close-out notes, and issue write-ups live under docs/issues/.
+  - name: Issue title conventions
+    url: https://github.com/Elmorralito/save-ma-money/blob/main/.cursor/rules/gen-custom/github_issue_conventions.mdc
+    about: "Title form: semantic/PPT-NNN: [domain] Title in sentence case."
