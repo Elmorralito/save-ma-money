@@ -4,7 +4,7 @@
 
 - [ ] [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary:
 
-- [ ] [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
 
