@@ -4,9 +4,313 @@
 
 - [ ] [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-23 22:12:18+00:00</sub>_
+
+  > **Closed by** [_**#102**](https://github.com/Elmorralito/save-ma-money/pull/102): **fix/PPT-044: [api] Post-MVP hardening, efficiency, and design SSOT**
+
+  > **Branch:** docs/create-issue-skill · **Base:** main (83d5c66) · **10 commits** · **90 files**
+
+  >
+
+  > **Suggested title:** fix/PPT-044: [api] Post-MVP hardening, efficiency, and design SSOT
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the post-MVP API/model hardening pass for **PPT-044**: safer transport and auth defaults, tenancy/input bounds, abuse controls, error disclosure, and a security test pack — plus hot-path efficiency so list/cache/rate-limit/report work does not pay avoidable overhead. Also adds the /create-issue Cursor skill and folds the PPT-044 brief and former docs/ops checklists into the design SSOT so operators have one place to look.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - PPT-045 uvicorn/process packaging (still a separate brief)
+
+  > - New domain features (budgets remain deferred; no new business routers)
+
+  > - Claiming staging/prod cutover or full GitHub Actions green from this PR alone
+
+  > - Requiring Redis in local/dev (REDIS_ENABLED remains opt-in)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Soft-deleted rows excluded by default; categories require an owner (no global mutations)
+
+  > - Report windows ≤366d, bulk max 100, refresh_balances default **false**, Auth error allowlists
+
+  > - SQL pagination / windowed report loads / spending aggregation; cache version reuse; RL binding on app state
+
+  > - Client-contract discovery headers + security headers / TrustedHost / CORS / docs gates
+
+  > - Design Part VIII + README § Ops replace docs/ops and the PPT-044 brief
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Model**
+
+  >
+
+  > - Soft-delete defaults and block upsert revival of deleted rows
+
+  > - Categories: require owner; block global mutations
+
+  > - refresh_balances off by default; refresh once per API write path where needed
+
+  > - Window report loads in SQL; fix transfer cash-flow direction
+
+  > - Page-scoped balance fetches; get_page_with_total; spending SQL aggregation; link DTO prefetch
+
+  >
+
+  > **API**
+
+  >
+
+  > - Report windows, schema bounds, Auth error allowlists
+
+  > - SQL pagination for account/category lists; digest idempotency request bodies
+
+  > - Security pack: headers, TrustedHost, CORS fail-fast on * when not DEBUG, docs gated by DEBUG/DOCS_ENABLED
+
+  > - Client-contract middleware/meta; rate limits on auth/budgets/health; Redis cache/RL polish
+
+  > - Hot-path efficiency: skip balance refresh for PENDING movement paths; account create/update return extension; versioned cache get→set without double GET; module-scoped transactions service DI
+
+  >
+
+  > **Docs / agent tooling**
+
+  >
+
+  > - /create-issue skill (+ gh auth check before confirm)
+
+  > - ARCHITECTURE Part VIII (PPT-044); design README § Ops (Redis + B1 pooler)
+
+  > - Delete docs/ops/* checklists and docs/issues/PPT-044-api-hardening-brief.md; retarget AGENTS/strata/API/env READMEs
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - test_security_pack, test_client_contract, Redis/RL/idempotency/settings coverage
+
+  > - Model: soft-delete/categories/refresh/report/efficiency (test_prf_efficiency) suites
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~90 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md
+
+  > .cursor/skills/create-issue/SKILL.md
+
+  > .cursor/skills/create-issue/reference.md
+
+  > .strata/MANIFEST.md
+
+  > .strata/docs/ops/*
+
+  > .strata/issues/20260713-03-ppt044-api-hardening.md
+
+  > .strata/memory/project_state.md
+
+  > docs/design/ARCHITECTURE.md
+
+  > docs/design/README.md
+
+  > docs/issues/PPT-044-api-hardening-brief.md (deleted)
+
+  > docs/ops/* (deleted)
+
+  > environments/{local,staging,production}/.env.example
+
+  > modules/api/README.md
+
+  > modules/api/src/papita_txnsapi/** (settings, cache, rate_limit, client_contract, middleware, routers, schemas)
+
+  > modules/api/tests/** (security_pack, client_contract, redis, RL, …)
+
+  > modules/model/src/papita_txnsmodel/** (base repository, categories, reports, transactions, accounts, balances)
+
+  > modules/model/tests_papita_txnsmodel/** (ppt041, prf_efficiency, repository)
+
+  >
+
+  >
+
+  > Full git diff --stat origin/main...HEAD: **90 files changed, 4113 insertions(+), 857 deletions(-)**.
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - da15757 docs: fold PPT-044 and ops checklists into design SSOT
+
+  > - 8174dab perf(api): cut hot-path overhead across list, cache, RL, and reports
+
+  > - d98223b fix(api): paginate account/category lists in SQL and digest idempotency bodies
+
+  > - 00ec6ea fix(model): window report loads in SQL and fix transfer cash-flow direction
+
+  > - 3968d64 fix(api): enforce report windows, schema bounds, and Auth error allowlists
+
+  > - 7bb6efd fix(model): default refresh_balances off and refresh once per API write
+
+  > - 8eee2ea fix(model): require owner on categories and block global mutations
+
+  > - 51e803c fix(model): exclude soft-deleted rows by default and block upsert revival
+
+  > - b860a65 docs: require gh auth check before create-issue confirm
+
+  > - c3e5902 docs: add create-issue skill for templated GitHub issues
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > Observed in this branch’s development sessions (not claiming remote CI green):
+
+  >
+
+  > - [x] API unit suite previously reported **268 passed** with live/B1 markers skipped (not live_db and not supabase_b1 …)
+
+  > - [x] Focused efficiency / DI / accounts / redis / rate-limit suites exercised during PR-A…F work; tip commits passed **pre-commit** (incl. strata validate, prettier, pylint on touched Python)
+
+  > - [x] Docs SSOT commit da15757 passed pre-commit after prettier auto-fix
+
+  > - [ ] Full monorepo pytest / GitHub Actions on this PR: **not verified in this pass**
+
+  > - [ ] Staging/prod deploy or live Redis/B1 smoke: **not claimed**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] CI green on this PR (API + model unit jobs)
+
+  > - [ ] With DEBUG=false: docs off, CORS rejects *, TrustedHost enforces ALLOWED_HOSTS, security headers present
+
+  > - [ ] Soft-deleted accounts/categories/txns stay hidden on list/get; upsert does not revive
+
+  > - [ ] Category create without owner / global mutation paths return 4xx
+
+  > - [ ] Report window >366d → 400; foreign account_id → 404; bulk >100 → 400 with client-contract error code/header
+
+  > - [ ] refresh_balances default false on writes; PENDING movement create/update/cancel does not force balance refresh
+
+  > - [ ] List endpoints paginate in SQL (large tenant does not load full table into memory)
+
+  > - [ ] Optional Redis: cache version reuse + rate limits when REDIS_ENABLED=true and REDIS_URL set (names only; values in local .env, not committed)
+
+  > - [ ] Confirm environments/**/.env secrets are **not** in the PR
+
+  > - [ ] Skim design Part VIII / README § Ops vs deleted docs/ops — links from AGENTS/API README resolve
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - **Mixed branch:** create-issue skill commits sit beside PPT-044 API/model work; consider splitting if review wants docs-only vs hardening-only.
+
+  > > - **Behavior changes clients may notice:** report foreign account **404** (was 400), bulk max **100**, report window cap, refresh_balances default **false**, soft-delete exclusion, category owner required.
+
+  > > - **Transport defaults:** non-DEBUG CORS/ALLOWED_HOSTS/docs gates can break local or misconfigured deploys if env examples are not followed (ALLOWED_ORIGINS, ALLOWED_HOSTS, DOCS_ENABLED).
+
+  > > - **Redis still optional** but RL/cache paths change when enabled — verify fail policies match ops expectations.
+
+  > > - No Alembic migrations in this PR, but model query defaults change soft-delete visibility — re-check any admin/maintenance scripts that assumed deleted rows appeared.
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Branch name (docs/create-issue-skill) understates the API/model payload; title above is the intended review framing.
+
+  > > - Ops checklists now live under docs/design/ (Part VIII / § Ops); .strata/docs/ops/ are agent pointers, not a second human SSOT.
+
+  > > - Efficiency wins assume Postgres-capable SQL paths in production; DuckDB/test dialects may take alternate branches.
+
+  > > - Full live_db / Supabase B1 suites not required for merge of unit coverage alone.
+
+  >
+
+  > ## References
+
+  >
+
+  > - PPT-044 / [#89](https://github.com/Elmorralito/save-ma-money/issues/89)
+
+  > - Parent epic PPT-032 / [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (closed)
+
+  > - Design SSOT: [docs/design/ARCHITECTURE.md](../blob/docs/create-issue-skill/docs/design/ARCHITECTURE.md) Part VIII · [docs/design/README.md](../blob/docs/create-issue-skill/docs/design/README.md) § Ops
+
+  > - Skill: [.cursor/skills/create-issue/](../blob/docs/create-issue-skill/.cursor/skills/create-issue/)
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 23:17:31+00:00</sub>_
 
