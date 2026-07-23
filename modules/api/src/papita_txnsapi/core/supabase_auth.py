@@ -198,8 +198,10 @@ def classify_supabase_auth_error(exc: Exception, *, fallback: str) -> tuple[int,
         return 429, "Too many authentication attempts. Try again later."
     if auth_status in {401, 403} or code in {"invalid_credentials", "invalid_grant"}:
         return 401, "Incorrect username or password"
+    # Do not pass through raw Auth/provider text (may leak internals).
     if auth_status is not None and 400 <= int(auth_status) < 500:
-        return int(auth_status) if int(auth_status) != 422 else 400, message
+        mapped_status = int(auth_status) if int(auth_status) != 422 else 400
+        return mapped_status, "Authentication request failed"
     return 502, fallback
 
 

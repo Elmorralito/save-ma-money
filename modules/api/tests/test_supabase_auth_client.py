@@ -70,6 +70,16 @@ def test_classify_supabase_auth_error_rate_limit() -> None:
     assert status_code == 429
 
 
+def test_classify_supabase_auth_error_masks_raw_4xx_detail() -> None:
+    status_code, detail = classify_supabase_auth_error(
+        AuthApiError("GoTrue internal stacktrace leak", 400, "unexpected_failure"),
+        fallback="failed",
+    )
+    assert status_code == 400
+    assert detail == "Authentication request failed"
+    assert "stacktrace" not in detail
+
+
 def test_supabase_admin_delete_user() -> None:
     subject = uuid.uuid4()
     client = MagicMock()

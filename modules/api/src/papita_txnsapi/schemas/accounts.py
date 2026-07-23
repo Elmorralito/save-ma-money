@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from papita_txnsapi.config.settings import MAX_DESCRIPTION_LENGTH, MAX_EXTENSION_STRING_LENGTH
 from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_account_kind, parse_ledger_side
 from papita_txnsmodel.access.account_balances.dto import AccountBalancesDTO
 from papita_txnsmodel.access.account_details.dto import (
@@ -50,8 +51,10 @@ class BankingDetailsSchema(BaseModel):
         account_number: Optional masked or full account number.
     """
 
-    entity: str
-    account_number: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    entity: str = Field(min_length=1, max_length=MAX_EXTENSION_STRING_LENGTH)
+    account_number: str | None = Field(default=None, max_length=MAX_EXTENSION_STRING_LENGTH)
 
 
 class TradingDetailsSchema(BaseModel):
@@ -61,6 +64,8 @@ class TradingDetailsSchema(BaseModel):
         buy_value: Positive purchase or cost basis per position unit.
         units: Number of position units held (default 1, must be positive).
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     buy_value: float = Field(gt=0)
     units: int = Field(default=1, gt=0)
@@ -82,13 +87,15 @@ class RealEstateDetailsSchema(BaseModel):
         participation: Fractional ownership share in (0, 1]; default 1.0.
     """
 
-    address: str
-    city: str
-    country: str
+    model_config = ConfigDict(extra="forbid")
+
+    address: str = Field(min_length=1, max_length=MAX_EXTENSION_STRING_LENGTH)
+    city: str = Field(min_length=1, max_length=MAX_EXTENSION_STRING_LENGTH)
+    country: str = Field(min_length=1, max_length=MAX_EXTENSION_STRING_LENGTH)
     total_area: float = Field(gt=0)
     built_area: float = Field(gt=0)
-    area_unit: str
-    ownership: str
+    area_unit: str = Field(min_length=1, max_length=64)
+    ownership: str = Field(min_length=1, max_length=64)
     participation: float = Field(default=1.0, gt=0, le=1)
 
     @field_validator("area_unit")
@@ -133,6 +140,8 @@ class CreditCardDetailsSchema(BaseModel):
         credit_limit: Maximum revolving credit; must be positive.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     credit_limit: float = Field(gt=0)
 
 
@@ -144,6 +153,8 @@ class LoanDetailsSchema(BaseModel):
         insurance_payment: Recurring insurance component of the payment (>= 0).
         extras_payment: Additional recurring fees beyond principal/interest (>= 0).
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     is_paid_off: bool = False
     insurance_payment: float = Field(default=0, ge=0)
@@ -170,8 +181,10 @@ class AccountCreate(BaseModel):
         loan_details: Required shape for loan/mortgage kind.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=255)
-    description: str = ""
+    description: str = Field(default="", max_length=MAX_DESCRIPTION_LENGTH)
     account_kind: str
     ledger_side: str
     currency: str = Field(default="USD", min_length=3, max_length=3)
@@ -248,8 +261,10 @@ class AccountUpdate(BaseModel):
         loan_details: Partial or full loan extension update.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     initial_value: float | None = Field(default=None, ge=0)
     is_active: bool | None = None

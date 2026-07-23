@@ -10,20 +10,16 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- Model soft-delete PR-1 committed
-- Model categories PR-2 committed
-- PR-3: `refresh_balances` default False on txn writes + cash_flow; API refreshes
-  MVs once after ledger mutations
-- PPT-044 API hardening + client-contract work still uncommitted locally
+- Model soft-delete / categories / refresh_balances PRs committed
+- PR-4: trends window always; extension forbid/bounds; search cap; Auth allowlist
+- Remaining PPT-044 transport/client-contract work may still be uncommitted
 
 ### Next action
 
-- PR-4 API: trends window always; extension forbid/bounds; search cap; Auth
-  error allowlist
+- PR-5: SQL-windowed report loads + account-scoped transfer cash-flow direction
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
 - Redis optional by default (`REDIS_ENABLED=false`)
-- Large PPT-044 API diff still WIP alongside model hardening commits
