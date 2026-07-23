@@ -34,7 +34,7 @@ Reissues **PPT-039 / #49** as **Supabase Auth ownership** (not pooler DB): FastA
 
 - `environments/{local,staging,production}/.env.example`, `environments/README.md`, settings/`PAPITA_ENV` loading
 - Compose injects `SUPABASE_*` (incl. service role / OAuth) into the API service
-- `deploy/auth_smoke.sh`, B1/deploy helpers, untrack generated `docs/coverage.xml`
+- `bin/auth_smoke.sh`, B1/deploy helpers, untrack generated `docs/coverage.xml`
 
 **Model / migrations**
 
@@ -100,7 +100,7 @@ Observed in development on this branch (not claiming remote CI green — `gh` Gr
 
 ## QA / test plan
 
-- [ ] `./deploy/alembic.sh --env local` (B0) applies both new Auth migrations cleanly
+- [ ] `./bin/alembic.sh --env local` (B0) applies both new Auth migrations cleanly
 - [ ] Register + login with email/password against real Supabase Auth; JWT works on a protected route (`GET /auth/me`)
 - [ ] Soft-deleted / inactive Auth-linked user cannot be reactivated via provision
 - [ ] Google (and/or GitHub) OAuth: `GET /auth/oauth/{provider}?follow=true` → callback → tokens; PKCE cookies cleared
@@ -111,14 +111,14 @@ Observed in development on this branch (not claiming remote CI green — `gh` Gr
 - [ ] Confirm `environments/**/.env` (secrets) are **not** in the PR
 - [ ] CI secrets path deferred to #50 — note any local-only Auth keys in review comments
 
-> [!WARNING]
+> [!CAUTION]
 > ### Risks
 > - Migrations change `users` identity (Auth `sub` alignment + profile columns); run on a backup / disposable DB first.
 > - `SUPABASE_SERVICE_ROLE_KEY` enables Admin orphan delete (server-only); misconfiguration skips cleanup and can leave Auth orphans.
 > - OAuth `redirect_to` allowlist — only API callback + `SUPABASE_OAUTH_REDIRECT_TO`; mis-set env breaks IdP redirect.
 > - Blocks #50 (PPT-040) for CI Auth secrets.
 
-> [!CAUTION]
+> [!WARNING]
 > ### Caveats
 > - Email confirm / session null on signup: API may return user without tokens depending on Supabase project settings.
 > - Tip commit may include doc/coverage cleanup and docstring-only churn — skim separately from Auth behavior.

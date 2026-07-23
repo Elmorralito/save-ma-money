@@ -1,7 +1,7 @@
 # save-ma-money
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2077-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2081-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
 ![interrogate score](./docs/interrogate_badge.svg)
 [![coverage score](./docs/coverage-badge.svg)](https://app.codecov.io/github/Elmorralito/save-ma-money)
 ![pre-commit.ci status](https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/main.svg)
@@ -110,7 +110,7 @@ save-ma-money/
 │       ├── README.md           # REST contract, integration guide, endpoint catalog
 │       ├── tests/              # unit + B0 live-DB + Auth smoke helpers
 │       └── src/papita_txnsapi/ # main.py, routers/v1, schemas, deps
-├── deploy/                     # alembic.sh, test.sh, utils.sh
+├── bin/                     # alembic.sh, test.sh, utils.sh
 ├── docker/database/            # local Postgres 15 Compose
 ├── docs/design/                # ARCHITECTURE.md (PPT-031) + README gates index
 ├── docs/issues/                # consolidated issue briefs (README Parts I–V) + PPT-044/045
@@ -149,12 +149,12 @@ poetry lock && poetry install
 
 ```bash
 # PostgreSQL (Docker)
-/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 # Unit and integration tests (model package)
 poetry run pytest
 # or
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 ```
 
 Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](./modules/model/README.md).

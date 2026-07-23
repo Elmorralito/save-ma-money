@@ -28,7 +28,7 @@ Optional deploy posture (soft gate for _public_ B1): CORS / docs / TrustedHost â
    ```bash
    cp environments/staging/.env.example environments/staging/.env   # once
    set -a && source environments/staging/.env && set +a
-   /bin/bash ./deploy/alembic.sh upgrade --env staging --url "$DATABASE_URL_MIGRATIONS"
+   /bin/bash ./bin/alembic.sh upgrade --env staging --url "$DATABASE_URL_MIGRATIONS"
    ```
 
 2. Configure the API process with `PAPITA_ENV=staging` (or `production`) so Settings loads the pooler `DATABASE_URL` (Auth via `AUTH_PROVIDER=supabase`).
@@ -43,7 +43,7 @@ PAPITA_ENV=local make auth-smoke
 
 # Optional pooler DB only
 PAPITA_ENV=staging make b1-smoke
-# equivalent: /bin/bash ./deploy/b1_smoke.sh --env staging
+# equivalent: /bin/bash ./bin/b1_smoke.sh --env staging
 ```
 
 `make b1-smoke` **fails with a clear message** if `environments/staging/.env` is missing, points at local Docker (B0), or the pooler rejects `SELECT 1`. Plain `pytest` still **skips** when the gate fails. This path is **parked optional ops** â€” [#50](https://github.com/Elmorralito/save-ma-money/issues/50) / epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) do **not** require Supabase-hosted Postgres (Auth-first: Supabase = users/Auth/tokens only).

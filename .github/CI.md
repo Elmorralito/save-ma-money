@@ -44,6 +44,7 @@ flowchart TB
         MC[Migration Check]
         CQ[CodeQL Analysis]
         TR[Trivy Security Scan]
+        BS[Bash Security]
         ST[Strata Check]
     end
 
@@ -57,9 +58,10 @@ flowchart TB
     MC --> |Alembic round-trip| Pass4[Gate]
     CQ --> |Python SAST| Pass5[Gate]
     TR --> |CVE + misconfig SARIF| Pass6[Gate]
-    ST --> |.strata/ layout + pairing| Pass7[Gate]
+    BS --> |ShellCheck security + Semgrep| Pass7[Gate]
+    ST --> |.strata/ layout + pairing| Pass8[Gate]
 
-    Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 --> Merge[Merge]
+    Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 --> Merge[Merge]
     Merge --> AU
     AU --> |CHANGELOG + badges| Push[Push to main]
 ```
@@ -74,15 +76,16 @@ flowchart TB
 
 Use this matrix to predict required checks before opening a PR.
 
-| Change type                                    | Quality Control | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Strata |
-| :--------------------------------------------- | :-------------: | :------: | :----------: | :-------: | :----: | :---: | :----: |
-| `docs/**` only                                 |        —        |    ✓     |      —       |     —     |   —    |   —   |   —    |
-| `modules/**` code                              |        ✓        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |   ✓    |
-| `pyproject.toml` / module deps                 |        ✓        |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |   ✓‡   |
-| Model / Alembic / `docker/database/**`         |        ✓        |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |   ✓    |
-| `.strata/**` only (no `modules/` or `deploy/`) |        ✓        |    ✓     |      —       |     —     |   —    |   —   |   —§   |
-| `.github/workflows/**`                         |        ✓        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |  —\*   |
-| `.cursor/mcp.json`                             |        ✓        |    ✓     |      —       |     —     |   —    |   —   |   —    |
+| Change type                                 | Quality Control | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata |
+| :------------------------------------------ | :-------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: |
+| `docs/**` only                              |        —        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |
+| `modules/**` code                           |        ✓        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |
+| `pyproject.toml` / module deps              |        ✓        |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |
+| Model / Alembic / `docker/database/**`      |        ✓        |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |
+| `bin/**` or `.github/scripts/**`            |        ✓        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |
+| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |
+| `.github/workflows/**`                      |        ✓        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |
+| `.cursor/mcp.json`                          |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |
 
 \* Runs only when matching [path filters](#workflow-overview) apply.
 † CodeQL runs on PRs **targeting `main`** only.
@@ -103,7 +106,8 @@ Use this matrix to predict required checks before opening a PR.
 | Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                           |
 | CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                       |
 | Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                  |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/deploy paths)                    | `.strata/` layout + strict code/memory pairing          |
+| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules          |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing          |
 | Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges |
 | CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge      |
 
@@ -118,7 +122,7 @@ Mirror CI before pushing:
 pre-commit run --all-files
 
 # Tests + coverage report → docs/coverage.xml (same entry point as CI)
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 
 # Supply chain (deps or workflow script changes)
 /bin/bash .github/scripts/supply_chain_check.sh
@@ -135,6 +139,14 @@ STRATA_STRICT_MODULES=1 STRATA_BASE_REF=origin/main /bin/bash .github/scripts/st
 # Migrations — full CI sequence (requires running Postgres)
 export DB_URL="postgresql+psycopg2://papita:papita@localhost:5432/papita_test"
 /bin/bash .github/scripts/migration_check.sh
+
+# Bash security gate (ShellCheck security codes + Semgrep; Docker required for Semgrep)
+SECURITY_CODES='SC2046,SC2048,SC2068,SC2086,SC2115,SC2145,SC2154,SC2164,SC2206,SC2207,SC2294,SC2479'
+shellcheck -S warning -i "$SECURITY_CODES" bin/*.sh .github/scripts/*.sh
+docker run --rm -v "$PWD:/src" -w /src \
+  semgrep/semgrep:1.128.1@sha256:fca58525689355641019c05ab49dcc5bc3a1eb7e044f35014ee39594b5aa4fc1 \
+  semgrep scan --config=.github/semgrep/bash-security.yml --config=p/trailofbits \
+  --error --metrics=off --include='*.sh' bin/ .github/scripts/
 ```
 
 Install tooling once:
@@ -166,7 +178,7 @@ pre-commit install   # optional but recommended for commit-time hooks
    SKIP: strata-validate,mcp-config-validate
    ```
 
-4. **Pytest + coverage** via [`deploy/test.sh`](../deploy/test.sh)
+4. **Pytest + coverage** via [`bin/test.sh`](../bin/test.sh)
    - `testpaths`: `modules/model/tests`, `modules/api/tests`, `modules/registrar/tests` (registrar not in tree yet)
    - Coverage measured on **source packages**: `--cov=./modules/model/src --cov=./modules/api/src` (aligned with Codecov)
    - Env: `AUTH_PROVIDER=local` (Supabase is Auth-only; JWT smoke is manual: `make auth-smoke`)
@@ -191,7 +203,7 @@ pre-commit install   # optional but recommended for commit-time hooks
 - `modules/model/alembic/**`
 - `modules/model/src/papita_txnsmodel/model/**`
 - `docker/database/**`
-- `deploy/alembic.sh`
+- `bin/alembic.sh`
 - `.github/scripts/migration_check.sh`
 - `.github/workflows/migration-check.yml`
 
@@ -207,8 +219,8 @@ pre-commit install   # optional but recommended for commit-time hooks
 **Local shortcuts:**
 
 ```bash
-# Docker Postgres via deploy wrapper (upgrade only — not the full CI round-trip)
-/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+# Docker Postgres via bin/ wrapper (upgrade only — not the full CI round-trip)
+/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
 
 # Full CI parity (Postgres must be reachable)
 export DB_URL="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
@@ -287,12 +299,33 @@ Findings appear in workflow logs, not the Security tab SARIF view.
 
 ---
 
+### Bash Security
+
+|                 |                                                         |
+| :-------------- | :------------------------------------------------------ |
+| **Trigger**     | **PR only** (no push, schedule, or `workflow_dispatch`) |
+| **Timeout**     | 10 min (ShellCheck) / 15 min (Semgrep)                  |
+| **Permissions** | `contents: read`                                        |
+
+**Path filters:** `bin/**`, `.github/scripts/**`, `.github/semgrep/**`, workflow file.
+
+| Job                     | Tool                                                                                                                 | Scope                                                                                                                                      |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------- |
+| ShellCheck (security)   | [`ludeeus/action-shellcheck@2.0.0`](https://github.com/ludeeus/action-shellcheck) (SHA-pinned), ShellCheck `v0.11.0` | Include-only codes: `SC2046`, `SC2048`, `SC2068`, `SC2086`, `SC2115`, `SC2145`, `SC2154`, `SC2164`, `SC2206`, `SC2207`, `SC2294`, `SC2479` |
+| Semgrep (bash security) | `semgrep/semgrep:1.128.1` (digest-pinned)                                                                            | Local [`.github/semgrep/bash-security.yml`](./semgrep/bash-security.yml) + `p/trailofbits`; `bin/` + `.github/scripts/`                    |
+
+**Intentionally not in this workflow:** Trivy, CodeQL, Gitleaks (already covered elsewhere). Full ShellCheck style remains in pre-commit / Quality Control.
+
+**Note:** Registry pack `p/bash` is unavailable (404); bash coverage uses custom rules plus Trail of Bits multilang rules that apply to `.sh` files.
+
+---
+
 ### Strata Check
 
-|             |                                                                           |
-| :---------- | :------------------------------------------------------------------------ |
-| **Trigger** | **PR only** (no push-to-main job)                                         |
-| **Paths**   | `modules/**`, `pyproject.toml`, `deploy/**`, strata script/workflow files |
+|             |                                                                        |
+| :---------- | :--------------------------------------------------------------------- |
+| **Trigger** | **PR only** (no push-to-main job)                                      |
+| **Paths**   | `modules/**`, `pyproject.toml`, `bin/**`, strata script/workflow files |
 
 **Not triggered by:** `.strata/**`-only changes — use local pre-commit or run `strata_check.sh` manually.
 
@@ -376,17 +409,17 @@ The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shie
 
 **Total = min(GitHub Actions + quality signals + runtime signals, 100)**
 
-| Layer             | Signal                                                                                         |           Points | Detection                                                                      |
-| :---------------- | :--------------------------------------------------------------------------------------------- | ---------------: | :----------------------------------------------------------------------------- |
-| CI platform       | GitHub Actions presence                                                                        |              +20 | `.github/workflows/*.yml` exist                                                |
-| Workflow keywords | `test`, `lint`, `deploy`, `security`, `coverage`                                               | +1 each per file | Semantic regex in workflow YAML (v2 — ignores `ubuntu-latest` false positives) |
-| Config            | Test coverage, linting, pre-commit, Dependabot, security scans, Docker, deploy scripts, Strata |          +33 max | File/config presence (same as v1)                                              |
-| **Runtime**       | Postgres CI service                                                                            |               +2 | `quality-control.yml` has `services.postgres`                                  |
-| **Runtime**       | Live DB integration tests                                                                      |               +2 | QC sets `DATABASE_URL`, runs Alembic + `deploy/test.sh`                        |
-| **Runtime**       | Codecov upload gate                                                                            |               +1 | `fail_ci_if_error: true` when `CODECOV_TOKEN` is configured                    |
-| **Runtime**       | Supply chain audit                                                                             |               +1 | `pip-audit` in `supply_chain_check.sh`                                         |
-| **Runtime**       | Scheduled quality control                                                                      |               +1 | `schedule` cron in QC workflow                                                 |
-| **Runtime**       | Strata push gate                                                                               |               +1 | `strata-check.yml` runs on push to `main`                                      |
+| Layer             | Signal                                                                                       |           Points | Detection                                                                      |
+| :---------------- | :------------------------------------------------------------------------------------------- | ---------------: | :----------------------------------------------------------------------------- |
+| CI platform       | GitHub Actions presence                                                                      |              +20 | `.github/workflows/*.yml` exist                                                |
+| Workflow keywords | `test`, `lint`, `deploy`, `security`, `coverage`                                             | +1 each per file | Semantic regex in workflow YAML (v2 — ignores `ubuntu-latest` false positives) |
+| Config            | Test coverage, linting, pre-commit, Dependabot, security scans, Docker, bin/ scripts, Strata |          +33 max | File/config presence (same as v1)                                              |
+| **Runtime**       | Postgres CI service                                                                          |               +2 | `quality-control.yml` has `services.postgres`                                  |
+| **Runtime**       | Live DB integration tests                                                                    |               +2 | QC sets `DATABASE_URL`, runs Alembic + `bin/test.sh`                           |
+| **Runtime**       | Codecov upload gate                                                                          |               +1 | `fail_ci_if_error: true` when `CODECOV_TOKEN` is configured                    |
+| **Runtime**       | Supply chain audit                                                                           |               +1 | `pip-audit` in `supply_chain_check.sh`                                         |
+| **Runtime**       | Scheduled quality control                                                                    |               +1 | `schedule` cron in QC workflow                                                 |
+| **Runtime**       | Strata push gate                                                                             |               +1 | `strata-check.yml` runs on push to `main`                                      |
 
 **Levels:** Advanced ≥ 75 · Intermediate ≥ 50 · Basic ≥ 20 · None &lt; 20
 
@@ -403,7 +436,7 @@ The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shie
 | Dependabot                                                         | +5               | —                                                                                   |
 | Security scanning workflows                                        | +5               | —                                                                                   |
 | Docker support                                                     | +3               | —                                                                                   |
-| Deploy automation (`deploy/` or `Makefile`)                        | +2               | —                                                                                   |
+| Ops automation (`bin/` or `Makefile`)                              | +2               | —                                                                                   |
 | Strata layout (`.strata/`)                                         | +3               | repo-specific bonus                                                                 |
 | **Maximum**                                                        | **100** (capped) |                                                                                     |
 
@@ -515,12 +548,12 @@ Files matching `.strata/issues/[0-9]*-*.md`:
 
 When `STRATA_STRICT_MODULES=1`:
 
-| Context               | Diff source                     | Behavior                                                                                                                 |
-| :-------------------- | :------------------------------ | :----------------------------------------------------------------------------------------------------------------------- |
-| **Local pre-commit**  | `STRATA_DIFF_SOURCE=staged`     | Staged `modules/**` or `deploy/**` must include `.strata/**`, `.agents/**`, or `.cursor/AGENTS.md` / `.cursor/CLAUDE.md` |
-| **CI (Strata Check)** | `STRATA_BASE_REF=origin/<base>` | Same rule across the PR diff vs base branch                                                                              |
+| Context               | Diff source                     | Behavior                                                                                                              |
+| :-------------------- | :------------------------------ | :-------------------------------------------------------------------------------------------------------------------- |
+| **Local pre-commit**  | `STRATA_DIFF_SOURCE=staged`     | Staged `modules/**` or `bin/**` must include `.strata/**`, `.agents/**`, or `.cursor/AGENTS.md` / `.cursor/CLAUDE.md` |
+| **CI (Strata Check)** | `STRATA_BASE_REF=origin/<base>` | Same rule across the PR diff vs base branch                                                                           |
 
-When `STRATA_CODE_REVIEW=1` (default in strict mode), changed files under `modules/**`, `deploy/**`, or `.github/scripts/**` are reviewed via [`strata_code_review.sh`](./scripts/strata_code_review.sh):
+When `STRATA_CODE_REVIEW=1` (default in strict mode), changed files under `modules/**`, `bin/**`, or `.github/scripts/**` are reviewed via [`strata_code_review.sh`](./scripts/strata_code_review.sh):
 
 | Language | Hooks (pre-commit)                           |
 | :------- | :------------------------------------------- |
@@ -563,7 +596,7 @@ Missing file → skip with success (project may not use MCP).
 | [`changelog_template.jinja`](./scripts/changelog_template.jinja)   | update_todos.py          | CHANGELOG section template                                               |
 | [`issue_template.jinja`](./scripts/issue_template.jinja)           | update_todos.py          | Per-issue CHANGELOG entry template                                       |
 
-Shared shell helpers: [`deploy/utils.sh`](../deploy/utils.sh) (`log`, `run_command`).
+Shared shell helpers: [`bin/utils.sh`](../bin/utils.sh) (`log`, `run_command`).
 
 ---
 
@@ -573,7 +606,7 @@ Before opening or marking a PR ready:
 
 ```bash
 pre-commit run --all-files
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 ```
 
 **When paths change, also run:**
@@ -588,7 +621,7 @@ pre-commit run --all-files
 **Always:**
 
 - Never commit `.env`, credentials, or real secrets
-- Pair `modules/**` / `deploy/**` edits with `.strata/` (or adapter) updates
+- Pair `modules/**` / `bin/**` edits with `.strata/` (or adapter) updates
 - Keep PR scope focused
 
 Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents/AGENTS.md#pr-checklist).
@@ -607,7 +640,7 @@ Run `/strata:save`, stage `.strata/`, `.agents/AGENTS.md`, and/or `.agents/CLAUD
 
 ### Strata Check did not run on my PR
 
-The workflow path filter excludes `.strata/**`. It runs when `modules/**`, `deploy/**`, or root `pyproject.toml` change. For memory-only edits, rely on local pre-commit or run `strata_check.sh` manually before pushing.
+The workflow path filter excludes `.strata/**`. It runs when `modules/**`, `bin/**`, or root `pyproject.toml` change. For memory-only edits, rely on local pre-commit or run `strata_check.sh` manually before pushing.
 
 ### `strata_check.sh`: base ref not available locally
 
@@ -653,19 +686,20 @@ All times **UTC**, every **Monday**:
 | Trivy Security Scan | `0 7 * * 1` | ~03:00 EDT                        |
 | Supply Chain Check  | `0 8 * * 1` | ~04:00 EDT                        |
 
-Each workflow also supports **`workflow_dispatch`** from the Actions tab.
+Each scheduled workflow also supports **`workflow_dispatch`** from the Actions tab. Bash Security is **PR-only** (not scheduled).
 
 ---
 
 ## Security tab integration
 
-| Source                          | Location                        | Format                            |
-| :------------------------------ | :------------------------------ | :-------------------------------- |
-| CodeQL                          | Security → Code scanning alerts | Native CodeQL                     |
-| Trivy                           | Security → Code scanning alerts | SARIF (`trivy-filesystem`)        |
-| Gitleaks                        | Workflow job logs               | Inline findings                   |
-| pip-audit                       | Supply Chain Check logs         | Text report with CVE descriptions |
-| pre-commit `detect-private-key` | Local / Quality Control logs    | Blocks commit/CI                  |
+| Source                             | Location                        | Format                            |
+| :--------------------------------- | :------------------------------ | :-------------------------------- |
+| CodeQL                             | Security → Code scanning alerts | Native CodeQL                     |
+| Trivy                              | Security → Code scanning alerts | SARIF (`trivy-filesystem`)        |
+| Gitleaks                           | Workflow job logs               | Inline findings                   |
+| Bash Security (ShellCheck/Semgrep) | Workflow job logs               | Inline findings (fails the job)   |
+| pip-audit                          | Supply Chain Check logs         | Text report with CVE descriptions |
+| pre-commit `detect-private-key`    | Local / Quality Control logs    | Blocks commit/CI                  |
 
 ---
 
@@ -699,5 +733,8 @@ Each workflow also supports **`workflow_dispatch`** from the Actions tab.
 | CodeQL                    | `github/codeql-action@411c4c9…` (v3 init/analyze) |
 | Trivy                     | `aquasecurity/trivy-action@a9c7b0f…` (v0.36.0)    |
 | SARIF upload              | `github/codeql-action/upload-sarif@54f647b…` (v4) |
+| ShellCheck action         | `ludeeus/action-shellcheck@00cae500…` (2.0.0)     |
+| ShellCheck binary         | `v0.11.0` (matches pre-commit)                    |
+| Semgrep image             | `semgrep/semgrep:1.128.1@sha256:fca58525…`        |
 
 Action SHAs are pinned in workflow files for supply-chain reproducibility. Bump deliberately and re-run all affected workflows.

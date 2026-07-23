@@ -13,7 +13,7 @@ usage() {
     echo "  -p: Specify project path"
 }
 
-source "${PROJECT_PATH}/deploy/utils.sh"
+source "${PROJECT_PATH}/bin/utils.sh"
 POETRY_ACTIVE="${POETRY_ACTIVE:-0}"
 VIRTUAL_ENV="${VIRTUAL_ENV:-}"
 ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV:-local}")" || exit 1

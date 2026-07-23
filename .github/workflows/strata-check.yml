@@ -6,7 +6,7 @@ on:
     paths:
       - "modules/**"
       - "pyproject.toml"
-      - "deploy/**"
+      - "bin/**"
       - ".github/scripts/**"
       - ".github/workflows/strata-check.yml"
   push:
@@ -15,7 +15,7 @@ on:
     paths:
       - "modules/**"
       - "pyproject.toml"
-      - "deploy/**"
+      - "bin/**"
       - ".github/scripts/**"
       - ".github/workflows/strata-check.yml"
   workflow_dispatch:

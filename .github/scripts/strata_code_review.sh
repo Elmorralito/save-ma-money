@@ -6,8 +6,8 @@
 set -euo pipefail
 
 PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../../deploy/utils.sh
-source "${PROJECT_PATH}/deploy/utils.sh"
+# shellcheck source=../../bin/utils.sh
+source "${PROJECT_PATH}/bin/utils.sh"
 
 cd "${PROJECT_PATH}" || exit 1
 
@@ -28,7 +28,7 @@ is_reviewable_path() {
     if [[ "${path}" == modules/* ]]; then
         [[ "${path}" == *.py ]] && return 0
     fi
-    if [[ "${path}" == deploy/* ]]; then
+    if [[ "${path}" == bin/* ]]; then
         [[ "${path}" == *.py || "${path}" == *.sh ]] && return 0
     fi
     if [[ "${path}" == .github/scripts/* ]]; then

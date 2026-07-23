@@ -14,7 +14,7 @@ dev: prep
 	$(PYTHON_CMD) install
 
 dev-version:
-	./deploy/version.sh --version $(VERSION) --mod $(MOD)
+	./bin/version.sh --version $(VERSION) --mod $(MOD)
 
 lite-dev: prep
 	$(PYTHON_CMD) lock
@@ -25,11 +25,11 @@ activate: prep
 
 # Legacy optional pooler smoke (not Auth-first / not PPT-040 AC). Prefer: make auth-smoke
 b1-smoke:
-	/bin/bash ./deploy/b1_smoke.sh
+	/bin/bash ./bin/b1_smoke.sh
 
 # Manual Supabase Auth JWT smoke against a running API (Auth-only DoD; not a DB gate).
 auth-smoke:
-	/bin/bash ./deploy/auth_smoke.sh
+	/bin/bash ./bin/auth_smoke.sh
 
 # B0 Postgres + Redis (no API). Host uvicorn uses REDIS_URL=redis://localhost:6379/0
 redis-up:
@@ -47,4 +47,4 @@ stack-down:
 
 # Redis readiness smoke against a running API (Compose or host).
 redis-smoke:
-	/bin/bash ./deploy/redis_smoke.sh
+	/bin/bash ./bin/redis_smoke.sh

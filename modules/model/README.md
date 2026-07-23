@@ -150,7 +150,7 @@ flowchart TB
 SQLModel tables on **`BaseSQLModel`**: `active`, `deleted_at`, `created_at`, `updated_at`, schema `papita_transactions`.
 
 - Enums in `model/enums.py` — `AccountKind`, `LedgerSide`, `TransactionKind`, `TransactionStatus`, `CategoryKind`
-- **Partitioning** — `transactions` uses monthly RANGE partitions (`config/transaction_partitions.py`; ops script `deploy/transaction_partitions.sh`)
+- **Partitioning** — `transactions` uses monthly RANGE partitions (`config/transaction_partitions.py`; ops script `bin/transaction_partitions.sh`)
 - **Intentional denormalizations** — e.g. `transactions.owner_id` for hot-path tenant scans; documented in schema §6
 
 ### 2. Access layer (`src/papita_txnsmodel/access/`)
@@ -352,11 +352,11 @@ Alembic targets schema `papita_transactions` on PostgreSQL. v3 seed baseline: **
 
 ```bash
 # From repository root — Docker Postgres
-/bin/bash ./deploy/alembic.sh upgrade --docker-local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
 
 # Explicit URL (local or Supabase session/direct — not transaction pooler)
-/bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
-/bin/bash ./deploy/alembic.sh downgrade --url "..."   # defaults to head^1
+/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+/bin/bash ./bin/alembic.sh downgrade --url "..."   # defaults to head^1
 ```
 
 Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
@@ -378,7 +378,7 @@ Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [
 ```bash
 # Standard gate (from repo root)
 poetry run pytest modules/model/tests
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 
 # Live-DB tenancy suite
 DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \

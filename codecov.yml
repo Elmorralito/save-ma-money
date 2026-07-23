@@ -49,7 +49,7 @@ ignore:
   - "**/.venv/**"
   - "**/node_modules/**"
   - "docs/**"
-  - "deploy/**"
+  - "bin/**"
   - "docker/**"
   - ".github/**"
   - ".strata/**"

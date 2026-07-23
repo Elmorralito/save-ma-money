@@ -21,7 +21,7 @@ make redis-up
 | ------------------------------ | ------------------------------------------------------------------ |
 | Redis image + volume           | `docker/docker-compose.yml` / `docker/database/docker-compose.yml` |
 | Server config (AOF, maxmemory) | `docker/redis/redis.conf`                                          |
-| Smoke script                   | `deploy/redis_smoke.sh`                                            |
+| Smoke script                   | `bin/redis_smoke.sh`                                               |
 
 ## B1 — Managed Redis
 

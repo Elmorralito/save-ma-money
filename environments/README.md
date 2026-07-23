@@ -24,7 +24,7 @@ export PAPITA_ENV=staging        # staging secrets / optional pooler smoke
 Deploy scripts also accept `--env <name>`:
 
 ```bash
-./deploy/alembic.sh upgrade --env local
+./bin/alembic.sh upgrade --env local
 PAPITA_ENV=local make auth-smoke     # Auth DoD (JWT → /auth/me + accounts)
 PAPITA_ENV=staging make b1-smoke     # optional pooler connectivity; not Auth DoD
 ```

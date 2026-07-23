@@ -80,13 +80,14 @@ modules/{module_name}/
 - Use docstrings for all public classes and functions.
 - Include type hints in docstrings when using complex types.
 
-### Deployment Scripts
+### Repo scripts (`bin/`)
 
-- `deploy/` directory contains deployment and utility scripts:
+- `bin/` holds developer/ops entrypoints (not CI wrappers — those live under `.github/scripts/`):
   - `alembic.sh` - Database migration management
   - `package.sh` - Package building
   - `test.sh` - Testing utilities
   - `utils.sh` - Shared shell utilities
+  - smoke helpers (`auth_smoke.sh`, `b1_smoke.sh`, `redis_smoke.sh`, …)
 
 ### Docker Support
 

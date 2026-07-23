@@ -139,8 +139,8 @@ QUALITY_SIGNALS: list[QualitySignalDef] = [
         "score": 3,
     },
     {
-        "name": "Deploy automation",
-        "patterns": ["deploy/*.sh", "Makefile", "makefile"],
+        "name": "Ops automation",
+        "patterns": ["bin/*.sh", "Makefile", "makefile"],
         "score": 2,
     },
     {
@@ -168,7 +168,7 @@ GITHUB_ACTIONS_KEYWORD_PATTERNS: dict[str, re.Pattern[str]] = {
         re.IGNORECASE,
     ),
     "deploy": re.compile(
-        r"(deploy/|deploy\.|alembic|migration-check|/deploy/)",
+        r"(bin/|deploy\.|alembic|migration-check|/bin/)",
         re.IGNORECASE,
     ),
     "security": re.compile(
@@ -193,7 +193,7 @@ RUNTIME_SIGNAL_DEFS: list[RuntimeSignalDef] = [
         "name": "Live DB integration tests",
         "score": 2,
         "file": ".github/workflows/quality-control.yml",
-        "required": ["database_url", "deploy/test.sh", "alembic"],
+        "required": ["database_url", "bin/test.sh", "alembic"],
     },
     {
         "name": "Codecov upload gate",
@@ -387,7 +387,7 @@ QUALITY_RECOMMENDATIONS: dict[str, str] = {
     "Pre-commit hooks": "Add pre-commit hooks (.pre-commit-config.yaml)",
     "Security scanning": "Add security scanning workflows (CodeQL, Trivy, or Gitleaks)",
     "Docker support": "Add Docker support (Dockerfile or docker/ directory)",
-    "Deploy automation": "Add deploy automation scripts (deploy/ or Makefile)",
+    "Ops automation": "Add ops/automation scripts (bin/ or Makefile)",
     "Strata layout": "Add Strata agent memory layout (.strata/MANIFEST.md)",
 }
 

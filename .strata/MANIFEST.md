@@ -31,7 +31,7 @@ save-ma-money/
 ├── modules/api/                   papita-txnsapi (FastAPI settings, security)
 ├── docs/design/ · docs/issues/    human design program (pre-Strata)
 ├── environments/                  PAPITA_ENV profiles (local|staging|production)
-├── deploy/ · docker/database/     migrations, local Postgres
+├── bin/ · docker/database/        migrations, local Postgres, ops entrypoints
 └── .strata/
     ├── MANIFEST.md                this contract (layout_version, routing, load order)
     ├── memory/                    HOT — loads at session start

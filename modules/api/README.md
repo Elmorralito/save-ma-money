@@ -199,7 +199,7 @@ cp environments/local/.env.example environments/local/.env
 export PAPITA_ENV=local
 
 # Migrate database
-/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
 # Docs: http://localhost:8000/api/docs
@@ -231,7 +231,7 @@ Database-only (no API): `docker compose --env-file environments/local/.env -f do
 ```bash
 # From repository root
 docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
-/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 export PAPITA_ENV=local
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
@@ -246,7 +246,7 @@ If you use a transaction pooler (including Supabase PG), copy [`environments/sta
 
 ```bash
 # Migrate on direct URL (never transaction pooler)
-PAPITA_ENV=staging /bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
+PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
 
 # Optional pooler connectivity smoke (not an epic gate after PPT-039 Auth reissue)
 PAPITA_ENV=staging make b1-smoke
@@ -260,11 +260,11 @@ Pooler modes: [PPT-031-C §2.2](../../docs/issues/README.md#part-ii--ppt-031-c-s
 
 **Platform rule (Auth-first):** Supabase owns **users / Auth / tokens only**. Application data lives in Docker Postgres (B0) or any app Postgres URL — **not** Supabase-hosted storage. See [PPT-039 reissue](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) and epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42).
 
-| Gate                       | How to run                                                                               | Notes                                                                                                                |
-| :------------------------- | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------- |
-| **B0** (Docker Postgres)   | `export DATABASE_URL=…` then `poetry run pytest modules/api/tests` or `./deploy/test.sh` | **Required** in CI (`quality-control.yml`). Uses `AUTH_PROVIDER=local`.                                              |
-| **Supabase Auth** (manual) | Run API with `AUTH_PROVIDER=supabase` + `SUPABASE_*`, then `make auth-smoke`             | Validates JWT → `/auth/me` (+ optional accounts). Not a DB gate.                                                     |
-| Legacy pooler smoke        | `make b1-smoke` / `test_supabase_b1_smoke.py`                                            | **Parked / optional ops only** if someone hosts app PG behind a pooler. Not an epic or PPT-040 acceptance criterion. |
+| Gate                       | How to run                                                                            | Notes                                                                                                                |
+| :------------------------- | :------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------- |
+| **B0** (Docker Postgres)   | `export DATABASE_URL=…` then `poetry run pytest modules/api/tests` or `./bin/test.sh` | **Required** in CI (`quality-control.yml`). Uses `AUTH_PROVIDER=local`.                                              |
+| **Supabase Auth** (manual) | Run API with `AUTH_PROVIDER=supabase` + `SUPABASE_*`, then `make auth-smoke`          | Validates JWT → `/auth/me` (+ optional accounts). Not a DB gate.                                                     |
+| Legacy pooler smoke        | `make b1-smoke` / `test_supabase_b1_smoke.py`                                         | **Parked / optional ops only** if someone hosts app PG behind a pooler. Not an epic or PPT-040 acceptance criterion. |
 
 Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `test_accounts_categories_live_db.py`, `test_transactions_movements_live_db.py`, `test_reports_live_db.py`. Coverage is collected from `modules/api/src` and `modules/model/src` (Codecov `docs/coverage.xml`).
 

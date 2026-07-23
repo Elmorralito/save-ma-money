@@ -11,7 +11,7 @@ MESSAGE=
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
 DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
-source "${PROJECT_PATH}/deploy/utils.sh"
+source "${PROJECT_PATH}/bin/utils.sh"
 
 usage() {
     USAGE="$(cat <<EOM

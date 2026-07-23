@@ -61,7 +61,7 @@ save-ma-money/
 │           ├── routers/v1/     # health, auth, accounts, categories, transactions, movements
 │           ├── schemas/        # request/response, query_params, converters
 │           └── middleware/
-├── deploy/                     # alembic.sh, test.sh, utils.sh
+├── bin/                     # alembic.sh, test.sh, utils.sh
 ├── docker/database/            # local Postgres 15 Compose
 ├── docs/design/ · docs/issues/ # human design program (PPT-031)
 ├── .cursor/                    # canonical agent adapters + gen-custom rules
@@ -127,7 +127,7 @@ poetry install --no-interaction
 # Full local gate (mirrors CI quality-control)
 pre-commit run --all-files
 poetry run pytest
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 
 # Supply chain (poetry check, version metadata, pip-audit)
 /bin/bash .github/scripts/supply_chain_check.sh
@@ -146,17 +146,17 @@ Coverage output: `docs/coverage.xml` from `--cov=modules/{model,api}/src` (Codec
 
 ## Migrations
 
-Alembic lives under `modules/model/`. Use the deploy wrapper:
+Alembic lives under `modules/model/`. Use the `bin/` wrapper:
 
 ```bash
 # Docker Postgres (local)
-/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 # Explicit URL
-/bin/bash ./deploy/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 
 # B1 Supabase: always use the direct migrations URL (never transaction pooler :6543)
-PAPITA_ENV=staging /bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
+PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
 ```
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
@@ -213,7 +213,7 @@ Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and tro
 
 **Agent-critical:**
 
-- **Strata strict mode** — `modules/**` or `deploy/**` changes require matching `.strata/` (or `.agents/AGENTS.md` / `.agents/CLAUDE.md`, which symlink here) updates. Run `/strata:save` before pushing; if `strata-validate` fails locally, restage memory files and recommit.
+- **Strata strict mode** — `modules/**` or `bin/**` changes require matching `.strata/` (or `.agents/AGENTS.md` / `.agents/CLAUDE.md`, which symlink here) updates. Run `/strata:save` before pushing; if `strata-validate` fails locally, restage memory files and recommit.
 - **Local-only hooks** — `strata-validate` and `mcp-config-validate` run on `git commit`; CI skips them (`strata-check.yml` enforces Strata on PRs instead).
 
 ---
@@ -223,9 +223,9 @@ Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and tro
 Before opening or marking ready for review (commands in [`.github/CI.md`](../.github/CI.md#pr-checklist)):
 
 1. `pre-commit run --all-files`
-2. `poetry run pytest` (or `./deploy/test.sh`)
+2. `poetry run pytest` (or `./bin/test.sh`)
 3. If dependencies changed: `.github/scripts/supply_chain_check.sh`
-4. If model/schema changed: migration + `./deploy/alembic.sh` locally
+4. If model/schema changed: migration + `./bin/alembic.sh` locally
 5. If architecture/decisions/backlog shifted: `/strata:capture` during work, `/strata:save` at end
 6. No secrets, `.env` files, or credentials in the diff
 7. Keep scope focused — avoid drive-by refactors

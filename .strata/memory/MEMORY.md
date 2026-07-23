@@ -16,5 +16,5 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 | ----------------------------------------------------------- | ------------------------------------------------------------------ |
 | Change auth, register, login, users passwords, or JWT issue | [supabase-auth-ownership.md](learnings/supabase-auth-ownership.md) |
 | Commit under `modules/api/src`                              | [api-pre-commit-lint.md](learnings/api-pre-commit-lint.md)         |
-| Commit when `modules/` or `deploy/` changed                 | [strata-strict-pairing.md](learnings/strata-strict-pairing.md)     |
+| Commit when `modules/` or `bin/` changed                    | [strata-strict-pairing.md](learnings/strata-strict-pairing.md)     |
 | Wire `/reports/*` or ReportService                          | [report-tenant-scoping.md](learnings/report-tenant-scoping.md)     |

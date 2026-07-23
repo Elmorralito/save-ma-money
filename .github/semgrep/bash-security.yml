@@ -1,0 +1,46 @@
+# High-signal Bash security rules for standalone .sh files.
+# Complements ShellCheck (injection / quoting) and does not replace Gitleaks / Trivy / CodeQL.
+rules:
+  - id: bash.curl-pipe-shell
+    languages: [bash]
+    severity: ERROR
+    message: Piping curl/wget into a shell executes remote content. Prefer checksummed downloads or reviewed installers.
+    patterns:
+      - pattern-either:
+          - pattern: curl ... | bash
+          - pattern: curl ... | sh
+          - pattern: wget ... | bash
+          - pattern: wget ... | sh
+          - pattern: curl ... | sudo bash
+          - pattern: curl ... | sudo sh
+
+  - id: bash.eval-expansion
+    languages: [bash]
+    severity: ERROR
+    message: eval with expansions can execute attacker-controlled input. Prefer arrays or explicit argument lists.
+    patterns:
+      - pattern-either:
+          - pattern: eval $...
+          - pattern: eval "$..."
+          - pattern: eval `...`
+
+  - id: bash.chmod-world-writable
+    languages: [bash]
+    severity: ERROR
+    message: World-writable permissions (chmod 777 / a+rwx) widen local privilege abuse.
+    patterns:
+      - pattern-either:
+          - pattern: chmod 777 ...
+          - pattern: chmod -R 777 ...
+          - pattern: chmod a+rwx ...
+
+  - id: bash.unquoted-command-substitution-in-eval-like
+    languages: [bash]
+    severity: WARNING
+    message: Unquoted command substitution near shell execution is a common injection footgun.
+    patterns:
+      - pattern-either:
+          - pattern: bash -c $...
+          - pattern: sh -c $...
+          - pattern: bash -c $($...)
+          - pattern: sh -c $($...)

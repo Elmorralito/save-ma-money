@@ -7,8 +7,8 @@ set -euo pipefail
 
 PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../deploy/utils.sh
-source "${PROJECT_PATH}/deploy/utils.sh"
+# shellcheck source=../../bin/utils.sh
+source "${PROJECT_PATH}/bin/utils.sh"
 
 cd "${PROJECT_PATH}" || exit 1
 
@@ -185,7 +185,7 @@ if [[ "${STRICT_MODULES}" == "1" ]]; then
                 strata_changed=true
             elif [[ "${path}" == "pyproject.toml" ]] || [[ "${path}" =~ ^modules/[^/]+/pyproject\.toml$ ]]; then
                 : # dependency manifest-only edits (e.g. Dependabot) do not require memory updates
-            elif [[ "${path}" == modules/* ]] || [[ "${path}" == deploy/* ]]; then
+            elif [[ "${path}" == modules/* ]] || [[ "${path}" == bin/* ]]; then
                 needs_strata_pairing=true
             fi
         done <<< "${changed_files}"

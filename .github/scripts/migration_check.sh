@@ -2,8 +2,8 @@
 # shellcheck disable=SC1090,SC1091
 
 PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../../deploy/utils.sh
-source "${PROJECT_PATH}/deploy/utils.sh"
+# shellcheck source=../../bin/utils.sh
+source "${PROJECT_PATH}/bin/utils.sh"
 
 ALEMBIC_INI="${PROJECT_PATH}/modules/model/alembic.ini"
 ALEMBIC_CMD="cd ${PROJECT_PATH} && poetry run alembic -c ${ALEMBIC_INI}"
