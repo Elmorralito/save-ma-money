@@ -42,6 +42,38 @@ def _accounts_client_with_owner(owner=None) -> tuple[TestClient, object, MagicMo
     return TestClient(app), owner, mock_service
 
 
+class TestProtectedRouteCoverage:
+    """Logout/me/budgets participate in rate-limit coverage (PPT-044 L1)."""
+
+    def test_me_counts_toward_tenant_api_limit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _enable_api_limits(monkeypatch, per_minute=2)
+        app = create_app()
+        owner = make_user()
+        app.dependency_overrides[get_current_owner] = lambda: owner
+        client = TestClient(app)
+        assert client.get("/api/v1/auth/me").status_code == 200
+        assert client.get("/api/v1/auth/me").status_code == 200
+        blocked = client.get("/api/v1/auth/me")
+        assert blocked.status_code == 429
+        app.dependency_overrides.clear()
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+    def test_budgets_counts_toward_tenant_api_limit(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        _enable_api_limits(monkeypatch, per_minute=2)
+        app = create_app()
+        owner = make_user()
+        app.dependency_overrides[get_current_owner] = lambda: owner
+        client = TestClient(app)
+        assert client.get("/api/v1/budgets").status_code == 501
+        assert client.get("/api/v1/budgets").status_code == 501
+        blocked = client.get("/api/v1/budgets")
+        assert blocked.status_code == 429
+        app.dependency_overrides.clear()
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+
 class TestApiTierHelpers:
     """Unit tests for tier resolution and limits."""
 

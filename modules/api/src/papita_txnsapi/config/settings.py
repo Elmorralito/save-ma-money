@@ -114,10 +114,11 @@ class Settings(BaseSettings):
         SUPABASE_ANON_KEY: Optional anon key for register/login pass-through.
         SUPABASE_JWT_AUDIENCE: Expected ``aud`` claim (default ``authenticated``).
         ALLOWED_ORIGINS: CORS allowed origins list (``*`` only when ``DEBUG=true``).
-        ALLOWED_HOSTS: TrustedHost allowlist when ``DEBUG=false`` (empty disables middleware).
+        ALLOWED_HOSTS: TrustedHost allowlist; required (non-empty) when ``DEBUG=false``.
         DOCS_ENABLED: Expose ``/api/docs``, ``/api/redoc``, and ``/api/openapi.json``.
         FALLBACK_ACTION: Behavior when optional model fallbacks trigger.
         AUTH_RATE_LIMIT_ENABLED: Toggle per-IP auth endpoint rate limiting (B0).
+        AUTH_RATE_LIMIT_FAIL_CLOSED: When Redis auth limits error, deny (``True``) or allow.
         AUTH_RATE_LIMIT_WINDOW_SECONDS: Sliding window length for auth limits.
         AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: Max login attempts per window per IP.
         AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: Max register attempts per window per IP.
@@ -180,6 +181,7 @@ class Settings(BaseSettings):
 
     # Auth hardening — per-IP sliding window (Redis when REDIS_RATE_LIMIT_ENABLED)
     AUTH_RATE_LIMIT_ENABLED: bool = True
+    AUTH_RATE_LIMIT_FAIL_CLOSED: bool = False
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
     AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
     AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: int = 5
@@ -336,6 +338,8 @@ class Settings(BaseSettings):
             raise ValueError("REDIS_URL is required when REDIS_ENABLED=true")
         if not self.DEBUG and "*" in self.ALLOWED_ORIGINS:
             raise ValueError("ALLOWED_ORIGINS cannot include '*' when DEBUG=false (CORS credentials)")
+        if not self.DEBUG and not [host for host in self.ALLOWED_HOSTS if str(host).strip()]:
+            raise ValueError("ALLOWED_HOSTS must be non-empty when DEBUG=false (TrustedHost)")
         if self.AUTH_PROVIDER == "local" and len(self.JWT_SECRET_KEY.strip()) < JWT_SECRET_MIN_LENGTH:
             raise ValueError(
                 f"JWT_SECRET_KEY must be at least {JWT_SECRET_MIN_LENGTH} characters when AUTH_PROVIDER=local"

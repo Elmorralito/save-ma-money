@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 
 import pandas as pd
 from sqlmodel import Session, select
@@ -23,14 +24,39 @@ class AccountBalancesRepository(metaclass=MetaSingleton):
         owner: UsersDTO,
         _db_session: Session,
         account_id: uuid.UUID | None = None,
+        account_ids: Sequence[uuid.UUID] | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Return balance rows for an owner, optionally filtered by account."""
+        """Return balance rows for an owner, optionally filtered by account(s).
+
+        Args:
+            owner: Tenant owner whose balances are queried.
+            _db_session: Database session (injected by connector).
+            account_id: Optional single account filter.
+            account_ids: Optional page-scoped account ID filter (``IN``). When an
+                empty sequence is provided, returns an empty DataFrame without
+                querying. Mutually exclusive with ``account_id``.
+            **kwargs: Unused; accepted for decorator/call compatibility.
+
+        Returns:
+            DataFrame of balance rows, or empty on no match / query failure.
+
+        Raises:
+            TypeError: If ``_db_session`` is not a SQLModel ``Session``.
+            ValueError: If both ``account_id`` and ``account_ids`` are provided.
+        """
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
+        if account_id is not None and account_ids is not None:
+            raise ValueError("Provide account_id or account_ids, not both.")
 
         statement = select(AccountBalances).where(AccountBalances.owner_id == owner.id)
-        if account_id is not None:
+        if account_ids is not None:
+            ids = list(account_ids)
+            if not ids:
+                return pd.DataFrame([])
+            statement = statement.where(AccountBalances.account_id.in_(ids))
+        elif account_id is not None:
             statement = statement.where(AccountBalances.account_id == account_id)
 
         try:

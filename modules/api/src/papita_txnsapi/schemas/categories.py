@@ -13,6 +13,7 @@ from datetime import datetime
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
+from papita_txnsapi.config.settings import MAX_DESCRIPTION_LENGTH
 from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_category_kind
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 
@@ -43,8 +44,10 @@ class CategoryCreate(BaseModel):
         color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str = Field(min_length=1, max_length=255)
-    description: str = ""
+    description: str = Field(default="", max_length=MAX_DESCRIPTION_LENGTH)
     category_type: str
     parent_id: uuid.UUID | None = None
     icon: str | None = Field(default=None, max_length=64)
@@ -85,8 +88,10 @@ class CategoryUpdate(BaseModel):
         is_active: Soft-active flag; maps to DTO ``active``.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     category_type: str | None = None
     parent_id: uuid.UUID | None = None
     icon: str | None = Field(default=None, max_length=64)

@@ -137,7 +137,7 @@ def list_categories(  # pylint: disable=too-many-positional-arguments,too-many-l
     }
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.CATEGORIES, "categories:list", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -145,6 +145,7 @@ def list_categories(  # pylint: disable=too-many-positional-arguments,too-many-l
             return PaginatedResponse[CategoryResponse].model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     kind = parse_category_kind(category_type) if category_type is not None else None
     payload: PaginatedResponse[CategoryResponse]
@@ -202,6 +203,7 @@ def list_categories(  # pylint: disable=too-many-positional-arguments,too-many-l
             cache_params,
             value=payload.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.CATEGORIES),
+            version=cache_version,
         )
     return payload
 

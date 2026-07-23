@@ -41,6 +41,7 @@ from papita_txnsapi.dependencies.rate_limit import (
     enforce_auth_login_rate_limit,
     enforce_auth_oauth_rate_limit,
     enforce_auth_register_rate_limit,
+    enforce_tenant_api_rate_limit,
 )
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsapi.dependencies.session_store import get_session_store
@@ -837,22 +838,26 @@ def complete_sso(
 @router.get("/me", response_model=UserResponse)
 def get_current_user(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    _rate_limit: Annotated[None, Depends(enforce_tenant_api_rate_limit)],
 ) -> UserResponse:
     """Return the authenticated user profile (protected route smoke test).
 
     Uses ``get_current_owner``, which verifies the bearer JWT and may refresh
     Auth-linked profile fields under Supabase mode. When Redis is required,
-    revoked tokens are rejected (denylist fail-closed).
+    revoked tokens are rejected (denylist fail-closed). Tenant API rate limits
+    apply (same Free/Pro/Enterprise quotas as other protected routers).
 
     Args:
         owner: Authenticated tenant user resolved from the bearer JWT.
+        _rate_limit: Tenant API rate-limit dependency (side effect only).
 
     Returns:
         Public ``UserResponse`` for the current session user (never includes password).
 
     Raises:
-        HTTPException: 401 when credentials are missing/invalid/revoked; 503 when
-            the Redis denylist is required but unavailable.
+        HTTPException: 401 when credentials are missing/invalid/revoked; 429 when
+            the tenant API quota is exceeded; 503 when the Redis denylist is
+            required but unavailable.
     """
     return UserResponse.from_dto(owner)
 
@@ -917,6 +922,7 @@ def logout(
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)],
     session_store: Annotated[SessionStore, Depends(get_session_store)],
+    _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
 ) -> Response | JSONResponse:
     """Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.
 
@@ -926,12 +932,14 @@ def logout(
       and returns 204; otherwise returns HTTP 501 (no refresh/session store).
 
     Access token may be supplied in the JSON body or as ``Authorization: Bearer``.
+    Per-IP OAuth/auth rate limits apply (logout may run before tenant context).
 
     Args:
         body: Refresh token (required for Supabase) and optional access token.
         settings: Application settings selecting Auth provider.
         credentials: Optional bearer credentials for the access JWT.
         session_store: Redis-backed JWT denylist (no-op when Redis disabled).
+        _rate_limit: Per-IP auth rate-limit dependency (side effect only).
 
     Returns:
         Empty 204 response on success, or deferred JSON with status 501 in local
@@ -939,7 +947,7 @@ def logout(
 
     Raises:
         HTTPException: 400 when access token missing; 401 on Auth errors;
-            503 when Auth misconfigured.
+            429 when the per-IP auth limit is exceeded; 503 when Auth misconfigured.
     """
     access_token = (body.access_token or "").strip() or (
         credentials.credentials.strip() if credentials and credentials.credentials else ""

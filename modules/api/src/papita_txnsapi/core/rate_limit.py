@@ -3,15 +3,19 @@
 Thread-safe in-memory limiter for single-process deployments, plus a Redis-backed
 limiter for multi-replica consistency when ``REDIS_RATE_LIMIT_ENABLED`` is set.
 The Redis path uses a single Lua script so prune/check/incr cannot race under load.
-Cache and rate-limit paths **fail open** on Redis errors; JWT denylist uses a
-separate fail-closed policy when Redis is required (see :mod:`session_store`).
+Cache and tenant API rate-limit paths **fail open** on Redis errors by default.
+Auth IP limits may optionally **fail closed** via ``AUTH_RATE_LIMIT_FAIL_CLOSED``.
+JWT denylist uses a separate fail-closed policy when Redis is required
+(see :mod:`session_store`). In-memory limits are per-process — enable Redis
+rate limits for multi-worker / multi-replica deployments.
 
 Key exports:
     RateLimitResult: Immutable outcome of a limit check.
     InMemoryRateLimiter: Process-wide singleton limiter (``MetaSingleton``).
     RedisRateLimiter: Distributed sliding-window limiter via atomic Lua + ZSET.
+    bind_rate_limiters: Attach cached Redis limiters to ``app.state`` at lifespan.
     get_rate_limiter: Accessor for the shared in-memory limiter instance.
-    get_rate_limiter_for_request: Factory selecting Redis vs in-memory.
+    get_rate_limiter_for_request: Factory selecting Redis vs in-memory (app-state cache).
 """
 
 from __future__ import annotations
@@ -158,12 +162,13 @@ class InMemoryRateLimiter(metaclass=MetaSingleton):
 class RedisRateLimiter:
     """Distributed sliding-window limiter using an atomic Lua script over a ZSET.
 
-    Fail-open on Redis errors (allow the request and log) so auth/API traffic is not
-    fully blocked by a cache blip. Prefer healthy Redis + readiness probes in prod.
+    By default fails open on Redis errors (allow + log). Pass ``fail_closed=True``
+    for auth IP limits when ``AUTH_RATE_LIMIT_FAIL_CLOSED`` is enabled.
     """
 
-    def __init__(self, client: Redis) -> None:
+    def __init__(self, client: Redis, *, fail_closed: bool = False) -> None:
         self._client = client
+        self._fail_closed = fail_closed
         # Prefer EVALSHA via register_script; fall back to EVAL for clients that
         # support Lua but not SCRIPT LOAD (e.g. some FakeRedis builds).
         self._script = client.register_script(_RATE_LIMIT_LUA)
@@ -239,7 +244,15 @@ class RedisRateLimiter:
                 reset_at=max(int(epoch_now) + 1, reset_at),
             )
         except RedisError:
-            # Fail open for rate limits (availability over strict throttling).
+            if self._fail_closed:
+                logger.exception("Redis rate limit check failed; failing closed for key scope")
+                return RateLimitResult(
+                    allowed=False,
+                    limit=limit,
+                    remaining=0,
+                    reset_at=int(epoch_now) + window_seconds,
+                )
+            # Fail open by default (availability over strict throttling).
             logger.exception("Redis rate limit check failed; failing open for key scope")
             return RateLimitResult(
                 allowed=True,
@@ -258,12 +271,46 @@ def get_rate_limiter() -> InMemoryRateLimiter:
     return InMemoryRateLimiter()
 
 
-def get_rate_limiter_for_request(request: Request, settings: Settings) -> RateLimiter:
-    """Select Redis or in-memory limiter based on settings and app state.
+def bind_rate_limiters(app: object, settings: Settings) -> None:
+    """Attach process-scoped Redis rate limiters to ``app.state`` when enabled.
+
+    Caches one fail-open limiter (tenant/health) and one fail-closed limiter
+    (optional auth IP policy) so each request reuses the registered Lua script
+    instead of constructing a new ``RedisRateLimiter``.
 
     Args:
-        request: Incoming request (reads ``app.state.redis``).
+        app: FastAPI application (expects ``app.state.redis``).
         settings: Application settings with Redis rate-limit flags.
+    """
+    state = getattr(app, "state", None)
+    if state is None:
+        return
+    state.rate_limiter = None
+    state.rate_limiter_fail_closed = None
+    if not (settings.REDIS_ENABLED and settings.REDIS_RATE_LIMIT_ENABLED):
+        return
+    client = getattr(state, "redis", None)
+    if not isinstance(client, Redis):
+        return
+    state.rate_limiter = RedisRateLimiter(client, fail_closed=False)
+    state.rate_limiter_fail_closed = RedisRateLimiter(client, fail_closed=True)
+
+
+def get_rate_limiter_for_request(
+    request: Request,
+    settings: Settings,
+    *,
+    fail_closed: bool = False,
+) -> RateLimiter:
+    """Select Redis or in-memory limiter based on settings and app state.
+
+    Prefer limiters bound on ``app.state`` (lifespan). Lazily bind when Redis is
+    present but lifespan has not attached limiters yet (common in unit tests).
+
+    Args:
+        request: Incoming request (reads ``app.state.redis`` / cached limiters).
+        settings: Application settings with Redis rate-limit flags.
+        fail_closed: When using Redis, deny on Redis errors instead of allowing.
 
     Returns:
         ``RedisRateLimiter`` when enabled and a client is available; otherwise
@@ -272,5 +319,11 @@ def get_rate_limiter_for_request(request: Request, settings: Settings) -> RateLi
     if settings.REDIS_ENABLED and settings.REDIS_RATE_LIMIT_ENABLED:
         client = getattr(request.app.state, "redis", None)
         if isinstance(client, Redis):
-            return RedisRateLimiter(client)
+            attr = "rate_limiter_fail_closed" if fail_closed else "rate_limiter"
+            cached = getattr(request.app.state, attr, None)
+            if isinstance(cached, RedisRateLimiter):
+                return cached
+            limiter = RedisRateLimiter(client, fail_closed=fail_closed)
+            setattr(request.app.state, attr, limiter)
+            return limiter
     return get_rate_limiter()

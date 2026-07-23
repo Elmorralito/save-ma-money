@@ -13,6 +13,7 @@ from datetime import date, datetime
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
+from papita_txnsapi.config.settings import MAX_DESCRIPTION_LENGTH
 from papita_txnsapi.schemas.accounts import paginate_dataframe
 from papita_txnsapi.schemas.converters import enum_to_api_slug
 from papita_txnsapi.schemas.transactions import _parse_transaction_date, _relation_uuid, transactions_from_dataframe
@@ -24,11 +25,13 @@ from papita_txnsmodel.model.enums import TransactionKind
 class MovementCreate(BaseModel):
     """Request body for ``POST /movements``."""
 
+    model_config = ConfigDict(extra="forbid")
+
     source_account_id: uuid.UUID
     destination_account_id: uuid.UUID
     amount: float = Field(gt=0)
     currency: str = Field(min_length=3, max_length=3)
-    description: str = ""
+    description: str = Field(default="", max_length=MAX_DESCRIPTION_LENGTH)
     movement_date: date | datetime
     scheduled: bool = False
 
@@ -49,11 +52,13 @@ class MovementCreate(BaseModel):
 class MovementUpdate(BaseModel):
     """Request body for ``PUT /movements/{movement_id}`` (PENDING only)."""
 
+    model_config = ConfigDict(extra="forbid")
+
     source_account_id: uuid.UUID | None = None
     destination_account_id: uuid.UUID | None = None
     amount: float | None = Field(default=None, gt=0)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     movement_date: date | datetime | None = None
 
     def apply_to(self, existing: TransactionsDTO) -> TransactionsDTO:

@@ -122,40 +122,23 @@ class ReportService(BaseModel):
         account_id: uuid.UUID | None = None,
         **kwargs,
     ) -> dict[str, Any]:
-        """Spending breakdown for completed expenses plus separate income totals."""
+        """Spending breakdown for completed expenses plus separate income totals.
+
+        Aggregates in SQL via ``TransactionsService.aggregate_spending`` so report
+        cache misses do not load the full window into pandas.
+        """
         owner = self._require_owner(owner)
         self._ensure_account_owned(owner=owner, account_id=account_id)
-        frame = self._load_transactions(
+        if self.transactions_service is None:
+            raise RuntimeError("transactions_service is not configured.")
+        return self.transactions_service.aggregate_spending(
             owner=owner,
             start_date=start_date,
             end_date=end_date,
             account_id=account_id,
+            group_by=group_by,
             **kwargs,
         )
-        if frame.empty:
-            return {"expenses": [], "income_total": 0.0, "expense_total": 0.0}
-
-        completed = frame[frame["status"] == TransactionStatus.COMPLETED.value]
-        expenses = completed[completed["transaction_kind"] == TransactionKind.EXPENSE.value]
-        income = completed[completed["transaction_kind"] == TransactionKind.INCOME.value]
-
-        group_column = "category_id" if group_by == "category" else "from_account_id"
-        grouped = (
-            expenses.groupby(group_column, dropna=False)["amount"]
-            .sum()
-            .reset_index()
-            .rename(columns={"amount": "total"})
-            .to_dict(orient="records")
-            if not expenses.empty
-            else []
-        )
-
-        return {
-            "group_by": group_by,
-            "expenses": grouped,
-            "expense_total": float(expenses["amount"].sum()) if not expenses.empty else 0.0,
-            "income_total": float(income["amount"].sum()) if not income.empty else 0.0,
-        }
 
     @staticmethod
     def _completed_cash_flow_totals(

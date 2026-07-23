@@ -195,5 +195,5 @@ class TestReportsLiveDb:
             headers=headers_b,
             params={**_PERIOD, "account_id": account_id},
         )
-        assert cross.status_code == 400
+        assert cross.status_code == 404
         assert "tenant" in cross.json()["detail"].lower()

@@ -202,10 +202,37 @@ export PAPITA_ENV=local
 /bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
-# Docs: http://localhost:8000/api/docs
+# Docs (requires DEBUG=true or DOCS_ENABLED=true): http://localhost:8000/api/docs
 # OpenAPI: http://localhost:8000/api/openapi.json
 # Health: http://localhost:8000/api/v1/health/ready
+#
+# PPT-044 security defaults: ALLOWED_ORIGINS must not be ["*"] when DEBUG=false;
+# TrustedHost uses ALLOWED_HOSTS when DEBUG=false; set reverse-proxy/uvicorn body limits
+# (e.g. --limit-max-request-size) for bulk/upload protection.
+#
+# Client contract probe (no auth): GET /api/v1/meta/client-contract
 ```
+
+### PPT-044 client migration (breaking wire changes)
+
+Secure defaults are intentional. Harden client adoption with **discovery**, **stable error codes**, and **temporary compat flags** (never by re-enabling `CORS *` or public docs in production).
+
+| Change                       | Secure default                            | Client action                                            | Temporary compat                                                           |
+| ---------------------------- | ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Reports foreign `account_id` | HTTP **404**                              | Treat like CRUD not-found                                | `API_COMPAT_LEGACY_REPORT_ACCOUNT_400=true` → 400 + `Deprecation`/`Sunset` |
+| Cash-flow `refresh_balances` | Default **false** when omitted            | Pass `refresh_balances=true` when MV refresh is required | `API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE=true`                     |
+| Bulk create size             | Max **100** (`API_BULK_MAX_TRANSACTIONS`) | Chunk batches; read `X-Papita-Bulk-Max`                  | Raise setting up to 500 only during migration                              |
+| Report window                | Max **366** days                          | Clamp date range; read `X-Papita-Report-Window-Max-Days` | Tune `API_REPORT_WINDOW_MAX_DAYS`                                          |
+| OpenAPI / docs               | Off unless `DEBUG` or `DOCS_ENABLED`      | Export OpenAPI in CI; enable docs only in non-prod       | N/A (do not weaken prod)                                                   |
+| CORS `*`                     | Rejected when `DEBUG=false`               | Explicit origin allowlist                                | N/A (do not weaken prod)                                                   |
+
+**Discovery**
+
+- `GET /api/v1/meta/client-contract` — public JSON checklist, effective limits, compat flags, error codes
+- Every `/api/v1/*` response includes `X-Papita-Breaking-Changes: ppt-044` plus limit/status headers
+- Failures may include `X-Papita-Error-Code` (`report_account_not_found`, `bulk_too_large`, `report_window_too_large`, `extra_fields_forbidden`, …)
+
+Compat flags emit `Deprecation: true` and `Sunset: 2026-10-01`. Remove them before sunset.
 
 ### B0 — Docker Compose (API + Postgres)
 
@@ -1718,9 +1745,16 @@ caching/denylist; unit tests remain green without Redis.
 **Key prefix:** all Redis keys are `papita:{PAPITA_ENV}:…` so local/staging/production
 do not collide on shared Redis.
 
-**Fail policy:** cache and rate limits **fail open** (miss / allow) on Redis errors.
+**Fail policy:** cache and tenant API rate limits **fail open** (miss / allow) on
+Redis errors. Auth IP limits default to fail-open too; set
+`AUTH_RATE_LIMIT_FAIL_CLOSED=true` to deny when Redis rate-limit checks error.
 JWT denylist **fails closed** when Redis is required (`REDIS_ENABLED=true`): Redis
 errors → HTTP 503 on protected routes so a blip cannot resurrect a revoked token.
+
+**Multi-worker:** in-memory rate limits are per process. For multi-replica or
+multi-worker uvicorn, set `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true`
+so counters are shared. Staging/production also require non-empty `ALLOWED_HOSTS`
+(`DEBUG=false`) so TrustedHost middleware is always active.
 
 **Client model:** sync `redis` via lifespan; fine while most handlers are sync
 (threadpool). Prefer `redis.asyncio` when more routes are async-heavy.

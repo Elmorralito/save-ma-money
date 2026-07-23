@@ -1,11 +1,13 @@
-"""Rate-limit dependencies for auth (per-IP) and tenant API tiers (PPT-043).
+"""Rate-limit dependencies for auth (per-IP), health probes, and tenant API tiers.
 
 Auth endpoints use a per-IP sliding window. Protected CRUD/report routes use
 tenant-scoped Free/Pro/Enterprise quotas (minute + day windows) with Redis when
-``REDIS_RATE_LIMIT_ENABLED`` is on.
+``REDIS_RATE_LIMIT_ENABLED`` is on. DB-touching health probes use a separate
+per-IP window (PPT-044); ``/health/live`` stays unlimited.
 
 Key exports:
     enforce_auth_login_rate_limit / register / oauth: Auth IP guards.
+    enforce_health_rate_limit: Per-IP guard for DB/Auth/Redis-touching probes.
     enforce_tenant_api_rate_limit: Tenant API tier guard for protected routers.
 """
 
@@ -72,7 +74,11 @@ def _enforce_rate_limit(request: Request, settings: Settings, *, scope: str, lim
         return
 
     key = f"{scope}:{_client_ip(request)}"
-    result = get_rate_limiter_for_request(request, settings).check(
+    result = get_rate_limiter_for_request(
+        request,
+        settings,
+        fail_closed=settings.AUTH_RATE_LIMIT_FAIL_CLOSED,
+    ).check(
         key,
         limit=limit,
         window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
@@ -147,6 +153,40 @@ def enforce_auth_oauth_rate_limit(
         scope="auth-oauth",
         limit=settings.AUTH_OAUTH_RATE_LIMIT_PER_MINUTE,
     )
+
+
+def enforce_health_rate_limit(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> None:
+    """Enforce per-IP rate limits on DB/Auth/Redis-touching health probes.
+
+    Does not apply to ``GET /health/live`` (process liveness stays cheap).
+
+    Args:
+        request: Incoming health probe request.
+        settings: Injected API settings with health limit configuration.
+
+    Raises:
+        HTTPException: 429 when attempts exceed ``HEALTH_RATE_LIMIT_PER_MINUTE``.
+    """
+    if not settings.HEALTH_RATE_LIMIT_ENABLED:
+        return
+
+    key = f"health-probe:{_client_ip(request)}"
+    result = get_rate_limiter_for_request(request, settings).check(
+        key,
+        limit=settings.HEALTH_RATE_LIMIT_PER_MINUTE,
+        window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    )
+    headers = _rate_limit_headers(result)
+    request.state.rate_limit_headers = headers
+    if not result.allowed:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many health probe requests. Try again later.",
+            headers={**headers, "Retry-After": str(max(1, result.reset_at - int(time.time())))},
+        )
 
 
 def _merge_limit_headers(minute: RateLimitResult, day: RateLimitResult) -> dict[str, str]:

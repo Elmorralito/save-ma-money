@@ -6,45 +6,54 @@
 
 API-wide post-MVP hardening for `papita-txnsapi`. Full tasks, caveats, and acceptance: [#89](https://github.com/Elmorralito/save-ma-money/issues/89).
 
-**Last review:** 2026-07-13 — validated against live code; title uses official Conventional Commit type **`fix/`** (not `harden/` / `perf/`); credited already-done controls; added missing bulk/report/budgets/JWT-algorithm gaps.
+**Last review:** 2026-07-23 — implementation landed against live tree after PPT-043 Redis close-out; title remains **`fix/`**.
 
 ## Depends on
 
-- [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032)
-- Soft: [#83](https://github.com/Elmorralito/save-ma-money/issues/83) (PPT-043), [#50](https://github.com/Elmorralito/save-ma-money/issues/50) (PPT-040)
+- [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032) — closed
+- Soft (landed): [#83](https://github.com/Elmorralito/save-ma-money/issues/83) (PPT-043 Redis), [#50](https://github.com/Elmorralito/save-ma-money/issues/50) (PPT-040)
 
 ## Already done (regression only)
 
-JWT alg pin on decode · JWT `type` + UUID `sub` · inactive user reject · auth login/register IP limits (direct socket) · masked 500s · CRUD cross-tenant 404 pattern · health `literal(1)` + allowlisted detail + injection tests · request logs omit headers/bodies
+JWT alg pin on decode · JWT `type` + UUID `sub` · inactive user reject · auth login/register IP limits (direct socket) · masked 500s · CRUD cross-tenant 404 pattern · health `literal(1)` + allowlisted detail + injection tests · request logs omit headers/bodies · **tenant API rate limits + Redis denylist (PPT-043)** · **logout/denylist honesty under Supabase/Redis**
 
-## Highest remaining gaps
+## Implementation status (2026-07-23)
 
-| Priority | Gap                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| P1       | CORS `*` + credentials; docs always on; TrustedHost; security headers; body-size docs                                          |
-| P2       | `JWT_SECRET_KEY` min length; **allowlist `JWT_ALGORITHM`**; prod `LOG_LEVEL`                                                   |
-| P3       | Tenancy matrix gaps; reports `account_id` **400 vs 404**; JWT on `/budgets` 501s; `extra="forbid"` on writes; free-text bounds |
-| P5       | Bulk `max_length`; report max window; `refresh_balances` default abuse; authenticated + health-DB rate limits                  |
-| P4       | Safe `ValueError` allowlist; 500/422 regression tests                                                                          |
-| P6       | Probe timeout; `/database` exposure; `Cache-Control`; quiet `/live` logs; health 405 tests                                     |
-| P7       | Consolidated security pack (extend, don’t duplicate)                                                                           |
+| Phase | Theme                                                                                                | Status |
+| ----- | ---------------------------------------------------------------------------------------------------- | ------ |
+| P1    | Headers, TrustedHost, CORS fail-fast, docs gate, body-size docs                                      | Done   |
+| P2    | JWT secret min length, `JWT_ALGORITHM` allowlist, `LOG_LEVEL` prod posture                           | Done   |
+| P3    | Budgets JWT, write `extra="forbid"`, free-text bounds, reports foreign account **404**               | Done   |
+| P5    | Bulk `max_length=100`, report window ≤366d, `refresh_balances` default **false**, health rate limits | Done   |
+| P4    | Driverish `ValueError` mask; 500 masking regression                                                  | Done   |
+| P6    | Probe timeout, `Cache-Control: no-store`, health 405 tests                                           | Done   |
+| P7    | `tests/test_security_pack.py` + env/README/brief                                                     | Done   |
 
-## Workstream index
+## Decisions locked
 
-| Phase | IDs     | Theme                                                        |
-| ----- | ------- | ------------------------------------------------------------ |
-| P0    | A0      | OpenAPI inventory + budgets JWT on stubs                     |
-| P1    | T1–T5   | Headers, TrustedHost, CORS, docs gate, body size             |
-| P2    | AU1–AU4 | Secret/alg allowlist; credit claims work; logout honesty     |
-| P3    | TE1–TE4 | Tenancy matrix; forbid extras; injection; pagination/reports |
-| P4    | E1–E2   | Error disclosure; DEBUG off                                  |
-| P5    | R1–R3   | Extend rate limits; expensive routes                         |
-| P6    | H1–H10  | Health/ops                                                   |
-| P7    | O1–O4   | Logs, settings, regression pack, supply-chain                |
+- Reports foreign `account_id` → **404** (CRUD parity)
+- Keep `/health/database` public; rate-limit + `no-store`; do not expand detail vocabulary
+- Bulk max **100**; report window **366** days
+- `refresh_balances` default **false**
+- CORS `*` forbidden when `DEBUG=false`
+
+## Client-breaking change hardening (2026-07-23)
+
+Strategy: keep secure defaults; make them discoverable and temporarily reversible for wire-contract breaks only.
+
+| Mechanism                            | Purpose                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `GET /api/v1/meta/client-contract`   | Public probe of effective limits / compat / error codes                            |
+| `X-Papita-*` response headers        | Per-response discovery (`Bulk-Max`, `Report-Window-Max-Days`, …)                   |
+| `X-Papita-Error-Code`                | Stable codes for SDK branching                                                     |
+| `API_COMPAT_LEGACY_*` flags          | Time-boxed legacy 400 / refresh default; emit `Deprecation` + `Sunset: 2026-10-01` |
+| No compat for CORS `*` / public docs | Security posture must not regress                                                  |
+
+See `modules/api/README.md` § PPT-044 client migration.
 
 ## Out of scope
 
-PPT-043 Redis · new domain features · WAF/CDN · RLS redesign · keyset pagination product · public admin metrics
+WAF/CDN · new domain features · RLS redesign · keyset pagination product · public admin metrics · PPT-045 packaging (#93)
 
 ## Acceptance
 

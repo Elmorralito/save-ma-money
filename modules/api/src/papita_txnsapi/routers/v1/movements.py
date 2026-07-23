@@ -244,7 +244,8 @@ def create_movement(
     """Create a transfer between two tenant-owned accounts.
 
     ``create_transfer`` always persists PENDING. When ``scheduled`` is false, the
-    handler immediately calls ``complete_transfer`` so the response reflects COMPLETED.
+    handler immediately calls ``complete_transfer`` so the response reflects COMPLETED
+    and balance views are refreshed once. Scheduled (PENDING) creates skip MV refresh.
 
     Args:
         body: Transfer create payload (accounts, amount, currency, scheduled flag).
@@ -267,11 +268,11 @@ def create_movement(
         currency=body.currency,
     )
     dto = body.to_transactions_dto(owner_id=_require_owner_id(owner))
-    # Intermediate create/complete skip per-call MV refresh; one refresh below.
+    # Intermediate create/complete skip per-call MV refresh.
     created = transactions_service.create_transfer(obj=dto, owner=owner, refresh_balances=False)
     if not body.scheduled:
         created = transactions_service.complete_transfer(transaction_id=created, owner=owner, refresh_balances=False)
-    transactions_service.refresh_balance_views()
+        transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(created)
 
@@ -286,6 +287,9 @@ def update_movement(  # pylint: disable=too-many-positional-arguments
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> MovementResponse:
     """Update a pending transfer via upsert of the merged DTO.
+
+    PENDING rows do not affect completed ledger MVs, so balance views are not
+    refreshed here (cache versions are still bumped).
 
     Args:
         movement_id: Transfer primary key from the path.
@@ -318,7 +322,6 @@ def update_movement(  # pylint: disable=too-many-positional-arguments
         currency=merged.currency,
     )
     updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
-    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(updated)
 
@@ -334,6 +337,7 @@ def delete_movement(
 
     Note:
         This is not a soft-delete of the row; cancelled transfers remain in the ledger.
+        Cancelling PENDING does not change completed MV totals, so views are not refreshed.
 
     Args:
         movement_id: Transfer primary key from the path.
@@ -350,7 +354,6 @@ def delete_movement(
         transactions_service.cancel(transaction_id=movement_id, owner=owner, refresh_balances=False)
     except ValueError as exc:
         raise _movement_not_found() from exc
-    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
 
 

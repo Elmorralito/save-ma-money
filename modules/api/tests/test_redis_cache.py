@@ -73,14 +73,14 @@ class TestVersionedCacheHelpers:
             value={"total": 1, "items": [], "skip": 0, "limit": 20},
             ttl_seconds=60,
         )
-        hit, status = get_versioned_cached_json(
+        hit, status, _version = get_versioned_cached_json(
             fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", params
         )
         assert status == "HIT"
         assert hit is not None
 
         bump_cache_versions(fake_redis, owner_id, CacheNamespace.ACCOUNTS)
-        miss, status_after = get_versioned_cached_json(
+        miss, status_after, _ = get_versioned_cached_json(
             fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", params
         )
         assert status_after == "MISS"
@@ -109,8 +109,7 @@ class TestAccountsCacheInvalidation:
         mock_service.balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account.id, "balance": 100.0, "currency": "USD", "owner_id": owner.id}]
         )
-        mock_service.create_account.return_value = account
-        mock_service.get_with_extension.return_value = (account, None)
+        mock_service.create_account.return_value = (account, None)
         mock_service.get_balance.return_value = None
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):

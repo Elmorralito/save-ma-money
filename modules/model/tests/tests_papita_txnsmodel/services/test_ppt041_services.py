@@ -95,12 +95,13 @@ class TestAccountsServiceOrchestration:
             extension_service = MagicMock()
             extension_service.create.return_value = extension
             mock_factory.return_value = extension_service
-            result = service.create_account(
+            result, result_extension = service.create_account(
                 obj=account,
                 extension={"entity": "Bank Co"},
                 owner=owner,
             )
         assert result is account
+        assert result_extension is extension
         extension_service.create.assert_called_once()
 
     def test_get_balance_delegates_to_balances_service(self, owner: UsersDTO):
@@ -118,25 +119,22 @@ class TestTransactionsServiceTransfers:
     def test_list_transfers_filters_by_kind(self, owner: UsersDTO):
         """list_transfers queries transaction_kind=TRANSFER with SQL pagination."""
         service = _transactions_service()
-        service._repository.get_records.return_value = pd.DataFrame()
-        service._repository.count_records.return_value = 0
+        service._repository.get_page_with_total.return_value = (pd.DataFrame(), 0)
         records, total = service.list_transfers(owner=owner, skip=10, limit=25)
         assert total == 0
-        assert service._repository.count_records.call_count == 1
-        assert service._repository.get_records.call_count == 1
-        assert service._repository.get_records.call_args.kwargs["skip"] == 10
-        assert service._repository.get_records.call_args.kwargs["limit"] == 25
+        assert service._repository.get_page_with_total.call_count == 1
+        assert service._repository.get_page_with_total.call_args.kwargs["skip"] == 10
+        assert service._repository.get_page_with_total.call_args.kwargs["limit"] == 25
 
     def test_list_transactions_applies_sql_pagination(self, owner: UsersDTO):
-        """list_transactions passes skip/limit to the repository query."""
+        """list_transactions passes skip/limit to the repository page+total query."""
         service = _transactions_service()
-        service._repository.get_records.return_value = pd.DataFrame()
-        service._repository.count_records.return_value = 42
+        service._repository.get_page_with_total.return_value = (pd.DataFrame(), 42)
         records, total = service.list_transactions(owner=owner, skip=5, limit=15)
         assert total == 42
-        assert service._repository.count_records.call_count == 1
-        assert service._repository.get_records.call_args.kwargs["skip"] == 5
-        assert service._repository.get_records.call_args.kwargs["limit"] == 15
+        assert service._repository.get_page_with_total.call_count == 1
+        assert service._repository.get_page_with_total.call_args.kwargs["skip"] == 5
+        assert service._repository.get_page_with_total.call_args.kwargs["limit"] == 15
 
     def test_create_transfer_requires_account_legs(self, owner: UsersDTO):
         """Transfers without both account legs are rejected."""
@@ -236,67 +234,40 @@ class TestReportService:
     """ReportService implements FR-12 transaction analytics."""
 
     def test_spending_excludes_transfers(self, owner: UsersDTO):
-        """Spending totals ignore TRANSFER rows."""
+        """Spending totals ignore TRANSFER rows (SQL aggregate path)."""
         service = ReportService()
         service.transactions_service = MagicMock()
         service.accounts_service = MagicMock()
-        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
-            [
-                {
-                    "transaction_kind": TransactionKind.EXPENSE.value,
-                    "status": TransactionStatus.COMPLETED.value,
-                    "amount": 40.0,
-                    "category_id": uuid.uuid4(),
-                    "transaction_ts": datetime.now(timezone.utc),
-                },
-                {
-                    "transaction_kind": TransactionKind.TRANSFER.value,
-                    "status": TransactionStatus.COMPLETED.value,
-                    "amount": 100.0,
-                    "category_id": None,
-                    "transaction_ts": datetime.now(timezone.utc),
-                },
-                {
-                    "transaction_kind": TransactionKind.INCOME.value,
-                    "status": TransactionStatus.COMPLETED.value,
-                    "amount": 80.0,
-                    "category_id": uuid.uuid4(),
-                    "transaction_ts": datetime.now(timezone.utc),
-                },
-            ]
-        )
+        service.transactions_service.aggregate_spending.return_value = {
+            "group_by": "category",
+            "expenses": [{"category_id": uuid.uuid4(), "total": 40.0}],
+            "expense_total": 40.0,
+            "income_total": 80.0,
+        }
         result = service.spending(owner=owner)
         assert result["expense_total"] == 40.0
         assert result["income_total"] == 80.0
-        service.transactions_service.get_transactions_frame.assert_called_once()
-        assert service.transactions_service.get_transactions_frame.call_args.kwargs["owner"] is owner
+        service.transactions_service.aggregate_spending.assert_called_once()
+        assert service.transactions_service.aggregate_spending.call_args.kwargs["owner"] is owner
 
     def test_spending_filters_by_account_id(self, owner: UsersDTO):
-        """Optional account_id keeps matching legs only."""
+        """Optional account_id is validated then forwarded to SQL aggregation."""
         account_a = uuid.uuid4()
         account_b = uuid.uuid4()
         service = ReportService()
         service.transactions_service = MagicMock()
         service.accounts_service = MagicMock()
         service.accounts_service.get.return_value = MagicMock(id=account_a)
-        # SQL account filter is applied in get_transactions_frame; mock returns scoped rows.
-        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
-            [
-                {
-                    "transaction_kind": TransactionKind.EXPENSE.value,
-                    "status": TransactionStatus.COMPLETED.value,
-                    "amount": 40.0,
-                    "category_id": uuid.uuid4(),
-                    "from_account_id": account_a,
-                    "to_account_id": None,
-                    "transaction_ts": datetime.now(timezone.utc),
-                },
-            ]
-        )
+        service.transactions_service.aggregate_spending.return_value = {
+            "group_by": "category",
+            "expenses": [{"category_id": uuid.uuid4(), "total": 40.0}],
+            "expense_total": 40.0,
+            "income_total": 0.0,
+        }
         result = service.spending(owner=owner, account_id=account_a)
         assert result["expense_total"] == 40.0
         service.accounts_service.get.assert_called_once_with(obj=account_a, owner=owner)
-        assert service.transactions_service.get_transactions_frame.call_args.kwargs["account_id"] == account_a
+        assert service.transactions_service.aggregate_spending.call_args.kwargs["account_id"] == account_a
         del account_b
 
     def test_spending_rejects_foreign_account_id(self, owner: UsersDTO):
@@ -307,7 +278,7 @@ class TestReportService:
         service.accounts_service.get.return_value = None
         with pytest.raises(ValueError, match="Account not found for tenant"):
             service.spending(owner=owner, account_id=uuid.uuid4())
-        service.transactions_service.get_transactions_frame.assert_not_called()
+        service.transactions_service.aggregate_spending.assert_not_called()
 
     def test_require_owner_rejects_missing_tenant(self):
         """Reports cannot run without a tenant owner id."""
@@ -330,7 +301,7 @@ class TestReportService:
         service.account_balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account_id, "balance": 900.0}]
         )
-        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
+        ledger_frame = pd.DataFrame(
             [
                 {
                     "transaction_kind": TransactionKind.INCOME.value,
@@ -370,6 +341,13 @@ class TestReportService:
                 },
             ]
         )
+        service.transactions_service.get_transactions_frame.return_value = ledger_frame
+        service.transactions_service.aggregate_spending.return_value = {
+            "group_by": "category",
+            "expenses": [{"category_id": category_id, "total": 120.0}],
+            "expense_total": 120.0,
+            "income_total": 500.0,
+        }
 
         spending = service.spending(owner=owner)
         assert spending["expense_total"] == 120.0
@@ -523,16 +501,15 @@ class TestCategoriesGlobalWriteGuard:
         service._repository.upsert_record.assert_not_called()
 
     def test_list_categories_uses_sql_skip_limit(self, owner: UsersDTO):
-        """Paginated category lists count and page in the repository, not in memory."""
+        """Paginated category lists use repository page+total, not in-memory paging."""
         with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
             service = CategoriesService()
             service._repository = MagicMock()
-            service._repository.count_records.return_value = 3
-            service._repository.get_records.return_value = pd.DataFrame([])
+            service._repository.get_page_with_total.return_value = (pd.DataFrame([]), 3)
         page, total = service.list_categories(owner=owner, roots_only=True, skip=1, limit=2)
         assert total == 3
         assert page.empty
-        assert service._repository.count_records.call_count == 1
-        get_kwargs = service._repository.get_records.call_args.kwargs
+        assert service._repository.get_page_with_total.call_count == 1
+        get_kwargs = service._repository.get_page_with_total.call_args.kwargs
         assert get_kwargs["skip"] == 1
         assert get_kwargs["limit"] == 2

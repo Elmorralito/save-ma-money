@@ -66,8 +66,8 @@ class TestCacheFailOpen:
 
     def test_versioned_bypass_and_set_none(self) -> None:
         owner_id = uuid.uuid4()
-        payload, status = get_versioned_cached_json(None, owner_id, CacheNamespace.ACCOUNTS, "r")
-        assert payload is None and status == "BYPASS"
+        payload, status, version = get_versioned_cached_json(None, owner_id, CacheNamespace.ACCOUNTS, "r")
+        assert payload is None and status == "BYPASS" and version == 0
         assert (
             set_versioned_cached_json(
                 None,
@@ -80,6 +80,44 @@ class TestCacheFailOpen:
             )
             is False
         )
+
+    def test_set_reuses_version_without_reread(self) -> None:
+        """Miss-fill passes version from get so set skips a second version GET."""
+        owner_id = uuid.uuid4()
+        client = MagicMock()
+        assert set_versioned_cached_json(
+            client,
+            owner_id,
+            CacheNamespace.ACCOUNTS,
+            "accounts:list",
+            {"skip": 0},
+            value={"items": [], "total": 0},
+            ttl_seconds=60,
+            version=3,
+        )
+        client.get.assert_not_called()
+        client.setex.assert_called_once()
+
+    def test_bump_invalidates_reused_version_write(self, fake_redis: object) -> None:
+        owner_id = uuid.uuid4()
+        _, _, version = get_versioned_cached_json(
+            fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {}
+        )
+        set_versioned_cached_json(
+            fake_redis,
+            owner_id,
+            CacheNamespace.ACCOUNTS,
+            "accounts:list",
+            {},
+            value={"ok": True},
+            ttl_seconds=60,
+            version=version,
+        )
+        bump_cache_versions(fake_redis, owner_id, CacheNamespace.ACCOUNTS)
+        miss, status, _ = get_versioned_cached_json(
+            fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {}
+        )
+        assert miss is None and status == "MISS"
 
     def test_ttl_defaults_without_settings(self) -> None:
         assert ttl_for_namespace(None, "transactions") == 15

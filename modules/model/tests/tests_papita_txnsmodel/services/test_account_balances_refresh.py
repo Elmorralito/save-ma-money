@@ -112,3 +112,40 @@ class TestTransactionBalanceRefresh:
         service._repository = repo
         service.refresh(concurrently=True)
         repo.refresh_materialized_view.assert_called_once_with(concurrently=True)
+
+
+class TestAccountBalancesPageScopedQuery:
+    """Page-scoped balance loads use repository IN filter, not full-tenant reports."""
+
+    def test_get_balances_with_account_ids_uses_repository(self, owner: UsersDTO) -> None:
+        """Non-empty account_ids delegates to AccountBalancesRepository."""
+        service = AccountBalancesService()
+        repo = MagicMock()
+        account_id = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        expected = pd.DataFrame([{"account_id": account_id, "balance": 10.0}])
+        repo.get_balances.return_value = expected
+        service._repository = repo
+
+        result = service.get_balances(owner=owner, account_ids=[account_id])
+
+        assert result.equals(expected)
+        repo.get_balances.assert_called_once_with(owner=owner, account_ids=[account_id])
+
+    def test_get_balances_with_empty_account_ids_skips_query(self, owner: UsersDTO) -> None:
+        """Empty account_ids returns an empty frame without hitting the repository."""
+        service = AccountBalancesService()
+        repo = MagicMock()
+        service._repository = repo
+
+        result = service.get_balances(owner=owner, account_ids=[])
+
+        assert getattr(result, "empty", True)
+        repo.get_balances.assert_not_called()
+
+    def test_get_balances_rejects_account_id_and_account_ids(self, owner: UsersDTO) -> None:
+        """account_id and account_ids are mutually exclusive."""
+        service = AccountBalancesService()
+        account_id = uuid.UUID("22222222-2222-2222-2222-222222222222")
+
+        with pytest.raises(ValueError, match="account_id or account_ids"):
+            service.get_balances(owner=owner, account_id=account_id, account_ids=[account_id])

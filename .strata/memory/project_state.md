@@ -11,13 +11,14 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 ### Last completed (this session)
 
 - Soft-delete / categories / refresh_balances / API bounds / report SQL PRs
-- PR-5: SQL-windowed report loads + account-scoped transfer cash-flow direction
-- PR-6 (in progress / local): DB pagination for accounts/categories; idempotency body digest
-- Remaining PPT-044 transport/client-contract work may still be uncommitted
+- PR-5…PR-6: report SQL loads; list pagination; idempotency body digests
+- PR-7 + efficiency PR-A…F: RL/TrustedHost glue; PENDING MV skip; account re-fetch
+  cuts; cache version reuse; page-scoped balances; Redis limiter app-state + txn DI
+  cache; page+total lists; spending SQL agg; bulk FK prefetch
 
 ### Next action
 
-- Finish/verify PR-6 tests; then PR-7 (RL coverage + TrustedHost in prod)
+- Push/open PR for hardening + efficiency follow-ups when ready
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes

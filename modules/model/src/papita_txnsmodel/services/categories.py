@@ -104,8 +104,7 @@ class CategoriesService(BaseService):
             roots_only=roots_only,
             category_kind=category_kind,
         )
-        total = int(self._repository.count_records(*filters, owner=ensured_owner, dto_type=self.dto_type, **kwargs))
-        records_df = self._repository.get_records(
+        records_df, total = self._repository.get_page_with_total(
             *filters,
             owner=ensured_owner,
             dto_type=self.dto_type,
@@ -113,7 +112,7 @@ class CategoriesService(BaseService):
             limit=limit,
             **kwargs,
         )
-        return standardize_dataframe(self.dto_type, records_df, **kwargs), total
+        return standardize_dataframe(self.dto_type, records_df, **kwargs), int(total)
 
     def get_categories_for_parents(
         self,

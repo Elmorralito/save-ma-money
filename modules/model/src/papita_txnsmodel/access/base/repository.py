@@ -39,10 +39,10 @@ class BaseRepository:
     with conflict resolution strategies.
 
     Soft-delete semantics (default):
-        ``get_records`` / ``count_records`` exclude inactive rows (``active=True`` and
-        ``deleted_at IS NULL`` when those columns exist). Pass ``include_deleted=True``
-        to include soft-deleted rows. Upserting a soft-deleted id raises unless
-        ``reactivate=True``.
+        ``get_records`` / ``count_records`` / ``get_page_with_total`` exclude inactive
+        rows (``active=True`` and ``deleted_at IS NULL`` when those columns exist).
+        Pass ``include_deleted=True`` to include soft-deleted rows. Upserting a
+        soft-deleted id raises unless ``reactivate=True``.
 
     Attributes:
         __expected_dto__ (type[TableDTO]): The expected DTO type for this repository.
@@ -402,6 +402,73 @@ class BaseRepository:
 
         return output_df
 
+    @SQLDatabaseConnector.connect
+    def get_page_with_total(  # pylint: disable=too-many-locals
+        self,
+        *query_filters,
+        dto_type: type[TableDTO],
+        _db_session: Session,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """Return a paginated page and matching total in one query when possible.
+
+        Uses ``COUNT(*) OVER()`` on the page SELECT so list endpoints avoid a
+        separate count round-trip. When the page is empty (e.g. ``skip`` past the
+        end), falls back to an in-session ``COUNT(*)`` so ``total`` stays correct.
+
+        Args:
+            *query_filters: WHERE predicates (same as ``get_records``).
+            dto_type: DTO type whose ``__dao_type__`` is queried.
+            _db_session: Database session (injected by connector).
+            **kwargs: ``order_by`` / ``skip`` / ``limit`` / ``include_deleted``.
+
+        Returns:
+            Tuple of (page DataFrame without the window column, total row count).
+
+        Raises:
+            TypeError: If ``_db_session`` is not a SQLModel ``Session``.
+        """
+        if not isinstance(_db_session, Session):
+            raise TypeError("Session not supported.")
+
+        order_by = kwargs.pop("order_by", None)
+        skip = kwargs.pop("skip", None)
+        limit = kwargs.pop("limit", None)
+        include_deleted = bool(kwargs.pop("include_deleted", False))
+        dao = dto_type.__dao_type__
+        filters = [*self._soft_delete_read_filters(dao, include_deleted=include_deleted), *query_filters]
+
+        total_col = func.count().over().label("_total")  # pylint: disable=not-callable
+        statement = select(dao, total_col)
+        if filters:
+            statement = statement.where(*filters)
+        statement = self._apply_list_options(statement, order_by=order_by, skip=skip, limit=limit)
+
+        try:
+            rows = list(_db_session.exec(statement).all())
+        except Exception as exc:
+            logger.exception("The page+total query has failed due to: %s", exc)
+            return pd.DataFrame([]), 0
+
+        if not rows:
+            count_statement = select(func.count()).select_from(dao)  # pylint: disable=not-callable
+            if filters:
+                count_statement = count_statement.where(*filters)
+            try:
+                total = int(_db_session.exec(count_statement).one())
+            except Exception as exc:
+                logger.exception("The empty-page count fallback has failed due to: %s", exc)
+                return pd.DataFrame([]), 0
+            return pd.DataFrame([]), total
+
+        first = rows[0]
+        total = int(first[1])
+        parsed: list[Any] = []
+        for row in rows:
+            entity = row[0]
+            parsed.append(entity.model_dump(mode="python") if hasattr(entity, "model_dump") else entity)
+        return pd.DataFrame(parsed), total
+
     def get_records_from_attributes(self, dto: TableDTO, **kwargs) -> pd.DataFrame:
         """Retrieve records from the database based on DTO attributes.
 
@@ -651,6 +718,15 @@ class OwnedTableRepository(BaseRepository):
 
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().count_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+
+    def get_page_with_total(self, *query_filters, dto_type: Type[OwnedTableDTO], **kwargs) -> tuple[pd.DataFrame, int]:
+        """Return a tenant-owned page and total matching count."""
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for get_page_with_total")
+
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().get_page_with_total(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
     def get_records_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> pd.DataFrame:
         """Retrieve records owned by the specified user based on DTO attributes.

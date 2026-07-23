@@ -151,7 +151,7 @@ def _idempotency_body_mismatch() -> HTTPException:
 
 
 @router.get("", response_model=PaginatedResponse[TransactionResponse])
-def list_transactions(  # pylint: disable=too-many-positional-arguments
+def list_transactions(  # pylint: disable=too-many-positional-arguments,too-many-locals
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     pagination: Annotated[PaginationParams, Depends(get_pagination)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
@@ -184,7 +184,7 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
     }
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.TRANSACTIONS, "transactions:list", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -192,6 +192,7 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
             return PaginatedResponse[TransactionResponse].model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     records_df, total = transactions_service.list_transactions(
         owner=owner,
@@ -215,12 +216,13 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=payload.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.TRANSACTIONS),
+            version=cache_version,
         )
     return payload
 
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED, response_model=TransactionBulkResponse)
-def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
+def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,too-many-locals
     body: TransactionBulkCreate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
@@ -280,12 +282,25 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
     created_items: list[TransactionResponse] = []
     failed = 0
 
+    account_ids = {item.account_id for item in body.transactions if item.account_id is not None}
+    category_ids = {item.category_id for item in body.transactions if item.category_id is not None}
+    linked_dto_cache = transactions_service.prefetch_link_dtos(
+        owner=owner,
+        account_ids=list(account_ids),
+        category_ids=list(category_ids),
+    )
+
     try:
         for item in body.transactions:
             try:
                 dto = item.to_transactions_dto(owner_id=owner_id)
                 # Defer MV refresh to once after the batch (avoid N× refresh).
-                result = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
+                result = transactions_service.create(
+                    obj=dto,
+                    owner=owner,
+                    refresh_balances=False,
+                    linked_dto_cache=linked_dto_cache,
+                )
                 created_items.append(TransactionResponse.from_dto(result))
             except (ValueError, TypeError):
                 failed += 1
@@ -352,7 +367,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
     cache_params = {"transaction_id": str(transaction_id)}
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.TRANSACTIONS, "transactions:detail", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -360,6 +375,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
             return TransactionResponse.model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     transaction = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=True)
     if transaction is None:
@@ -374,6 +390,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=result.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.TRANSACTIONS),
+            version=cache_version,
         )
     return result
 

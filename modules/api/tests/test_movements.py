@@ -117,6 +117,40 @@ class TestMovementsRoutes:
         assert mock_transactions.complete_transfer.call_args.kwargs.get("refresh_balances") is False
         mock_transactions.refresh_balance_views.assert_called_once()
 
+    def test_create_scheduled_movement_skips_mv_refresh(
+        self,
+        movements_client: tuple[TestClient, object, MagicMock, MagicMock],
+    ) -> None:
+        client, owner, mock_transactions, mock_accounts = movements_client
+        source = _sample_account(owner.id)
+        destination = _sample_account(owner.id)
+        destination.id = uuid.uuid4()
+        transfer = _sample_transfer(owner.id)
+        transfer.from_account_id = source.id
+        transfer.to_account_id = destination.id
+
+        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: (
+            source if obj == source.id else destination
+        )
+        mock_transactions.create_transfer.return_value = transfer
+
+        response = client.post(
+            "/api/v1/movements",
+            json={
+                "source_account_id": str(source.id),
+                "destination_account_id": str(destination.id),
+                "amount": 500.0,
+                "currency": "USD",
+                "movement_date": "2026-02-04",
+                "scheduled": True,
+            },
+        )
+
+        assert response.status_code == 201
+        assert response.json()["status"] == "pending"
+        mock_transactions.complete_transfer.assert_not_called()
+        mock_transactions.refresh_balance_views.assert_not_called()
+
     def test_create_movement_currency_mismatch_returns_422(
         self,
         movements_client: tuple[TestClient, object, MagicMock, MagicMock],
@@ -158,6 +192,37 @@ class TestMovementsRoutes:
 
         assert response.status_code == 200
         assert response.json()["status"] == "completed"
+        mock_transactions.refresh_balance_views.assert_called_once()
+
+    def test_update_pending_movement_skips_mv_refresh(
+        self,
+        movements_client: tuple[TestClient, object, MagicMock, MagicMock],
+    ) -> None:
+        client, owner, mock_transactions, mock_accounts = movements_client
+        transfer = _sample_transfer(owner.id)
+        source = _sample_account(owner.id)
+        destination = _sample_account(owner.id)
+        destination.id = uuid.uuid4()
+        transfer.from_account_id = source.id
+        transfer.to_account_id = destination.id
+        updated = transfer.model_copy(update={"amount": 750.0})
+
+        mock_transactions.get.return_value = transfer
+        mock_transactions.create.return_value = updated
+        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: (
+            source if obj == source.id else destination
+        )
+
+        response = client.put(
+            f"/api/v1/movements/{transfer.id}",
+            json={"amount": 750.0},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["amount"] == 750.0
+        mock_transactions.create.assert_called_once()
+        assert mock_transactions.create.call_args.kwargs.get("refresh_balances") is False
+        mock_transactions.refresh_balance_views.assert_not_called()
 
     def test_delete_movement_cancels_pending(
         self,
@@ -171,6 +236,8 @@ class TestMovementsRoutes:
 
         assert response.status_code == 204
         mock_transactions.cancel.assert_called_once()
+        assert mock_transactions.cancel.call_args.kwargs.get("refresh_balances") is False
+        mock_transactions.refresh_balance_views.assert_not_called()
 
 
 class TestMovementsTenancy:

@@ -196,7 +196,7 @@ def list_accounts(  # pylint: disable=too-many-arguments,too-many-positional-arg
     }
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -204,25 +204,28 @@ def list_accounts(  # pylint: disable=too-many-arguments,too-many-positional-arg
             return PaginatedResponse[AccountResponse].model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     filter_dto = _build_account_filter_dto(
         account_kind=account_kind,
         ledger_side=ledger_side,
         is_active=is_active,
     )
-    total = accounts_service.count_records(filter_dto, owner=owner)
-    page_df = accounts_service.get_records(
-        filter_dto,
+    page_df, total = accounts_service.list_accounts(
         owner=owner,
+        dto=filter_dto,
         skip=pagination.skip,
         limit=pagination.limit,
     )
     accounts = accounts_from_dataframe(page_df)
 
-    balances_df = (
-        accounts_service.balances_service.get_balances(owner=owner) if accounts_service.balances_service else None
-    )
-    balance_map = balances_by_account_id(balances_df) if balances_df is not None else {}
+    # Page-scoped MV load: avoid fetching the whole tenant's balances on list.
+    account_ids = [account.id for account in accounts if account.id is not None]
+    if accounts_service.balances_service is None or not account_ids:
+        balance_map = {}
+    else:
+        balances_df = accounts_service.balances_service.get_balances(owner=owner, account_ids=account_ids)
+        balance_map = balances_by_account_id(balances_df)
 
     items = [
         AccountResponse.from_dto(account, balance=effective_account_balance(account, balance_map=balance_map))
@@ -243,6 +246,7 @@ def list_accounts(  # pylint: disable=too-many-arguments,too-many-positional-arg
             cache_params,
             value=payload.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.ACCOUNTS),
+            version=cache_version,
         )
     return payload
 
@@ -301,13 +305,12 @@ def create_account(
         ValueError: Propagated from the service layer on invalid business input.
     """
     account_dto = body.to_accounts_dto(owner_id=_require_uuid(owner.id))
-    created = accounts_service.create_account(
+    created, extension = accounts_service.create_account(
         obj=account_dto,
         extension=body.extension_payload(),
         owner=owner,
     )
     created_id = _require_uuid(created.id)
-    _, extension = accounts_service.get_with_extension(obj=created_id, owner=owner)
     balance = _balance_for_account(accounts_service, owner, created_id, account=created)
     _invalidate_account_caches(redis, owner)
     return AccountResponse.from_dto(created, balance=balance, extension=extension)
@@ -337,18 +340,19 @@ def update_account(
         HTTPException: 404 when the account is missing or not owned by the tenant.
         ValueError: Propagated from the service layer on invalid business input.
     """
-    existing, _extension = accounts_service.get_with_extension(obj=account_id, owner=owner)
+    existing, existing_extension = accounts_service.get_with_extension(obj=account_id, owner=owner)
     if existing is None:
         raise _account_not_found()
 
     merged = body.apply_to(existing)
-    updated = accounts_service.update_account(
+    updated, upserted_extension = accounts_service.update_account(
         obj=merged,
         extension=body.extension_payload(existing.account_kind),
         owner=owner,
     )
     updated_id = _require_uuid(updated.id)
-    _, extension = accounts_service.get_with_extension(obj=updated_id, owner=owner)
+    # Reuse prior extension when the update did not touch extension fields.
+    extension = upserted_extension if upserted_extension is not None else existing_extension
     balance = _balance_for_account(accounts_service, owner, updated_id, account=updated)
     _invalidate_account_caches(redis, owner)
     return AccountResponse.from_dto(updated, balance=balance, extension=extension)

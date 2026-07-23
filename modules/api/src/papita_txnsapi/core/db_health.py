@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Type
 
-from sqlalchemy import literal, select
+from sqlalchemy import literal, select, text
 from sqlmodel import Session
 
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
@@ -36,6 +36,8 @@ logger = logging.getLogger(__name__)
 
 # Bound probe latency for JSON safety (reject NaN/inf before serialization).
 _MAX_LATENCY_MS = 60_000.0
+# Default session-local statement timeout for probes (overridden via Settings in callers).
+_DEFAULT_PROBE_TIMEOUT_MS = 3_000
 
 
 class DatabaseProbeDetail(StrEnum):
@@ -81,15 +83,21 @@ def _safe_latency_ms(elapsed_seconds: float) -> float:
     return min(latency_ms, _MAX_LATENCY_MS)
 
 
-def probe_database(connector: Type[SQLDatabaseConnector]) -> DatabaseProbeResult:
+def probe_database(
+    connector: Type[SQLDatabaseConnector],
+    *,
+    timeout_ms: int = _DEFAULT_PROBE_TIMEOUT_MS,
+) -> DatabaseProbeResult:
     """Probe database connectivity and measure round-trip latency.
 
     Verifies that the connector is initialized, an engine exists, and a session can
     execute a constant, parameterized probe without raising. On success, records
     wall-clock latency for operators judging API↔database communication health.
+    Applies a session-local ``statement_timeout`` so probes cannot hang the pool.
 
     Args:
         connector: Model ``SQLDatabaseConnector`` class bound to a configured engine.
+        timeout_ms: Session-local statement timeout in milliseconds (PostgreSQL).
 
     Returns:
         :class:`DatabaseProbeResult` with connectivity, optional latency, and an
@@ -109,11 +117,16 @@ def probe_database(connector: Type[SQLDatabaseConnector]) -> DatabaseProbeResult
             detail=DatabaseProbeDetail.ENGINE_UNAVAILABLE,
         )
 
+    bound_timeout_ms = max(1, min(int(timeout_ms), int(_MAX_LATENCY_MS)))
     try:
         started = time.perf_counter()
         # Expression API only — never build SQL from strings or request data.
+        # PostgreSQL session-local timeout uses a bound integer constant (not request input).
         with Session(connector.engine) as session:
-            session.connection().execute(select(literal(1)))
+            connection = session.connection()
+            if connection.dialect.name == "postgresql":
+                connection.execute(text(f"SET LOCAL statement_timeout = {bound_timeout_ms}"))
+            connection.execute(select(literal(1)))
         return DatabaseProbeResult(
             connected=True,
             latency_ms=_safe_latency_ms(time.perf_counter() - started),

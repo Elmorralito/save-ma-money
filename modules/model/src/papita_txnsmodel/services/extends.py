@@ -252,7 +252,9 @@ class LinkedEntitiesService(BaseService):
         setattr(self, "__links__", updated_links)
         return self
 
-    def create(self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs) -> TableDTO:
+    def create(  # pylint: disable=too-many-locals
+        self, *, obj: TableDTO | dict[str, Any], owner: "UsersDTO | None" = None, **kwargs
+    ) -> TableDTO:
         """Create a new linked entity record in the database.
 
         Optional FK fields whose value is ``None`` are skipped (no linked service call).
@@ -261,7 +263,9 @@ class LinkedEntitiesService(BaseService):
         Args:
             obj: The object to create.
             owner: The owner of the record.
-            **kwargs: Additional keyword arguments.
+            **kwargs: Additional keyword arguments. Optional ``linked_dto_cache`` maps
+                ``(field_name, uuid)`` to prefetched DTOs so bulk creates can reuse
+                FK lookups without changing create semantics.
 
         Returns:
             TableDTO: The created object as a DTO with linked entity information.
@@ -269,6 +273,7 @@ class LinkedEntitiesService(BaseService):
         Raises:
             TypeError: If a required linked entity service has not been loaded.
         """
+        linked_dto_cache = kwargs.pop("linked_dto_cache", None)
         linked_dtos = {}
         for column_name, entity in self.__links__.items():
             field_name = entity.own_entity_link_field_name
@@ -280,8 +285,20 @@ class LinkedEntitiesService(BaseService):
             if not isinstance(linked_service, BaseService):
                 raise TypeError(f"Service of the linked enity in field {column_name} has not been loaded.")
 
+            cache_key = None
+            if isinstance(linked_dto_cache, dict):
+                key_id = field_value if isinstance(field_value, uuid.UUID) else getattr(field_value, "id", None)
+                if isinstance(key_id, uuid.UUID):
+                    cache_key = (field_name, key_id)
+                    cached = linked_dto_cache.get(cache_key)
+                    if cached is not None:
+                        linked_dtos[field_name] = cached
+                        continue
+
             linked_dto = linked_service.get_or_create(obj=field_value, owner=owner, **kwargs)
             linked_dtos[field_name] = linked_dto
+            if cache_key is not None:
+                linked_dto_cache[cache_key] = linked_dto
 
         dto = super().create(obj=obj, owner=owner, **kwargs)
         for field_name, linked_dto in linked_dtos.items():
