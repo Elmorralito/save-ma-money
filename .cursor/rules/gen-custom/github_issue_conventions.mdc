@@ -77,6 +77,8 @@ GitHub issue chooser templates live under [`.github/ISSUE_TEMPLATE/`](../../.git
 
 Prefer those files when creating or editing issues via `gh issue create` / `gh issue edit`. Do not invent alternate section orders.
 
+**Agent automation:** [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`) asks type → fields → optional context, fills the matching template, then creates the issue on origin with `gh`.
+
 ### Program issue skeleton (summary)
 
 ```markdown
