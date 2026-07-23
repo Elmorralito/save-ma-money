@@ -17,8 +17,14 @@ os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characte
 os.environ["AUTH_PROVIDER"] = "local"
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("API_RATE_LIMIT_ENABLED", "false")
+os.environ.setdefault("HEALTH_RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("REDIS_ENABLED", "false")
 os.environ.setdefault("REDIS_RATE_LIMIT_ENABLED", "false")
+# Keep OpenAPI available for contract smoke tests (production gates docs via DOCS_ENABLED).
+os.environ.setdefault("DOCS_ENABLED", "true")
+os.environ.setdefault("ALLOWED_ORIGINS", '["http://testserver"]')
+# TrustedHost is required when DEBUG=false; TestClient uses Host: testserver.
+os.environ.setdefault("ALLOWED_HOSTS", '["testserver","localhost","127.0.0.1"]')
 # Prefer process env over environments/$PAPITA_ENV/.env for unit tests (live tests set URLs explicitly).
 if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = ""
@@ -26,7 +32,7 @@ if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:
 from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.dependencies.services import get_users_service
+from papita_txnsapi.dependencies.services import clear_transactions_service_cache, get_users_service
 from papita_txnsapi.main import create_app
 from papita_txnsmodel.access.users.dto import UsersDTO
 
@@ -35,6 +41,7 @@ def _clear_auth_singletons() -> None:
     """Reset Settings cache and AuthSecurityManager after env/provider changes."""
     get_settings.cache_clear()
     AuthSecurityManager.reset_instances()
+    clear_transactions_service_cache()
 
 
 @pytest.fixture

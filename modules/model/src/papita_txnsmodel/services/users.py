@@ -98,7 +98,12 @@ class UsersService(BaseService):
         if probe is None:
             return None
 
-        user = self._repository.get_record_from_attributes(probe, dto_type=UsersDTO)
+        # Uniqueness / collision checks need soft-deleted rows; auth paths do not.
+        user = self._repository.get_record_from_attributes(
+            probe,
+            dto_type=UsersDTO,
+            include_deleted=not require_active,
+        )
         if user is None:
             return None
         if require_active and (not user.active or user.deleted_at is not None):
@@ -359,7 +364,7 @@ class UsersService(BaseService):
 
         # ``get_owner`` / ``get`` hide soft-deleted rows; creating again would upsert
         # ``active=True`` onto the same primary key and silently reactivate them.
-        inactive_or_deleted = self._repository.get_record_by_id(subject, dto_type=self.dto_type)
+        inactive_or_deleted = self._repository.get_record_by_id(subject, dto_type=self.dto_type, include_deleted=True)
         if inactive_or_deleted is not None:
             raise ValueError("User is inactive or deleted")
 

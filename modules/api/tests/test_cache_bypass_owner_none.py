@@ -36,7 +36,7 @@ class TestCacheBypassOwnerNone:
         owner = _owner_without_id()
         response = Response()
         service = MagicMock()
-        service.get_records.return_value = pd.DataFrame([])
+        service.list_accounts.return_value = (pd.DataFrame([]), 0)
         service.balances_service = None
         accounts.list_accounts(
             owner,
@@ -52,7 +52,8 @@ class TestCacheBypassOwnerNone:
         owner = _owner_without_id()
         response = Response()
         service = MagicMock()
-        service.get_records.return_value = pd.DataFrame([])
+        service.list_categories.return_value = (pd.DataFrame([]), 0)
+        service.get_categories_for_parents.return_value = pd.DataFrame([])
         categories.list_categories(
             owner,
             PaginationParams(skip=0, limit=20),

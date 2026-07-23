@@ -104,7 +104,7 @@ class TestReportsRoutes:
             params={**_SPENDING_PARAMS, "account_id": str(uuid.uuid4())},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 404
         assert "tenant" in response.json()["detail"].lower()
         assert mock_service.spending.call_args.kwargs["owner"] is owner
 
@@ -179,7 +179,7 @@ class TestReportsRoutes:
         assert payload["by_account"] == []
         call_kwargs = mock_service.cash_flow.call_args.kwargs
         assert call_kwargs["owner"] is owner
-        assert call_kwargs["refresh_balances"] is True
+        assert call_kwargs["refresh_balances"] is False
         assert call_kwargs["account_id"] == account_id
 
     def test_trends_maps_series_to_monthly_trends(

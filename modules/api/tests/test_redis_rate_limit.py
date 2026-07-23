@@ -47,6 +47,14 @@ class TestRedisRateLimiter:
         assert result.allowed is True
         assert result.remaining == 10
 
+    def test_fail_closed_on_redis_error(self) -> None:
+        client = MagicMock()
+        client.register_script.return_value = MagicMock(side_effect=RedisError("connection lost"))
+        limiter = RedisRateLimiter(client, fail_closed=True)
+        result = limiter.check("auth-login:1.1.1.1", limit=10, window_seconds=60)
+        assert result.allowed is False
+        assert result.remaining == 0
+
     def test_evalsha_noscript_falls_back_to_eval(self) -> None:
         client = MagicMock()
         script = MagicMock(side_effect=RedisError("NOSCRIPT No matching script"))
@@ -69,8 +77,55 @@ class TestRedisRateLimiter:
         settings = get_settings()
         request = MagicMock()
         request.app.state.redis = fake_redis
+        request.app.state.rate_limiter = None
+        request.app.state.rate_limiter_fail_closed = None
         limiter = get_rate_limiter_for_request(request, settings)
         assert isinstance(limiter, RedisRateLimiter)
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "false")
+
+    def test_get_rate_limiter_for_request_reuses_app_state_cache(
+        self, fake_redis: object, monkeypatch
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "true")
+        get_settings.cache_clear()
+        settings = get_settings()
+        request = MagicMock()
+        request.app.state.redis = fake_redis
+        request.app.state.rate_limiter = None
+        request.app.state.rate_limiter_fail_closed = None
+
+        first = get_rate_limiter_for_request(request, settings)
+        second = get_rate_limiter_for_request(request, settings)
+        fail_closed = get_rate_limiter_for_request(request, settings, fail_closed=True)
+        fail_closed_again = get_rate_limiter_for_request(request, settings, fail_closed=True)
+
+        assert first is second
+        assert request.app.state.rate_limiter is first
+        assert fail_closed is fail_closed_again
+        assert fail_closed is not first
+        assert request.app.state.rate_limiter_fail_closed is fail_closed
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "false")
+
+    def test_bind_rate_limiters_attaches_both_policies(self, fake_redis: object, monkeypatch) -> None:
+        from papita_txnsapi.core.rate_limit import bind_rate_limiters
+
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "true")
+        get_settings.cache_clear()
+        settings = get_settings()
+        app = MagicMock()
+        app.state.redis = fake_redis
+        bind_rate_limiters(app, settings)
+        assert isinstance(app.state.rate_limiter, RedisRateLimiter)
+        assert isinstance(app.state.rate_limiter_fail_closed, RedisRateLimiter)
+        assert app.state.rate_limiter is not app.state.rate_limiter_fail_closed
         get_settings.cache_clear()
         monkeypatch.setenv("REDIS_ENABLED", "false")
         monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "false")

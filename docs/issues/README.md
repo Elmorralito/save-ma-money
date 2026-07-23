@@ -31,8 +31,9 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 
 | File                                                                                       | Issue                                                         | Status |
 | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ------ |
-| [`PPT-044-api-hardening-brief.md`](PPT-044-api-hardening-brief.md)                         | [#89](https://github.com/Elmorralito/save-ma-money/issues/89) | Open   |
 | [`PPT-045-uvicorn-process-packaging-brief.md`](PPT-045-uvicorn-process-packaging-brief.md) | [#93](https://github.com/Elmorralito/save-ma-money/issues/93) | Open   |
+
+**Merged into design SSOT:** PPT-044 (#89) → [`docs/design/ARCHITECTURE.md` Part VIII](../design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) + [`docs/design/README.md` § Ops](../design/README.md#ops-redis--optional-b1-pooler).
 
 CI and local validation: [root README § Continuous integration](../../README.md#continuous-integration).
 
@@ -1029,7 +1030,7 @@ DATABASE_URL="postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabas
 | Migrations          | **Avoid** transaction pooler — use direct URL or session mode                                                                                               | **Required** for `./bin/alembic.sh upgrade` |
 | SSL                 | Supabase requires TLS in production                                                                                                                         | Add `?sslmode=require` if not implicit      |
 
-**Implementation note (PPT-039):** API `Settings` passes `pool_pre_ping=True`, `pool_size=DATABASE_POOL_SIZE`, and (on transaction-pooler URLs) `max_overflow=0` into `SQLDatabaseConnector.establish()`. Use `DATABASE_URL_MIGRATIONS` for Alembic-only direct connections while the API uses the transaction pooler. Checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../ops/b1-supabase-deploy-checklist.md).
+**Implementation note (PPT-039):** API `Settings` passes `pool_pre_ping=True`, `pool_size=DATABASE_POOL_SIZE`, and (on transaction-pooler URLs) `max_overflow=0` into `SQLDatabaseConnector.establish()`. Use `DATABASE_URL_MIGRATIONS` for Alembic-only direct connections while the API uses the transaction pooler. Checklist: [`docs/design/README.md` § Ops](../design/README.md#optional-b1-hosted-postgres-pooler).
 
 ---
 
@@ -1255,7 +1256,7 @@ When v4 ships, extend policies to: `budgets`, `budget_allocations`, `transaction
 | B2 Supabase Auth                  | G7 phase 2                                                                                                                    | Re-evaluate after G5                                                                                                                    |
 | B3 RLS implementation             | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)                                                                 | SQL migrations only; no policies in this PR                                                                                             |
 | `UsersService.verify_credentials` | #25 / G5                                                                                                                      | Code change out of scope                                                                                                                |
-| `DATABASE_URL_MIGRATIONS` split   | PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                         | Direct URL for Alembic vs pooler for API; see [`docs/ops/b1-supabase-deploy-checklist.md`](../ops/b1-supabase-deploy-checklist.md)      |
+| `DATABASE_URL_MIGRATIONS` split   | PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)                                                         | Direct URL for Alembic vs pooler for API; see [`docs/design/README.md` § Ops](../design/README.md#optional-b1-hosted-postgres-pooler)   |
 | FastAPI `main.py` + routers       | [#25](https://github.com/Elmorralito/save-ma-money/issues/25)                                                                 | Implementation blocked on G1                                                                                                            |
 
 ### References

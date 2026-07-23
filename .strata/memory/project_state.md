@@ -10,13 +10,12 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-043 PR #94: QC green after REDIS_URL test fix; Codecov patch ~95%
-- Added owner-id-none cache BYPASS + Settings Redis URL + health degraded tests
+- PR #102 babysit: fix `run_query` Row unwrap (categories list 400 on live PG) and
+  update `list_accounts` test mocks after SQL pagination
 
 ### Next action
 
-- Confirm `codecov/patch` ≥ ~97.7% on #94
-- Staging: managed `REDIS_URL` when enabling horizontal scale
+- Land PR #102 when quality-control is green
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes

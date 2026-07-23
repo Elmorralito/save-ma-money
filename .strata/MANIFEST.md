@@ -54,20 +54,21 @@ _(Extend with project-specific directories as they develop.)_
 
 ## Where do I look for X?
 
-| If you need…                               | Open…                                                                    |
-| ------------------------------------------ | ------------------------------------------------------------------------ |
-| What was I doing last session              | `memory/project_state.md`                                                |
-| Work in flight right now                   | `issues/ACTIVE.md`                                                       |
-| What's on the backlog (by area)            | `issues/OPEN.md`                                                         |
-| Deferred work + revive triggers            | `issues/PARKED.md`                                                       |
-| A rule before doing operation X            | `memory/MEMORY.md` rules-by-trigger table → `memory/learnings/<slug>.md` |
-| Why a decision was made                    | `docs/decisions/ADR-NNNN-*.md`                                           |
-| How a subsystem works                      | `docs/ARCHITECTURE.md` → `docs/architecture/<slug>.md`                   |
-| Product requirements                       | `docs/product/<slug>.md`                                                 |
-| A stable fact (paths, schemas, APIs)       | `docs/reference/<slug>.md`                                               |
-| A procedure / runbook / incident pattern   | `docs/ops/`                                                              |
-| Did we send / post / complete X externally | `memory/archive/action_log.md` (grep)                                    |
-| Old sessions, closed issues, provenance    | `memory/archive/` · `issues/archive/` (grep)                             |
+| If you need…                             | Open…                                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| What was I doing last session            | `memory/project_state.md`                                                                                           |
+| Work in flight right now                 | `issues/ACTIVE.md`                                                                                                  |
+| What's on the backlog (by area)          | `issues/OPEN.md`                                                                                                    |
+| Deferred work + revive triggers          | `issues/PARKED.md`                                                                                                  |
+| A rule before doing operation X          | `memory/MEMORY.md` rules-by-trigger table → `memory/learnings/<slug>.md`                                            |
+| Why a decision was made                  | `docs/decisions/ADR-NNNN-*.md`                                                                                      |
+| How a subsystem works                    | `docs/ARCHITECTURE.md` → `docs/architecture/<slug>.md`                                                              |
+| Product requirements                     | `docs/product/<slug>.md`                                                                                            |
+| A stable fact (paths, schemas, APIs)     | `docs/reference/<slug>.md`                                                                                          |
+| A procedure / runbook / incident pattern | `.strata/docs/ops/` → human [`docs/design/README.md` § Ops](../docs/design/README.md#ops-redis--optional-b1-pooler) |
+
+| Did we send / post / complete X externally | `memory/archive/action_log.md` (grep) |
+| Old sessions, closed issues, provenance | `memory/archive/` · `issues/archive/` (grep) |
 
 ## The three tiers
 
@@ -88,7 +89,7 @@ _(Extend with project-specific directories as they develop.)_
 | Product requirement                                        | `docs/product/<slug>.md`                                                                          | when it exists                                                   |
 | How a subsystem works                                      | `docs/architecture/<slug>.md` (+ row in `ARCHITECTURE.md`)                                        | when it stabilizes                                               |
 | Stable fact                                                | `docs/reference/<slug>.md`                                                                        | on second lookup                                                 |
-| Procedure, runbook, incident                               | `docs/ops/…`                                                                                      | when it changes                                                  |
+| Procedure, runbook, incident                               | `.strata/docs/ops/…` or `docs/design/README.md` § Ops                                             | when it changes                                                  |
 | Session narrative                                          | `memory/project_state.md` (rollover → archive)                                                    | at `/strata:save`                                                |
 | Completed external action (PR, email, durable URL)         | `memory/archive/action_log.md` append                                                             | at `/strata:save`                                                |
 

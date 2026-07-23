@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Literal, Self, Type
 from urllib.parse import urlparse
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from papita_txnsapi import LIB_NAME as API_LIB_NAME
@@ -27,6 +27,19 @@ from papita_txnsmodel import LIB_NAME as MODEL_LIB_NAME
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.utils.configutils import configure_logger
 from papita_txnsmodel.utils.enums import FallbackAction
+
+JWT_SECRET_MIN_LENGTH = 32
+JWT_ALGORITHM_ALLOWLIST = frozenset({"HS256"})
+# Secure PPT-044 defaults (overridable via Settings for ops tuning / migration).
+MAX_REPORT_WINDOW_DAYS = 366
+MAX_BULK_TRANSACTIONS = 100
+MAX_DESCRIPTION_LENGTH = 2_000
+MAX_TAG_LENGTH = 64
+MAX_TAGS_PER_TRANSACTION = 20
+MAX_SEARCH_LENGTH = 256
+MAX_EXTENSION_STRING_LENGTH = 255
+# Temporary bulk ceiling when operators raise API_BULK_MAX_TRANSACTIONS during migration.
+MAX_BULK_TRANSACTIONS_HARD_CAP = 500
 
 # API package root (modules/api/src) — logger YAML only; secrets live under environments/.
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -100,12 +113,18 @@ class Settings(BaseSettings):
         SUPABASE_URL: Project URL for JWKS / Auth API when ``AUTH_PROVIDER=supabase``.
         SUPABASE_ANON_KEY: Optional anon key for register/login pass-through.
         SUPABASE_JWT_AUDIENCE: Expected ``aud`` claim (default ``authenticated``).
-        ALLOWED_ORIGINS: CORS allowed origins list.
+        ALLOWED_ORIGINS: CORS allowed origins list (``*`` only when ``DEBUG=true``).
+        ALLOWED_HOSTS: TrustedHost allowlist; required (non-empty) when ``DEBUG=false``.
+        DOCS_ENABLED: Expose ``/api/docs``, ``/api/redoc``, and ``/api/openapi.json``.
         FALLBACK_ACTION: Behavior when optional model fallbacks trigger.
         AUTH_RATE_LIMIT_ENABLED: Toggle per-IP auth endpoint rate limiting (B0).
+        AUTH_RATE_LIMIT_FAIL_CLOSED: When Redis auth limits error, deny (``True``) or allow.
         AUTH_RATE_LIMIT_WINDOW_SECONDS: Sliding window length for auth limits.
         AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: Max login attempts per window per IP.
         AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: Max register attempts per window per IP.
+        HEALTH_RATE_LIMIT_ENABLED: Toggle per-IP limits on DB-touching health probes.
+        HEALTH_RATE_LIMIT_PER_MINUTE: Max health/ready/database/auth/redis probes per IP.
+        HEALTH_PROBE_TIMEOUT_MS: Session-local statement timeout for database probes.
         REDIS_URL: Redis connection URL when shared infra is enabled (PPT-043).
         REDIS_ENABLED: When ``True``, initialize a Redis pool and include Redis in readiness.
         REDIS_DEFAULT_TTL_SECONDS: Legacy unused fallback; prefer per-namespace TTLs.
@@ -122,6 +141,10 @@ class Settings(BaseSettings):
         API_RATE_LIMIT_FREE_PER_DAY: Free tier requests per rolling day.
         API_RATE_LIMIT_PRO_PER_MINUTE: Pro tier requests per rolling minute.
         API_RATE_LIMIT_PRO_PER_DAY: Pro tier requests per rolling day.
+        API_BULK_MAX_TRANSACTIONS: Max items in ``POST /transactions/bulk`` (1–500).
+        API_REPORT_WINDOW_MAX_DAYS: Max inclusive span for report date windows.
+        API_COMPAT_LEGACY_REPORT_ACCOUNT_400: Temporary: foreign report account → 400.
+        API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE: Temporary: omit → refresh true.
     """
 
     model_config = SettingsConfigDict(env_file_encoding="utf-8", extra="ignore")
@@ -130,6 +153,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Save Ma Money API"
     APP_VERSION: str = API_VERSION
     DEBUG: bool = False
+    DOCS_ENABLED: bool = False
 
     # Server
     HOST: str = "0.0.0.0"
@@ -137,12 +161,12 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str | Type[SQLDatabaseConnector] | None = None
-    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "DEBUG"
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     LOG_FILE: str | None = None
     DATABASE_POOL_SIZE: int = 5
     JWT_SECRET_KEY: str = "local-dev-only-replace-me-min-32-chars"
     JWT_TOKEN_TYPE: Literal["bearer", "refresh"] = "bearer"
-    JWT_ALGORITHM: str = "HS256"
+    JWT_ALGORITHM: Literal["HS256"] = "HS256"
     JWT_EXPIRATION_TIME_SECONDS: int = 3600
     AUTH_PROVIDER: Literal["local", "supabase"] = "local"
     SUPABASE_URL: str | None = None
@@ -151,17 +175,24 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str | None = None
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
     SUPABASE_OAUTH_REDIRECT_TO: str | None = None
-    ALLOWED_ORIGINS: list[str] = ["*"]
+    ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
+    ALLOWED_HOSTS: list[str] = Field(default_factory=list)
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
 
     # Auth hardening — per-IP sliding window (Redis when REDIS_RATE_LIMIT_ENABLED)
     AUTH_RATE_LIMIT_ENABLED: bool = True
+    AUTH_RATE_LIMIT_FAIL_CLOSED: bool = False
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
     AUTH_LOGIN_RATE_LIMIT_PER_MINUTE: int = 10
     AUTH_REGISTER_RATE_LIMIT_PER_MINUTE: int = 5
     AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: int = 20
     # When None, OAuth PKCE cookies use Secure when DEBUG is false.
     AUTH_COOKIE_SECURE: bool | None = None
+
+    # Health / ops probes (PPT-044)
+    HEALTH_RATE_LIMIT_ENABLED: bool = True
+    HEALTH_RATE_LIMIT_PER_MINUTE: int = 120
+    HEALTH_PROBE_TIMEOUT_MS: int = 3_000
 
     # Redis (PPT-043) — optional; in-memory fallbacks when disabled
     REDIS_URL: str | None = None
@@ -182,6 +213,12 @@ class Settings(BaseSettings):
     API_RATE_LIMIT_FREE_PER_DAY: int = 1_000
     API_RATE_LIMIT_PRO_PER_MINUTE: int = 300
     API_RATE_LIMIT_PRO_PER_DAY: int = 10_000
+
+    # PPT-044 client-contract knobs (secure defaults; compat flags are temporary)
+    API_BULK_MAX_TRANSACTIONS: int = Field(default=MAX_BULK_TRANSACTIONS, ge=1, le=MAX_BULK_TRANSACTIONS_HARD_CAP)
+    API_REPORT_WINDOW_MAX_DAYS: int = Field(default=MAX_REPORT_WINDOW_DAYS, ge=1, le=3_660)
+    API_COMPAT_LEGACY_REPORT_ACCOUNT_400: bool = False
+    API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE: bool = False
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
@@ -263,6 +300,26 @@ class Settings(BaseSettings):
             return {**data, "AUTH_PROVIDER": "supabase"}
         return data
 
+    @field_validator("JWT_ALGORITHM", mode="before")
+    @classmethod
+    def allowlist_jwt_algorithm(cls, value: str | None) -> str:
+        """Reject JWT algorithms outside the local HS256 allowlist.
+
+        Args:
+            value: Raw algorithm string from env or constructor.
+
+        Returns:
+            Normalized algorithm name.
+
+        Raises:
+            ValueError: When the algorithm is missing or not allowlisted.
+        """
+        algorithm = (value or "").strip().upper()
+        if algorithm not in JWT_ALGORITHM_ALLOWLIST:
+            allowed = ", ".join(sorted(JWT_ALGORITHM_ALLOWLIST))
+            raise ValueError(f"JWT_ALGORITHM must be one of: {allowed}")
+        return algorithm
+
     @model_validator(mode="after")
     def build_model(self) -> Self:
         """Validate Auth provider config, establish DB connector, configure loggers.
@@ -271,13 +328,24 @@ class Settings(BaseSettings):
             The validated settings instance with ``DATABASE_URL`` as a connector class.
 
         Raises:
-            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``, or
-                when ``REDIS_ENABLED`` without ``REDIS_URL``.
+            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``,
+                when ``REDIS_ENABLED`` without ``REDIS_URL``, when production CORS
+                uses ``*``, or when local JWT secret is shorter than the minimum.
         """
         if self.AUTH_PROVIDER == "supabase" and not self.SUPABASE_URL:
             raise ValueError("SUPABASE_URL is required when AUTH_PROVIDER=supabase")
         if self.REDIS_ENABLED and not self.REDIS_URL:
             raise ValueError("REDIS_URL is required when REDIS_ENABLED=true")
+        if not self.DEBUG and "*" in self.ALLOWED_ORIGINS:
+            raise ValueError("ALLOWED_ORIGINS cannot include '*' when DEBUG=false (CORS credentials)")
+        if not self.DEBUG and not [host for host in self.ALLOWED_HOSTS if str(host).strip()]:
+            raise ValueError("ALLOWED_HOSTS must be non-empty when DEBUG=false (TrustedHost)")
+        if self.AUTH_PROVIDER == "local" and len(self.JWT_SECRET_KEY.strip()) < JWT_SECRET_MIN_LENGTH:
+            raise ValueError(
+                f"JWT_SECRET_KEY must be at least {JWT_SECRET_MIN_LENGTH} characters when AUTH_PROVIDER=local"
+            )
+        if not self.DEBUG and self.LOG_LEVEL == "DEBUG":
+            object.__setattr__(self, "LOG_LEVEL", "INFO")
 
         url_or_connector = self.DATABASE_URL
         if isinstance(url_or_connector, type) and issubclass(url_or_connector, SQLDatabaseConnector):

@@ -120,3 +120,56 @@ class TestSettingsEstablish:
             )
         assert settings.REDIS_ENABLED is True
         assert settings.REDIS_URL == "redis://localhost:6379/0"
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_local_jwt_secret_min_length(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.raises(ValueError, match="JWT_SECRET_KEY must be at least"):
+            Settings(JWT_SECRET_KEY="too-short", AUTH_PROVIDER="local", DATABASE_URL=None)
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_jwt_algorithm_allowlist(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.raises(ValueError, match="JWT_ALGORITHM must be one of"):
+            Settings(JWT_SECRET_KEY=_JWT, JWT_ALGORITHM="none", DATABASE_URL=None)
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_wildcard_cors_rejected_when_not_debug(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.raises(ValueError, match="ALLOWED_ORIGINS cannot include"):
+            Settings(
+                JWT_SECRET_KEY=_JWT,
+                DEBUG=False,
+                ALLOWED_ORIGINS=["*"],
+                ALLOWED_HOSTS=["api.example.com"],
+                DATABASE_URL=None,
+            )
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_allowed_hosts_required_when_not_debug(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.raises(ValueError, match="ALLOWED_HOSTS must be non-empty"):
+            Settings(JWT_SECRET_KEY=_JWT, DEBUG=False, ALLOWED_HOSTS=[], DATABASE_URL=None)
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_log_level_debug_coerced_when_not_debug(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(
+                JWT_SECRET_KEY=_JWT,
+                DEBUG=False,
+                LOG_LEVEL="DEBUG",
+                ALLOWED_HOSTS=["api.example.com"],
+                DATABASE_URL=None,
+            )
+        assert settings.LOG_LEVEL == "INFO"

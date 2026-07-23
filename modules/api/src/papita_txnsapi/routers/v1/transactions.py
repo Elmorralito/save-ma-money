@@ -36,7 +36,17 @@ from papita_txnsapi.core.cache import (
     set_versioned_cached_json,
     ttl_for_namespace,
 )
-from papita_txnsapi.core.idempotency import begin_idempotency, clear_idempotency_pending, complete_idempotency
+from papita_txnsapi.core.client_contract import (
+    ERROR_BULK_TOO_LARGE,
+    ERROR_IDEMPOTENCY_BODY_MISMATCH,
+    HEADER_ERROR_CODE,
+)
+from papita_txnsapi.core.idempotency import (
+    begin_idempotency,
+    clear_idempotency_pending,
+    complete_idempotency,
+    request_body_digest,
+)
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
@@ -131,8 +141,17 @@ def _idempotency_conflict() -> HTTPException:
     )
 
 
+def _idempotency_body_mismatch() -> HTTPException:
+    """Return 422 when the same Idempotency-Key is reused with a different body."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="Idempotency-Key was already used with a different request body.",
+        headers={HEADER_ERROR_CODE: ERROR_IDEMPOTENCY_BODY_MISMATCH},
+    )
+
+
 @router.get("", response_model=PaginatedResponse[TransactionResponse])
-def list_transactions(  # pylint: disable=too-many-positional-arguments
+def list_transactions(  # pylint: disable=too-many-positional-arguments,too-many-locals
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     pagination: Annotated[PaginationParams, Depends(get_pagination)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
@@ -165,7 +184,7 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
     }
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.TRANSACTIONS, "transactions:list", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -173,6 +192,7 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
             return PaginatedResponse[TransactionResponse].model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     records_df, total = transactions_service.list_transactions(
         owner=owner,
@@ -196,12 +216,13 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=payload.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.TRANSACTIONS),
+            version=cache_version,
         )
     return payload
 
 
 @router.post("/bulk", status_code=status.HTTP_201_CREATED, response_model=TransactionBulkResponse)
-def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
+def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,too-many-locals
     body: TransactionBulkCreate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
@@ -228,29 +249,58 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
 
     Raises:
         HTTPException: 401 when the owner context lacks a primary key; 409 when
-            an idempotency key is still pending.
+            an idempotency key is still pending; 422 when the batch exceeds
+            ``API_BULK_MAX_TRANSACTIONS``.
     """
+    if len(body.transactions) > settings.API_BULK_MAX_TRANSACTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Bulk create accepts at most {settings.API_BULK_MAX_TRANSACTIONS} "
+                "transactions per request; chunk larger batches."
+            ),
+            headers={HEADER_ERROR_CODE: ERROR_BULK_TOO_LARGE},
+        )
+
     owner_id = _require_owner_id(owner)
+    request_digest = request_body_digest(body.model_dump(mode="json"))
     begun = begin_idempotency(
         redis,
         owner_id,
         scope=_IDEMPOTENCY_BULK,
         key=idempotency_key,
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
+        body_digest=request_digest,
     )
     if begun.state == "hit" and begun.payload is not None:
         return TransactionBulkResponse.model_validate(begun.payload)
+    if begun.state == "mismatch":
+        raise _idempotency_body_mismatch()
     if begun.state == "conflict":
         raise _idempotency_conflict()
 
     created_items: list[TransactionResponse] = []
     failed = 0
 
+    account_ids = {item.account_id for item in body.transactions if item.account_id is not None}
+    category_ids = {item.category_id for item in body.transactions if item.category_id is not None}
+    linked_dto_cache = transactions_service.prefetch_link_dtos(
+        owner=owner,
+        account_ids=list(account_ids),
+        category_ids=list(category_ids),
+    )
+
     try:
         for item in body.transactions:
             try:
                 dto = item.to_transactions_dto(owner_id=owner_id)
-                result = transactions_service.create(obj=dto, owner=owner)
+                # Defer MV refresh to once after the batch (avoid N× refresh).
+                result = transactions_service.create(
+                    obj=dto,
+                    owner=owner,
+                    refresh_balances=False,
+                    linked_dto_cache=linked_dto_cache,
+                )
                 created_items.append(TransactionResponse.from_dto(result))
             except (ValueError, TypeError):
                 failed += 1
@@ -259,6 +309,7 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         raise
 
     if created_items:
+        transactions_service.refresh_balance_views()
         _invalidate_ledger_caches(redis, owner)
     payload = TransactionBulkResponse(created=len(created_items), failed=failed, transactions=created_items)
     complete_idempotency(
@@ -269,6 +320,7 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         body=payload.model_dump(mode="json"),
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
         http_status=201,
+        body_digest=request_digest,
     )
     return payload
 
@@ -315,7 +367,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
     cache_params = {"transaction_id": str(transaction_id)}
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.TRANSACTIONS, "transactions:detail", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -323,6 +375,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
             return TransactionResponse.model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     transaction = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=True)
     if transaction is None:
@@ -337,6 +390,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=result.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.TRANSACTIONS),
+            version=cache_version,
         )
     return result
 
@@ -371,25 +425,30 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
             pending; domain errors may surface as 400 via the global handler.
     """
     owner_id = _require_owner_id(owner)
+    request_digest = request_body_digest(body.model_dump(mode="json"))
     begun = begin_idempotency(
         redis,
         owner_id,
         scope=_IDEMPOTENCY_CREATE,
         key=idempotency_key,
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
+        body_digest=request_digest,
     )
     if begun.state == "hit" and begun.payload is not None:
         return TransactionResponse.model_validate(begun.payload)
+    if begun.state == "mismatch":
+        raise _idempotency_body_mismatch()
     if begun.state == "conflict":
         raise _idempotency_conflict()
 
     try:
         dto = body.to_transactions_dto(owner_id=owner_id)
-        created = transactions_service.create(obj=dto, owner=owner)
+        created = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
     except Exception:
         clear_idempotency_pending(redis, owner_id, scope=_IDEMPOTENCY_CREATE, key=idempotency_key)
         raise
 
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     result = TransactionResponse.from_dto(created)
     complete_idempotency(
@@ -400,6 +459,7 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
         body=result.model_dump(mode="json"),
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
         http_status=201,
+        body_digest=request_digest,
     )
     return result
 
@@ -439,7 +499,8 @@ def update_transaction(
         )
 
     merged = body.apply_to(existing)
-    updated = transactions_service.create(obj=merged, owner=owner)
+    updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return TransactionResponse.from_dto(updated)
 
@@ -465,5 +526,10 @@ def delete_transaction(
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()
-    transactions_service.delete(obj=TransactionsDTO.model_construct(id=transaction_id), owner=owner)
+    transactions_service.delete(
+        obj=TransactionsDTO.model_construct(id=transaction_id),
+        owner=owner,
+        refresh_balances=False,
+    )
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)

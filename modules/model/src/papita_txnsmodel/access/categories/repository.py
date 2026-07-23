@@ -61,6 +61,24 @@ class CategoriesRepository(BaseRepository, metaclass=MetaSingleton):
 
         return super().get_records(*query_filters, dto_type=dto_type, **kwargs)
 
+    def count_records(
+        self, *query_filters, owner: UsersDTO | None = None, dto_type: Type[TableDTO] = CategoriesDTO, **kwargs
+    ) -> int:
+        """Count category rows with the same owner+global visibility as ``get_records``."""
+        if owner:
+            owner_filter = or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id.is_(None))
+            return super().count_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+        return super().count_records(*query_filters, dto_type=dto_type, **kwargs)
+
+    def get_page_with_total(
+        self, *query_filters, owner: UsersDTO | None = None, dto_type: Type[TableDTO] = CategoriesDTO, **kwargs
+    ) -> tuple[pd.DataFrame, int]:
+        """Return a category page and total with owner+global visibility."""
+        if owner:
+            owner_filter = or_(dto_type.__dao_type__.owner_id == owner.id, dto_type.__dao_type__.owner_id.is_(None))
+            return super().get_page_with_total(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+        return super().get_page_with_total(*query_filters, dto_type=dto_type, **kwargs)
+
     @SQLDatabaseConnector.connect
     def upsert_record(self, dto: CategoriesDTO, *, _db_session: Session, **kwargs) -> CategoriesDTO | None:
         """Upsert a category row with optional owner scoping for tenant-owned rows."""

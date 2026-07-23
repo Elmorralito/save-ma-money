@@ -24,9 +24,16 @@ import uuid
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Annotated, Literal, TypedDict
 
-from fastapi import Query
+from fastapi import Depends, Query, Request
 from pydantic import BaseModel, Field, model_validator
 
+from papita_txnsapi.config.settings import MAX_REPORT_WINDOW_DAYS, MAX_SEARCH_LENGTH, Settings, get_settings
+from papita_txnsapi.core.client_contract import (
+    COMPAT_SUNSET_DATE,
+    HEADER_DEPRECATION,
+    HEADER_SUNSET,
+    cash_flow_refresh_balances_default,
+)
 from papita_txnsapi.schemas.converters import parse_transaction_kind, parse_transaction_status
 from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
 
@@ -42,6 +49,28 @@ Routers check ``ReportExportQuery.is_deferred_format`` (or membership in this se
 and respond with HTTP 501. ``service_kwargs()`` raises ``ValueError`` if called
 for these formats.
 """
+
+
+def _validate_report_window(start: date, end: date, *, max_days: int = MAX_REPORT_WINDOW_DAYS) -> None:
+    """Ensure report date windows are ordered and within the max span.
+
+    Args:
+        start: Inclusive window start.
+        end: Inclusive window end.
+        max_days: Inclusive maximum span from settings (PPT-044).
+
+    Raises:
+        ValueError: When the window is inverted or longer than ``max_days``.
+    """
+    if start > end:
+        raise ValueError("start_date must be on or before end_date")
+    if (end - start).days > max_days:
+        raise ValueError(f"report window must be at most {max_days} days")
+
+
+def _enforce_report_window(start: date, end: date, settings: Settings) -> None:
+    """Apply settings-backed report window bound (raises domain ``ValueError``)."""
+    _validate_report_window(start, end, max_days=settings.API_REPORT_WINDOW_MAX_DAYS)
 
 
 def date_to_start_datetime(value: date) -> datetime:
@@ -143,7 +172,11 @@ class TransactionListQuery(BaseModel):
     end_date: date | None = Field(default=None, description="Filter by end date")
     min_amount: float | None = Field(default=None, description="Minimum amount filter", ge=0)
     max_amount: float | None = Field(default=None, description="Maximum amount filter", ge=0)
-    search: str | None = Field(default=None, description="Search in description")
+    search: str | None = Field(
+        default=None,
+        description="Search in description",
+        max_length=MAX_SEARCH_LENGTH,
+    )
 
     def service_kwargs(self) -> TransactionListServiceKwargs:
         """Map API query parameters to ``TransactionsService.list_transactions`` kwargs.
@@ -220,7 +253,10 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
     end_date: Annotated[date | None, Query(description="Filter by end date")] = None,
     min_amount: Annotated[float | None, Query(description="Minimum amount filter", ge=0)] = None,
     max_amount: Annotated[float | None, Query(description="Maximum amount filter", ge=0)] = None,
-    search: Annotated[str | None, Query(description="Search in description")] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search in description", max_length=MAX_SEARCH_LENGTH),
+    ] = None,
 ) -> TransactionListQuery:
     """Collect ``GET /transactions`` query parameters for FastAPI dependency injection.
 
@@ -233,7 +269,7 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
         end_date: Inclusive end date.
         min_amount: Minimum amount (``>= 0``).
         max_amount: Maximum amount (``>= 0``).
-        search: Description search string.
+        search: Description search string (max ``MAX_SEARCH_LENGTH``).
 
     Returns:
         Populated ``TransactionListQuery`` for the route handler.
@@ -399,8 +435,8 @@ class ReportSpendingQuery(BaseModel):
 class ReportCashFlowQuery(BaseModel):
     """Bundled query parameters for ``GET /reports/cash-flow``.
 
-    Validates window ordering. ``refresh_balances`` defaults to ``True`` so
-    cash-flow reads can refresh account-balance MVs before querying (G9).
+    Validates window ordering. ``refresh_balances`` defaults to ``False`` so
+    cash-flow reads are not an authenticated DoS vector; pass ``true`` for G9 freshness.
 
     Attributes:
         start_date: Report window start (calendar date).
@@ -412,7 +448,7 @@ class ReportCashFlowQuery(BaseModel):
     start_date: date = Field(description="Report start date")
     end_date: date = Field(description="Report end date")
     account_id: uuid.UUID | None = Field(default=None, description="Optional account filter")
-    refresh_balances: bool = Field(default=True, description="Refresh account_balances MVs before query (G9)")
+    refresh_balances: bool = Field(default=False, description="Refresh account_balances MVs before query (G9)")
 
     @model_validator(mode="after")
     def _validate_window(self) -> ReportCashFlowQuery:
@@ -465,10 +501,13 @@ class ReportTrendsQuery(BaseModel):
     def _validate_window(self) -> ReportTrendsQuery:
         if self.period not in _ALLOWED_TREND_PERIODS:
             raise ValueError("period must be one of: daily, weekly, monthly, yearly")
+        explicit_window = self.start_date is not None and self.end_date is not None
         resolved_end = self.end_date or date.today()
         resolved_start = self.start_date or (resolved_end - timedelta(days=30 * self.months))
         if resolved_start > resolved_end:
             raise ValueError("start_date must be on or before end_date")
+        # Window length is enforced in get_report_trends_query (settings-backed).
+        del explicit_window
         self.start_date = resolved_start
         self.end_date = resolved_end
         return self
@@ -572,6 +611,7 @@ def get_report_spending_query(  # pylint: disable=too-many-arguments
     end_date: Annotated[date, Query(description="Report end date")],
     group_by: Annotated[str, Query(description="Group by category or account")] = "category",
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> ReportSpendingQuery:
     """Collect ``GET /reports/spending`` query parameters for FastAPI injection.
 
@@ -580,49 +620,74 @@ def get_report_spending_query(  # pylint: disable=too-many-arguments
         end_date: Report end date (required).
         group_by: Aggregation dimension; default ``category``.
         account_id: Optional account filter.
+        settings: Application settings (report window max days).
 
     Returns:
         Populated ``ReportSpendingQuery`` for the route handler.
 
     Raises:
-        ValueError: When the date window is inverted or ``group_by`` is not allowlisted
-            (raised by the model validator during construction).
+        ValueError: When the date window is inverted, too large, or ``group_by`` is
+            not allowlisted.
     """
-    return ReportSpendingQuery(
+    query = ReportSpendingQuery(
         start_date=start_date,
         end_date=end_date,
         group_by=group_by,
         account_id=account_id,
     )
+    _enforce_report_window(query.start_date, query.end_date, settings)
+    return query
 
 
-def get_report_cash_flow_query(
+def get_report_cash_flow_query(  # pylint: disable=too-many-arguments
+    request: Request,
     *,
     start_date: Annotated[date, Query(description="Report start date")],
     end_date: Annotated[date, Query(description="Report end date")],
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
-    refresh_balances: Annotated[bool, Query(description="Refresh balance MVs before query")] = True,
+    refresh_balances: Annotated[
+        bool | None,
+        Query(description="Refresh balance MVs before query (omit to use server default)"),
+    ] = None,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> ReportCashFlowQuery:
     """Collect ``GET /reports/cash-flow`` query parameters for FastAPI injection.
 
+    When ``refresh_balances`` is omitted, uses the secure default ``false`` unless
+    ``API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE`` is enabled (temporary).
+
     Args:
+        request: Incoming request (compat deprecation headers via ``request.state``).
         start_date: Report start date (required).
         end_date: Report end date (required).
         account_id: Optional account filter.
-        refresh_balances: Whether to refresh balance MVs before the query.
+        refresh_balances: Optional explicit refresh flag.
+        settings: Application settings.
 
     Returns:
         Populated ``ReportCashFlowQuery`` for the route handler.
 
     Raises:
-        ValueError: When the date window is inverted (model validator).
+        ValueError: When the date window is inverted or too large.
     """
-    return ReportCashFlowQuery(
+    omitted = refresh_balances is None
+    resolved_refresh = cash_flow_refresh_balances_default(settings) if omitted else bool(refresh_balances)
+    if omitted and settings.API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE:
+        extra = getattr(request.state, "extra_response_headers", None)
+        if not isinstance(extra, dict):
+            extra = {}
+        extra[HEADER_DEPRECATION] = "true"
+        extra[HEADER_SUNSET] = COMPAT_SUNSET_DATE
+        request.state.extra_response_headers = extra
+
+    query = ReportCashFlowQuery(
         start_date=start_date,
         end_date=end_date,
         account_id=account_id,
-        refresh_balances=refresh_balances,
+        refresh_balances=resolved_refresh,
     )
+    _enforce_report_window(query.start_date, query.end_date, settings)
+    return query
 
 
 def get_report_trends_query(  # pylint: disable=too-many-arguments
@@ -633,6 +698,7 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
     end_date: Annotated[date | None, Query(description="Explicit analysis end date")] = None,
     category_id: Annotated[uuid.UUID | None, Query(description="Optional category filter")] = None,
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> ReportTrendsQuery:
     """Collect ``GET /reports/trends`` query parameters for FastAPI injection.
 
@@ -643,15 +709,17 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
         end_date: Optional explicit analysis end.
         category_id: Optional category filter.
         account_id: Optional account filter.
+        settings: Application settings (explicit window max days).
 
     Returns:
         Populated ``ReportTrendsQuery`` with resolved window after validation.
 
     Raises:
-        ValueError: When ``period`` is not allowlisted or the resolved window is
-            inverted (model validator).
+        ValueError: When ``period`` is not allowlisted, the resolved window is
+            inverted, or the resolved window (including ``months`` lookback)
+            exceeds the configured max days.
     """
-    return ReportTrendsQuery(
+    query = ReportTrendsQuery(
         months=months,
         period=period,
         start_date=start_date,
@@ -659,6 +727,9 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
         category_id=category_id,
         account_id=account_id,
     )
+    if query.start_date is not None and query.end_date is not None:
+        _enforce_report_window(query.start_date, query.end_date, settings)
+    return query
 
 
 def get_report_export_query(  # pylint: disable=too-many-arguments
@@ -670,6 +741,7 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
     account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
     group_by: Annotated[str, Query(description="Spending group_by")] = "category",
     period: Annotated[str, Query(description="Trends period")] = "monthly",
+    settings: Annotated[Settings, Depends(get_settings)],
 ) -> ReportExportQuery:
     """Collect ``GET /reports/export`` query parameters for FastAPI injection.
 
@@ -683,6 +755,7 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
         account_id: Optional account filter.
         group_by: Spending aggregation when exporting spending.
         period: Trends bucket when exporting trends.
+        settings: Application settings (report window max days).
 
     Returns:
         Populated ``ReportExportQuery``. Deferred formats remain constructible so
@@ -690,9 +763,9 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
 
     Raises:
         ValueError: When the window, report type, or non-deferred format fields
-            fail allowlist validation (model validator).
+            fail allowlist validation.
     """
-    return ReportExportQuery(
+    query = ReportExportQuery(
         report_type=report_type,
         export_format=export_format,
         start_date=start_date,
@@ -701,3 +774,5 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
         group_by=group_by,
         period=period,
     )
+    _enforce_report_window(query.start_date, query.end_date, settings)
+    return query

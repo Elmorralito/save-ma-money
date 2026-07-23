@@ -4,16 +4,16 @@ Design artifacts for [refactor(PPT-031): Simplify #28](https://github.com/Elmorr
 
 This directory holds two files:
 
-| File                                 | Role                                                                                     |
-| ------------------------------------ | ---------------------------------------------------------------------------------------- |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Canonical design body** — v0 audit through migration runbook (Parts I–VII)             |
-| [`README.md`](README.md)             | **Program index** — issue map, gates (G0–G8), progress, and links into `ARCHITECTURE.md` |
+| File                                 | Role                                                                                      |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Canonical design body** — v0 audit through migration runbook + PPT-044 (Parts I–VIII)   |
+| [`README.md`](README.md)             | **Program index** — issue map, gates (G0–G8), progress, ops entrypoints, links into Parts |
 
 Issue tracker and merged PR notes: [CHANGELOG.md](../../CHANGELOG.md). Monorepo overview and documentation hub: [root README](../../README.md).
 
 ## Primary architecture document
 
-**[`ARCHITECTURE.md`](ARCHITECTURE.md)** consolidates the former standalone design files into seven navigable parts:
+**[`ARCHITECTURE.md`](ARCHITECTURE.md)** consolidates the former standalone design files into eight navigable parts:
 
 | Part | Topic                                                                                      | Issue                                                                  |
 | ---- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
@@ -24,24 +24,25 @@ Issue tracker and merged PR notes: [CHANGELOG.md](../../CHANGELOG.md). Monorepo 
 | V    | [API coverage matrix](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43)              | [#43](https://github.com/Elmorralito/save-ma-money/issues/43)          |
 | VI   | [Auth contract](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                    | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E  |
 | VII  | [Migration runbook](ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)              | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)          |
+| VIII | [Post-MVP API hardening](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89)     | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)          |
 
-**Merged sources (removed):** `PPT-031-v0-audit.md`, `PPT-031-v1-schema.md`, `PPT-031-v4-extensions.md`, `PPT-031-api-model-mapping.md`, `PPT-033-api-coverage-matrix.md`, `PPT-031-auth-contract.md`, `PPT-031-migration-runbook.md` — content lives in `ARCHITECTURE.md` only.
+**Merged sources (removed):** `PPT-031-v0-audit.md`, `PPT-031-v1-schema.md`, `PPT-031-v4-extensions.md`, `PPT-031-api-model-mapping.md`, `PPT-033-api-coverage-matrix.md`, `PPT-031-auth-contract.md`, `PPT-031-migration-runbook.md`, `docs/issues/PPT-044-api-hardening-brief.md`, former `docs/ops/` checklists — content lives in `ARCHITECTURE.md` / this README (§ Ops).
 
 **Live implementation codemap:** [`.strata/docs/ARCHITECTURE.md`](../../.strata/docs/ARCHITECTURE.md) (code paths, not design authority).
 
 ## Related documentation
 
-| Document                                                                             | Scope                                              |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| [`modules/model/README.md`](../../modules/model/README.md)                           | v3 schema, services, handlers, migrations, testing |
-| [`modules/api/README.md`](../../modules/api/README.md)                               | REST contract, integration guide, 32 MVP endpoints |
-| [`docs/issues/`](../issues/README.md)                                                | Issue-linked requirement briefs                    |
-| [`docs/postgres_papita_transactions_v4.png`](../postgres_papita_transactions_v4.png) | ER diagram — v3 core + balance materialized views  |
-| [`.agents/AGENTS.md`](../../.agents/AGENTS.md)                                       | Agent and contributor operational guide            |
+| Document                                                                             | Scope                                                       |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| [`modules/model/README.md`](../../modules/model/README.md)                           | v3 schema, services, handlers, migrations, testing          |
+| [`modules/api/README.md`](../../modules/api/README.md)                               | REST contract, security/ops notes, PPT-044 client migration |
+| [`docs/issues/`](../issues/README.md)                                                | Issue-linked requirement briefs                             |
+| [`docs/postgres_papita_transactions_v4.png`](../postgres_papita_transactions_v4.png) | ER diagram — v3 core + balance materialized views           |
+| [`.agents/AGENTS.md`](../../.agents/AGENTS.md)                                       | Agent and contributor operational guide                     |
 
 Legacy API filenames (`API_Endpoints.md.md`, `API_Documentation.md.md`) redirect to [`modules/api/README.md`](../../modules/api/README.md).
 
-## Repo implementation snapshot (2026-07-17)
+## Repo implementation snapshot (2026-07-23)
 
 Design gates and code delivery are tracked separately. Current repo state:
 
@@ -51,8 +52,10 @@ Design gates and code delivery are tracked separately. Current repo state:
 | **Model layer (PPT-041)**    | Closed ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards                                                                  |
 | **Design program (PPT-031)** | Closed ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                         |
 | **API epic (PPT-032)**       | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Operator docs: [`modules/api/README.md`](../../modules/api/README.md) |
+| **API hardening (PPT-044)**  | Implemented ([#89](https://github.com/Elmorralito/save-ma-money/issues/89)) — [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89); P1–P7 Done                              |
+| **Redis (PPT-043)**          | Closed ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)) — cache, distributed RL, JWT denylist; see [ops below](#ops-redis--optional-b1-pooler)                                    |
 
-Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) records the #43-era matrix plus a post-delivery note; `.strata/memory/project_state.md` tracks the active sprint.
+Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) records the #43-era matrix plus a post-delivery note; Part VIII records PPT-044; `.strata/memory/project_state.md` tracks the active sprint.
 
 ## Document ↔ issue map
 
@@ -69,6 +72,69 @@ Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-03
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part V                                                                                    | [#43](https://github.com/Elmorralito/save-ma-money/issues/43)                                                                         | **Complete**                           | API spec validated against v3 model; 32-endpoint matrix                                 |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VII                                                                                  | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)                                                                         | **Delivered (v3 seed)**                | `a75354933e79` baseline; validate on Docker/Supabase                                    |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VI                                                                                   | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) | **Implemented (Supabase Auth)**        | JWKS verify + provision; local HS256 tests only; refresh/logout via Supabase            |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VIII                                                                                 | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)                                                                         | **Implemented**                        | Post-MVP API hardening (transport, bounds, abuse, disclosure, security pack)            |
+
+## Ops (Redis + optional B1 pooler)
+
+Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/README.md). Env layout: [`environments/README.md`](../../environments/README.md). Design summary: [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89).
+
+### Redis (PPT-043 / B0 + B1)
+
+**B0 — Docker Compose**
+
+```bash
+cp environments/local/.env.example environments/local/.env
+# REDIS_ENABLED=true and REDIS_URL=redis://localhost:6379/0 for host uvicorn
+
+make stack-up && make redis-smoke
+# Or: make redis-up  then uvicorn with PAPITA_ENV=local
+```
+
+| Piece                          | Path                                                               |
+| ------------------------------ | ------------------------------------------------------------------ |
+| Redis image + volume           | `docker/docker-compose.yml` / `docker/database/docker-compose.yml` |
+| Server config (AOF, maxmemory) | `docker/redis/redis.conf`                                          |
+| Smoke                          | `bin/redis_smoke.sh` / `make redis-smoke`                          |
+
+**B1 — Managed Redis**
+
+1. Provision Redis 7 with TLS (Upstash / ElastiCache / compatible).
+2. Set in `environments/staging/.env` or `production/.env` (never commit): `REDIS_URL=rediss://…`, `REDIS_ENABLED=true`, `REDIS_RATE_LIMIT_ENABLED=true`, cache TTLs as needed; keys are `papita:{PAPITA_ENV}:…`.
+3. Restart API; confirm `GET /api/v1/health/redis` → healthy.
+4. Postgres remains source of truth; Redis is additive (cache, rate limits, JWT denylist).
+
+| Concern                            | Policy                                               |
+| ---------------------------------- | ---------------------------------------------------- |
+| Cache / tenant API RL Redis errors | Fail open                                            |
+| Auth IP RL Redis errors            | Optional fail-closed (`AUTH_RATE_LIMIT_FAIL_CLOSED`) |
+| JWT denylist Redis errors          | Fail closed (503) when `REDIS_ENABLED`               |
+
+### Optional B1 hosted Postgres pooler
+
+Not an epic acceptance gate. Auth MVP is Supabase Auth ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Pooler hosting is optional DB ops only.
+
+| Secret / env var          | Notes                                                  |
+| ------------------------- | ------------------------------------------------------ |
+| `DATABASE_URL`            | Transaction pooler `:6543` with `?pgbouncer=true`      |
+| `DATABASE_URL_MIGRATIONS` | Direct `:5432` for Alembic only — **never** the pooler |
+| `PAPITA_ENV`              | `staging` or `production`                              |
+
+```bash
+# Migrations (direct URL)
+set -a && source environments/staging/.env && set +a
+/bin/bash ./bin/alembic.sh upgrade --env staging --url "$DATABASE_URL_MIGRATIONS"
+
+# Optional pooler smoke
+PAPITA_ENV=staging make b1-smoke
+```
+
+| Probe                     | DB required | Fail surface             |
+| ------------------------- | ----------- | ------------------------ |
+| `/api/v1/health/live`     | No          | Process-only             |
+| `/api/v1/health/ready`    | Yes         | **503** when unreachable |
+| `/api/v1/health/database` | Yes         | **503** when disconnect  |
+
+Public deploy posture (CORS / docs / TrustedHost): [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) / [#89](https://github.com/Elmorralito/save-ma-money/issues/89).
 
 ## Platform
 

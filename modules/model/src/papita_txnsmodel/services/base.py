@@ -218,6 +218,36 @@ class BaseService(BaseModel):
 
         return self.create(obj=obj, owner=owner, **kwargs)
 
+    def _attribute_query_filters(self, dto: TableDTO) -> list:
+        """Build equality filters from non-empty DTO fields set on ``dto``."""
+        dao = self.dto_type.__dao_type__
+        return [
+            getattr(dao, key) == getattr(dto, key)
+            for key in dto.model_fields_set
+            if (value := getattr(dto, key, None)) is not None
+            and not (isinstance(value, str) and value == "")
+            and hasattr(dao, key)
+        ]
+
+    def count_records(  # pylint: disable=missing-kwoa
+        self, dto: TableDTO | dict | None = None, owner: UsersDTO | None = None, **kwargs
+    ) -> int:
+        """Count rows matching optional attribute filters (no pagination kwargs).
+
+        Repository ``count_records`` is ``@connect``-wrapped; ``_db_session`` is injected.
+        """
+        owner = self._ensure_owner(owner)
+        kwargs.pop("skip", None)
+        kwargs.pop("limit", None)
+        kwargs.pop("order_by", None)
+        if not dto:
+            return int(self._repository.count_records(owner=owner, dto_type=self.dto_type, **kwargs))
+
+        parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
+        self.check_expected_dto_type(parsed_dto)
+        query_filters = self._attribute_query_filters(parsed_dto)
+        return int(self._repository.count_records(*query_filters, owner=owner, dto_type=self.dto_type, **kwargs))
+
     def get_records(self, dto: TableDTO | dict | None, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
         """Retrieve multiple records from the database based on attributes.
 
@@ -225,14 +255,15 @@ class BaseService(BaseModel):
             dto: The object containing attributes to filter by, either as a DTO
                 or a dictionary.
             owner: The owner of the records. Defaults to None.
-            **kwargs: Additional keyword arguments to pass to the repository method.
+            **kwargs: Additional keyword arguments to pass to the repository method,
+                including optional ``skip`` / ``limit`` for SQL pagination.
 
         Returns:
             pd.DataFrame: DataFrame containing the retrieved records.
         """
         owner = self._ensure_owner(owner)
         if not dto:
-            records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type)
+            records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type, **kwargs)
         else:
             parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
             self.check_expected_dto_type(parsed_dto)

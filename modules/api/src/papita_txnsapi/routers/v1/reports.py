@@ -95,13 +95,13 @@ def get_spending_report(  # pylint: disable=too-many-positional-arguments
         SpendingReportResponse mapped from the lean service payload.
 
     Raises:
-        HTTPException: 401 without JWT; 400 when ``account_id`` is not owned by
-            the tenant or date/group validation fails in query models.
+        HTTPException: 401 without JWT; 404 when ``account_id`` is not owned by
+            the tenant; 400 when date/group validation fails in query models.
     """
     cache_params = _report_cache_params("spending", filters)
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.REPORTS, "reports:spending", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -109,6 +109,7 @@ def get_spending_report(  # pylint: disable=too-many-positional-arguments
             return SpendingReportResponse.model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     payload = report_service.spending(owner=owner, **filters.service_kwargs())
     result = SpendingReportResponse.from_service(
@@ -125,6 +126,7 @@ def get_spending_report(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=result.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.REPORTS),
+            version=cache_version,
         )
     return result
 
@@ -138,10 +140,11 @@ def get_cash_flow_report(  # pylint: disable=too-many-positional-arguments
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
     response: Response,
 ) -> CashFlowReportResponse:
-    """Return cash-flow summary for the authenticated tenant (G9 refresh by default).
+    """Return cash-flow summary for the authenticated tenant.
 
     Inflows/outflows include TRANSFER legs. Balance freshness uses
-    ``refresh_balance_materialized_views`` when ``refresh_balances`` is true.
+    ``refresh_balance_materialized_views`` when ``refresh_balances`` is true
+    (defaults to false to avoid authenticated DoS; pass ``true`` for G9 freshness).
     ``closing_balance`` maps from service ``portfolio_total``; opening/by-account
     fields may be stubbed in MVP. Cached in Redis when enabled.
 
@@ -162,7 +165,7 @@ def get_cash_flow_report(  # pylint: disable=too-many-positional-arguments
     cache_params = _report_cache_params("cash-flow", filters)
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.REPORTS, "reports:cash-flow", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -170,6 +173,7 @@ def get_cash_flow_report(  # pylint: disable=too-many-positional-arguments
             return CashFlowReportResponse.model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     payload = report_service.cash_flow(owner=owner, **filters.service_kwargs())
     result = CashFlowReportResponse.from_service(
@@ -186,6 +190,7 @@ def get_cash_flow_report(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=result.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.REPORTS),
+            version=cache_version,
         )
     return result
 
@@ -222,7 +227,7 @@ def get_trends_report(  # pylint: disable=too-many-positional-arguments
     cache_params = _report_cache_params("trends", filters)
     owner_id = owner.id
     if owner_id is not None:
-        cached, cache_status = get_versioned_cached_json(
+        cached, cache_status, cache_version = get_versioned_cached_json(
             redis, owner_id, CacheNamespace.REPORTS, "reports:trends", cache_params
         )
         response.headers["X-Cache"] = cache_status
@@ -230,6 +235,7 @@ def get_trends_report(  # pylint: disable=too-many-positional-arguments
             return TrendsReportResponse.model_validate(cached)
     else:
         response.headers["X-Cache"] = "BYPASS"
+        cache_version = 0
 
     payload = report_service.trends(owner=owner, **filters.service_kwargs())
     assert filters.start_date is not None and filters.end_date is not None
@@ -247,6 +253,7 @@ def get_trends_report(  # pylint: disable=too-many-positional-arguments
             cache_params,
             value=result.model_dump(mode="json"),
             ttl_seconds=ttl_for_namespace(settings, CacheNamespace.REPORTS),
+            version=cache_version,
         )
     return result
 

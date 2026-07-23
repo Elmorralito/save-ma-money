@@ -27,7 +27,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated, Literal, Type
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import JSONResponse
 from redis import Redis
 
@@ -35,6 +35,7 @@ from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.auth_health import AuthProbeDetail, AuthProbeResult, probe_supabase_auth
 from papita_txnsapi.core.db_health import probe_database
 from papita_txnsapi.core.redis import RedisProbeDetail, RedisProbeResult, get_redis_from_app, ping_redis
+from papita_txnsapi.dependencies.rate_limit import enforce_health_rate_limit
 from papita_txnsapi.dependencies.services import get_connector
 from papita_txnsapi.schemas.health import (
     AuthHealthResponse,
@@ -49,11 +50,19 @@ from papita_txnsmodel.database.connector import SQLDatabaseConnector
 router = APIRouter(prefix="/health", tags=["Health"])
 
 _JSON_CONTENT_TYPE = "application/json; charset=utf-8"
+_NO_STORE_HEADERS = {"Cache-Control": "no-store"}
 
 
 def _json_response(
     status_code: int,
-    payload: HealthResponse | DatabaseHealthResponse | AuthHealthResponse | RedisHealthResponse | ReadinessResponse,
+    payload: (
+        HealthResponse
+        | DatabaseHealthResponse
+        | AuthHealthResponse
+        | RedisHealthResponse
+        | ReadinessResponse
+        | LivenessResponse
+    ),
 ) -> JSONResponse:
     """Serialize a health schema as JSON without an HTML content type.
 
@@ -62,13 +71,20 @@ def _json_response(
         payload: Pydantic response model to dump in JSON mode.
 
     Returns:
-        ``JSONResponse`` with an explicit ``application/json`` content type.
+        ``JSONResponse`` with an explicit ``application/json`` content type and
+        ``Cache-Control: no-store``.
     """
     return JSONResponse(
         status_code=status_code,
         content=payload.model_dump(mode="json"),
         media_type=_JSON_CONTENT_TYPE,
+        headers=_NO_STORE_HEADERS,
     )
+
+
+def _apply_no_store(response: Response) -> None:
+    """Mark health JSON responses as non-cacheable."""
+    response.headers.setdefault("Cache-Control", "no-store")
 
 
 def _probe_auth(settings: Settings) -> AuthProbeResult:
@@ -107,9 +123,15 @@ def _redis_connectivity_label(probe: RedisProbeResult) -> Literal["connected", "
     return "connected" if probe.connected else "disconnected"
 
 
-@router.get("", response_model=HealthResponse, response_class=JSONResponse)
+@router.get(
+    "",
+    response_model=HealthResponse,
+    response_class=JSONResponse,
+    dependencies=[Depends(enforce_health_rate_limit)],
+)
 def get_health(
     request: Request,
+    response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
     connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
 ) -> HealthResponse:
@@ -120,6 +142,7 @@ def get_health(
 
     Args:
         request: Incoming request (reads ``app.state.redis``).
+        response: FastAPI response used to set ``Cache-Control: no-store``.
         settings: Application settings supplying version and Auth/Redis configuration.
         connector: Database connector class used for a lightweight readiness query.
 
@@ -127,7 +150,8 @@ def get_health(
         Composite ``HealthResponse`` marked ``degraded`` when the database is down,
         required Supabase Auth is unreachable, or required Redis is down.
     """
-    db_probe = probe_database(connector)
+    _apply_no_store(response)
+    db_probe = probe_database(connector, timeout_ms=settings.HEALTH_PROBE_TIMEOUT_MS)
     auth_probe = _probe_auth(settings)
     redis_probe = _probe_redis(request, settings)
     database: Literal["connected", "disconnected"] = "connected" if db_probe.connected else "disconnected"
@@ -149,8 +173,15 @@ def get_health(
     )
 
 
-@router.get("/database", response_model=DatabaseHealthResponse, response_class=JSONResponse)
+@router.get(
+    "/database",
+    response_model=DatabaseHealthResponse,
+    response_class=JSONResponse,
+    dependencies=[Depends(enforce_health_rate_limit)],
+)
 def get_database_health(
+    response: Response,
+    settings: Annotated[Settings, Depends(get_settings)],
     connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
 ) -> DatabaseHealthResponse | JSONResponse:
     """Probe API↔database communication health.
@@ -159,13 +190,16 @@ def get_database_health(
     link is up plus round-trip latency. Accepts no client-supplied SQL or detail text.
 
     Args:
+        response: FastAPI response used to set ``Cache-Control: no-store``.
+        settings: Application settings with probe timeout.
         connector: Database connector class used for the probe query.
 
     Returns:
         ``DatabaseHealthResponse`` with ``status=healthy`` when connected; otherwise
         a 503 ``JSONResponse`` with ``status=unhealthy`` and an allowlisted detail.
     """
-    probe = probe_database(connector)
+    _apply_no_store(response)
+    probe = probe_database(connector, timeout_ms=settings.HEALTH_PROBE_TIMEOUT_MS)
     status_label: Literal["healthy", "unhealthy"] = "healthy" if probe.connected else "unhealthy"
     payload = DatabaseHealthResponse(
         status=status_label,
@@ -179,8 +213,14 @@ def get_database_health(
     return _json_response(status.HTTP_503_SERVICE_UNAVAILABLE, payload)
 
 
-@router.get("/auth", response_model=AuthHealthResponse, response_class=JSONResponse)
+@router.get(
+    "/auth",
+    response_model=AuthHealthResponse,
+    response_class=JSONResponse,
+    dependencies=[Depends(enforce_health_rate_limit)],
+)
 def get_auth_health(
+    response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthHealthResponse | JSONResponse:
     """Probe API↔Supabase Auth (GoTrue) communication health.
@@ -189,12 +229,14 @@ def get_auth_health(
     Local HS256 mode reports healthy with a skipped detail (no network call).
 
     Args:
+        response: FastAPI response used to set ``Cache-Control: no-store``.
         settings: Application settings with Auth provider and Supabase credentials.
 
     Returns:
         ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);
         otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.
     """
+    _apply_no_store(response)
     probe = _probe_auth(settings)
     status_label: Literal["healthy", "unhealthy"] = "healthy" if probe.reachable else "unhealthy"
     payload = AuthHealthResponse(
@@ -210,9 +252,15 @@ def get_auth_health(
     return _json_response(status.HTTP_503_SERVICE_UNAVAILABLE, payload)
 
 
-@router.get("/redis", response_model=RedisHealthResponse, response_class=JSONResponse)
+@router.get(
+    "/redis",
+    response_model=RedisHealthResponse,
+    response_class=JSONResponse,
+    dependencies=[Depends(enforce_health_rate_limit)],
+)
 def get_redis_health(
     request: Request,
+    response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> RedisHealthResponse | JSONResponse:
     """Probe API↔Redis communication health.
@@ -222,12 +270,14 @@ def get_redis_health(
 
     Args:
         request: Incoming request (reads ``app.state.redis``).
+        response: FastAPI response used to set ``Cache-Control: no-store``.
         settings: Application settings with Redis flags.
 
     Returns:
         ``RedisHealthResponse`` with ``status=healthy`` when Redis is up (or skipped);
         otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.
     """
+    _apply_no_store(response)
     probe = _probe_redis(request, settings)
     reachable = probe.connected if settings.REDIS_ENABLED else True
     status_label: Literal["healthy", "unhealthy"] = "healthy" if reachable else "unhealthy"
@@ -244,9 +294,15 @@ def get_redis_health(
     return _json_response(status.HTTP_503_SERVICE_UNAVAILABLE, payload)
 
 
-@router.get("/ready", response_model=ReadinessResponse, response_class=JSONResponse)
+@router.get(
+    "/ready",
+    response_model=ReadinessResponse,
+    response_class=JSONResponse,
+    dependencies=[Depends(enforce_health_rate_limit)],
+)
 def get_readiness(
     request: Request,
+    response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
     connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
 ) -> ReadinessResponse | JSONResponse:
@@ -257,6 +313,7 @@ def get_readiness(
 
     Args:
         request: Incoming request (reads ``app.state.redis``).
+        response: FastAPI response used to set ``Cache-Control: no-store``.
         settings: Application settings selecting Auth/Redis requirements.
         connector: Database connector class used for a lightweight readiness query.
 
@@ -264,7 +321,8 @@ def get_readiness(
         ``ReadinessResponse`` with ``ready=True`` when dependencies accept traffic;
         otherwise a 503 ``JSONResponse`` with ``ready=False``.
     """
-    db_ok = probe_database(connector).connected
+    _apply_no_store(response)
+    db_ok = probe_database(connector, timeout_ms=settings.HEALTH_PROBE_TIMEOUT_MS).connected
     auth_ok = _probe_auth(settings).reachable
     redis_ok = _probe_redis(request, settings).connected if settings.REDIS_ENABLED else True
     if db_ok and auth_ok and redis_ok:
@@ -273,12 +331,17 @@ def get_readiness(
 
 
 @router.get("/live", response_model=LivenessResponse, response_class=JSONResponse)
-def get_liveness() -> LivenessResponse:
+def get_liveness(response: Response) -> LivenessResponse:
     """Liveness probe — confirm the API process is running.
 
     Does not check database, Auth, or Redis. Use ``/health/ready`` for dependency gates.
+    Not rate-limited so orchestrators can poll aggressively.
+
+    Args:
+        response: FastAPI response used to set ``Cache-Control: no-store``.
 
     Returns:
         ``LivenessResponse`` with ``alive=True`` when the process can serve HTTP.
     """
+    _apply_no_store(response)
     return LivenessResponse(alive=True)

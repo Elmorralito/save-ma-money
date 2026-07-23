@@ -8,6 +8,7 @@ Key exports:
     get_connector: Resolve and validate the SQLAlchemy connector class.
     get_users_service, get_accounts_service, get_categories_service,
     get_transactions_service, get_report_service: Domain service factories.
+    clear_transactions_service_cache: Drop module-scoped transactions DI cache.
 """
 
 from __future__ import annotations
@@ -26,6 +27,15 @@ from papita_txnsmodel.services.transactions import TransactionsService, Transact
 from papita_txnsmodel.services.users import UsersService
 
 ServiceT = TypeVar("ServiceT", bound=BaseModel)
+
+# Module-scoped TransactionsService (with FK link services) keyed by connector.
+# Avoids rebuilding Accounts/Categories/Templates services on every request (E6).
+_transactions_service_by_connector: dict[type[SQLDatabaseConnector], TransactionsService] = {}
+
+
+def clear_transactions_service_cache() -> None:
+    """Drop cached ``TransactionsService`` instances (test isolation helper)."""
+    _transactions_service_by_connector.clear()
 
 
 def get_connector(settings: Annotated[Settings, Depends(get_settings)]) -> Type[SQLDatabaseConnector]:
@@ -107,6 +117,8 @@ def get_transactions_service(
     Wires linked entity services (accounts, categories, templates) so
     ``LinkedEntitiesService.create`` can validate non-null foreign keys.
     Optional ``template_id`` remains ``None`` without requiring a template row.
+    Instances are cached per connector for the process lifetime so FK wiring
+    is not rebuilt on every request.
 
     Args:
         connector: Injected model database connector.
@@ -114,11 +126,15 @@ def get_transactions_service(
     Returns:
         Configured ``TransactionsService`` instance with link services loaded.
     """
+    cached = _transactions_service_by_connector.get(connector)
+    if cached is not None:
+        return cached
+
     accounts = _service_factory(AccountsService, connector)
     categories = _service_factory(CategoriesService, connector)
     templates = _service_factory(TransactionTemplatesService, connector)
     service = _service_factory(TransactionsService, connector)
-    return service.load_link_services(
+    wired = service.load_link_services(
         {
             "template_id": templates,
             "from_account_id": accounts,
@@ -126,6 +142,8 @@ def get_transactions_service(
             "category_id": categories,
         }
     )
+    _transactions_service_by_connector[connector] = wired
+    return wired
 
 
 def get_report_service(connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)]) -> ReportService:

@@ -38,12 +38,38 @@ class BaseRepository:
     records. It handles both hard and soft deletions, as well as upsert operations
     with conflict resolution strategies.
 
+    Soft-delete semantics (default):
+        ``get_records`` / ``count_records`` / ``get_page_with_total`` exclude inactive
+        rows (``active=True`` and ``deleted_at IS NULL`` when those columns exist).
+        Pass ``include_deleted=True`` to include soft-deleted rows. Upserting a
+        soft-deleted id raises unless ``reactivate=True``.
+
     Attributes:
         __expected_dto__ (type[TableDTO]): The expected DTO type for this repository.
             Defaults to TableDTO.
     """
 
     __expected_dto__: type[TableDTO] = TableDTO
+
+    @staticmethod
+    def _soft_delete_read_filters(dao: type, *, include_deleted: bool) -> list:
+        """Build default active-only predicates for list/count queries.
+
+        Args:
+            dao: SQLModel table class for the query.
+            include_deleted: When ``True``, return no extra filters.
+
+        Returns:
+            List of SQLAlchemy filter expressions (may be empty).
+        """
+        if include_deleted:
+            return []
+        filters: list = []
+        if hasattr(dao, "active"):
+            filters.append(dao.active.is_(True))
+        if hasattr(dao, "deleted_at"):
+            filters.append(dao.deleted_at.is_(None))
+        return filters
 
     @SQLDatabaseConnector.connect
     def hard_delete_records(
@@ -173,14 +199,30 @@ class BaseRepository:
             results = _db_session.exec(statement, params=kwargs.get("params", kwargs.get("statement_params"))).all()
             if not results:
                 return pd.DataFrame([])
-            first = results[0]
-            if hasattr(first, "model_dump"):
-                return pd.DataFrame([item.model_dump(mode="python") for item in results])
-            return pd.DataFrame(results)
+            return pd.DataFrame([self._query_result_item_to_mapping(item) for item in results])
         except Exception as exc:
             logger.exception("The query has failed due to: %s", exc)
 
         return pd.DataFrame([])
+
+    @staticmethod
+    def _query_result_item_to_mapping(item: Any) -> Any:
+        """Normalize a SQLModel/SQLAlchemy result row into a plain mapping.
+
+        ``Session.exec(select(DAO))`` may yield the DAO directly or a ``Row`` that
+        wraps a single entity. Returning nested ``{DAOName: entity}`` frames breaks
+        ``standardize_dataframe`` / DTO validation on list helpers.
+        """
+        if hasattr(item, "model_dump"):
+            return item.model_dump(mode="python")
+        try:
+            length = len(item)
+            entity = item[0]
+        except (TypeError, KeyError, IndexError):
+            return item
+        if length == 1 and hasattr(entity, "model_dump"):
+            return entity.model_dump(mode="python")
+        return item
 
     def _dataframe_row_to_dto(self, output_df: pd.DataFrame, dto_type: type[TableDTO], **kwargs) -> TableDTO | None:
         """Convert the first row of a query DataFrame into a validated DTO."""
@@ -200,25 +242,35 @@ class BaseRepository:
     def upsert_record(self, dto: TableDTO, *, _db_session: Session, **kwargs) -> None:
         """Insert or update a single record in the database.
 
-        This method performs an upsert operation (insert or update) for a single record
-        based on the provided DTO.
+        Looks up the existing row including soft-deleted records. Merging a
+        soft-deleted row is refused unless ``reactivate=True`` (which clears
+        ``deleted_at`` and sets ``active=True`` on the DTO before merge).
 
         Args:
             dto: The DTO containing the record data to upsert.
             _db_session: Database session provided by the connector decorator.
-            **kwargs: Additional keyword arguments for configuration.
+            **kwargs: Additional keyword arguments for configuration, including:
+                - reactivate (bool): Allow restoring a soft-deleted row (default False).
 
         Returns:
             TableDTO | None: The upserted DTO if successful, None otherwise.
 
         Raises:
-            ValueError: If the DTO does not have an ID.
+            ValueError: If the DTO does not have an ID, or if the row is soft-deleted
+                and ``reactivate`` is not true.
         """
-        dao = dto.to_dao()
         if not dto.id:
             raise ValueError("There is no id in the DTO")
 
-        record = self.get_record_by_id(dto.id, dto_type=type(dto), **kwargs)
+        reactivate = bool(kwargs.pop("reactivate", False))
+        record = self.get_record_by_id(dto.id, dto_type=type(dto), include_deleted=True, **kwargs)
+        if record is not None and not getattr(record, "active", True):
+            if not reactivate:
+                raise ValueError(f"Cannot upsert soft-deleted record '{dto.id}'; pass reactivate=True to restore.")
+            dto.active = True
+            dto.deleted_at = None
+
+        dao = dto.to_dao()
         if hasattr(dao, "updated_at"):
             setattr(dao, "updated_at", datetime.now())
 
@@ -231,6 +283,8 @@ class BaseRepository:
             _db_session.commit()
             _db_session.refresh(dao)
             return dto.model_validate(dao.model_dump(mode="python"), strict=True)
+        except ValueError:
+            raise
         except Exception as exc:
             logger.exception("The upsert operation has failed due to: %s", exc)
             _db_session.rollback()
@@ -313,14 +367,20 @@ class BaseRepository:
         _db_session: Session,
         **kwargs,
     ) -> int:
-        """Count rows matching query filters without fetching the full result set."""
+        """Count rows matching query filters without fetching the full result set.
+
+        Soft-deleted rows are excluded by default. Pass ``include_deleted=True`` to
+        count inactive rows as well.
+        """
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
 
+        include_deleted = bool(kwargs.pop("include_deleted", False))
         dao = dto_type.__dao_type__
+        filters = [*self._soft_delete_read_filters(dao, include_deleted=include_deleted), *query_filters]
         statement = select(func.count()).select_from(dao)  # pylint: disable=not-callable
-        if query_filters:
-            statement = statement.where(*query_filters)
+        if filters:
+            statement = statement.where(*filters)
         try:
             return int(_db_session.exec(statement).one())
         except Exception as exc:
@@ -329,10 +389,17 @@ class BaseRepository:
 
     def get_records(self, *query_filters, dto_type: type[TableDTO], **kwargs) -> pd.DataFrame:
         """Retrieve records from the database based on query filters.
+
+        Soft-deleted rows are excluded by default (``active=True`` and
+        ``deleted_at IS NULL`` when present on the DAO). Pass ``include_deleted=True``
+        to include inactive rows (e.g. repair/admin paths).
+
         Args:
             *query_filters: Variable length list of query filter conditions.
             dto_type: The DTO type for the records to retrieve.
-            **kwargs: Additional keyword arguments to pass to run_query.
+            **kwargs: Additional keyword arguments to pass to run_query, including:
+                - include_deleted (bool): Include soft-deleted rows (default False).
+                - order_by / skip / limit: List options.
 
         Returns:
             DataFrame containing the retrieved records.
@@ -340,15 +407,83 @@ class BaseRepository:
         order_by = kwargs.pop("order_by", None)
         skip = kwargs.pop("skip", None)
         limit = kwargs.pop("limit", None)
-        statement = (
-            Select(dto_type.__dao_type__).where(*query_filters) if query_filters else Select(dto_type.__dao_type__)
-        )
+        include_deleted = bool(kwargs.pop("include_deleted", False))
+        dao = dto_type.__dao_type__
+        filters = [*self._soft_delete_read_filters(dao, include_deleted=include_deleted), *query_filters]
+        statement = Select(dao).where(*filters) if filters else Select(dao)
         statement = self._apply_list_options(statement, order_by=order_by, skip=skip, limit=limit)
         output_df = self.run_query(statement, **kwargs)
         if getattr(output_df, "empty", True):
             return output_df
 
         return output_df
+
+    @SQLDatabaseConnector.connect
+    def get_page_with_total(  # pylint: disable=too-many-locals
+        self,
+        *query_filters,
+        dto_type: type[TableDTO],
+        _db_session: Session,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """Return a paginated page and matching total in one query when possible.
+
+        Uses ``COUNT(*) OVER()`` on the page SELECT so list endpoints avoid a
+        separate count round-trip. When the page is empty (e.g. ``skip`` past the
+        end), falls back to an in-session ``COUNT(*)`` so ``total`` stays correct.
+
+        Args:
+            *query_filters: WHERE predicates (same as ``get_records``).
+            dto_type: DTO type whose ``__dao_type__`` is queried.
+            _db_session: Database session (injected by connector).
+            **kwargs: ``order_by`` / ``skip`` / ``limit`` / ``include_deleted``.
+
+        Returns:
+            Tuple of (page DataFrame without the window column, total row count).
+
+        Raises:
+            TypeError: If ``_db_session`` is not a SQLModel ``Session``.
+        """
+        if not isinstance(_db_session, Session):
+            raise TypeError("Session not supported.")
+
+        order_by = kwargs.pop("order_by", None)
+        skip = kwargs.pop("skip", None)
+        limit = kwargs.pop("limit", None)
+        include_deleted = bool(kwargs.pop("include_deleted", False))
+        dao = dto_type.__dao_type__
+        filters = [*self._soft_delete_read_filters(dao, include_deleted=include_deleted), *query_filters]
+
+        total_col = func.count().over().label("_total")  # pylint: disable=not-callable
+        statement = select(dao, total_col)
+        if filters:
+            statement = statement.where(*filters)
+        statement = self._apply_list_options(statement, order_by=order_by, skip=skip, limit=limit)
+
+        try:
+            rows = list(_db_session.exec(statement).all())
+        except Exception as exc:
+            logger.exception("The page+total query has failed due to: %s", exc)
+            return pd.DataFrame([]), 0
+
+        if not rows:
+            count_statement = select(func.count()).select_from(dao)  # pylint: disable=not-callable
+            if filters:
+                count_statement = count_statement.where(*filters)
+            try:
+                total = int(_db_session.exec(count_statement).one())
+            except Exception as exc:
+                logger.exception("The empty-page count fallback has failed due to: %s", exc)
+                return pd.DataFrame([]), 0
+            return pd.DataFrame([]), total
+
+        first = rows[0]
+        total = int(first[1])
+        parsed: list[Any] = []
+        for row in rows:
+            entity = row[0]
+            parsed.append(entity.model_dump(mode="python") if hasattr(entity, "model_dump") else entity)
+        return pd.DataFrame(parsed), total
 
     def get_records_from_attributes(self, dto: TableDTO, **kwargs) -> pd.DataFrame:
         """Retrieve records from the database based on DTO attributes.
@@ -599,6 +734,15 @@ class OwnedTableRepository(BaseRepository):
 
         owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
         return super().count_records(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
+
+    def get_page_with_total(self, *query_filters, dto_type: Type[OwnedTableDTO], **kwargs) -> tuple[pd.DataFrame, int]:
+        """Return a tenant-owned page and total matching count."""
+        owner = kwargs.pop("owner", None)
+        if not isinstance(owner, (UsersDTO, uuid.UUID)):
+            raise ValueError("Owner is required for get_page_with_total")
+
+        owner_filter = self._get_owner_filter(owner, dto_type.__dao_type__)
+        return super().get_page_with_total(owner_filter, *query_filters, dto_type=dto_type, **kwargs)
 
     def get_records_from_attributes(self, dto: OwnedTableDTO, **kwargs) -> pd.DataFrame:
         """Retrieve records owned by the specified user based on DTO attributes.

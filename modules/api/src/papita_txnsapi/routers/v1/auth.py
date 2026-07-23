@@ -1,35 +1,11 @@
 """Authentication routes — register, login, OAuth/SSO, refresh, and logout.
 
-Exposes identity endpoints under ``/api/v1/auth``. Behavior depends on
-``Settings.AUTH_PROVIDER``:
-
-* ``supabase`` — register/login/refresh/logout/OAuth via Supabase Auth; JWTs are
-  verified with JWKS on protected routes. Email is the canonical login identity.
-  Failed Papita provision after Auth signup may trigger Admin orphan cleanup when
-  ``SUPABASE_SERVICE_ROLE_KEY`` is set.
-* ``local`` — register/login against ``UsersService`` and issue HS256 JWTs
-  (tests / B0 only). Refresh and OAuth/SSO return HTTP 501. Logout returns 501
-  unless Redis is enabled (JWT denylist via PPT-043).
-
-Routes:
-    ``POST /auth/register`` — create user (email + password; username derived).
-    ``POST /auth/login`` — OAuth2 password flow (email in the username field).
-    ``GET /auth/oauth/{provider}`` — PKCE authorize URL + ``code_verifier``.
-    ``POST /auth/oauth/callback`` — exchange auth ``code`` + verifier.
-    ``GET /auth/oauth/callback`` — browser redirect (code + HttpOnly PKCE cookies).
-    ``POST /auth/sso`` — hand off when the client already holds session tokens.
-    ``GET /auth/me`` — authenticated profile smoke test.
-    ``POST /auth/refresh`` — Supabase session rotation (501 when local).
-    ``POST /auth/logout`` — Supabase session revoke and/or Redis JWT denylist.
-
-Rate limits apply to register, login, and OAuth/SSO/refresh via FastAPI
-dependencies. OAuth ``redirect_to`` is allowlisted to the API callback URL and
-optional ``SUPABASE_OAUTH_REDIRECT_TO``. Business logic stays in
-``papita_txnsmodel`` / ``core.supabase_auth``; this module maps HTTP ↔ helpers.
-
-Key exports:
-    router: FastAPI ``APIRouter`` mounted at ``/auth`` by the v1 package.
+Maps HTTP under ``/api/v1/auth`` to Supabase Auth or local HS256 helpers.
+Business logic stays in ``papita_txnsmodel`` / ``core.supabase_auth``.
 """
+
+# Auth surface is intentionally one router module (PPT-039/043/044).
+# pylint: disable=too-many-lines
 
 from __future__ import annotations
 
@@ -42,6 +18,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordRequestForm
 
 from papita_txnsapi.config.settings import Settings, get_settings
+from papita_txnsapi.core.auth_errors import auth_error_detail, public_value_error_detail
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.core.session_store import SessionStore
 from papita_txnsapi.core.supabase_auth import (
@@ -64,6 +41,7 @@ from papita_txnsapi.dependencies.rate_limit import (
     enforce_auth_login_rate_limit,
     enforce_auth_oauth_rate_limit,
     enforce_auth_register_rate_limit,
+    enforce_tenant_api_rate_limit,
 )
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsapi.dependencies.session_store import get_session_store
@@ -110,20 +88,6 @@ def _require_supabase_auth_settings(settings: Settings) -> None:
     """
     if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_AUTH_REQUIRED)
-
-
-def _auth_error_detail(exc: Exception, *, fallback: str) -> str:
-    """Extract a public-facing Auth error message from an SDK exception.
-
-    Args:
-        exc: Raised Auth or wrapper exception.
-        fallback: Detail when the exception carries no usable message.
-
-    Returns:
-        Non-empty detail string suitable for ``HTTPException.detail``.
-    """
-    message = getattr(exc, "message", None) or str(exc) or fallback
-    return str(message)
 
 
 def _token_response_from_auth(
@@ -463,7 +427,7 @@ def register_user(
                 )
             raise HTTPException(
                 status_code=_http_status_for_provision_error(exc),
-                detail=str(exc),
+                detail=public_value_error_detail(exc, fallback="Registration failed"),
                 headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
             ) from exc
         return UserResponse.from_dto(user)
@@ -559,7 +523,7 @@ def login(
                 )
             raise HTTPException(
                 status_code=_http_status_for_provision_error(exc),
-                detail=str(exc),
+                detail=public_value_error_detail(exc, fallback="Login failed"),
                 headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
             ) from exc
 
@@ -627,14 +591,17 @@ def oauth_callback_post(
             display_name=body.display_name,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback="OAuth code exchange rejected")
+        detail = auth_error_detail(exc, fallback="OAuth code exchange rejected")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,
             headers=_UNAUTHORIZED_HEADERS,
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_value_error_detail(exc, fallback="OAuth callback failed"),
+        ) from exc
 
 
 @router.get("/oauth/callback", response_model=TokenResponse, name="oauth_callback_get")
@@ -675,8 +642,12 @@ def oauth_callback_get(
             detail="OAuth SSO requires AUTH_PROVIDER=supabase",
         )
     if error:
-        detail = error_description or error
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail, headers=_UNAUTHORIZED_HEADERS)
+        # Never echo raw IdP error_description text to clients.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="OAuth authorization failed",
+            headers=_UNAUTHORIZED_HEADERS,
+        )
     if not code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing OAuth authorization code")
     code_verifier = request.cookies.get(_OAUTH_VERIFIER_COOKIE)
@@ -705,14 +676,17 @@ def oauth_callback_get(
             redirect_to=redirect_to,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback="OAuth code exchange rejected")
+        detail = auth_error_detail(exc, fallback="OAuth code exchange rejected")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,
             headers=_UNAUTHORIZED_HEADERS,
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_value_error_detail(exc, fallback="OAuth callback failed"),
+        ) from exc
 
     response = JSONResponse(content=token.model_dump(mode="json"))
     _clear_oauth_pkce_cookies(response)
@@ -770,10 +744,13 @@ def start_oauth(
             redirect_to=target,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback=f"Failed to start {oauth_provider.value} OAuth")
+        detail = auth_error_detail(exc, fallback=f"Failed to start {oauth_provider.value} OAuth")
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=public_value_error_detail(exc, fallback=f"Failed to start {oauth_provider.value} OAuth"),
+        ) from exc
 
     payload = OAuthStartResponse(
         provider=oauth_provider,
@@ -845,35 +822,42 @@ def complete_sso(
             settings=settings,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback="SSO session rejected")
+        detail = auth_error_detail(exc, fallback="SSO session rejected")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=detail,
             headers=_UNAUTHORIZED_HEADERS,
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_value_error_detail(exc, fallback="SSO session rejected"),
+        ) from exc
 
 
 @router.get("/me", response_model=UserResponse)
 def get_current_user(
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    _rate_limit: Annotated[None, Depends(enforce_tenant_api_rate_limit)],
 ) -> UserResponse:
     """Return the authenticated user profile (protected route smoke test).
 
     Uses ``get_current_owner``, which verifies the bearer JWT and may refresh
     Auth-linked profile fields under Supabase mode. When Redis is required,
-    revoked tokens are rejected (denylist fail-closed).
+    revoked tokens are rejected (denylist fail-closed). Tenant API rate limits
+    apply (same Free/Pro/Enterprise quotas as other protected routers).
 
     Args:
         owner: Authenticated tenant user resolved from the bearer JWT.
+        _rate_limit: Tenant API rate-limit dependency (side effect only).
 
     Returns:
         Public ``UserResponse`` for the current session user (never includes password).
 
     Raises:
-        HTTPException: 401 when credentials are missing/invalid/revoked; 503 when
-            the Redis denylist is required but unavailable.
+        HTTPException: 401 when credentials are missing/invalid/revoked; 429 when
+            the tenant API quota is exceeded; 503 when the Redis denylist is
+            required but unavailable.
     """
     return UserResponse.from_dto(owner)
 
@@ -918,7 +902,7 @@ def refresh_token(
             settings=settings,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback="Invalid or expired refresh token")
+        detail = auth_error_detail(exc, fallback="Invalid or expired refresh token")
         logger.info("Supabase refresh failed: %s", detail)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -926,7 +910,10 @@ def refresh_token(
             headers=_UNAUTHORIZED_HEADERS,
         ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_value_error_detail(exc, fallback="Invalid or expired refresh token"),
+        ) from exc
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
@@ -935,6 +922,7 @@ def logout(
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)],
     session_store: Annotated[SessionStore, Depends(get_session_store)],
+    _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
 ) -> Response | JSONResponse:
     """Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.
 
@@ -944,12 +932,14 @@ def logout(
       and returns 204; otherwise returns HTTP 501 (no refresh/session store).
 
     Access token may be supplied in the JSON body or as ``Authorization: Bearer``.
+    Per-IP OAuth/auth rate limits apply (logout may run before tenant context).
 
     Args:
         body: Refresh token (required for Supabase) and optional access token.
         settings: Application settings selecting Auth provider.
         credentials: Optional bearer credentials for the access JWT.
         session_store: Redis-backed JWT denylist (no-op when Redis disabled).
+        _rate_limit: Per-IP auth rate-limit dependency (side effect only).
 
     Returns:
         Empty 204 response on success, or deferred JSON with status 501 in local
@@ -957,7 +947,7 @@ def logout(
 
     Raises:
         HTTPException: 400 when access token missing; 401 on Auth errors;
-            503 when Auth misconfigured.
+            429 when the per-IP auth limit is exceeded; 503 when Auth misconfigured.
     """
     access_token = (body.access_token or "").strip() or (
         credentials.credentials.strip() if credentials and credentials.credentials else ""
@@ -989,11 +979,14 @@ def logout(
             refresh_token=body.refresh_token,
         )
     except (AuthApiError, AuthError) as exc:
-        detail = _auth_error_detail(exc, fallback="Supabase Auth logout failed")
+        detail = auth_error_detail(exc, fallback="Supabase Auth logout failed")
         logger.info("Supabase sign_out failed: %s", detail)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=public_value_error_detail(exc, fallback="Logout failed"),
+        ) from exc
 
     if session_store.available:
         session_store.revoke(access_token, ttl_seconds=settings.JWT_EXPIRATION_TIME_SECONDS)

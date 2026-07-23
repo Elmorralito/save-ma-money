@@ -13,12 +13,14 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date
-from typing import Annotated, Any, Dict
+from collections.abc import Sequence
+from datetime import date, datetime
+from typing import Annotated, Any, Dict, Literal
 
 import pandas as pd
 from pydantic import Field
 
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO, TransactionTemplatesDTO
 from papita_txnsmodel.access.transactions.query_filters import TransactionListFilterSpec, build_transaction_list_filters
@@ -29,6 +31,7 @@ from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
 from papita_txnsmodel.model.transactions import Transactions
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
+from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.extends import CategorizedEntitiesService, LinkedEntitiesService, LinkedEntity
 
@@ -106,8 +109,13 @@ class TransactionsService(LinkedEntitiesService):
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
 
     def _maybe_refresh_balances(self, **kwargs) -> None:
-        """Refresh balance materialized views when enabled (default on)."""
-        if not kwargs.get("refresh_balances", True):
+        """Refresh balance materialized views when ``refresh_balances=True``.
+
+        Defaults to off so create/delete/bulk paths do not N×-refresh MVs. Callers
+        that need fresh balances pass ``refresh_balances=True`` once (e.g. after a
+        bulk batch or transfer completion).
+        """
+        if not kwargs.get("refresh_balances", False):
             return
         try:
             refresh_balance_materialized_views(
@@ -117,10 +125,14 @@ class TransactionsService(LinkedEntitiesService):
         except Exception:
             logger.exception("Failed to refresh balance materialized views after transaction write.")
 
+    def refresh_balance_views(self, *, concurrently: bool = False) -> None:
+        """Explicitly refresh account/owner balance materialized views."""
+        self._maybe_refresh_balances(refresh_balances=True, refresh_balances_concurrently=concurrently)
+
     def create(
         self, *, obj: TransactionsDTO | dict[str, Any], owner: UsersDTO | None = None, **kwargs
     ) -> TransactionsDTO:
-        """Create a transaction and refresh balance materialized views by default."""
+        """Create a transaction; MV refresh is opt-in via ``refresh_balances=True``."""
         result = super().create(obj=obj, owner=owner, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return result
@@ -128,13 +140,13 @@ class TransactionsService(LinkedEntitiesService):
     def delete(
         self, *, obj: TransactionsDTO | dict[str, Any], owner: UsersDTO | None = None, hard: bool = False, **kwargs
     ) -> pd.DataFrame:
-        """Delete a transaction and refresh balance materialized views by default."""
+        """Delete a transaction; MV refresh is opt-in via ``refresh_balances=True``."""
         result = super().delete(obj=obj, owner=owner, hard=hard, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return result
 
     def upsert_records(self, *, df: pd.DataFrame, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
-        """Upsert transactions and optionally refresh balance materialized views."""
+        """Upsert transactions; MV refresh is opt-in via ``refresh_balances=True``."""
         mappings = super().upsert_records(df=df, owner=owner, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return mappings
@@ -173,8 +185,7 @@ class TransactionsService(LinkedEntitiesService):
             )
         )
         order_by = (Transactions.transaction_ts.desc(), Transactions.id.desc())
-        total = self._repository.count_records(*query_filters, dto_type=self.dto_type, owner=owner, **kwargs)
-        records = self._repository.get_records(
+        return self._repository.get_page_with_total(
             *query_filters,
             dto_type=self.dto_type,
             owner=owner,
@@ -183,7 +194,42 @@ class TransactionsService(LinkedEntitiesService):
             order_by=order_by,
             **kwargs,
         )
-        return records, total
+
+    def get_transactions_frame(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        owner: UsersDTO,
+        account_id: uuid.UUID | None = None,
+        category_id: uuid.UUID | None = None,
+        transaction_kind: TransactionKind | None = None,
+        exclude_transfer: bool = False,
+        status: TransactionStatus | None = None,
+        start_date: date | datetime | None = None,
+        end_date: date | datetime | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Load matching tenant transactions without list pagination (report paths).
+
+        Unlike ``list_transactions``, this applies SQL filters only and returns the
+        full matching frame so analytics can aggregate without N+1 page loops.
+        """
+        query_filters = build_transaction_list_filters(
+            TransactionListFilterSpec(
+                transaction_kind=transaction_kind,
+                exclude_transfer=exclude_transfer,
+                status=status,
+                account_id=account_id,
+                category_id=category_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+        return self._repository.get_records(
+            *query_filters,
+            dto_type=self.dto_type,
+            owner=owner,
+            **kwargs,
+        )
 
     def list_transfers(  # pylint: disable=too-many-arguments
         self,
@@ -211,8 +257,7 @@ class TransactionsService(LinkedEntitiesService):
             )
         )
         order_by = (Transactions.transaction_ts.desc(), Transactions.id.desc())
-        total = self._repository.count_records(*query_filters, dto_type=self.dto_type, owner=owner, **kwargs)
-        records = self._repository.get_records(
+        return self._repository.get_page_with_total(
             *query_filters,
             dto_type=self.dto_type,
             owner=owner,
@@ -221,7 +266,6 @@ class TransactionsService(LinkedEntitiesService):
             order_by=order_by,
             **kwargs,
         )
-        return records, total
 
     def create_transfer(
         self,
@@ -278,3 +322,72 @@ class TransactionsService(LinkedEntitiesService):
         if transfer.transaction_kind != TransactionKind.TRANSFER:
             raise ValueError("Transaction is not a transfer.")
         return transfer
+
+    def aggregate_spending(
+        self,
+        *,
+        owner: UsersDTO,
+        start_date: date | datetime | None = None,
+        end_date: date | datetime | None = None,
+        account_id: uuid.UUID | None = None,
+        group_by: Literal["category", "account"] = "category",
+        **kwargs,
+    ) -> dict[str, Any]:
+        """SQL spending breakdown for completed expenses plus income/expense totals."""
+        return self._repository.aggregate_spending(
+            owner=owner,
+            start_date=start_date,
+            end_date=end_date,
+            account_id=account_id,
+            group_by=group_by,
+            **kwargs,
+        )
+
+    def prefetch_link_dtos(
+        self,
+        *,
+        owner: UsersDTO,
+        account_ids: Sequence[uuid.UUID] | None = None,
+        category_ids: Sequence[uuid.UUID] | None = None,
+        **kwargs,
+    ) -> dict[tuple[str, uuid.UUID], TableDTO]:
+        """Prefetch account/category link DTOs for bulk create FK reuse.
+
+        Missing IDs are omitted from the cache so per-item ``create`` still raises
+        via ``get_or_create`` and bulk can count them as ``failed``.
+
+        Args:
+            owner: Tenant used for owned-table lookups.
+            account_ids: Distinct account UUIDs referenced by the batch.
+            category_ids: Distinct category UUIDs referenced by the batch.
+            **kwargs: Forwarded to linked ``get`` calls.
+
+        Returns:
+            Cache mapping ``(field_name, id)`` to loaded DTOs for
+            ``from_account_id``, ``to_account_id``, and ``category_id``.
+
+        Raises:
+            TypeError: When linked account/category services are not loaded.
+        """
+        accounts_service = self.__links__["from_account_id"].other_entity_service
+        categories_service = self.__links__["category_id"].other_entity_service
+        if not isinstance(accounts_service, BaseService):
+            raise TypeError("Accounts link service has not been loaded.")
+        if not isinstance(categories_service, BaseService):
+            raise TypeError("Categories link service has not been loaded.")
+
+        cache: dict[tuple[str, uuid.UUID], TableDTO] = {}
+        for account_id in {item for item in (account_ids or []) if item is not None}:
+            account = accounts_service.get(obj=account_id, owner=owner, **kwargs)
+            if account is None:
+                continue
+            cache[("from_account_id", account_id)] = account
+            cache[("to_account_id", account_id)] = account
+
+        for category_id in {item for item in (category_ids or []) if item is not None}:
+            category = categories_service.get(obj=category_id, owner=owner, **kwargs)
+            if category is None:
+                continue
+            cache[("category_id", category_id)] = category
+
+        return cache

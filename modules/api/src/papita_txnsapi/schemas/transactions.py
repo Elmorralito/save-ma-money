@@ -12,8 +12,14 @@ from datetime import date, datetime, timezone
 from typing import Any, Literal
 
 import pandas as pd
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from papita_txnsapi.config.settings import (
+    MAX_BULK_TRANSACTIONS_HARD_CAP,
+    MAX_DESCRIPTION_LENGTH,
+    MAX_TAG_LENGTH,
+    MAX_TAGS_PER_TRANSACTION,
+)
 from papita_txnsapi.schemas.accounts import paginate_dataframe
 from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_transaction_kind, parse_transaction_status
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
@@ -66,16 +72,26 @@ def _parse_transaction_date(value: date | datetime | str) -> datetime:
 class TransactionCreate(BaseModel):
     """Request body for ``POST /transactions`` (INCOME/EXPENSE only)."""
 
+    model_config = ConfigDict(extra="forbid")
+
     account_id: uuid.UUID
     category_id: uuid.UUID
     transaction_type: Literal["income", "expense"]
     amount: float = Field(gt=0)
     currency: str = Field(default="USD", min_length=3, max_length=3)
-    description: str = ""
+    description: str = Field(default="", max_length=MAX_DESCRIPTION_LENGTH)
     transaction_date: date | datetime
-    reference_number: str | None = None
-    tags: list[str] = Field(default_factory=list)
+    reference_number: str | None = Field(default=None, max_length=128)
+    tags: list[str] = Field(default_factory=list, max_length=MAX_TAGS_PER_TRANSACTION)
     status: str | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def _bound_tags(cls, value: list[str]) -> list[str]:
+        for tag in value:
+            if len(tag) > MAX_TAG_LENGTH:
+                raise ValueError(f"each tag must be at most {MAX_TAG_LENGTH} characters")
+        return value
 
     def to_transactions_dto(self, *, owner_id: uuid.UUID) -> TransactionsDTO:
         """Build a ``TransactionsDTO`` for ``TransactionsService.create``."""
@@ -106,16 +122,28 @@ class TransactionCreate(BaseModel):
 class TransactionUpdate(BaseModel):
     """Request body for ``PUT /transactions/{transaction_id}``."""
 
+    model_config = ConfigDict(extra="forbid")
+
     account_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
     transaction_type: str | None = None
     amount: float | None = Field(default=None, gt=0)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     transaction_date: date | datetime | None = None
-    reference_number: str | None = None
-    tags: list[str] | None = None
+    reference_number: str | None = Field(default=None, max_length=128)
+    tags: list[str] | None = Field(default=None, max_length=MAX_TAGS_PER_TRANSACTION)
     status: str | None = None
+
+    @field_validator("tags")
+    @classmethod
+    def _bound_tags(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return value
+        for tag in value:
+            if len(tag) > MAX_TAG_LENGTH:
+                raise ValueError(f"each tag must be at most {MAX_TAG_LENGTH} characters")
+        return value
 
     def apply_to(self, existing: TransactionsDTO) -> TransactionsDTO:
         """Merge partial update fields onto an existing transaction DTO."""
@@ -223,7 +251,10 @@ class TransactionResponse(BaseModel):
 class TransactionBulkCreate(BaseModel):
     """Request body for ``POST /transactions/bulk``."""
 
-    transactions: list[TransactionCreate] = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    # Hard schema ceiling; effective limit is ``Settings.API_BULK_MAX_TRANSACTIONS`` (router).
+    transactions: list[TransactionCreate] = Field(min_length=1, max_length=MAX_BULK_TRANSACTIONS_HARD_CAP)
 
 
 class TransactionBulkResponse(BaseModel):

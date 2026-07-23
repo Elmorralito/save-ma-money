@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from typing import Type
 
 import pandas as pd
@@ -40,12 +41,42 @@ class AccountBalancesService(BaseModel):
         *,
         owner: UsersDTO,
         account_id: uuid.UUID | None = None,
+        account_ids: Sequence[uuid.UUID] | None = None,
         currency: str | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Return balance rows for a tenant owner."""
+        """Return balance rows for a tenant owner.
+
+        Page-scoped callers should pass ``account_ids`` so only those MV rows are
+        loaded. That path uses ``AccountBalancesRepository`` (``IN`` filter).
+        Owner-wide / single-id / currency filters continue through the balance
+        reports query path.
+
+        Args:
+            owner: Tenant owner whose balances are queried.
+            account_id: Optional single account filter (reports / detail).
+            account_ids: Optional page-scoped account IDs. Empty sequence returns
+                an empty DataFrame without a query. Mutually exclusive with
+                ``account_id``.
+            currency: Optional currency filter (reports path only).
+            **kwargs: Forwarded to the underlying repository/query.
+
+        Returns:
+            DataFrame of balance rows for the owner (optionally filtered).
+
+        Raises:
+            ValueError: If ``owner`` is missing, or both ``account_id`` and
+                ``account_ids`` are provided.
+        """
         if owner is None:
             raise ValueError("owner=UsersDTO is required for account balance queries.")
+        if account_id is not None and account_ids is not None:
+            raise ValueError("Provide account_id or account_ids, not both.")
+
+        if account_ids is not None:
+            if not account_ids:
+                return pd.DataFrame([])
+            return self._repository.get_balances(owner=owner, account_ids=list(account_ids), **kwargs)
 
         filters: dict[str, object] = {}
         if account_id is not None:

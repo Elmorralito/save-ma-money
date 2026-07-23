@@ -280,6 +280,7 @@ class TestEnsureFromAuthSubject:
             service.ensure_from_auth_subject(subject=subject, email="john@example.local")
 
         mock_create.assert_not_called()
+        assert repo.get_record_by_id.call_args.kwargs.get("include_deleted") is True
 
     @patch.object(UsersService, "create")
     @patch.object(UsersService, "get_owner", return_value=None)
@@ -300,6 +301,7 @@ class TestEnsureFromAuthSubject:
             service.ensure_from_auth_subject(subject=subject, email="john@example.local")
 
         mock_create.assert_not_called()
+        assert repo.get_record_by_id.call_args.kwargs.get("include_deleted") is True
 
     @patch.object(UsersService, "create")
     @patch.object(UsersService, "_lookup_by_identifier", return_value=None)

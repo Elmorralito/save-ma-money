@@ -73,14 +73,14 @@ class TestVersionedCacheHelpers:
             value={"total": 1, "items": [], "skip": 0, "limit": 20},
             ttl_seconds=60,
         )
-        hit, status = get_versioned_cached_json(
+        hit, status, _version = get_versioned_cached_json(
             fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", params
         )
         assert status == "HIT"
         assert hit is not None
 
         bump_cache_versions(fake_redis, owner_id, CacheNamespace.ACCOUNTS)
-        miss, status_after = get_versioned_cached_json(
+        miss, status_after, _ = get_versioned_cached_json(
             fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", params
         )
         assert status_after == "MISS"
@@ -104,12 +104,11 @@ class TestAccountsCacheInvalidation:
         owner = make_user()
         account = _sample_account(owner.id)
         mock_service = MagicMock()
-        mock_service.get_records.return_value = pd.DataFrame([account.model_dump(mode="python")])
+        mock_service.list_accounts.return_value = (pd.DataFrame([account.model_dump(mode="python")]), 1)
         mock_service.balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account.id, "balance": 100.0, "currency": "USD", "owner_id": owner.id}]
         )
-        mock_service.create_account.return_value = account
-        mock_service.get_with_extension.return_value = (account, None)
+        mock_service.create_account.return_value = (account, None)
         mock_service.get_balance.return_value = None
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
@@ -142,7 +141,7 @@ class TestAccountsCacheInvalidation:
         assert create.status_code == 201
         assert third.status_code == 200
         assert third.headers.get("X-Cache") == "MISS"
-        assert mock_service.get_records.call_count == 2
+        assert mock_service.list_accounts.call_count == 2
 
 
 class TestCategoriesCache:
@@ -161,7 +160,11 @@ class TestCategoriesCache:
         owner = make_user()
         category = _sample_category(owner.id)
         mock_service = MagicMock()
-        mock_service.get_records.return_value = pd.DataFrame([category.model_dump(mode="python")])
+        mock_service.list_categories.return_value = (
+            pd.DataFrame([category.model_dump(mode="python")]),
+            1,
+        )
+        mock_service.get_categories_for_parents.return_value = pd.DataFrame([])
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()
@@ -178,7 +181,7 @@ class TestCategoriesCache:
         assert first.status_code == 200
         assert second.status_code == 200
         assert second.headers.get("X-Cache") == "HIT"
-        assert mock_service.get_records.call_count == 1
+        assert mock_service.list_categories.call_count == 1
 
     def test_list_categories_with_parent_filter(
         self,
@@ -195,7 +198,10 @@ class TestCategoriesCache:
         child = _sample_category(owner.id)
         child.parent_id = parent_id
         mock_service = MagicMock()
-        mock_service.get_records.return_value = pd.DataFrame([child.model_dump(mode="python")])
+        mock_service.list_categories.return_value = (
+            pd.DataFrame([child.model_dump(mode="python")]),
+            1,
+        )
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()
@@ -209,3 +215,5 @@ class TestCategoriesCache:
         monkeypatch.setenv("REDIS_ENABLED", "false")
         assert response.status_code == 200
         assert response.json()["total"] == 1
+        assert mock_service.list_categories.call_args.kwargs["parent_id"] == parent_id
+        mock_service.get_categories_for_parents.assert_not_called()

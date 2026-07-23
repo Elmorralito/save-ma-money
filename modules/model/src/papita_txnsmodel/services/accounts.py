@@ -13,6 +13,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated, Any, Self
 
+import pandas as pd
 from pydantic import Field, model_validator
 
 from papita_txnsmodel.access.account_balances.dto import AccountBalancesDTO
@@ -24,6 +25,7 @@ from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.services.account_balances import AccountBalancesService
 from papita_txnsmodel.services.account_extension_routing import extension_spec_for_kind, requires_extension
 from papita_txnsmodel.services.base import BaseService
+from papita_txnsmodel.utils.datautils import standardize_dataframe
 
 
 class AccountsService(BaseService):
@@ -110,7 +112,7 @@ class AccountsService(BaseService):
         extension: dict[str, Any] | AccountDetailsDTO | None = None,
         owner: UsersDTO | None = None,
         **kwargs,
-    ) -> AccountsDTO:
+    ) -> tuple[AccountsDTO, AccountDetailsDTO | None]:
         """Create an account and optional kind-specific extension row.
 
         Args:
@@ -120,7 +122,7 @@ class AccountsService(BaseService):
             **kwargs: Forwarded to repository upsert helpers.
 
         Returns:
-            AccountsDTO: Persisted account row.
+            Tuple of (persisted account, upserted extension or ``None``).
 
         Raises:
             ValueError: When a kind that requires extensions is missing extension data.
@@ -133,8 +135,8 @@ class AccountsService(BaseService):
         if requires_extension(account.account_kind) and extension_payload is None:
             raise ValueError(f"account_kind {account.account_kind.value} requires extension details on create.")
 
-        self._upsert_extension(account, extension_payload, owner=owner, **kwargs)
-        return account
+        extension_dto = self._upsert_extension(account, extension_payload, owner=owner, **kwargs)
+        return account, extension_dto
 
     def update_account(
         self,
@@ -143,16 +145,22 @@ class AccountsService(BaseService):
         extension: dict[str, Any] | AccountDetailsDTO | None = None,
         owner: UsersDTO | None = None,
         **kwargs,
-    ) -> AccountsDTO:
-        """Update an account and optional extension row keyed by ``account_kind``."""
+    ) -> tuple[AccountsDTO, AccountDetailsDTO | None]:
+        """Update an account and optional extension row keyed by ``account_kind``.
+
+        Returns:
+            Tuple of (persisted account, upserted extension when an extension payload
+            was provided, otherwise ``None`` so callers can keep a previously loaded
+            extension).
+        """
         payload = dict(obj) if isinstance(obj, dict) else obj.model_dump(mode="python")
         nested_extension = payload.pop("extension", None)
         extension_payload = extension if extension is not None else nested_extension
 
         account = super().create(obj=payload, owner=owner, **kwargs)
-        if extension_payload is not None:
-            self._upsert_extension(account, extension_payload, owner=owner, **kwargs)
-        return account
+        if extension_payload is None:
+            return account, None
+        return account, self._upsert_extension(account, extension_payload, owner=owner, **kwargs)
 
     def get_with_extension(
         self,
@@ -197,3 +205,41 @@ class AccountsService(BaseService):
         if self.balances_service is None:
             raise RuntimeError("balances_service is not configured.")
         return self.balances_service.get_balance(owner=owner, account_id=account_id, **kwargs)
+
+    def list_accounts(
+        self,
+        *,
+        owner: UsersDTO,
+        dto: AccountsDTO | dict | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """Return a SQL-paginated account page and matching total count.
+
+        Args:
+            owner: Tenant owner for owned-table scoping.
+            dto: Optional attribute filter DTO (kind, ledger side, active, …).
+            skip: Offset for SQL pagination.
+            limit: Page size for SQL pagination.
+            **kwargs: Extra repository kwargs.
+
+        Returns:
+            Tuple of (standardized page DataFrame, total matching rows).
+        """
+        ensured_owner = self._ensure_owner(owner)
+        query_filters: list = []
+        if dto:
+            parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
+            self.check_expected_dto_type(parsed_dto)
+            query_filters = self._attribute_query_filters(parsed_dto)
+
+        records_df, total = self._repository.get_page_with_total(
+            *query_filters,
+            owner=ensured_owner,
+            dto_type=self.dto_type,
+            skip=skip,
+            limit=limit,
+            **kwargs,
+        )
+        return standardize_dataframe(self.dto_type, records_df, **kwargs), int(total)

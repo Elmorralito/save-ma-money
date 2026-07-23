@@ -54,8 +54,13 @@ class TestCategoriesRoutes:
         parent = _sample_category(owner_id=owner.id)
         child = _sample_category(owner_id=owner.id, parent_id=parent.id)
         child.name = "Restaurants"
-        rows = pd.DataFrame([parent.model_dump(mode="python"), child.model_dump(mode="python")])
-        mock_service.get_records.return_value = rows
+        mock_service.list_categories.return_value = (
+            pd.DataFrame([parent.model_dump(mode="python")]),
+            1,
+        )
+        mock_service.get_categories_for_parents.return_value = pd.DataFrame(
+            [child.model_dump(mode="python")]
+        )
 
         response = client.get("/api/v1/categories")
 
@@ -64,6 +69,9 @@ class TestCategoriesRoutes:
         assert payload["total"] == 1
         assert len(payload["items"][0]["subcategories"]) == 1
         assert payload["items"][0]["subcategories"][0]["name"] == "Restaurants"
+        mock_service.list_categories.assert_called_once()
+        assert mock_service.list_categories.call_args.kwargs["roots_only"] is True
+        assert mock_service.list_categories.call_args.kwargs["skip"] == 0
 
     def test_create_category_returns_201(
         self,

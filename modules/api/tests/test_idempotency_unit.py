@@ -13,6 +13,7 @@ from papita_txnsapi.core.idempotency import (
     begin_idempotency,
     clear_idempotency_pending,
     complete_idempotency,
+    request_body_digest,
 )
 
 
@@ -38,6 +39,29 @@ class TestResultFromStored:
         result = _result_from_stored(json.dumps({"status": "completed", "body": {"ok": True}}))
         assert result.state == "hit"
         assert result.payload == {"ok": True}
+
+    def test_body_digest_mismatch_is_mismatch(self) -> None:
+        stored = json.dumps(
+            {"status": "completed", "body": {"ok": True}, "body_digest": "aaa"},
+        )
+        result = _result_from_stored(stored, body_digest="bbb")
+        assert result.state == "mismatch"
+        assert result.payload is None
+
+    def test_legacy_completed_without_digest_still_hits(self) -> None:
+        stored = json.dumps({"status": "completed", "body": {"ok": True}})
+        result = _result_from_stored(stored, body_digest="bbb")
+        assert result.state == "hit"
+
+
+class TestRequestBodyDigest:
+    """Canonical request body hashing."""
+
+    def test_stable_for_key_order(self) -> None:
+        assert request_body_digest({"b": 1, "a": 2}) == request_body_digest({"a": 2, "b": 1})
+
+    def test_differs_for_payload_change(self) -> None:
+        assert request_body_digest({"amount": 1}) != request_body_digest({"amount": 2})
 
 
 class TestBeginIdempotency:
@@ -115,3 +139,35 @@ class TestCompleteAndClear:
         client = MagicMock()
         client.get.side_effect = RedisError("boom")
         clear_idempotency_pending(client, owner_id, scope="s", key="k")
+
+    def test_same_key_different_body_is_mismatch(self, fake_redis: object) -> None:
+        owner_id = uuid.uuid4()
+        digest_a = request_body_digest({"amount": 10})
+        digest_b = request_body_digest({"amount": 20})
+        begun = begin_idempotency(
+            fake_redis,
+            owner_id,
+            scope="s",
+            key="same-key",
+            ttl_seconds=60,
+            body_digest=digest_a,
+        )
+        assert begun.state == "miss"
+        complete_idempotency(
+            fake_redis,
+            owner_id,
+            scope="s",
+            key="same-key",
+            body={"id": "1"},
+            ttl_seconds=60,
+            body_digest=digest_a,
+        )
+        replay = begin_idempotency(
+            fake_redis,
+            owner_id,
+            scope="s",
+            key="same-key",
+            ttl_seconds=60,
+            body_digest=digest_b,
+        )
+        assert replay.state == "mismatch"

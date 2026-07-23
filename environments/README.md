@@ -69,4 +69,4 @@ cp environments/staging/.env.example environments/staging/.env
 - API package docs: [`modules/api/README.md`](../modules/api/README.md)
 - Auth reissue: [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)
 - Decision brief (+ G7 supersede): [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
-- Optional pooler checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md)
+- Optional pooler checklist: [`docs/design/README.md` § Ops](../docs/design/README.md#optional-b1-hosted-postgres-pooler)

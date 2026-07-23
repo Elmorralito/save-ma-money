@@ -24,8 +24,8 @@ class TransactionListFilterSpec:  # pylint: disable=too-many-instance-attributes
     category_id: uuid.UUID | None = None
     source_account_id: uuid.UUID | None = None
     destination_account_id: uuid.UUID | None = None
-    start_date: date | None = None
-    end_date: date | None = None
+    start_date: date | datetime | None = None
+    end_date: date | datetime | None = None
     min_amount: float | None = None
     max_amount: float | None = None
     search: str | None = None
@@ -91,10 +91,14 @@ def build_transaction_list_filters(spec: TransactionListFilterSpec) -> tuple[Any
         filters.append(Transactions.to_account_id == spec.destination_account_id)
 
     if spec.start_date is not None:
-        filters.append(Transactions.transaction_ts >= datetime.combine(spec.start_date, time.min))
+        start_ts = (
+            spec.start_date if isinstance(spec.start_date, datetime) else datetime.combine(spec.start_date, time.min)
+        )
+        filters.append(Transactions.transaction_ts >= start_ts)
 
     if spec.end_date is not None:
-        filters.append(Transactions.transaction_ts <= datetime.combine(spec.end_date, time.max))
+        end_ts = spec.end_date if isinstance(spec.end_date, datetime) else datetime.combine(spec.end_date, time.max)
+        filters.append(Transactions.transaction_ts <= end_ts)
 
     _append_amount_filters(filters, spec)
     _append_search_filter(filters, spec)

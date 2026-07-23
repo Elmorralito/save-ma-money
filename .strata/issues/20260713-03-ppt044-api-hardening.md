@@ -11,6 +11,7 @@ created: 2026-07-13
 hardening (CORS, TrustedHost, headers, JWT alg allowlist, rate limits, health/ops gaps).
 
 **Why:** Reports and CRUD MVP land first; remaining posture gaps are tracked in
-`docs/issues/PPT-044-api-hardening-brief.md` for a follow-on pass without blocking PPT-038.
+[`docs/design/ARCHITECTURE.md` Part VIII](../../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89)
+for a follow-on pass without blocking PPT-038.
 
 **Soft blocked by:** PPT-032 epic progress; soft: PPT-043 Redis (#83), PPT-040 (#50).

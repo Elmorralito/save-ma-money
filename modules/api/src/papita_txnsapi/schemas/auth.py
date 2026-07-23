@@ -48,7 +48,9 @@ class RegisterRequest(BaseModel):
         username: Optional handle override; when omitted, derived from email.
     """
 
-    email: str = Field(min_length=5, max_length=255)
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=5, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     password: str = Field(min_length=8, max_length=128)
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     phone: str | None = Field(default=None, min_length=7, max_length=32)
@@ -74,6 +76,8 @@ class RefreshRequest(BaseModel):
         refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     refresh_token: str = Field(min_length=1, max_length=4096)
 
 
@@ -88,6 +92,8 @@ class LogoutRequest(BaseModel):
         refresh_token: Refresh token to invalidate at Supabase Auth.
         access_token: Optional access JWT for precise session revoke / denylist.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     refresh_token: str = Field(min_length=1, max_length=4096)
     access_token: str | None = Field(default=None, min_length=1, max_length=8192)
@@ -133,6 +139,8 @@ class OAuthCodeExchangeRequest(BaseModel):
         display_name: Optional profile override when Auth metadata is incomplete.
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     provider: ProviderType = ProviderType.GOOGLE
     auth_code: str = Field(min_length=1, max_length=2048)
     code_verifier: str = Field(min_length=16, max_length=128)
@@ -160,6 +168,8 @@ class SsoSessionRequest(BaseModel):
         refresh_token: Supabase refresh token from the OAuth session.
         display_name: Optional profile override when Auth metadata is incomplete.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     provider: ProviderType = ProviderType.GOOGLE
     access_token: str = Field(min_length=1, max_length=8192)
