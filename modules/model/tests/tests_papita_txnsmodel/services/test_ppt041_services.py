@@ -240,7 +240,7 @@ class TestReportService:
         service = ReportService()
         service.transactions_service = MagicMock()
         service.accounts_service = MagicMock()
-        service.transactions_service.get_records.return_value = pd.DataFrame(
+        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
             [
                 {
                     "transaction_kind": TransactionKind.EXPENSE.value,
@@ -268,8 +268,8 @@ class TestReportService:
         result = service.spending(owner=owner)
         assert result["expense_total"] == 40.0
         assert result["income_total"] == 80.0
-        service.transactions_service.get_records.assert_called_once()
-        assert service.transactions_service.get_records.call_args.kwargs["owner"] is owner
+        service.transactions_service.get_transactions_frame.assert_called_once()
+        assert service.transactions_service.get_transactions_frame.call_args.kwargs["owner"] is owner
 
     def test_spending_filters_by_account_id(self, owner: UsersDTO):
         """Optional account_id keeps matching legs only."""
@@ -279,7 +279,8 @@ class TestReportService:
         service.transactions_service = MagicMock()
         service.accounts_service = MagicMock()
         service.accounts_service.get.return_value = MagicMock(id=account_a)
-        service.transactions_service.get_records.return_value = pd.DataFrame(
+        # SQL account filter is applied in get_transactions_frame; mock returns scoped rows.
+        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
             [
                 {
                     "transaction_kind": TransactionKind.EXPENSE.value,
@@ -290,20 +291,13 @@ class TestReportService:
                     "to_account_id": None,
                     "transaction_ts": datetime.now(timezone.utc),
                 },
-                {
-                    "transaction_kind": TransactionKind.EXPENSE.value,
-                    "status": TransactionStatus.COMPLETED.value,
-                    "amount": 25.0,
-                    "category_id": uuid.uuid4(),
-                    "from_account_id": account_b,
-                    "to_account_id": None,
-                    "transaction_ts": datetime.now(timezone.utc),
-                },
             ]
         )
         result = service.spending(owner=owner, account_id=account_a)
         assert result["expense_total"] == 40.0
         service.accounts_service.get.assert_called_once_with(obj=account_a, owner=owner)
+        assert service.transactions_service.get_transactions_frame.call_args.kwargs["account_id"] == account_a
+        del account_b
 
     def test_spending_rejects_foreign_account_id(self, owner: UsersDTO):
         """account_id not owned by the tenant raises before aggregation."""
@@ -313,7 +307,7 @@ class TestReportService:
         service.accounts_service.get.return_value = None
         with pytest.raises(ValueError, match="Account not found for tenant"):
             service.spending(owner=owner, account_id=uuid.uuid4())
-        service.transactions_service.get_records.assert_not_called()
+        service.transactions_service.get_transactions_frame.assert_not_called()
 
     def test_require_owner_rejects_missing_tenant(self):
         """Reports cannot run without a tenant owner id."""
@@ -336,7 +330,7 @@ class TestReportService:
         service.account_balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account_id, "balance": 900.0}]
         )
-        service.transactions_service.get_records.return_value = pd.DataFrame(
+        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
             [
                 {
                     "transaction_kind": TransactionKind.INCOME.value,
@@ -384,9 +378,10 @@ class TestReportService:
         with patch("papita_txnsmodel.services.reports.refresh_balance_materialized_views") as mock_refresh:
             cash_flow = service.cash_flow(owner=owner, account_id=account_id, refresh_balances=True)
         mock_refresh.assert_called_once()
-        assert cash_flow["inflows"] == 575.0  # 500 income + 75 transfer
-        assert cash_flow["outflows"] == 195.0  # 120 expense + 75 transfer
-        assert cash_flow["net"] == 380.0
+        # Account-scoped: transfer from account_id is outflow only (not both sides).
+        assert cash_flow["inflows"] == 500.0  # income only
+        assert cash_flow["outflows"] == 195.0  # 120 expense + 75 transfer out
+        assert cash_flow["net"] == 305.0
         assert cash_flow["portfolio_total"] == 900.0
         service.account_balances_service.get_balances.assert_called_once_with(owner=owner, account_id=account_id)
 
@@ -401,12 +396,36 @@ class TestReportService:
         """cash_flow default avoids MV refresh on export/read paths."""
         service = ReportService()
         service.transactions_service = MagicMock()
-        service.transactions_service.get_records.return_value = pd.DataFrame()
+        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame()
         service.account_balances_service = MagicMock()
         service.account_balances_service.get_balances.return_value = pd.DataFrame()
         with patch("papita_txnsmodel.services.reports.refresh_balance_materialized_views") as mock_refresh:
             service.cash_flow(owner=owner)
         mock_refresh.assert_not_called()
+
+    def test_cash_flow_portfolio_counts_transfer_on_both_sides(self, owner: UsersDTO):
+        """Without account_id, transfers cancel in net (inflow + outflow)."""
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.accounts_service = MagicMock()
+        service.account_balances_service = MagicMock()
+        service.account_balances_service.get_balances.return_value = pd.DataFrame([{"balance": 0.0}])
+        service.transactions_service.get_transactions_frame.return_value = pd.DataFrame(
+            [
+                {
+                    "transaction_kind": TransactionKind.TRANSFER.value,
+                    "status": TransactionStatus.COMPLETED.value,
+                    "amount": 50.0,
+                    "from_account_id": uuid.uuid4(),
+                    "to_account_id": uuid.uuid4(),
+                    "transaction_ts": datetime.now(timezone.utc),
+                }
+            ]
+        )
+        result = service.cash_flow(owner=owner)
+        assert result["inflows"] == 50.0
+        assert result["outflows"] == 50.0
+        assert result["net"] == 0.0
 
     def test_export_returns_csv_stub(self, owner: UsersDTO):
         """Export delegates to spending and returns CSV text."""

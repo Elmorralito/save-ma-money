@@ -10,13 +10,13 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- Model soft-delete / categories / refresh_balances PRs committed
-- PR-4: trends window always; extension forbid/bounds; search cap; Auth allowlist
+- Soft-delete / categories / refresh_balances / API bounds / report SQL PRs
+- PR-5: SQL-windowed report loads + account-scoped transfer cash-flow direction
 - Remaining PPT-044 transport/client-contract work may still be uncommitted
 
 ### Next action
 
-- PR-5: SQL-windowed report loads + account-scoped transfer cash-flow direction
+- PR-6: DB pagination for accounts/categories lists; idempotency body digest
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes

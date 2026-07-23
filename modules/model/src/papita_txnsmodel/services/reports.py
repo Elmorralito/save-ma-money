@@ -71,17 +71,36 @@ class ReportService(BaseModel):
         if account is None:
             raise ValueError("Account not found for tenant.")
 
-    def _load_transactions(self, *, owner: UsersDTO, **kwargs) -> pd.DataFrame:
-        """Load tenant-scoped transactions for in-memory report filtering.
+    def _load_transactions(
+        self,
+        *,
+        owner: UsersDTO,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        account_id: uuid.UUID | None = None,
+        category_id: uuid.UUID | None = None,
+        status: TransactionStatus | None = TransactionStatus.COMPLETED,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Load tenant-scoped transactions with SQL date/account/status filters.
 
-        ``BaseService.get_records`` may short-circuit to a single-column frame of
-        SQLModel DAO instances; flatten those into JSON-serialized DTO rows so
-        report filters can address ``transaction_ts`` / enum value columns.
+        Uses ``TransactionsService.get_transactions_frame`` so report paths do not
+        pull the full ledger into pandas before windowing. DAO-shaped frames are
+        flattened to JSON-serialized DTO rows for aggregation helpers.
         """
         owner = self._require_owner(owner)
         if self.transactions_service is None:
             raise RuntimeError("transactions_service is not configured.")
-        records = self.transactions_service.get_records(dto=None, owner=owner, **kwargs)
+        records = self.transactions_service.get_transactions_frame(
+            owner=owner,
+            start_date=start_date,
+            end_date=end_date,
+            account_id=account_id,
+            category_id=category_id,
+            status=status,
+            exclude_transfer=False,
+            **kwargs,
+        )
         if getattr(records, "empty", True):
             return pd.DataFrame()
         if "transaction_ts" in records.columns:
@@ -92,50 +111,6 @@ class ReportService(BaseModel):
         if len(records.columns) == 1 and isinstance(records.iloc[0, 0], dao_type):
             return pd.DataFrame([dto_type.from_dao(row).model_dump(mode="json") for row in records.iloc[:, 0].tolist()])
         return pd.DataFrame()
-
-    @staticmethod
-    def _apply_date_window(
-        frame: pd.DataFrame,
-        *,
-        start_date: datetime | None,
-        end_date: datetime | None,
-    ) -> pd.DataFrame:
-        """Filter a transaction frame to an inclusive ``transaction_ts`` window."""
-        if frame.empty or "transaction_ts" not in frame.columns:
-            return frame
-        timestamps = pd.to_datetime(frame["transaction_ts"], utc=True)
-        if start_date is not None:
-            start_ts = pd.Timestamp(start_date)
-            if start_ts.tzinfo is None:
-                start_ts = start_ts.tz_localize("UTC")
-            frame = frame[timestamps >= start_ts]
-            timestamps = timestamps.loc[frame.index]
-        if end_date is not None:
-            end_ts = pd.Timestamp(end_date)
-            if end_ts.tzinfo is None:
-                end_ts = end_ts.tz_localize("UTC")
-            frame = frame[timestamps <= end_ts]
-        return frame
-
-    @staticmethod
-    def _apply_account_filter(frame: pd.DataFrame, *, account_id: uuid.UUID | None) -> pd.DataFrame:
-        """Keep rows where ``account_id`` appears on either transaction leg."""
-        if frame.empty or account_id is None:
-            return frame
-        account_key = str(account_id)
-        mask = pd.Series(False, index=frame.index)
-        if "from_account_id" in frame.columns:
-            mask = mask | (frame["from_account_id"].astype(str) == account_key)
-        if "to_account_id" in frame.columns:
-            mask = mask | (frame["to_account_id"].astype(str) == account_key)
-        return frame[mask]
-
-    @staticmethod
-    def _apply_category_filter(frame: pd.DataFrame, *, category_id: uuid.UUID | None) -> pd.DataFrame:
-        """Keep rows matching ``category_id`` when the column is present."""
-        if frame.empty or category_id is None or "category_id" not in frame.columns:
-            return frame
-        return frame[frame["category_id"].astype(str) == str(category_id)]
 
     def spending(
         self,
@@ -150,11 +125,12 @@ class ReportService(BaseModel):
         """Spending breakdown for completed expenses plus separate income totals."""
         owner = self._require_owner(owner)
         self._ensure_account_owned(owner=owner, account_id=account_id)
-        frame = self._apply_account_filter(
-            self._apply_date_window(
-                self._load_transactions(owner=owner, **kwargs), start_date=start_date, end_date=end_date
-            ),
+        frame = self._load_transactions(
+            owner=owner,
+            start_date=start_date,
+            end_date=end_date,
             account_id=account_id,
+            **kwargs,
         )
         if frame.empty:
             return {"expenses": [], "income_total": 0.0, "expense_total": 0.0}
@@ -182,17 +158,37 @@ class ReportService(BaseModel):
         }
 
     @staticmethod
-    def _completed_cash_flow_totals(completed: pd.DataFrame) -> tuple[float, float]:
-        """Sum inflows and outflows for COMPLETED income, expense, and transfer rows."""
+    def _completed_cash_flow_totals(
+        completed: pd.DataFrame, *, account_id: uuid.UUID | None = None
+    ) -> tuple[float, float]:
+        """Sum inflows and outflows for COMPLETED income, expense, and transfer rows.
+
+        Portfolio mode (no ``account_id``) counts each transfer on both sides so net
+        is unchanged. Account-scoped mode attributes transfer amount as an outflow
+        when the account is the source leg and an inflow when it is the destination.
+        """
         if completed.empty:
             return 0.0, 0.0
         income = completed[completed["transaction_kind"] == TransactionKind.INCOME.value]
         expenses = completed[completed["transaction_kind"] == TransactionKind.EXPENSE.value]
         transfers = completed[completed["transaction_kind"] == TransactionKind.TRANSFER.value]
-        transfer_total = float(transfers["amount"].sum()) if not transfers.empty else 0.0
-        inflows = (float(income["amount"].sum()) if not income.empty else 0.0) + transfer_total
-        outflows = (float(expenses["amount"].sum()) if not expenses.empty else 0.0) + transfer_total
-        return inflows, outflows
+        income_total = float(income["amount"].sum()) if not income.empty else 0.0
+        expense_total = float(expenses["amount"].sum()) if not expenses.empty else 0.0
+        if transfers.empty:
+            return income_total, expense_total
+
+        if account_id is None:
+            transfer_total = float(transfers["amount"].sum())
+            return income_total + transfer_total, expense_total + transfer_total
+
+        account_key = str(account_id)
+        transfer_in = 0.0
+        transfer_out = 0.0
+        if "to_account_id" in transfers.columns:
+            transfer_in = float(transfers.loc[transfers["to_account_id"].astype(str) == account_key, "amount"].sum())
+        if "from_account_id" in transfers.columns:
+            transfer_out = float(transfers.loc[transfers["from_account_id"].astype(str) == account_key, "amount"].sum())
+        return income_total + transfer_in, expense_total + transfer_out
 
     def _portfolio_total(self, *, owner: UsersDTO, account_id: uuid.UUID | None, **kwargs) -> float:
         """Sum tenant account balances, optionally filtered to one account."""
@@ -225,14 +221,15 @@ class ReportService(BaseModel):
                 self.connector, concurrently=kwargs.get("refresh_balances_concurrently", False)
             )
 
-        frame = self._apply_account_filter(
-            self._apply_date_window(
-                self._load_transactions(owner=owner, **kwargs), start_date=start_date, end_date=end_date
-            ),
+        frame = self._load_transactions(
+            owner=owner,
+            start_date=start_date,
+            end_date=end_date,
             account_id=account_id,
+            **kwargs,
         )
         completed = frame[frame["status"] == TransactionStatus.COMPLETED.value] if not frame.empty else frame
-        inflows, outflows = self._completed_cash_flow_totals(completed)
+        inflows, outflows = self._completed_cash_flow_totals(completed, account_id=account_id)
         portfolio_total = self._portfolio_total(owner=owner, account_id=account_id, **kwargs)
 
         return {
@@ -256,14 +253,13 @@ class ReportService(BaseModel):
         """Time-series totals for completed income and expense rows."""
         owner = self._require_owner(owner)
         self._ensure_account_owned(owner=owner, account_id=account_id)
-        frame = self._apply_category_filter(
-            self._apply_account_filter(
-                self._apply_date_window(
-                    self._load_transactions(owner=owner, **kwargs), start_date=start_date, end_date=end_date
-                ),
-                account_id=account_id,
-            ),
+        frame = self._load_transactions(
+            owner=owner,
+            start_date=start_date,
+            end_date=end_date,
+            account_id=account_id,
             category_id=category_id,
+            **kwargs,
         )
         if frame.empty:
             return {"period": period, "series": []}

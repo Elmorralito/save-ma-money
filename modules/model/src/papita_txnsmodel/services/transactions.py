@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import Annotated, Any, Dict
 
 import pandas as pd
@@ -193,6 +193,42 @@ class TransactionsService(LinkedEntitiesService):
             **kwargs,
         )
         return records, total
+
+    def get_transactions_frame(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        owner: UsersDTO,
+        account_id: uuid.UUID | None = None,
+        category_id: uuid.UUID | None = None,
+        transaction_kind: TransactionKind | None = None,
+        exclude_transfer: bool = False,
+        status: TransactionStatus | None = None,
+        start_date: date | datetime | None = None,
+        end_date: date | datetime | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Load matching tenant transactions without list pagination (report paths).
+
+        Unlike ``list_transactions``, this applies SQL filters only and returns the
+        full matching frame so analytics can aggregate without N+1 page loops.
+        """
+        query_filters = build_transaction_list_filters(
+            TransactionListFilterSpec(
+                transaction_kind=transaction_kind,
+                exclude_transfer=exclude_transfer,
+                status=status,
+                account_id=account_id,
+                category_id=category_id,
+                start_date=start_date,
+                end_date=end_date,
+            )
+        )
+        return self._repository.get_records(
+            *query_filters,
+            dto_type=self.dto_type,
+            owner=owner,
+            **kwargs,
+        )
 
     def list_transfers(  # pylint: disable=too-many-arguments
         self,
