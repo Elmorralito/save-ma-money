@@ -624,6 +624,7 @@ pre-commit run --all-files
 - Pair `modules/**` / `bin/**` edits with `.strata/` (or adapter) updates
 - Keep PR scope focused
 - Use the PR body template: [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md)
+- New issues: use [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (epic / program / child / bug)
 
 Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents/AGENTS.md#pr-checklist).
 

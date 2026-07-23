@@ -64,55 +64,45 @@ Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `C
 
 When closing code for a feature or fix, the PR/issue body should cite the touched paths under **Tasks / deliverables** or **References**.
 
-## Body template (maximize clarity)
+## Body templates (SSOT)
+
+GitHub issue chooser templates live under [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/):
+
+| Kind | Template | Shape references |
+|------|----------|------------------|
+| Epic | [`01-epic.md`](../../.github/ISSUE_TEMPLATE/01-epic.md) | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| Program issue | [`02-program-issue.md`](../../.github/ISSUE_TEMPLATE/02-program-issue.md) | [#52](https://github.com/Elmorralito/save-ma-money/issues/52), [#89](https://github.com/Elmorralito/save-ma-money/issues/89), [#93](https://github.com/Elmorralito/save-ma-money/issues/93) |
+| Child (under epic) | [`03-child-issue.md`](../../.github/ISSUE_TEMPLATE/03-child-issue.md) | PPT-032 children (#43–#50), e.g. [#45](https://github.com/Elmorralito/save-ma-money/issues/45) |
+| Bug | [`04-bug-report.md`](../../.github/ISSUE_TEMPLATE/04-bug-report.md) | — |
+
+Prefer those files when creating or editing issues via `gh issue create` / `gh issue edit`. Do not invent alternate section orders.
+
+### Program issue skeleton (summary)
 
 ```markdown
 **Parent program:** [#28](…) (PPT-031) · **Parent epic:** [#42](…) · **PPT-{NNN}** · **Step:** {N}
 
 ## Summary
-One paragraph: what, why, scope boundary.
-
+## Current state (inspected)   # optional tables
 ## Depends on
-- [#34](…) (PPT-031-E) — migration
-- [#51](…) (PPT-041) — model hardening (if API work)
-
 ## Blocks
-- Linked child issues this unblocks
-
 ## Platform rule (B0 + B1)
-Validate on Docker Postgres (B0) **and** Supabase pooler `:6543` (B1) before closing.
-
+## Decisions to lock in this issue   # optional
 ## Tasks / deliverables
-- [ ] Concrete, testable checkbox per deliverable
-- [ ] Group by layer (model / API / CI)
-
 ## {Domain} integration
-- [ ] B0 acceptance
-- [ ] B1 acceptance
-- [ ] Env vars / docs updated (`.env.example`, README)
-
 ## Requirements traceability
-| ID | Scope |
-|----|-------|
-| FR-07 | … |
-| NFR-04 | … |
-
 ## Out of scope
-Bullet list — prevents scope creep (B2/B3, v4, DuckDB).
-
 ## Acceptance criteria
-- [ ] Measurable done conditions
-
 ## References
-- Design docs, audit comments, parent epic
 ```
 
-## Epic-specific additions
+### Epic-specific additions
 
 - Mermaid dependency graph (phases: design → migration → hardening → API → post-MVP)
 - Sub-issue checklist with `PPT-{NNN} / #{issue}` links
 - Prerequisites (gates G1–G7, PPT-031-E, PPT-041)
 - **Blocked by** line at footer
+- Platform integration model + canonical documentation tables
 
 ## Program hierarchy (PPT-031)
 
