@@ -18,8 +18,9 @@ Tenant scoping:
     mutations on global seeds.
 
 Service delegation:
-    Queries use ``get_records`` and ``get``; mutations use ``create`` (upsert) and
-    ``delete``. Global-category guard violations from the service are mapped to 404.
+    Lists use ``list_categories`` / ``get_categories_for_parents``; reads use ``get``;
+    mutations use ``create`` (upsert) and ``delete``. Global-category guard violations
+    from the service are mapped to 404.
 """
 
 from __future__ import annotations
@@ -145,41 +146,49 @@ def list_categories(  # pylint: disable=too-many-positional-arguments,too-many-l
     else:
         response.headers["X-Cache"] = "BYPASS"
 
-    records_df = categories_service.get_records(None, owner=owner)
-    all_categories = categories_from_dataframe(records_df)
-
-    filtered = all_categories
-    if category_type is not None:
-        kind = parse_category_kind(category_type)
-        filtered = [category for category in filtered if category.category_kind == kind]
-    if parent_id is not None:
-        filtered = [category for category in filtered if category.parent_id == parent_id]
-
-    subcategory_map = build_subcategory_map(all_categories)
-
+    kind = parse_category_kind(category_type) if category_type is not None else None
     payload: PaginatedResponse[CategoryResponse]
     if parent_id is None:
-        top_level = [category for category in filtered if category.parent_id is None]
-        page = top_level[pagination.skip : pagination.skip + pagination.limit]
+        page_df, total = categories_service.list_categories(
+            owner=owner,
+            roots_only=True,
+            category_kind=kind,
+            skip=pagination.skip,
+            limit=pagination.limit,
+        )
+        page_categories = categories_from_dataframe(page_df)
+        parent_ids = [category.id for category in page_categories if category.id is not None]
+        children_df = categories_service.get_categories_for_parents(
+            owner=owner,
+            parent_ids=parent_ids,
+            category_kind=kind,
+        )
+        subcategory_map = build_subcategory_map(categories_from_dataframe(children_df))
         items = [
             CategoryResponse.from_dto(
                 category,
                 subcategories=subcategory_map.get(category.id, []) if category.id is not None else [],
             )
-            for category in page
+            for category in page_categories
         ]
         payload = PaginatedResponse(
             items=items,
-            total=len(top_level),
+            total=total,
             skip=pagination.skip,
             limit=pagination.limit,
         )
     else:
-        page = filtered[pagination.skip : pagination.skip + pagination.limit]
-        items = [CategoryResponse.from_dto(category) for category in page]
+        page_df, total = categories_service.list_categories(
+            owner=owner,
+            parent_id=parent_id,
+            category_kind=kind,
+            skip=pagination.skip,
+            limit=pagination.limit,
+        )
+        items = [CategoryResponse.from_dto(category) for category in categories_from_dataframe(page_df)]
         payload = PaginatedResponse(
             items=items,
-            total=len(filtered),
+            total=total,
             skip=pagination.skip,
             limit=pagination.limit,
         )

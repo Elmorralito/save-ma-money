@@ -36,8 +36,17 @@ from papita_txnsapi.core.cache import (
     set_versioned_cached_json,
     ttl_for_namespace,
 )
-from papita_txnsapi.core.client_contract import ERROR_BULK_TOO_LARGE, HEADER_ERROR_CODE
-from papita_txnsapi.core.idempotency import begin_idempotency, clear_idempotency_pending, complete_idempotency
+from papita_txnsapi.core.client_contract import (
+    ERROR_BULK_TOO_LARGE,
+    ERROR_IDEMPOTENCY_BODY_MISMATCH,
+    HEADER_ERROR_CODE,
+)
+from papita_txnsapi.core.idempotency import (
+    begin_idempotency,
+    clear_idempotency_pending,
+    complete_idempotency,
+    request_body_digest,
+)
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
@@ -129,6 +138,15 @@ def _idempotency_conflict() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail="A request with this Idempotency-Key is already in progress.",
+    )
+
+
+def _idempotency_body_mismatch() -> HTTPException:
+    """Return 422 when the same Idempotency-Key is reused with a different body."""
+    return HTTPException(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        detail="Idempotency-Key was already used with a different request body.",
+        headers={HEADER_ERROR_CODE: ERROR_IDEMPOTENCY_BODY_MISMATCH},
     )
 
 
@@ -243,15 +261,19 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         )
 
     owner_id = _require_owner_id(owner)
+    request_digest = request_body_digest(body.model_dump(mode="json"))
     begun = begin_idempotency(
         redis,
         owner_id,
         scope=_IDEMPOTENCY_BULK,
         key=idempotency_key,
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
+        body_digest=request_digest,
     )
     if begun.state == "hit" and begun.payload is not None:
         return TransactionBulkResponse.model_validate(begun.payload)
+    if begun.state == "mismatch":
+        raise _idempotency_body_mismatch()
     if begun.state == "conflict":
         raise _idempotency_conflict()
 
@@ -283,6 +305,7 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         body=payload.model_dump(mode="json"),
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
         http_status=201,
+        body_digest=request_digest,
     )
     return payload
 
@@ -385,15 +408,19 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
             pending; domain errors may surface as 400 via the global handler.
     """
     owner_id = _require_owner_id(owner)
+    request_digest = request_body_digest(body.model_dump(mode="json"))
     begun = begin_idempotency(
         redis,
         owner_id,
         scope=_IDEMPOTENCY_CREATE,
         key=idempotency_key,
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
+        body_digest=request_digest,
     )
     if begun.state == "hit" and begun.payload is not None:
         return TransactionResponse.model_validate(begun.payload)
+    if begun.state == "mismatch":
+        raise _idempotency_body_mismatch()
     if begun.state == "conflict":
         raise _idempotency_conflict()
 
@@ -415,6 +442,7 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
         body=result.model_dump(mode="json"),
         ttl_seconds=settings.REDIS_IDEMPOTENCY_TTL_SECONDS,
         http_status=201,
+        body_digest=request_digest,
     )
     return result
 

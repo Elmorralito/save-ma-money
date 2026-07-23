@@ -9,6 +9,7 @@ Classes:
 
 import logging
 import uuid
+from collections.abc import Sequence
 from typing import Annotated, Any
 
 import pandas as pd
@@ -18,6 +19,9 @@ from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.categories.repository import CategoriesRepository
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
+from papita_txnsmodel.model.categories import Categories
+from papita_txnsmodel.model.enums import CategoryKind
+from papita_txnsmodel.utils.datautils import standardize_dataframe
 
 from .base import BaseService
 
@@ -52,10 +56,90 @@ class CategoriesService(BaseService):
         """Categories are hybrid global+tenant; service ops always need a tenant owner."""
         return True
 
+    def _category_list_filters(
+        self,
+        *,
+        parent_id: uuid.UUID | None,
+        roots_only: bool,
+        category_kind: CategoryKind | None,
+    ) -> list:
+        """Build SQL filters for paginated category lists."""
+        filters: list = []
+        if roots_only:
+            filters.append(Categories.parent_id.is_(None))
+        elif parent_id is not None:
+            filters.append(Categories.parent_id == parent_id)
+        if category_kind is not None:
+            filters.append(Categories.category_kind == category_kind)
+        return filters
+
+    def list_categories(
+        self,
+        *,
+        owner: UsersDTO,
+        parent_id: uuid.UUID | None = None,
+        roots_only: bool = False,
+        category_kind: CategoryKind | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        **kwargs,
+    ) -> tuple[pd.DataFrame, int]:
+        """Return a SQL-paginated category page and matching total count.
+
+        Args:
+            owner: Tenant used for owner+global visibility.
+            parent_id: When set (and ``roots_only`` is false), only direct children.
+            roots_only: When true, only top-level rows (``parent_id IS NULL``).
+            category_kind: Optional income/expense filter.
+            skip: Offset for SQL pagination.
+            limit: Page size for SQL pagination.
+            **kwargs: Extra repository kwargs.
+
+        Returns:
+            Tuple of (standardized page DataFrame, total matching rows).
+        """
+        ensured_owner = self._ensure_owner(owner)
+        filters = self._category_list_filters(
+            parent_id=parent_id,
+            roots_only=roots_only,
+            category_kind=category_kind,
+        )
+        total = int(self._repository.count_records(*filters, owner=ensured_owner, dto_type=self.dto_type, **kwargs))
+        records_df = self._repository.get_records(
+            *filters,
+            owner=ensured_owner,
+            dto_type=self.dto_type,
+            skip=skip,
+            limit=limit,
+            **kwargs,
+        )
+        return standardize_dataframe(self.dto_type, records_df, **kwargs), total
+
+    def get_categories_for_parents(
+        self,
+        *,
+        owner: UsersDTO,
+        parent_ids: Sequence[uuid.UUID],
+        category_kind: CategoryKind | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Load direct children for the given parent ids (for nested list responses)."""
+        if not parent_ids:
+            return pd.DataFrame([])
+        ensured_owner = self._ensure_owner(owner)
+        filters: list = [Categories.parent_id.in_(list(parent_ids))]
+        if category_kind is not None:
+            filters.append(Categories.category_kind == category_kind)
+        records_df = self._repository.get_records(
+            *filters,
+            owner=ensured_owner,
+            dto_type=self.dto_type,
+            **kwargs,
+        )
+        return standardize_dataframe(self.dto_type, records_df, **kwargs)
+
     def _existing_category_owner_id(self, category_id: uuid.UUID, owner: UsersDTO) -> uuid.UUID | None | object:
         """Return owner_id for a visible category row, or ``_MISSING`` when not found."""
-        from papita_txnsmodel.model.categories import Categories
-
         records = self._repository.get_records(
             Categories.id == category_id,
             owner=owner,

@@ -521,3 +521,18 @@ class TestCategoriesGlobalWriteGuard:
                 owner=owner,
             )
         service._repository.upsert_record.assert_not_called()
+
+    def test_list_categories_uses_sql_skip_limit(self, owner: UsersDTO):
+        """Paginated category lists count and page in the repository, not in memory."""
+        with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
+            service = CategoriesService()
+            service._repository = MagicMock()
+            service._repository.count_records.return_value = 3
+            service._repository.get_records.return_value = pd.DataFrame([])
+        page, total = service.list_categories(owner=owner, roots_only=True, skip=1, limit=2)
+        assert total == 3
+        assert page.empty
+        assert service._repository.count_records.call_count == 1
+        get_kwargs = service._repository.get_records.call_args.kwargs
+        assert get_kwargs["skip"] == 1
+        assert get_kwargs["limit"] == 2

@@ -51,6 +51,7 @@ class TestAccountsRoutes:
     ) -> None:
         client, owner, mock_service = accounts_client
         account = _sample_account(owner.id)
+        mock_service.count_records.return_value = 1
         mock_service.get_records.return_value = pd.DataFrame([account.model_dump(mode="python")])
         mock_service.balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account.id, "balance": 5000.0, "currency": "USD", "owner_id": owner.id}]
@@ -63,6 +64,9 @@ class TestAccountsRoutes:
         assert payload["total"] == 1
         assert payload["items"][0]["balance"] == 5000.0
         assert payload["items"][0]["account_kind"] == "checking"
+        mock_service.get_records.assert_called_once()
+        assert mock_service.get_records.call_args.kwargs["skip"] == 0
+        assert mock_service.get_records.call_args.kwargs["limit"] == 100
 
     def test_get_account_not_found_returns_404(
         self,
@@ -155,6 +159,7 @@ class TestAccountsRoutes:
         cash = _sample_account(owner.id)
         cash.account_kind = AccountKind.CASH
         cash.name = "Cash Jar"
+        mock_service.count_records.return_value = 1
         mock_service.get_records.return_value = pd.DataFrame([cash.model_dump(mode="python")])
         mock_service.balances_service.get_balances.return_value = pd.DataFrame([])
 
@@ -174,6 +179,7 @@ class TestAccountsRoutes:
         liability = _sample_account(owner.id)
         liability.ledger_side = LedgerSide.LIABILITY
         liability.name = "Credit Card"
+        mock_service.count_records.return_value = 1
         mock_service.get_records.return_value = pd.DataFrame([liability.model_dump(mode="python")])
         mock_service.balances_service.get_balances.return_value = pd.DataFrame([])
 
@@ -191,6 +197,7 @@ class TestAccountsRoutes:
         client, owner, mock_service = accounts_client
         inactive = _sample_account(owner.id)
         inactive.active = False
+        mock_service.count_records.return_value = 1
         mock_service.get_records.return_value = pd.DataFrame([inactive.model_dump(mode="python")])
         mock_service.balances_service.get_balances.return_value = pd.DataFrame([])
 

@@ -51,7 +51,6 @@ from papita_txnsapi.schemas.accounts import (
     accounts_from_dataframe,
     balances_by_account_id,
     effective_account_balance,
-    paginate_dataframe,
 )
 from papita_txnsapi.schemas.common import PaginatedResponse
 from papita_txnsapi.schemas.converters import parse_account_kind, parse_ledger_side
@@ -211,8 +210,13 @@ def list_accounts(  # pylint: disable=too-many-arguments,too-many-positional-arg
         ledger_side=ledger_side,
         is_active=is_active,
     )
-    records_df = accounts_service.get_records(filter_dto, owner=owner)
-    page_df, total = paginate_dataframe(records_df, pagination.skip, pagination.limit)
+    total = accounts_service.count_records(filter_dto, owner=owner)
+    page_df = accounts_service.get_records(
+        filter_dto,
+        owner=owner,
+        skip=pagination.skip,
+        limit=pagination.limit,
+    )
     accounts = accounts_from_dataframe(page_df)
 
     balances_df = (

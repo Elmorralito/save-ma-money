@@ -104,6 +104,7 @@ class TestAccountsCacheInvalidation:
         owner = make_user()
         account = _sample_account(owner.id)
         mock_service = MagicMock()
+        mock_service.count_records.return_value = 1
         mock_service.get_records.return_value = pd.DataFrame([account.model_dump(mode="python")])
         mock_service.balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account.id, "balance": 100.0, "currency": "USD", "owner_id": owner.id}]
@@ -161,7 +162,11 @@ class TestCategoriesCache:
         owner = make_user()
         category = _sample_category(owner.id)
         mock_service = MagicMock()
-        mock_service.get_records.return_value = pd.DataFrame([category.model_dump(mode="python")])
+        mock_service.list_categories.return_value = (
+            pd.DataFrame([category.model_dump(mode="python")]),
+            1,
+        )
+        mock_service.get_categories_for_parents.return_value = pd.DataFrame([])
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()
@@ -178,7 +183,7 @@ class TestCategoriesCache:
         assert first.status_code == 200
         assert second.status_code == 200
         assert second.headers.get("X-Cache") == "HIT"
-        assert mock_service.get_records.call_count == 1
+        assert mock_service.list_categories.call_count == 1
 
     def test_list_categories_with_parent_filter(
         self,
@@ -195,7 +200,10 @@ class TestCategoriesCache:
         child = _sample_category(owner.id)
         child.parent_id = parent_id
         mock_service = MagicMock()
-        mock_service.get_records.return_value = pd.DataFrame([child.model_dump(mode="python")])
+        mock_service.list_categories.return_value = (
+            pd.DataFrame([child.model_dump(mode="python")]),
+            1,
+        )
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()
@@ -209,3 +217,5 @@ class TestCategoriesCache:
         monkeypatch.setenv("REDIS_ENABLED", "false")
         assert response.status_code == 200
         assert response.json()["total"] == 1
+        assert mock_service.list_categories.call_args.kwargs["parent_id"] == parent_id
+        mock_service.get_categories_for_parents.assert_not_called()
