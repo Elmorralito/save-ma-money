@@ -199,14 +199,30 @@ class BaseRepository:
             results = _db_session.exec(statement, params=kwargs.get("params", kwargs.get("statement_params"))).all()
             if not results:
                 return pd.DataFrame([])
-            first = results[0]
-            if hasattr(first, "model_dump"):
-                return pd.DataFrame([item.model_dump(mode="python") for item in results])
-            return pd.DataFrame(results)
+            return pd.DataFrame([self._query_result_item_to_mapping(item) for item in results])
         except Exception as exc:
             logger.exception("The query has failed due to: %s", exc)
 
         return pd.DataFrame([])
+
+    @staticmethod
+    def _query_result_item_to_mapping(item: Any) -> Any:
+        """Normalize a SQLModel/SQLAlchemy result row into a plain mapping.
+
+        ``Session.exec(select(DAO))`` may yield the DAO directly or a ``Row`` that
+        wraps a single entity. Returning nested ``{DAOName: entity}`` frames breaks
+        ``standardize_dataframe`` / DTO validation on list helpers.
+        """
+        if hasattr(item, "model_dump"):
+            return item.model_dump(mode="python")
+        try:
+            length = len(item)
+            entity = item[0]
+        except (TypeError, KeyError, IndexError):
+            return item
+        if length == 1 and hasattr(entity, "model_dump"):
+            return entity.model_dump(mode="python")
+        return item
 
     def _dataframe_row_to_dto(self, output_df: pd.DataFrame, dto_type: type[TableDTO], **kwargs) -> TableDTO | None:
         """Convert the first row of a query DataFrame into a validated DTO."""

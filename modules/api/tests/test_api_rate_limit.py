@@ -35,8 +35,8 @@ def _accounts_client_with_owner(owner=None) -> tuple[TestClient, object, MagicMo
     app = create_app()
     owner = owner or make_user()
     mock_service = MagicMock()
-    mock_service.count_records.return_value = 0
-    mock_service.get_records.return_value = pd.DataFrame([])
+    mock_service.list_accounts.return_value = (pd.DataFrame([]), 0)
+    mock_service.balances_service = None
     app.dependency_overrides[get_current_owner] = lambda: owner
     app.dependency_overrides[get_accounts_service] = lambda: mock_service
     return TestClient(app), owner, mock_service
@@ -206,8 +206,8 @@ class TestTenantApiRateLimit:
         assert owner.id is not None
         fake_redis.set(redis_key(owner.id, "api_tier"), "pro")
         mock_service = MagicMock()
-        mock_service.count_records.return_value = 0
-        mock_service.get_records.return_value = pd.DataFrame([])
+        mock_service.list_accounts.return_value = (pd.DataFrame([]), 0)
+        mock_service.balances_service = None
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()

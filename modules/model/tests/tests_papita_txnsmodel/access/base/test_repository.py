@@ -236,6 +236,30 @@ class TestRunQuery:
         assert isinstance(result, pd.DataFrame)
         assert result.empty
 
+    def test_run_query_unwraps_single_entity_row(self, repository, mock_session, mock_connector_connected):
+        """``Session.exec(select(DAO))`` Row wrappers should flatten to field columns."""
+        from papita_txnsmodel.model.categories import Categories
+        from papita_txnsmodel.model.enums import CategoryKind
+
+        mock_statement = MagicMock(spec=Select)
+        entity = Categories(
+            id=uuid.uuid4(),
+            name="Food",
+            category_kind=CategoryKind.EXPENSE,
+            active=True,
+        )
+        row = (entity,)
+        mock_result = MagicMock()
+        mock_result.all.return_value = [row]
+        mock_session.exec.return_value = mock_result
+
+        result = repository.run_query(mock_statement, _db_session=mock_session, _testing_=True)
+
+        assert isinstance(result, pd.DataFrame)
+        assert "name" in result.columns
+        assert "Categories" not in result.columns
+        assert result.iloc[0]["name"] == "Food"
+
 
 class TestUpsertRecord:
     """Test suite for BaseRepository.upsert_record method."""

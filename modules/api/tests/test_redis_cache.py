@@ -104,8 +104,7 @@ class TestAccountsCacheInvalidation:
         owner = make_user()
         account = _sample_account(owner.id)
         mock_service = MagicMock()
-        mock_service.count_records.return_value = 1
-        mock_service.get_records.return_value = pd.DataFrame([account.model_dump(mode="python")])
+        mock_service.list_accounts.return_value = (pd.DataFrame([account.model_dump(mode="python")]), 1)
         mock_service.balances_service.get_balances.return_value = pd.DataFrame(
             [{"account_id": account.id, "balance": 100.0, "currency": "USD", "owner_id": owner.id}]
         )
@@ -142,7 +141,7 @@ class TestAccountsCacheInvalidation:
         assert create.status_code == 201
         assert third.status_code == 200
         assert third.headers.get("X-Cache") == "MISS"
-        assert mock_service.get_records.call_count == 2
+        assert mock_service.list_accounts.call_count == 2
 
 
 class TestCategoriesCache:
