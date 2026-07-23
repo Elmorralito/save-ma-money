@@ -9,8 +9,9 @@
 | **ER diagrams**        | [v3 SVG](../postgres_papita_transactions_v3.svg) · [v4 SVG](../postgres_papita_transactions_v4.svg)                |
 
 This document consolidates the PPT-031 design program: v0 audit, v3 schema freeze, v4 extensions,
-API mapping, coverage matrix, auth contract, and migration runbook. Use the table of contents to
-navigate; implementation status for API routers is tracked in Part V and `.strata/memory/project_state.md`.
+API mapping, coverage matrix, auth contract, migration runbook, and post-MVP API hardening
+(PPT-044). Use the table of contents to navigate; implementation status for API routers is tracked
+in Part V / Part VIII and `.strata/memory/project_state.md`.
 
 ---
 
@@ -25,6 +26,7 @@ navigate; implementation status for API routers is tracked in Part V and `.strat
 | V    | [API coverage matrix](#part-v--api-coverage-matrix-ppt-033-43)              | [#43](https://github.com/Elmorralito/save-ma-money/issues/43)          |
 | VI   | [Auth contract](#part-vi--auth-contract-ppt-031-track-e)                    | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E  |
 | VII  | [Migration runbook](#part-vii--migration-runbook-ppt-031-d-34)              | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)          |
+| VIII | [Post-MVP API hardening](#part-viii--post-mvp-api-hardening-ppt-044-89)     | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)          |
 
 ---
 
@@ -4022,3 +4024,97 @@ The pre-squash revisions are no longer in the repository. Production rollback re
 - [#31](https://github.com/Elmorralito/save-ma-money/issues/31) — Supabase B0/B1 decision
 - [`docs/issues/README.md` Part I](../issues/README.md#part-i--ppt-031-simplify-requirements-28) — FR/NFR traceability
 - [`AGENTS.md`](../../.agents/AGENTS.md) — Alembic wrapper commands
+
+---
+
+## Part VIII — Post-MVP API hardening (PPT-044, #89)
+
+| Field              | Value                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------ |
+| **Issue**          | [#89](https://github.com/Elmorralito/save-ma-money/issues/89) (PPT-044)                    |
+| **Parent epic**    | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032)                    |
+| **Parent program** | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031)                    |
+| **Semantic**       | `fix/` (security/posture hardening; no new domain features)                                |
+| **Canonical API**  | [`modules/api/README.md`](../../modules/api/README.md) (§ PPT-044 client migration, Redis) |
+| **Last review**    | 2026-07-23 — implementation landed after PPT-043 Redis close-out                           |
+
+API-wide post-MVP hardening for `papita-txnsapi`: transport defaults, auth/settings hygiene,
+tenancy/input bounds, abuse controls, error disclosure, health/ops, and a consolidated security
+test pack. Full acceptance remains on [#89](https://github.com/Elmorralito/save-ma-money/issues/89).
+
+### 1. Dependencies
+
+| Dependency                                                                    | Status                   |
+| ----------------------------------------------------------------------------- | ------------------------ |
+| PPT-032 epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)    | Closed (surface present) |
+| PPT-043 Redis [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Soft dep — landed        |
+| PPT-040 harness [#50](https://github.com/Elmorralito/save-ma-money/issues/50) | Soft dep — landed        |
+
+### 2. Already done before PPT-044 (regression only)
+
+JWT alg pin on decode · JWT `type` + UUID `sub` · inactive user reject · auth login/register IP
+limits (direct socket) · masked 500s · CRUD cross-tenant 404 pattern · health `literal(1)` +
+allowlisted detail + injection tests · request logs omit headers/bodies · \*\*tenant API rate limits
+
+- Redis denylist (PPT-043)** · **logout/denylist honesty under Supabase/Redis\*\*
+
+### 3. Implementation status (2026-07-23)
+
+| Phase | Theme                                                                                                | Status |
+| ----- | ---------------------------------------------------------------------------------------------------- | ------ |
+| P1    | Headers, TrustedHost, CORS fail-fast, docs gate, body-size docs                                      | Done   |
+| P2    | JWT secret min length, `JWT_ALGORITHM` allowlist, `LOG_LEVEL` prod posture                           | Done   |
+| P3    | Budgets JWT, write `extra="forbid"`, free-text bounds, reports foreign account **404**               | Done   |
+| P5    | Bulk `max_length=100`, report window ≤366d, `refresh_balances` default **false**, health rate limits | Done   |
+| P4    | Driverish `ValueError` mask; 500 masking regression                                                  | Done   |
+| P6    | Probe timeout, `Cache-Control: no-store`, health 405 tests                                           | Done   |
+| P7    | `tests/test_security_pack.py` + env/README consolidation                                             | Done   |
+
+### 4. Decisions locked
+
+- Reports foreign `account_id` → **404** (CRUD parity)
+- Keep `/health/database` public; rate-limit + `no-store`; do not expand detail vocabulary
+- Bulk max **100**; report window **366** days
+- `refresh_balances` default **false**
+- CORS `*` forbidden when `DEBUG=false`
+
+### 5. Client-breaking change hardening
+
+Strategy: keep secure defaults; make them discoverable and temporarily reversible for wire-contract
+breaks only.
+
+| Mechanism                            | Purpose                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `GET /api/v1/meta/client-contract`   | Public probe of effective limits / compat / error codes                            |
+| `X-Papita-*` response headers        | Per-response discovery (`Bulk-Max`, `Report-Window-Max-Days`, …)                   |
+| `X-Papita-Error-Code`                | Stable codes for SDK branching                                                     |
+| `API_COMPAT_LEGACY_*` flags          | Time-boxed legacy 400 / refresh default; emit `Deprecation` + `Sunset: 2026-10-01` |
+| No compat for CORS `*` / public docs | Security posture must not regress                                                  |
+
+Operator detail: [`modules/api/README.md`](../../modules/api/README.md) § PPT-044 client migration.
+
+### 6. Ops entrypoints (Redis + optional B1 pooler)
+
+Condensed deploy steps live in [`README.md` § Ops](README.md#ops-redis--optional-b1-pooler).
+Env layout: [`environments/README.md`](../../environments/README.md).
+
+| Concern                                    | Policy (as shipped)                                    |
+| ------------------------------------------ | ------------------------------------------------------ |
+| Redis key prefix                           | `papita:{PAPITA_ENV}:…`                                |
+| Cache / tenant API rate-limit Redis errors | Fail open (default)                                    |
+| Auth IP Redis errors                       | Optional fail-closed via `AUTH_RATE_LIMIT_FAIL_CLOSED` |
+| JWT denylist Redis errors                  | Fail closed (503) when `REDIS_ENABLED`                 |
+| Postgres                                   | Source of truth; Redis additive (cache, RL, denylist)  |
+
+### 7. Out of scope
+
+WAF/CDN · new domain features · RLS redesign · keyset pagination product · public admin metrics ·
+PPT-045 packaging ([#93](https://github.com/Elmorralito/save-ma-money/issues/93))
+
+### 8. References
+
+- [#89](https://github.com/Elmorralito/save-ma-money/issues/89) — PPT-044 acceptance
+- [#83](https://github.com/Elmorralito/save-ma-money/issues/83) — PPT-043 Redis
+- [`modules/api/README.md`](../../modules/api/README.md) — live REST + security contract
+- [Part V](#part-v--api-coverage-matrix-ppt-033-43) — endpoint coverage matrix
+- [Part VI](#part-vi--auth-contract-ppt-031-track-e) — auth contract

@@ -55,7 +55,7 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 
 - [ ] Update `modules/api/README.md` run sections: one host path, one Compose path; remove stale “when routers land”
 - [ ] Update `environments/README.md` with host vs Compose Redis URL split + uvicorn notes
-- [ ] Short ops note (README or `docs/ops/`) on workers vs Redis rate-limit / denylist fail-closed
+- [ ] Short ops note (`modules/api/README.md` or `docs/design/README.md` § Ops) on workers vs Redis rate-limit / denylist fail-closed
 
 ### API package (minimal)
 

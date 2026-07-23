@@ -4,7 +4,8 @@ Procedures you perform: runbooks (`<slug>.md`), incident patterns (`incidents/<s
 
 The discriminator: _steps you execute_ live here; _facts you look up_ live in `../reference/`. Never store secret values — env var names and secret surfaces only.
 
-| Procedure                         | Path                                                                                                                                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Env files / `PAPITA_ENV`          | [`environments.md`](environments.md) → [`environments/README.md`](../../../environments/README.md)                                            |
-| B1 Supabase pooler deploy + smoke | [`b1-supabase-deploy-checklist.md`](b1-supabase-deploy-checklist.md) → human [`docs/ops/`](../../../docs/ops/b1-supabase-deploy-checklist.md) |
+| Procedure                        | Path                                                                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Env files / `PAPITA_ENV`         | [`environments.md`](environments.md) → [`environments/README.md`](../../../environments/README.md)                           |
+| Redis B0/B1 + optional B1 pooler | [`docs/design/README.md` § Ops](../../../docs/design/README.md#ops-redis--optional-b1-pooler)                                |
+| PPT-044 API hardening (design)   | [`docs/design/ARCHITECTURE.md` Part VIII](../../../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) |

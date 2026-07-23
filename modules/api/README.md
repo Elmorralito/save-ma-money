@@ -269,7 +269,7 @@ curl -s http://localhost:8000/api/v1/health/ready
 
 ### Optional — hosted Postgres / pooler tips
 
-If you use a transaction pooler (including Supabase PG), copy [`environments/staging/.env.example`](../../environments/staging/.env.example), set `PAPITA_ENV=staging`, and keep migrations on `DATABASE_URL_MIGRATIONS` (`:5432`). See [`environments/README.md`](../../environments/README.md) and the [optional pooler checklist](../../docs/ops/b1-supabase-deploy-checklist.md).
+If you use a transaction pooler (including Supabase PG), copy [`environments/staging/.env.example`](../../environments/staging/.env.example), set `PAPITA_ENV=staging`, and keep migrations on `DATABASE_URL_MIGRATIONS` (`:5432`). See [`environments/README.md`](../../environments/README.md) and the [optional pooler checklist](../../docs/design/README.md#optional-b1-hosted-postgres-pooler).
 
 ```bash
 # Migrate on direct URL (never transaction pooler)
@@ -1737,7 +1737,7 @@ Optional shared infrastructure for cache-aside, distributed rate limits, and
 B0 deploy: `make stack-up` (or `make redis-up` + host uvicorn). Compose API always
 uses `redis://redis:6379/0`. Host uvicorn uses `REDIS_URL=redis://localhost:6379/0`
 from `environments/local/.env`. Smoke: `make redis-smoke`. Checklist:
-[`docs/ops/redis-deploy-checklist.md`](../../docs/ops/redis-deploy-checklist.md).
+[`docs/design/README.md` § Ops — Redis](../../docs/design/README.md#ops-redis--optional-b1-pooler).
 
 When `REDIS_ENABLED=false`, the API keeps in-memory rate limiting and skips
 caching/denylist; unit tests remain green without Redis.
@@ -1792,7 +1792,8 @@ reject revoked JWTs until TTL expires.
 | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Supabase Auth contract (G5) — SSO, smoke, JWT/tenant rules                                |
 | [`docs/issues/README.md` Part IV](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)                                                             | Auth-only pivot ([#49](https://github.com/Elmorralito/save-ma-money/issues/49))           |
 | [`docs/issues/README.md` Part II](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)                                                      | B0/B1/B2/B3 + G7 supersede                                                                |
-| [`docs/ops/b1-supabase-deploy-checklist.md`](../../docs/ops/b1-supabase-deploy-checklist.md)                                                                         | Optional hosted PG / pooler                                                               |
+| [`docs/design/README.md` § Ops](../../docs/design/README.md#optional-b1-hosted-postgres-pooler)                                                                      | Optional hosted PG / pooler                                                               |
+| [`docs/design/ARCHITECTURE.md` Part VIII](../../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89)                                            | PPT-044 hardening status + locked decisions                                               |
 | [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 DDL and constraints                                                                    |
 | [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits (post-MVP)                                                                |
 | [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md)                                                                                                                       | Agent ops: routers, test commands, PR checklist                                           |

@@ -161,7 +161,7 @@ PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRA
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
 
-B1 staging checklist + smoke: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md).
+B1 staging checklist + smoke: [`docs/design/README.md` § Ops](../docs/design/README.md#optional-b1-hosted-postgres-pooler) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md). PPT-044: [`docs/design/ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89).
 
 When editing SQLModel classes, add an Alembic revision under `modules/model/alembic/versions/`.
 
