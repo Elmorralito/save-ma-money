@@ -273,17 +273,69 @@ class TestUpsertRecord:
         test_id = uuid.uuid4()
         mock_dto_instance = MagicMock()
         mock_dto_instance.id = test_id
+        mock_dto_instance.active = True
         mock_dao = MagicMock()
         mock_dto_instance.to_dao.return_value = mock_dao
-        repository.get_record_by_id = MagicMock(return_value=mock_dto_instance)
+        existing = MagicMock()
+        existing.active = True
+        repository.get_record_by_id = MagicMock(return_value=existing)
         mock_dao.model_dump.return_value = {"id": test_id, "name": "Test"}
         mock_dto_instance.model_validate.return_value = mock_dto_instance
         mock_isinstance.return_value = False
 
         result = repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
 
+        repository.get_record_by_id.assert_called_once()
+        assert repository.get_record_by_id.call_args.kwargs.get("include_deleted") is True
         mock_session.merge.assert_called_once_with(mock_dao)
         mock_session.commit.assert_called_once()
+        assert result is not None
+
+    def test_upsert_record_rejects_soft_deleted_without_reactivate(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
+        """Upsert must not silently revive a soft-deleted primary key."""
+        test_id = uuid.uuid4()
+        mock_dto_instance = MagicMock()
+        mock_dto_instance.id = test_id
+        mock_dto_instance.active = True
+        mock_dto_instance.deleted_at = None
+        mock_dto_instance.to_dao.return_value = MagicMock()
+        existing = MagicMock()
+        existing.active = False
+        existing.deleted_at = datetime(2026, 1, 1)
+        repository.get_record_by_id = MagicMock(return_value=existing)
+
+        with pytest.raises(ValueError, match="Cannot upsert soft-deleted record"):
+            repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
+
+        mock_session.add.assert_not_called()
+        mock_session.merge.assert_not_called()
+
+    def test_upsert_record_reactivates_when_requested(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
+        """reactivate=True restores soft-deleted rows and clears deleted_at."""
+        test_id = uuid.uuid4()
+        mock_dto_instance = MagicMock()
+        mock_dto_instance.id = test_id
+        mock_dto_instance.active = False
+        mock_dto_instance.deleted_at = datetime(2026, 1, 1)
+        mock_dao = MagicMock()
+        mock_dto_instance.to_dao.return_value = mock_dao
+        mock_dao.model_dump.return_value = {"id": test_id, "name": "Test", "active": True}
+        mock_dto_instance.model_validate.return_value = mock_dto_instance
+        existing = MagicMock()
+        existing.active = False
+        repository.get_record_by_id = MagicMock(return_value=existing)
+
+        result = repository.upsert_record(
+            mock_dto_instance, _db_session=mock_session, reactivate=True, _testing_=True
+        )
+
+        assert mock_dto_instance.active is True
+        assert mock_dto_instance.deleted_at is None
+        mock_session.merge.assert_called_once_with(mock_dao)
         assert result is not None
 
     def test_upsert_record_rolls_back_on_error(self, repository, mock_dto, mock_session, mock_connector_connected):
@@ -381,6 +433,55 @@ class TestGetRecords:
 
         assert isinstance(result, pd.DataFrame)
         assert result.empty
+
+    @patch("papita_txnsmodel.access.base.repository.Select")
+    def test_get_records_applies_active_only_filters_by_default(self, mock_select, repository, mock_dto, mock_dao):
+        """List queries exclude soft-deleted rows unless include_deleted=True."""
+        repository.run_query = MagicMock(return_value=pd.DataFrame([]))
+        mock_statement = MagicMock()
+        mock_statement.where.return_value = mock_statement
+        mock_select.return_value = mock_statement
+        mock_dao.active = MagicMock()
+        mock_dao.deleted_at = MagicMock()
+        mock_dao.active.is_ = MagicMock(return_value="active_true")
+        mock_dao.deleted_at.is_ = MagicMock(return_value="deleted_null")
+
+        repository.get_records(dto_type=mock_dto)
+
+        mock_dao.active.is_.assert_called_once_with(True)
+        mock_dao.deleted_at.is_.assert_called_once_with(None)
+        mock_statement.where.assert_called_once()
+        where_args = mock_statement.where.call_args[0]
+        assert "active_true" in where_args
+        assert "deleted_null" in where_args
+
+    @patch("papita_txnsmodel.access.base.repository.Select")
+    def test_get_records_include_deleted_skips_soft_delete_filters(self, mock_select, repository, mock_dto, mock_dao):
+        """include_deleted=True omits active/deleted_at predicates."""
+        repository.run_query = MagicMock(return_value=pd.DataFrame([]))
+        mock_statement = MagicMock()
+        mock_select.return_value = mock_statement
+        mock_dao.active = MagicMock()
+        mock_dao.deleted_at = MagicMock()
+        mock_dao.active.is_ = MagicMock()
+        mock_dao.deleted_at.is_ = MagicMock()
+
+        repository.get_records(dto_type=mock_dto, include_deleted=True)
+
+        mock_dao.active.is_.assert_not_called()
+        mock_dao.deleted_at.is_.assert_not_called()
+        mock_statement.where.assert_not_called()
+
+
+class TestSoftDeleteReadFilters:
+    """Unit tests for BaseRepository._soft_delete_read_filters helper."""
+
+    def test_empty_when_include_deleted(self, repository):
+        assert repository._soft_delete_read_filters(MagicMock(), include_deleted=True) == []
+
+    def test_skips_when_dao_lacks_soft_delete_columns(self, repository):
+        dao = type("BareDao", (), {})
+        assert repository._soft_delete_read_filters(dao, include_deleted=False) == []
 
 
 class TestGetRecordsFromAttributes:

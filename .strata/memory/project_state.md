@@ -10,16 +10,19 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-043 PR #94: QC green after REDIS_URL test fix; Codecov patch ~95%
-- Added owner-id-none cache BYPASS + Settings Redis URL + health degraded tests
+- Model soft-delete PR-1: `get_records`/`count_records` active-only by default;
+  `upsert_record` blocks revival unless `reactivate=True`; users auth lookups
+  use `include_deleted` for collision / subject bans
+- PPT-044 API hardening + client-contract work still uncommitted locally (API/env)
 
 ### Next action
 
-- Confirm `codecov/patch` ≥ ~97.7% on #94
-- Staging: managed `REDIS_URL` when enabling horizontal scale
+- PR-2 categories: require `owner=` on service ops; reject global delete/update
+- Then PR-3 `refresh_balances` defaults False on writes/cash_flow
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
 - Redis optional by default (`REDIS_ENABLED=false`)
+- Large PPT-044 API diff still WIP alongside model hardening commits

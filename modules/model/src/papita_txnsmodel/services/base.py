@@ -232,7 +232,7 @@ class BaseService(BaseModel):
         """
         owner = self._ensure_owner(owner)
         if not dto:
-            records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type)
+            records_df = self._repository.get_records(owner=owner, dto_type=self.dto_type, **kwargs)
         else:
             parsed_dto = self.dto_type.model_validate(dto, strict=True) if isinstance(dto, dict) else dto
             self.check_expected_dto_type(parsed_dto)
