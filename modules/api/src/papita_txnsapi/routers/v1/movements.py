@@ -267,9 +267,11 @@ def create_movement(
         currency=body.currency,
     )
     dto = body.to_transactions_dto(owner_id=_require_owner_id(owner))
-    created = transactions_service.create_transfer(obj=dto, owner=owner)
+    # Intermediate create/complete skip per-call MV refresh; one refresh below.
+    created = transactions_service.create_transfer(obj=dto, owner=owner, refresh_balances=False)
     if not body.scheduled:
-        created = transactions_service.complete_transfer(transaction_id=created, owner=owner)
+        created = transactions_service.complete_transfer(transaction_id=created, owner=owner, refresh_balances=False)
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(created)
 
@@ -315,7 +317,8 @@ def update_movement(  # pylint: disable=too-many-positional-arguments
         destination_account_id=destination_id,
         currency=merged.currency,
     )
-    updated = transactions_service.create(obj=merged, owner=owner)
+    updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return MovementResponse.from_dto(updated)
 
@@ -344,9 +347,10 @@ def delete_movement(
     existing = _require_transfer(transactions_service, movement_id, owner)
     _require_pending(existing)
     try:
-        transactions_service.cancel(transaction_id=movement_id, owner=owner)
+        transactions_service.cancel(transaction_id=movement_id, owner=owner, refresh_balances=False)
     except ValueError as exc:
         raise _movement_not_found() from exc
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
 
 
@@ -374,13 +378,16 @@ def execute_movement(
     existing = _require_transfer(transactions_service, movement_id, owner)
     _require_pending(existing)
     try:
-        completed = transactions_service.complete_transfer(transaction_id=movement_id, owner=owner)
+        completed = transactions_service.complete_transfer(
+            transaction_id=movement_id, owner=owner, refresh_balances=False
+        )
     except ValueError as exc:
         raise _movement_not_found() from exc
 
     executed_at = completed.transaction_ts
     if executed_at.tzinfo is None:
         executed_at = executed_at.replace(tzinfo=timezone.utc)
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return MovementExecuteResponse(
         id=_require_uuid(completed.id),

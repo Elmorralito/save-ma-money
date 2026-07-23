@@ -209,8 +209,8 @@ class TestTransactionsServiceTransfers:
         submitted = mock_create.call_args.kwargs["obj"]
         assert submitted.status == TransactionStatus.CANCELLED
 
-    def test_create_refreshes_balances_by_default(self, owner: UsersDTO):
-        """Single create triggers MV refresh like bulk upsert."""
+    def test_create_skips_balance_refresh_by_default(self, owner: UsersDTO):
+        """Single create does not refresh MVs unless refresh_balances=True."""
         service = _transactions_service()
         transfer = TransactionsDTO(owner_id=owner.id, transaction_kind=TransactionKind.EXPENSE, amount=5.0)
         with (
@@ -218,6 +218,17 @@ class TestTransactionsServiceTransfers:
             patch("papita_txnsmodel.services.transactions.refresh_balance_materialized_views") as mock_refresh,
         ):
             service.create(obj=transfer, owner=owner)
+        mock_refresh.assert_not_called()
+
+    def test_create_refreshes_balances_when_enabled(self, owner: UsersDTO):
+        """Opt-in refresh_balances=True still refreshes MVs after create."""
+        service = _transactions_service()
+        transfer = TransactionsDTO(owner_id=owner.id, transaction_kind=TransactionKind.EXPENSE, amount=5.0)
+        with (
+            patch("papita_txnsmodel.services.transactions.LinkedEntitiesService.create", return_value=transfer),
+            patch("papita_txnsmodel.services.transactions.refresh_balance_materialized_views") as mock_refresh,
+        ):
+            service.create(obj=transfer, owner=owner, refresh_balances=True)
         mock_refresh.assert_called_once()
 
 
@@ -385,6 +396,17 @@ class TestReportService:
         by_kind = {row["transaction_kind"]: row["total"] for row in trends["series"]}
         assert by_kind[TransactionKind.INCOME.value] == 500.0
         assert by_kind[TransactionKind.EXPENSE.value] == 120.0
+
+    def test_cash_flow_skips_balance_refresh_by_default(self, owner: UsersDTO):
+        """cash_flow default avoids MV refresh on export/read paths."""
+        service = ReportService()
+        service.transactions_service = MagicMock()
+        service.transactions_service.get_records.return_value = pd.DataFrame()
+        service.account_balances_service = MagicMock()
+        service.account_balances_service.get_balances.return_value = pd.DataFrame()
+        with patch("papita_txnsmodel.services.reports.refresh_balance_materialized_views") as mock_refresh:
+            service.cash_flow(owner=owner)
+        mock_refresh.assert_not_called()
 
     def test_export_returns_csv_stub(self, owner: UsersDTO):
         """Export delegates to spending and returns CSV text."""

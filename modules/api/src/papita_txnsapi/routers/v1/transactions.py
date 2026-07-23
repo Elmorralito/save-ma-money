@@ -36,6 +36,7 @@ from papita_txnsapi.core.cache import (
     set_versioned_cached_json,
     ttl_for_namespace,
 )
+from papita_txnsapi.core.client_contract import ERROR_BULK_TOO_LARGE, HEADER_ERROR_CODE
 from papita_txnsapi.core.idempotency import begin_idempotency, clear_idempotency_pending, complete_idempotency
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
@@ -228,8 +229,19 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
 
     Raises:
         HTTPException: 401 when the owner context lacks a primary key; 409 when
-            an idempotency key is still pending.
+            an idempotency key is still pending; 422 when the batch exceeds
+            ``API_BULK_MAX_TRANSACTIONS``.
     """
+    if len(body.transactions) > settings.API_BULK_MAX_TRANSACTIONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Bulk create accepts at most {settings.API_BULK_MAX_TRANSACTIONS} "
+                "transactions per request; chunk larger batches."
+            ),
+            headers={HEADER_ERROR_CODE: ERROR_BULK_TOO_LARGE},
+        )
+
     owner_id = _require_owner_id(owner)
     begun = begin_idempotency(
         redis,
@@ -250,7 +262,8 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         for item in body.transactions:
             try:
                 dto = item.to_transactions_dto(owner_id=owner_id)
-                result = transactions_service.create(obj=dto, owner=owner)
+                # Defer MV refresh to once after the batch (avoid N× refresh).
+                result = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
                 created_items.append(TransactionResponse.from_dto(result))
             except (ValueError, TypeError):
                 failed += 1
@@ -259,6 +272,7 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments
         raise
 
     if created_items:
+        transactions_service.refresh_balance_views()
         _invalidate_ledger_caches(redis, owner)
     payload = TransactionBulkResponse(created=len(created_items), failed=failed, transactions=created_items)
     complete_idempotency(
@@ -385,11 +399,12 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
 
     try:
         dto = body.to_transactions_dto(owner_id=owner_id)
-        created = transactions_service.create(obj=dto, owner=owner)
+        created = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
     except Exception:
         clear_idempotency_pending(redis, owner_id, scope=_IDEMPOTENCY_CREATE, key=idempotency_key)
         raise
 
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     result = TransactionResponse.from_dto(created)
     complete_idempotency(
@@ -439,7 +454,8 @@ def update_transaction(
         )
 
     merged = body.apply_to(existing)
-    updated = transactions_service.create(obj=merged, owner=owner)
+    updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return TransactionResponse.from_dto(updated)
 
@@ -465,5 +481,10 @@ def delete_transaction(
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()
-    transactions_service.delete(obj=TransactionsDTO.model_construct(id=transaction_id), owner=owner)
+    transactions_service.delete(
+        obj=TransactionsDTO.model_construct(id=transaction_id),
+        owner=owner,
+        refresh_balances=False,
+    )
+    transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)

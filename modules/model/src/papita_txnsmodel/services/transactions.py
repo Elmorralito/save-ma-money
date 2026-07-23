@@ -106,8 +106,13 @@ class TransactionsService(LinkedEntitiesService):
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
 
     def _maybe_refresh_balances(self, **kwargs) -> None:
-        """Refresh balance materialized views when enabled (default on)."""
-        if not kwargs.get("refresh_balances", True):
+        """Refresh balance materialized views when ``refresh_balances=True``.
+
+        Defaults to off so create/delete/bulk paths do not N×-refresh MVs. Callers
+        that need fresh balances pass ``refresh_balances=True`` once (e.g. after a
+        bulk batch or transfer completion).
+        """
+        if not kwargs.get("refresh_balances", False):
             return
         try:
             refresh_balance_materialized_views(
@@ -117,10 +122,14 @@ class TransactionsService(LinkedEntitiesService):
         except Exception:
             logger.exception("Failed to refresh balance materialized views after transaction write.")
 
+    def refresh_balance_views(self, *, concurrently: bool = False) -> None:
+        """Explicitly refresh account/owner balance materialized views."""
+        self._maybe_refresh_balances(refresh_balances=True, refresh_balances_concurrently=concurrently)
+
     def create(
         self, *, obj: TransactionsDTO | dict[str, Any], owner: UsersDTO | None = None, **kwargs
     ) -> TransactionsDTO:
-        """Create a transaction and refresh balance materialized views by default."""
+        """Create a transaction; MV refresh is opt-in via ``refresh_balances=True``."""
         result = super().create(obj=obj, owner=owner, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return result
@@ -128,13 +137,13 @@ class TransactionsService(LinkedEntitiesService):
     def delete(
         self, *, obj: TransactionsDTO | dict[str, Any], owner: UsersDTO | None = None, hard: bool = False, **kwargs
     ) -> pd.DataFrame:
-        """Delete a transaction and refresh balance materialized views by default."""
+        """Delete a transaction; MV refresh is opt-in via ``refresh_balances=True``."""
         result = super().delete(obj=obj, owner=owner, hard=hard, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return result
 
     def upsert_records(self, *, df: pd.DataFrame, owner: UsersDTO | None = None, **kwargs) -> pd.DataFrame:
-        """Upsert transactions and optionally refresh balance materialized views."""
+        """Upsert transactions; MV refresh is opt-in via ``refresh_balances=True``."""
         mappings = super().upsert_records(df=df, owner=owner, **kwargs)
         self._maybe_refresh_balances(**kwargs)
         return mappings

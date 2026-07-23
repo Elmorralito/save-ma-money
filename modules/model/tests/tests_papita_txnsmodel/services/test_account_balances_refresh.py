@@ -27,10 +27,29 @@ def owner() -> UsersDTO:
 
 
 class TestTransactionBalanceRefresh:
-    """Posted transaction upserts should refresh balance materialized views by default."""
+    """Posted transaction writes opt into MV refresh; default is off."""
 
-    def test_upsert_records_refreshes_balances_by_default(self, owner: UsersDTO):
-        """TransactionsService triggers MV refresh after successful upsert."""
+    def test_upsert_records_skips_refresh_by_default(self, owner: UsersDTO):
+        """Default refresh_balances=False avoids N× MV refresh on bulk paths."""
+        with patch("papita_txnsmodel.services.transactions.TransactionsRepository"):
+            service = TransactionsService()
+            service._repository = MagicMock()
+
+        mappings = pd.DataFrame([{"id": "00000000-0000-0000-0000-000000000001"}])
+        with (
+            patch(
+                "papita_txnsmodel.services.base.BaseService.upsert_records",
+                return_value=mappings,
+            ),
+            patch(
+                "papita_txnsmodel.services.transactions.refresh_balance_materialized_views",
+            ) as mock_refresh,
+        ):
+            service.upsert_records(df=mappings, owner=owner)
+            mock_refresh.assert_not_called()
+
+    def test_upsert_records_refreshes_when_enabled(self, owner: UsersDTO):
+        """Callers can opt into MV refresh after a write batch."""
         with patch("papita_txnsmodel.services.transactions.TransactionsRepository"):
             service = TransactionsService()
             service._repository = MagicMock()
@@ -48,24 +67,16 @@ class TestTransactionBalanceRefresh:
             service.upsert_records(df=mappings, owner=owner, refresh_balances=True)
             mock_refresh.assert_called_once_with(service.connector, concurrently=False)
 
-    def test_upsert_records_skips_refresh_when_disabled(self, owner: UsersDTO):
-        """Bulk ingest can defer refresh with refresh_balances=False."""
+    def test_refresh_balance_views_helper(self, owner: UsersDTO):
+        """Explicit helper refreshes MVs once after deferred write batches."""
+        del owner
         with patch("papita_txnsmodel.services.transactions.TransactionsRepository"):
             service = TransactionsService()
-            service._repository = MagicMock()
-
-        mappings = pd.DataFrame([{"id": "00000000-0000-0000-0000-000000000001"}])
-        with (
-            patch(
-                "papita_txnsmodel.services.base.BaseService.upsert_records",
-                return_value=mappings,
-            ),
-            patch(
-                "papita_txnsmodel.services.transactions.refresh_balance_materialized_views",
-            ) as mock_refresh,
-        ):
-            service.upsert_records(df=mappings, owner=owner, refresh_balances=False)
-            mock_refresh.assert_not_called()
+        with patch(
+            "papita_txnsmodel.services.transactions.refresh_balance_materialized_views",
+        ) as mock_refresh:
+            service.refresh_balance_views(concurrently=True)
+            mock_refresh.assert_called_once_with(service.connector, concurrently=True)
 
     def test_refresh_balance_materialized_views_refreshes_all_layers(self):
         """Central refresh helper updates account + owner period views."""

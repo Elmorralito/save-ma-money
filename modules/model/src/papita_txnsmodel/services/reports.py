@@ -210,10 +210,14 @@ class ReportService(BaseModel):
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         account_id: uuid.UUID | None = None,
-        refresh_balances: bool = True,
+        refresh_balances: bool = False,
         **kwargs,
     ) -> dict[str, Any]:
-        """Cash-flow summary including transfer legs and portfolio balances."""
+        """Cash-flow summary including transfer legs and portfolio balances.
+
+        ``refresh_balances`` defaults to ``False`` so export/cash-flow reads do not
+        pay for MV refresh unless the caller opts in.
+        """
         owner = self._require_owner(owner)
         self._ensure_account_owned(owner=owner, account_id=account_id)
         if refresh_balances:

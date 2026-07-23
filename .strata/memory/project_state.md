@@ -10,14 +10,16 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- Model soft-delete PR-1 committed (`fix(model): exclude soft-deleted…`)
-- Model categories PR-2: `CategoriesService` always requires `owner=`; reject
-  global create/update/delete (seed `owner_id IS NULL` rows)
-- PPT-044 API hardening + client-contract work still uncommitted locally (API/env)
+- Model soft-delete PR-1 committed
+- Model categories PR-2 committed
+- PR-3: `refresh_balances` default False on txn writes + cash_flow; API refreshes
+  MVs once after ledger mutations
+- PPT-044 API hardening + client-contract work still uncommitted locally
 
 ### Next action
 
-- Commit PR-2 categories if desired; then PR-3 `refresh_balances` defaults False
+- PR-4 API: trends window always; extension forbid/bounds; search cap; Auth
+  error allowlist
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes

@@ -113,6 +113,9 @@ class TestMovementsRoutes:
         assert response.json()["status"] == "completed"
         mock_transactions.create_transfer.assert_called_once()
         mock_transactions.complete_transfer.assert_called_once()
+        assert mock_transactions.create_transfer.call_args.kwargs.get("refresh_balances") is False
+        assert mock_transactions.complete_transfer.call_args.kwargs.get("refresh_balances") is False
+        mock_transactions.refresh_balance_views.assert_called_once()
 
     def test_create_movement_currency_mismatch_returns_422(
         self,
