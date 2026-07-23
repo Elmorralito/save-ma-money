@@ -35,8 +35,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# shellcheck source=deploy/utils.sh
-source "${PROJECT_PATH}/deploy/utils.sh"
+# shellcheck source=bin/utils.sh
+source "${PROJECT_PATH}/bin/utils.sh"
 
 export PAPITA_ENV="${PAPITA_ENV_NAME}"
 ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV}")" || exit 1

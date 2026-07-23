@@ -78,7 +78,7 @@ jobs:
           AUTH_PROVIDER: local
           AUTH_RATE_LIMIT_ENABLED: "false"
         run: |
-          /bin/bash "${GITHUB_WORKSPACE}/deploy/test.sh"
+          /bin/bash "${GITHUB_WORKSPACE}/bin/test.sh"
 
       - name: "Detect Codecov token"
         id: codecov

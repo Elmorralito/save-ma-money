@@ -110,7 +110,7 @@ save-ma-money/
 │       ├── README.md           # REST contract, integration guide, endpoint catalog
 │       ├── tests/              # unit + B0 live-DB + Auth smoke helpers
 │       └── src/papita_txnsapi/ # main.py, routers/v1, schemas, deps
-├── deploy/                     # alembic.sh, test.sh, utils.sh
+├── bin/                     # alembic.sh, test.sh, utils.sh
 ├── docker/database/            # local Postgres 15 Compose
 ├── docs/design/                # ARCHITECTURE.md (PPT-031) + README gates index
 ├── docs/issues/                # consolidated issue briefs (README Parts I–V) + PPT-044/045
@@ -149,12 +149,12 @@ poetry lock && poetry install
 
 ```bash
 # PostgreSQL (Docker)
-/bin/bash ./deploy/alembic.sh upgrade --env local --docker-rm
+/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
 
 # Unit and integration tests (model package)
 poetry run pytest
 # or
-/bin/bash ./deploy/test.sh
+/bin/bash ./bin/test.sh
 ```
 
 Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](./modules/model/README.md).

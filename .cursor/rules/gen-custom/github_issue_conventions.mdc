@@ -6,12 +6,12 @@ globs:
   - modules/model/**
   - modules/api/**
   - modules/registrar/**
-  - deploy/**
+  - bin/**
   - .github/**
 alwaysApply: true
 ---
 
-NOTE: Follow this rule when creating or editing GitHub issues via `gh issue create` / `gh issue edit`, drafting briefs under `docs/issues/`, or implementing **features** / **fixes** under `modules/` and `deploy/`.
+NOTE: Follow this rule when creating or editing GitHub issues via `gh issue create` / `gh issue edit`, drafting briefs under `docs/issues/`, or implementing **features** / **fixes** under `modules/` and `bin/`.
 
 ## Title notation
 
@@ -59,7 +59,7 @@ Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `C
 | `feat`, `fix` | `[model]` | `modules/model/src/`, `modules/model/tests/`, `modules/model/alembic/` |
 | `feat`, `fix` | `[api]` | `modules/api/src/`, `modules/api/tests/` |
 | `feat`, `fix` | `[registrar]` | `modules/registrar/src/`, `modules/registrar/tests/` |
-| `ops`, `fix`, `ci` | `[infra]` | `deploy/`, `docker/`, `.github/` |
+| `ops`, `fix`, `ci` | `[infra]` | `bin/`, `docker/`, `.github/` |
 | `test` | any | `modules/**/tests/`, `.github/workflows/` |
 
 When closing code for a feature or fix, the PR/issue body should cite the touched paths under **Tasks / deliverables** or **References**.

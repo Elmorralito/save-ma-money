@@ -1,0 +1,77 @@
+name: Bash Security
+
+# Security gate for standalone shell scripts (bin/, .github/scripts/).
+# ShellCheck: security-relevant codes only (not full style — that stays in pre-commit).
+# Semgrep: local bash-security rules + Trail of Bits multilang pack.
+# Out of scope: Trivy (trivy.yml), CodeQL (codeql.yml), secret scanning (gitleaks.yml).
+
+on:
+  pull_request:
+    paths:
+      - "bin/**"
+      - ".github/scripts/**"
+      - ".github/semgrep/**"
+      - ".github/workflows/bash-security.yml"
+
+concurrency:
+  group: bash-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck-security:
+    name: ShellCheck (security)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Run ShellCheck security codes
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+        env:
+          # Include-only security-relevant codes (injection, unsafe expansion, dangerous rm/cd, eval).
+          # Style/info codes stay in pre-commit shellcheck, not this gate.
+          # ShellCheck reads SHELLCHECK_OPTS from the environment.
+          SHELLCHECK_OPTS: >-
+            -i SC2046,SC2048,SC2068,SC2086,SC2115,SC2145,SC2154,SC2164,SC2206,SC2207,SC2294,SC2479
+        with:
+          version: v0.11.0
+          severity: warning
+          check_together: "yes"
+          scandir: .
+          ignore_paths: >-
+            .git
+            .venv
+            modules
+            docs
+            docker
+            environments
+            .cursor
+            .agents
+            .strata
+            .github/workflows
+            .github/semgrep
+
+  semgrep-bash:
+    name: Semgrep (bash security)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.128.1@sha256:fca58525689355641019c05ab49dcc5bc3a1eb7e044f35014ee39594b5aa4fc1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Scan shell scripts with Semgrep
+        run: |
+          semgrep scan \
+            --config=.github/semgrep/bash-security.yml \
+            --config=p/trailofbits \
+            --error \
+            --metrics=off \
+            --include='*.sh' \
+            bin/ \
+            .github/scripts/

@@ -3,7 +3,7 @@
 
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 LIBS_INPUT_PATH="${PROJECT_PATH}/modules"
-source "${PROJECT_PATH}/deploy/utils.sh"
+source "${PROJECT_PATH}/bin/utils.sh"
 
 MOD="${MOD:-ALL}"
 VERSION="${VERSION:-prerelease}"

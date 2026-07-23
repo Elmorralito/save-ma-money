@@ -5,7 +5,7 @@
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
 LIBS_INPUT_PATH="${PROJECT_PATH}/modules"
 LIBS_OUTPUT_PATH="${PROJECT_PATH}/dist"
-source "${PROJECT_PATH}/deploy/utils.sh"
+source "${PROJECT_PATH}/bin/utils.sh"
 
 
 usage() {

@@ -758,7 +758,7 @@ PR #27 ([`06b97dfcb5c7`](../../modules/model/alembic/versions/2026_01_28_1921-06
 
 #### 6.4 Legacy migration risk
 
-Migration `06b97dfcb5c7` adds `owner_id NOT NULL` **without backfill**. Pre-#26 PostgreSQL dumps fail `./deploy/alembic.sh upgrade` unless a default user is seeded manually (FR-14).
+Migration `06b97dfcb5c7` adds `owner_id NOT NULL` **without backfill**. Pre-#26 PostgreSQL dumps fail `./bin/alembic.sh upgrade` unless a default user is seeded manually (FR-14).
 
 Handlers still accept `owner=None` on `load()` / `dump()` — records upserted without owner assignment rely on `BaseRepository.upsert_records()` injecting `kwargs.owner_id`, which is `None` if not provided.
 
@@ -3243,7 +3243,7 @@ Canonical spec = [`modules/api/README.md`](../../modules/api/README.md); mapping
 
 #### B0 — Docker Postgres (PPT-034 gate)
 
-Run after `./deploy/alembic.sh upgrade --docker-local`:
+Run after `./bin/alembic.sh upgrade --docker-local`:
 
 | Validation        | Command / check                           | Matrix rows   |
 | ----------------- | ----------------------------------------- | ------------- |
@@ -3788,7 +3788,7 @@ Fetch SQL is built in `access/balance_reports/query_sql.py` (shared with `Balanc
 | -------------- | -------------------------------------------------------------------------------------------- |
 | Retention      | **10 years** — older monthly partitions are dropped by maintenance                           |
 | Future buffer  | **12 months** ahead — created by maintenance                                                 |
-| Maintenance    | `./deploy/transaction_partitions.sh` (requires `DATABASE_URL`)                               |
+| Maintenance    | `./bin/transaction_partitions.sh` (requires `DATABASE_URL`)                                  |
 | Implementation | Plain Alembic SQL + `papita_txnsmodel/config/transaction_partitions.py` (no `alembic_utils`) |
 
 Schedule maintenance (cron / worker) monthly: create upcoming partitions before inserts arrive, archive/drop expired partitions after backup if required.
@@ -3875,7 +3875,7 @@ cd modules/model && poetry run alembic -c alembic.ini -x "dbUrl=$DATABASE_URL" c
 ## Expected: 53fec3d56681 (or earlier)
 
 ## 3. Upgrade
-/bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL"
+/bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL"
 ```
 
 ##### After upgrade — reassign ownership
@@ -3895,7 +3895,7 @@ For development databases with no retention requirement:
 ```bash
 docker compose -f docker/database/docker-compose.yml down -v
 docker compose -f docker/database/docker-compose.yml up -d
-/bin/bash ./deploy/alembic.sh upgrade
+/bin/bash ./bin/alembic.sh upgrade
 ## Reload via registrar/handler pipeline with explicit owner=
 ```
 
@@ -3930,7 +3930,7 @@ Revision **`a75354933e79`** (`ppt_031_v3_seed_version`) creates the full v3 sche
 docker compose -f docker/database/docker-compose.yml up -d
 
 ## Full upgrade (Docker Postgres is default)
-/bin/bash ./deploy/alembic.sh upgrade
+/bin/bash ./bin/alembic.sh upgrade
 
 ## Round-trip test (mirrors CI)
 export DB_URL="postgresql+psycopg2://<user>:<pass>@localhost:5432/<db>"
@@ -3946,7 +3946,7 @@ Use **transaction mode** pooler (`:6543`) for app runtime; **session mode** (`:5
 
 ```bash
 export DATABASE_URL="postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres"
-/bin/bash ./deploy/alembic.sh upgrade --url "$DATABASE_URL"
+/bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL"
 ```
 
 > Never commit real credentials. Copy formats from [`.env.example`](../../.env.example).
@@ -3962,7 +3962,7 @@ Steps executed by [`migration_check.sh`](../../.github/scripts/migration_check.s
 3. `alembic upgrade head`
 4. `alembic check` (model drift)
 
-**Recommendation:** Keep path filters on `modules/model/alembic/**` and `modules/model/src/papita_txnsmodel/model/**`. Extend to run on PRs touching `deploy/alembic.sh` (already included).
+**Recommendation:** Keep path filters on `modules/model/alembic/**` and `modules/model/src/papita_txnsmodel/model/**`. Extend to run on PRs touching `bin/alembic.sh` (already included).
 
 #### ER diagram refresh (G8)
 

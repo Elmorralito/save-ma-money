@@ -51,7 +51,7 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 
 ### Running Migrations
 
-- Use the `deploy/alembic.sh` script for migration operations.
+- Use the `bin/alembic.sh` script for migration operations.
 - Support Docker-based database environments.
 - Use `alembic upgrade head` to apply migrations.
 - Use `alembic downgrade -1` to roll back one migration.

@@ -7,7 +7,7 @@
 #
 # Usage:
 #   make redis-smoke
-#   API_BASE_URL=http://localhost:8000 ./deploy/redis_smoke.sh
+#   API_BASE_URL=http://localhost:8000 ./bin/redis_smoke.sh
 
 set -euo pipefail
 

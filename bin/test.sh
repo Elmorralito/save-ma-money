@@ -2,7 +2,7 @@
 # shellcheck disable=SC1090,SC1091
 
 PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
-source "${PROJECT_PATH}/deploy/utils.sh"
+source "${PROJECT_PATH}/bin/utils.sh"
 
 usage() {
     USAGE="$(cat <<EOM
