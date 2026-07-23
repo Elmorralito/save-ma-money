@@ -401,7 +401,7 @@ class TestReportService:
 
 
 class TestCategoriesGlobalWriteGuard:
-    """Tenants cannot mutate global category seeds."""
+    """Tenants cannot mutate global category seeds; service ops require owner=."""
 
     def test_tenant_create_with_unassigned_owner_id_succeeds(self, owner: UsersDTO):
         """New tenant categories omit owner_id; repository assigns it on upsert."""
@@ -424,3 +424,59 @@ class TestCategoriesGlobalWriteGuard:
         result = service.create(obj=category, owner=owner)
         assert result.name == "Rent"
         service._repository.upsert_record.assert_called_once()
+
+    def test_requires_owner_on_get_records(self):
+        """Omitting owner= raises so unscoped category lists cannot leak tenants."""
+        with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
+            service = CategoriesService()
+        with pytest.raises(ValueError, match="requires owner"):
+            service.get_records(dto=None)
+
+    def test_requires_owner_on_create(self):
+        """Create without owner= is rejected before repository I/O."""
+        with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
+            service = CategoriesService()
+        with pytest.raises(ValueError, match="requires owner"):
+            service.create(
+                obj=CategoriesDTO(
+                    name="Rent",
+                    description="seed",
+                    category_kind=CategoryKind.EXPENSE,
+                )
+            )
+
+    def test_rejects_global_category_delete(self, owner: UsersDTO):
+        """Soft-delete must not touch owner_id IS NULL seed rows."""
+        global_id = uuid.uuid4()
+        with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
+            service = CategoriesService()
+            service._repository = MagicMock()
+            service._repository.get_records.return_value = __import__("pandas").DataFrame(
+                [{"id": global_id, "owner_id": None, "name": "Utilities"}]
+            )
+        with pytest.raises(ValueError, match="global categories"):
+            service.delete(obj=CategoriesDTO.model_construct(id=global_id), owner=owner)
+        service._repository.soft_delete_records.assert_not_called()
+        service._repository.hard_delete_records.assert_not_called()
+
+    def test_rejects_global_category_update_via_create(self, owner: UsersDTO):
+        """Upsert/update path refuses existing global primary keys."""
+        global_id = uuid.uuid4()
+        with patch("papita_txnsmodel.services.categories.CategoriesRepository"):
+            service = CategoriesService()
+            service._repository = MagicMock()
+            service._repository.get_records.return_value = __import__("pandas").DataFrame(
+                [{"id": global_id, "owner_id": None, "name": "Utilities"}]
+            )
+        with pytest.raises(ValueError, match="global categories"):
+            service.create(
+                obj=CategoriesDTO(
+                    id=global_id,
+                    name="Tampered",
+                    description="seed",
+                    category_kind=CategoryKind.EXPENSE,
+                    owner_id=owner.id,
+                ),
+                owner=owner,
+            )
+        service._repository.upsert_record.assert_not_called()
