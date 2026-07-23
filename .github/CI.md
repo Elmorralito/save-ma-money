@@ -623,6 +623,7 @@ pre-commit run --all-files
 - Never commit `.env`, credentials, or real secrets
 - Pair `modules/**` / `bin/**` edits with `.strata/` (or adapter) updates
 - Keep PR scope focused
+- Use the PR body template: [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md)
 
 Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents/AGENTS.md#pr-checklist).
 

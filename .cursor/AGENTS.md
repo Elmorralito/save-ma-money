@@ -230,6 +230,7 @@ Before opening or marking ready for review (commands in [`.github/CI.md`](../.gi
 6. No secrets, `.env` files, or credentials in the diff
 7. Keep scope focused — avoid drive-by refactors
 8. Omit regenerated artifacts (`docs/coverage.xml`, badge SVGs) unless CI requires them
+9. Fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) for the PR body (skill: `.cursor/skills/pr-description/`)
 
 Do not create git commits unless the user explicitly asks.
 
