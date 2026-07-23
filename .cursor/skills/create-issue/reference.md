@@ -49,6 +49,10 @@ Typical sets (adjust to what `gh label list` shows):
 ## `gh` tips
 
 ```bash
+# Auth (skill step 5 — required before create if not already logged in)
+gh auth status
+gh auth login   # only when status fails / scopes missing
+
 # Dry-run style: print then create
 gh issue create --repo Elmorralito/save-ma-money --title "…" --body-file /tmp/body.md --label enhancement --label PPT-045
 

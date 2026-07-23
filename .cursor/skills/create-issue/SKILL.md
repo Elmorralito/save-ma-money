@@ -43,8 +43,9 @@ Create-issue progress:
 - [ ] 2. Required fields for that type
 - [ ] 3. Optional additional context
 - [ ] 4. Draft body from template + user answers
-- [ ] 5. Preview title + body; user confirms
-- [ ] 6. gh issue create on origin; return URL
+- [ ] 5. gh auth — login if necessary
+- [ ] 6. Preview title + body; user confirms
+- [ ] 7. gh issue create on origin; return URL
 ```
 
 ### Step 1 — Ask type
@@ -102,9 +103,31 @@ Merge into the best sections (`Summary` / `Goal`, `Current state`, `Tasks`, `Ref
    - bug without PPT only if user insists: `fix: [{domain}] {title_text}` (prefer PPT when it maps to a track)
 
 5. Labels: template defaults + `PPT-{NNN}` when that label exists on the repo. Check with
-   `gh label list --limit 200`. Create missing `PPT-{NNN}` only if the user asks.
+   `gh label list --limit 200` **after** auth (step 5). Create missing `PPT-{NNN}` only if the user asks.
+   If labels were not checked yet, do that check in step 5 once `gh` is authenticated.
 
-### Step 5 — Confirm
+### Step 5 — `gh` auth (login if necessary)
+
+Before preview/create, ensure GitHub CLI can reach origin:
+
+```bash
+gh auth status
+```
+
+- **Logged in** (token valid for `github.com` / the repo host) → continue to step 6.
+- **Not logged in**, expired, or missing `repo` / issue scopes → tell the user and run interactive login:
+
+```bash
+gh auth login
+```
+
+Prefer GitHub.com + HTTPS (or the host this repo’s `gh` remote uses, e.g. if `gh` is configured for a GHES / alias host). Do **not** paste tokens into chat or the issue body.
+
+Re-run `gh auth status` until it succeeds. If the user declines login, **stop** — do not pretend the issue was filed.
+
+Optional after auth: `gh label list --repo Elmorralito/save-ma-money --limit 200` to finalize labels for the draft.
+
+### Step 6 — Confirm
 
 Show:
 
@@ -113,7 +136,7 @@ Show:
 
 Ask: create on origin now? **Yes / edit / cancel**.
 
-### Step 6 — Create on origin
+### Step 7 — Create on origin
 
 ```bash
 # Write body to a temp file (no secrets). Example:
@@ -135,11 +158,11 @@ Return the issue **URL** and number. Do not close or edit other issues unless as
 
 ## Rules
 
-- Interactive first: type → fields → optional context → confirm → create.
+- Interactive first: type → fields → optional context → draft → **gh auth** → confirm → create.
 - Template structure is SSOT; fill it, don’t replace it.
 - Never invent green CI, fake issue numbers, or PPT ids the user didn’t approve.
-- Never paste secrets.
-- If `gh` auth fails, stop and report — do not pretend the issue was filed.
+- Never paste secrets or `gh` tokens.
+- If `gh` auth fails or the user skips login, stop and report — do not pretend the issue was filed.
 - Optional: offer a matching brief under `docs/issues/` only when the user asks.
 
 ## Additional resources
