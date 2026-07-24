@@ -4,11 +4,11 @@ All runtime secrets and Compose variables live under **`environments/<name>/`**.
 
 ## Names
 
-| Folder       | Database                           | Auth (MVP)                                                    | Typical use                       |
-| ------------ | ---------------------------------- | ------------------------------------------------------------- | --------------------------------- |
-| `local`      | B0 Docker Postgres                 | Supabase Auth (MVP); `AUTH_PROVIDER=local` for B0 pytest only | Day-to-day host uvicorn + Compose |
-| `staging`    | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Staging                           |
-| `production` | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Production (tighter CORS)         |
+| Folder       | Database                           | Auth (MVP)                                                    | Typical use                            |
+| ------------ | ---------------------------------- | ------------------------------------------------------------- | -------------------------------------- |
+| `local`      | B0 Docker Postgres                 | Supabase Auth (MVP); `AUTH_PROVIDER=local` for B0 pytest only | Day-to-day Compose API (`make api-up`) |
+| `staging`    | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Staging                                |
+| `production` | Any Postgres URL (pooler optional) | Supabase Auth                                                 | Production (tighter CORS)              |
 
 **Epic direction (2026-07-13):** Supabase is **Auth-only** for MVP ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)). Supabase-hosted Postgres is optional — see [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49).
 
@@ -29,27 +29,33 @@ PAPITA_ENV=local make auth-smoke     # Auth DoD (JWT → /auth/me + accounts)
 PAPITA_ENV=staging make b1-smoke     # optional pooler connectivity; not Auth DoD
 ```
 
-Compose:
+Compose API (PPT-045) — uvicorn runs **in the API container**:
 
 ```bash
-# Full stack (Postgres + Redis + API). Redis is enabled for the API container by default.
-docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
-# Or: make stack-up
+# Canonical: api + Postgres + Redis + migrate (uvicorn via Dockerfile CMD)
+make api-up
+# Or full explicit stack: make stack-up
 
-# Postgres + Redis only (host uvicorn)
-docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
-# Or: make redis-up   # Redis service only
-
-make redis-smoke   # GET /health/ready + /health/redis against a running API
+make redis-smoke      # GET /health/ready + /health/redis against the API container
 ```
+
+### Uvicorn bind vs Settings vs Compose publish
+
+| Variable / flag          | Where                                | Role                                                                         |
+| ------------------------ | ------------------------------------ | ---------------------------------------------------------------------------- |
+| Compose image `CMD`      | `docker/api/Dockerfile`              | Actual uvicorn bind: literal `0.0.0.0:8000` (no `--reload`)                  |
+| Settings `HOST` / `PORT` | `environments/<env>/.env` (optional) | **Unused for bind** (compat only); Compose `CMD` is SSOT                     |
+| `API_PORT`               | Compose `.env`                       | Host→container **publish** map (`${API_PORT}:8000`), not in-container listen |
+
+Do not pass `--workers` on B0 without Redis rate limits (`REDIS_RATE_LIMIT_ENABLED=true`). See [`modules/api/README.md`](../modules/api/README.md) § Workers vs Redis.
 
 ### Redis (PPT-043)
 
-| Context                      | `REDIS_URL`                        | Notes                                                   |
-| ---------------------------- | ---------------------------------- | ------------------------------------------------------- |
-| Compose `api` service        | `redis://redis:6379/0` (hardcoded) | `REDIS_ENABLED` / rate-limit default **true**           |
-| Host uvicorn + Compose Redis | `redis://localhost:6379/0`         | Set in `environments/local/.env`                        |
-| Staging / production         | Managed `rediss://…`               | Placeholders in `staging` / `production` `.env.example` |
+| Context                       | `REDIS_URL`                        | Notes                                                           |
+| ----------------------------- | ---------------------------------- | --------------------------------------------------------------- |
+| Compose `api` service         | `redis://redis:6379/0` (hardcoded) | Used by `make api-up` / `stack-up`; rate-limit default **true** |
+| Host tooling vs Compose Redis | `redis://localhost:6379/0`         | Only for host-side clients; API container never uses this       |
+| Staging / production          | Managed `rediss://…`               | Placeholders in `staging` / `production` `.env.example`         |
 
 Config file: [`docker/redis/redis.conf`](../docker/redis/redis.conf) (AOF, 256mb maxmemory, allkeys-lru).
 
@@ -69,4 +75,4 @@ cp environments/staging/.env.example environments/staging/.env
 - API package docs: [`modules/api/README.md`](../modules/api/README.md)
 - Auth reissue: [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)
 - Decision brief (+ G7 supersede): [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)
-- Optional pooler checklist: [`docs/design/README.md` § Ops](../docs/design/README.md#optional-b1-hosted-postgres-pooler)
+- Optional pooler checklist: [`docs/ops/b1-supabase-deploy-checklist.md`](../docs/ops/b1-supabase-deploy-checklist.md)

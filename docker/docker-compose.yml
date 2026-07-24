@@ -2,14 +2,12 @@
 # Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API (B0)
 #
 #   cp environments/local/.env.example environments/local/.env
-#   docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
+#   make api-up    # or: make stack-up
+#   # uvicorn runs inside the api image (Dockerfile CMD) — not on the host
 #
 # API: http://localhost:8000/api/docs
 # Health: http://localhost:8000/api/v1/health/ready
 # Redis: enabled in the API container by default (redis://redis:6379/0)
-#
-# Host uvicorn against Compose Redis:
-#   REDIS_URL=redis://localhost:6379/0 REDIS_ENABLED=true
 #
 # Database + Redis only (no API):
 #   docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d

@@ -31,20 +31,29 @@ b1-smoke:
 auth-smoke:
 	/bin/bash ./bin/auth_smoke.sh
 
-# B0 Postgres + Redis (no API). Host uvicorn uses REDIS_URL=redis://localhost:6379/0
+# B0 Postgres + Redis only (no API container). Useful when poking Redis from the host.
 redis-up:
 	docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d redis
 
 redis-down:
 	docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml stop redis
 
-# Full B0 stack (Postgres + Redis + migrate + API). API Redis is on by default.
+# Canonical API runtime (PPT-045): uvicorn runs inside the Compose image — not on the host.
+# Brings up api + depends_on (Postgres, Redis, migrate). Bind: 0.0.0.0:8000 in-container;
+# host publish via API_PORT (environments/local/.env). No --reload / --workers in the container.
+api-up:
+	docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build -d api
+
+api-down:
+	docker compose --env-file environments/local/.env -f docker/docker-compose.yml stop api
+
+# Full B0 stack (explicit up of all services in docker/docker-compose.yml).
 stack-up:
 	docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build -d
 
 stack-down:
 	docker compose --env-file environments/local/.env -f docker/docker-compose.yml down
 
-# Redis readiness smoke against a running API (Compose or host).
+# Redis readiness smoke against a running API container (make api-up / stack-up).
 redis-smoke:
 	/bin/bash ./bin/redis_smoke.sh

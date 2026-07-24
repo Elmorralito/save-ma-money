@@ -84,10 +84,9 @@ Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/R
 
 ```bash
 cp environments/local/.env.example environments/local/.env
-# REDIS_ENABLED=true and REDIS_URL=redis://localhost:6379/0 for host uvicorn
 
-make stack-up && make redis-smoke
-# Or: make redis-up  then uvicorn with PAPITA_ENV=local
+make api-up && make redis-smoke
+# Or: make stack-up && make redis-smoke
 ```
 
 | Piece                          | Path                                                               |

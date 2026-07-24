@@ -200,48 +200,25 @@ export PAPITA_ENV=local
 
 # Migrate database
 /bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
-
-uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
-# Docs (requires DEBUG=true or DOCS_ENABLED=true): http://localhost:8000/api/docs
-# OpenAPI: http://localhost:8000/api/openapi.json
-# Health: http://localhost:8000/api/v1/health/ready
-#
-# PPT-044 security defaults: ALLOWED_ORIGINS must not be ["*"] when DEBUG=false;
-# TrustedHost uses ALLOWED_HOSTS when DEBUG=false; set reverse-proxy/uvicorn body limits
-# (e.g. --limit-max-request-size) for bulk/upload protection.
-#
-# Client contract probe (no auth): GET /api/v1/meta/client-contract
 ```
 
-### PPT-044 client migration (breaking wire changes)
+**Canonical runtime (PPT-045):** uvicorn runs **inside Docker** via the Compose API image — not as a host Poetry process.
 
-Secure defaults are intentional. Harden client adoption with **discovery**, **stable error codes**, and **temporary compat flags** (never by re-enabling `CORS *` or public docs in production).
-
-| Change                       | Secure default                            | Client action                                            | Temporary compat                                                           |
-| ---------------------------- | ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Reports foreign `account_id` | HTTP **404**                              | Treat like CRUD not-found                                | `API_COMPAT_LEGACY_REPORT_ACCOUNT_400=true` → 400 + `Deprecation`/`Sunset` |
-| Cash-flow `refresh_balances` | Default **false** when omitted            | Pass `refresh_balances=true` when MV refresh is required | `API_COMPAT_LEGACY_REFRESH_BALANCES_DEFAULT_TRUE=true`                     |
-| Bulk create size             | Max **100** (`API_BULK_MAX_TRANSACTIONS`) | Chunk batches; read `X-Papita-Bulk-Max`                  | Raise setting up to 500 only during migration                              |
-| Report window                | Max **366** days                          | Clamp date range; read `X-Papita-Report-Window-Max-Days` | Tune `API_REPORT_WINDOW_MAX_DAYS`                                          |
-| OpenAPI / docs               | Off unless `DEBUG` or `DOCS_ENABLED`      | Export OpenAPI in CI; enable docs only in non-prod       | N/A (do not weaken prod)                                                   |
-| CORS `*`                     | Rejected when `DEBUG=false`               | Explicit origin allowlist                                | N/A (do not weaken prod)                                                   |
-
-**Discovery**
-
-- `GET /api/v1/meta/client-contract` — public JSON checklist, effective limits, compat flags, error codes
-- Every `/api/v1/*` response includes `X-Papita-Breaking-Changes: ppt-044` plus limit/status headers
-- Failures may include `X-Papita-Error-Code` (`report_account_not_found`, `bulk_too_large`, `report_window_too_large`, `extra_fields_forbidden`, …)
-
-Compat flags emit `Deprecation: true` and `Sunset: 2026-10-01`. Remove them before sunset.
-
-### B0 — Docker Compose (API + Postgres)
-
-Full stack (Postgres, Alembic migrate, API) from the repository root:
+| Path            | Command         | Notes                                                        |
+| --------------- | --------------- | ------------------------------------------------------------ |
+| API (canonical) | `make api-up`   | Builds/starts `api` + depends_on (Postgres, Redis, migrate)  |
+| Full stack      | `make stack-up` | Explicit `up` of all services in `docker/docker-compose.yml` |
 
 ```bash
 cp environments/local/.env.example environments/local/.env
-docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build
+make api-up
+# Docs: http://localhost:8000/api/docs
+# OpenAPI: http://localhost:8000/api/openapi.json
+# Health: http://localhost:8000/api/v1/health/ready
+# Smoke: make redis-smoke
 ```
+
+In-container bind is literal `0.0.0.0:8000` ([`docker/api/Dockerfile`](../../docker/api/Dockerfile) `CMD` — no `--reload` / `--workers`). Host publish uses Compose `API_PORT` (`${API_PORT}:8000`). Settings `HOST`/`PORT` are **unused for bind** (env-file compatibility only).
 
 | Service      | URL                                       |
 | ------------ | ----------------------------------------- |
@@ -249,27 +226,27 @@ docker compose --env-file environments/local/.env -f docker/docker-compose.yml u
 | OpenAPI JSON | http://localhost:8000/api/openapi.json    |
 | Health ready | http://localhost:8000/api/v1/health/ready |
 
-The API container uses `DATABASE_URL=...@postgres-db:5435/papita` on the Compose network. Image definition: [`docker/api/Dockerfile`](../../docker/api/Dockerfile).
+The API container uses `DATABASE_URL=...@postgres-db:5435/papita` and `REDIS_URL=redis://redis:6379/0` on the Compose network. Healthcheck: `/api/v1/health/live`.
 
-Database-only (no API): `docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d`
+Database + Redis only (no API): `docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d` (or `make redis-up` for Redis alone).
 
-### B0 — Docker Postgres (local, host uvicorn)
+`/health/ready` returns **200** with `{"ready": true}` when the database accepts `SELECT 1` (and Redis when `REDIS_ENABLED=true`); **503** with `{"ready": false}` when Postgres (or required Redis) is unreachable.
 
-```bash
-# From repository root
-docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
-/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
+### Workers vs Redis (process packaging)
 
-export PAPITA_ENV=local
-uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
-curl -s http://localhost:8000/api/v1/health/ready
-```
+B0 default is a **single** uvicorn worker inside the API container (no `--workers`). In-memory rate limiting is **process-local**; JWT denylist and distributed limits need Redis.
 
-`/health/ready` returns **200** with `{"ready": true}` when the database accepts `SELECT 1`; **503** with `{"ready": false}` when the pooler or Postgres is unreachable (transient B1 failures included).
+| Mode                         | Guidance                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Default B0 (`make api-up`)   | Single process in the Compose image; no `--reload`                                                                                         |
+| Multi-worker / multi-replica | Set `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true` before `--workers N` (N>1). Denylist stays fail-closed when Redis is required |
+| Compose `CMD`                | Never add `--reload` or `--workers` without an explicit ops decision                                                                       |
+
+Defer gunicorn + uvicorn worker fleets unless a short ADR justifies them.
 
 ### Optional — hosted Postgres / pooler tips
 
-If you use a transaction pooler (including Supabase PG), copy [`environments/staging/.env.example`](../../environments/staging/.env.example), set `PAPITA_ENV=staging`, and keep migrations on `DATABASE_URL_MIGRATIONS` (`:5432`). See [`environments/README.md`](../../environments/README.md) and the [optional pooler checklist](../../docs/design/README.md#optional-b1-hosted-postgres-pooler).
+If you use a transaction pooler (including Supabase PG), copy [`environments/staging/.env.example`](../../environments/staging/.env.example), set `PAPITA_ENV=staging`, and keep migrations on `DATABASE_URL_MIGRATIONS` (`:5432`). See [`environments/README.md`](../../environments/README.md) and the [optional pooler checklist](../../docs/ops/b1-supabase-deploy-checklist.md).
 
 ```bash
 # Migrate on direct URL (never transaction pooler)
@@ -1734,10 +1711,10 @@ Optional shared infrastructure for cache-aside, distributed rate limits, and
 | `REDIS_RATE_LIMIT_ENABLED`             | `false` (unit tests) / `true` (Compose API) | Use Redis for auth/API rate-limit counters        |
 | `REDIS_MAX_CONNECTIONS`                | `10`                                        | Connection pool size                              |
 
-B0 deploy: `make stack-up` (or `make redis-up` + host uvicorn). Compose API always
-uses `redis://redis:6379/0`. Host uvicorn uses `REDIS_URL=redis://localhost:6379/0`
-from `environments/local/.env`. Smoke: `make redis-smoke`. Checklist:
-[`docs/design/README.md` § Ops — Redis](../../docs/design/README.md#ops-redis--optional-b1-pooler).
+B0 deploy: `make api-up` (or `make stack-up`). Compose API always uses
+`redis://redis:6379/0` (hardcoded — do not inject host `localhost`). Smoke:
+`make redis-smoke`. Checklist:
+[`docs/ops/redis-deploy-checklist.md`](../../docs/ops/redis-deploy-checklist.md).
 
 When `REDIS_ENABLED=false`, the API keeps in-memory rate limiting and skips
 caching/denylist; unit tests remain green without Redis.
@@ -1745,16 +1722,9 @@ caching/denylist; unit tests remain green without Redis.
 **Key prefix:** all Redis keys are `papita:{PAPITA_ENV}:…` so local/staging/production
 do not collide on shared Redis.
 
-**Fail policy:** cache and tenant API rate limits **fail open** (miss / allow) on
-Redis errors. Auth IP limits default to fail-open too; set
-`AUTH_RATE_LIMIT_FAIL_CLOSED=true` to deny when Redis rate-limit checks error.
+**Fail policy:** cache and rate limits **fail open** (miss / allow) on Redis errors.
 JWT denylist **fails closed** when Redis is required (`REDIS_ENABLED=true`): Redis
 errors → HTTP 503 on protected routes so a blip cannot resurrect a revoked token.
-
-**Multi-worker:** in-memory rate limits are per process. For multi-replica or
-multi-worker uvicorn, set `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true`
-so counters are shared. Staging/production also require non-empty `ALLOWED_HOSTS`
-(`DEBUG=false`) so TrustedHost middleware is always active.
 
 **Client model:** sync `redis` via lifespan; fine while most handlers are sync
 (threadpool). Prefer `redis.asyncio` when more routes are async-heavy.
@@ -1792,8 +1762,7 @@ reject revoked JWTs until TTL expires.
 | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Supabase Auth contract (G5) — SSO, smoke, JWT/tenant rules                                |
 | [`docs/issues/README.md` Part IV](../../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49)                                                             | Auth-only pivot ([#49](https://github.com/Elmorralito/save-ma-money/issues/49))           |
 | [`docs/issues/README.md` Part II](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)                                                      | B0/B1/B2/B3 + G7 supersede                                                                |
-| [`docs/design/README.md` § Ops](../../docs/design/README.md#optional-b1-hosted-postgres-pooler)                                                                      | Optional hosted PG / pooler                                                               |
-| [`docs/design/ARCHITECTURE.md` Part VIII](../../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89)                                            | PPT-044 hardening status + locked decisions                                               |
+| [`docs/ops/b1-supabase-deploy-checklist.md`](../../docs/ops/b1-supabase-deploy-checklist.md)                                                                         | Optional hosted PG / pooler                                                               |
 | [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 DDL and constraints                                                                    |
 | [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits (post-MVP)                                                                |
 | [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md)                                                                                                                       | Agent ops: routers, test commands, PR checklist                                           |
