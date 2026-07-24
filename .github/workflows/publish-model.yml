@@ -1,26 +1,19 @@
 ---
 # Publish papita-transactions-model (modules/model) to TestPyPI / PyPI (PPT-024).
-# Releases when packaging changes land on main (TestPyPI) or release (PyPI).
 # Configure Trusted Publisher on PyPI/TestPyPI for this workflow + environment.
 # Secrets: none required when using OIDC (id-token: write). Never commit tokens.
-# Bump modules/model/pyproject.toml version before merge so a new artifact uploads
-# (skip-existing avoids failing when the version was already published).
+# Release by pushing a tag model-vX.Y.Z that matches modules/model/pyproject.toml.
 
 name: Publish model package
 
 on:
   push:
-    branches:
-      - main
-      - release
-    paths:
-      - "modules/model/**"
-      - "bin/package.sh"
-      - ".github/workflows/publish-model.yml"
+    tags:
+      - "model-v*"
   workflow_dispatch:
     inputs:
       target:
-        description: "Publish target index (manual override)"
+        description: "Publish target index"
         type: choice
         options:
           - testpypi
@@ -62,6 +55,21 @@ jobs:
       - name: Build model sdist + wheel
         run: /bin/bash ./bin/package.sh --mod model
 
+      - name: Verify tag version matches pyproject (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/model-v')
+        run: |
+          set -euo pipefail
+          TAG_VER="${GITHUB_REF_NAME#model-v}"
+          PKG_VER="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path("modules/model/pyproject.toml").read_text())
+          print(data["project"]["version"])
+          PY
+          )"
+          echo "tag=${TAG_VER} pyproject=${PKG_VER}"
+          test "${TAG_VER}" = "${PKG_VER}"
+
       - name: Smoke-install wheel in clean venv
         run: |
           set -euo pipefail
@@ -81,9 +89,7 @@ jobs:
 
   publish-testpypi:
     needs: build
-    if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi')
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -107,7 +113,7 @@ jobs:
   publish-pypi:
     needs: build
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/release') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/model-v')) ||
       (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && inputs.confirm_pypi == 'publish')
     runs-on: ubuntu-latest
     environment: pypi

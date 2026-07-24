@@ -15,10 +15,10 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Next action
 
-- Land PPT-024 PR; configure Trusted Publishers for branches main/release
+- Land PPT-024 PR; configure Trusted Publishers; first TestPyPI dispatch / model-v\* tag
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
-- Model publish: `main`→TestPyPI, `release`→PyPI (path-filtered); bump version before merge
+- Model publish: tag `model-v*` → PyPI; dispatch → TestPyPI (or confirmed PyPI)

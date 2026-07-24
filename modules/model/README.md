@@ -359,13 +359,13 @@ python -m venv /tmp/model-smoke && /tmp/model-smoke/bin/pip install dist/papita_
 
 **CI publish:** [`.github/workflows/publish-model.yml`](../../.github/workflows/publish-model.yml)
 
-| Trigger                                      | Target                                      |
-| -------------------------------------------- | ------------------------------------------- |
-| Push to **`main`** (model packaging paths)   | TestPyPI (OIDC / Trusted Publisher)         |
-| Push to **`release`** (same paths)           | PyPI                                        |
-| Actions → **Publish model package** (manual) | TestPyPI, or PyPI if `confirm_pypi=publish` |
+| Trigger                                                      | Target                              |
+| ------------------------------------------------------------ | ----------------------------------- |
+| Git tag `model-vX.Y.Z` (must match `pyproject.toml` version) | PyPI                                |
+| Actions → **Publish model package** → `target=testpypi`      | TestPyPI (OIDC / Trusted Publisher) |
+| Same workflow → `target=pypi` and `confirm_pypi=publish`     | PyPI (manual)                       |
 
-Bump the version in `pyproject.toml` before merging so a new artifact uploads (`skip-existing` skips no-op republishes). Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, workflow, Environments `testpypi` / `pypi`, and branches `main` / `release`. Do **not** commit API tokens.
+Bump version → merge → `git tag model-vX.Y.Z && git push origin model-vX.Y.Z`. Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, workflow, and Environments `testpypi` / `pypi`. Do **not** commit API tokens.
 
 ## Package layout
 
