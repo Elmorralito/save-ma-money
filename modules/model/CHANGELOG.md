@@ -9,3 +9,405 @@ This file is **not** the monorepo issue tracker changelog. Root
 (`update_todos.py`). Do not merge or overwrite those files.
 
 <!-- version list -->
+
+## v1.0.0 (2026-07-24)
+
+### Bug Fixes
+
+- Add missing semver dependency for modelutils
+  ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+- Default refresh_balances off and refresh once per API write
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- DuckDB and Alembic integration fixed. TODO: (Low Priority) Work in entity Relationships between
+  DuckDB tables. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Exclude soft-deleted rows by default and block upsert revival
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Fixing Alembic versioning. ([#12](https://github.com/Elmorralito/save-ma-money/pull/12),
+  [`649de08`](https://github.com/Elmorralito/save-ma-money/commit/649de0831418777f11c96fe79102757e26ac5ad0))
+
+- Flatten SQLModel Row results in run_query
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Parse Supabase pooler URL host for B1 gate (CodeQL)
+  ([#84](https://github.com/Elmorralito/save-ma-money/pull/84),
+  [`4223b65`](https://github.com/Elmorralito/save-ma-money/commit/4223b658e0228e5838c7776db7a41f9c5976f739))
+
+- Require owner on categories and block global mutations
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Window report loads in SQL and fix transfer cash-flow direction
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- **api**: Enforce report windows, schema bounds, and Auth error allowlists
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- **api**: Harden Docker image and bump python-multipart for CI
+  ([#81](https://github.com/Elmorralito/save-ma-money/pull/81),
+  [`cf66ba6`](https://github.com/Elmorralito/save-ma-money/commit/cf66ba6298632771395b8ee6fd2e6371cd3752bf))
+
+- **api**: Paginate account/category lists in SQL and digest idempotency bodies
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- **api**: Pass Supabase Auth env into Compose API
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **api**: Stop conftest from forcing live Postgres in CI
+  ([#81](https://github.com/Elmorralito/save-ma-money/pull/81),
+  [`cf66ba6`](https://github.com/Elmorralito/save-ma-money/commit/cf66ba6298632771395b8ee6fd2e6371cd3752bf))
+
+- **api**: Wire transaction link services and flatten report frames
+  ([#90](https://github.com/Elmorralito/save-ma-money/pull/90),
+  [`93bec5b`](https://github.com/Elmorralito/save-ma-money/commit/93bec5bc604017b246d1cfceb8f0e2066cf19cac))
+
+- **ci**: Clear PPT-039 Auth PR check failures
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **ci**: Resolve supply-chain and pre-commit failures for PR #53
+  ([#53](https://github.com/Elmorralito/save-ma-money/pull/53),
+  [`3ffeb19`](https://github.com/Elmorralito/save-ma-money/commit/3ffeb19f85adb58008fe1dc399830d87c43940d9))
+
+- **ci**: Run quality control on main with reachable Postgres gate
+  ([`6a282c3`](https://github.com/Elmorralito/save-ma-money/commit/6a282c3ef51dc52fb6757ef7859378ebe2eb0a3f))
+
+- **ci**: Upgrade pip before supply-chain audit
+  ([#36](https://github.com/Elmorralito/save-ma-money/pull/36),
+  [`118ff2e`](https://github.com/Elmorralito/save-ma-money/commit/118ff2ece99aa95d04c3d36b148e5546600c32f2))
+
+- **deps**: Align root tabulate pin with model module bump
+  ([`a2281e5`](https://github.com/Elmorralito/save-ma-money/commit/a2281e546e9d081045e6517e4d257c6150aed9dd))
+
+- **docs**: Satisfy gitleaks and drop accidental coverage.xml diff
+  ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+### Build System
+
+- Rebasing with main. ([#12](https://github.com/Elmorralito/save-ma-money/pull/12),
+  [`649de08`](https://github.com/Elmorralito/save-ma-money/commit/649de0831418777f11c96fe79102757e26ac5ad0))
+
+- **PPT-022**: Data model indexer ([#12](https://github.com/Elmorralito/save-ma-money/pull/12),
+  [`649de08`](https://github.com/Elmorralito/save-ma-money/commit/649de0831418777f11c96fe79102757e26ac5ad0))
+
+### Chores
+
+- Cleaning.
+  ([`3f28b8f`](https://github.com/Elmorralito/save-ma-money/commit/3f28b8f2542cc1b661790cb31222b0bbfa5509e9))
+
+- Fixing pre-commit issues. ([#16](https://github.com/Elmorralito/save-ma-money/pull/16),
+  [`ad63e20`](https://github.com/Elmorralito/save-ma-money/commit/ad63e2005041358e50fa4971db5f8831e74d413a))
+
+- Organizing stuff. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Pre-commit hooks... ([#27](https://github.com/Elmorralito/save-ma-money/pull/27),
+  [`f9a11e7`](https://github.com/Elmorralito/save-ma-money/commit/f9a11e735a072d368139187b03bab25d6aec8890))
+
+- Pre-commit over all files. ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+- Update coverage and flake8 badges, enhance upsert error handling, and refactor tests
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Update dependencies and enhance functionality across modules
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Updating auto-updates workflow and adding missing test case.
+  ([`0f5ffc0`](https://github.com/Elmorralito/save-ma-money/commit/0f5ffc0e5344442d1aa8fe90d26ad4e2cd865463))
+
+- Working on the CI checks. ([#36](https://github.com/Elmorralito/save-ma-money/pull/36),
+  [`118ff2e`](https://github.com/Elmorralito/save-ma-money/commit/118ff2ece99aa95d04c3d36b148e5546600c32f2))
+
+- **Agent**: Adding skill. ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **changelog**: Fix prettier formatting for CI pre-commit
+  ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+### Code Style
+
+- **api**: Format API_Endpoints.md.md with prettier
+  ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+### Continuous Integration
+
+- [infra] Bash security PR gate and rename deploy/ to bin
+  ([#99](https://github.com/Elmorralito/save-ma-money/pull/99),
+  [`b3739a9`](https://github.com/Elmorralito/save-ma-money/commit/b3739a9d17b5aaf939e18d5c0bbe6220465cff1a))
+
+- Add PR bash security gate and rename deploy/ to bin/
+  ([#99](https://github.com/Elmorralito/save-ma-money/pull/99),
+  [`b3739a9`](https://github.com/Elmorralito/save-ma-money/commit/b3739a9d17b5aaf939e18d5c0bbe6220465cff1a))
+
+- More updates. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Retrigger checks after badge tip
+  ([`d873941`](https://github.com/Elmorralito/save-ma-money/commit/d873941d6c1a8927958599bb617d4ba706109b02))
+
+- Update CI adoption badge [skip ci] ([#104](https://github.com/Elmorralito/save-ma-money/pull/104),
+  [`c0c3f0d`](https://github.com/Elmorralito/save-ma-money/commit/c0c3f0d95e65fc0db74a2385c49d47b3dc0bcaf8))
+
+- Update CI adoption badge [skip ci] ([#99](https://github.com/Elmorralito/save-ma-money/pull/99),
+  [`b3739a9`](https://github.com/Elmorralito/save-ma-money/commit/b3739a9d17b5aaf939e18d5c0bbe6220465cff1a))
+
+- Update CI adoption badge [skip ci]
+  ([`d873941`](https://github.com/Elmorralito/save-ma-money/commit/d873941d6c1a8927958599bb617d4ba706109b02))
+
+- Update CI adoption badge [skip ci] ([#82](https://github.com/Elmorralito/save-ma-money/pull/82),
+  [`78327f6`](https://github.com/Elmorralito/save-ma-money/commit/78327f682a8a7eabb642e4d0c706c96559b059fd))
+
+- Updating badges, integrating the generation of the batches and adjusting tests.
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- **docs**: Migrate issue tracker to CHANGELOG and add CI gates
+  ([#36](https://github.com/Elmorralito/save-ma-money/pull/36),
+  [`118ff2e`](https://github.com/Elmorralito/save-ma-money/commit/118ff2ece99aa95d04c3d36b148e5546600c32f2))
+
+- **docs**: Migrate issue tracker to CHANGELOG and harden CI gates
+  ([#36](https://github.com/Elmorralito/save-ma-money/pull/36),
+  [`118ff2e`](https://github.com/Elmorralito/save-ma-money/commit/118ff2ece99aa95d04c3d36b148e5546600c32f2))
+
+- **gitleaks**: Allowlist JWT access_token examples in API docs
+  ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+- **gitleaks**: Allowlist modules/api/README.md for doc JWT samples
+  ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+### Documentation
+
+- Add create-issue skill for templated GitHub issues
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Adding docstrings. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Adding pending untracked file. ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+- Defining design for tracker. ([#15](https://github.com/Elmorralito/save-ma-money/pull/15),
+  [`51c4ff6`](https://github.com/Elmorralito/save-ma-money/commit/51c4ff6b2cb67def079d2ca4fc0991ef71408366))
+
+- Fixing interrogate badge and docstrings.
+  ([#23](https://github.com/Elmorralito/save-ma-money/pull/23),
+  [`0f27c0d`](https://github.com/Elmorralito/save-ma-money/commit/0f27c0d355cde10cba08a84f38396070640abbd5))
+
+- Fold PPT-044 and ops checklists into design SSOT
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Require gh auth check before create-issue confirm
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+- Swap pr-description Risks/Caveats alert types
+  ([#99](https://github.com/Elmorralito/save-ma-money/pull/99),
+  [`b3739a9`](https://github.com/Elmorralito/save-ma-money/commit/b3739a9d17b5aaf939e18d5c0bbe6220465cff1a))
+
+- Updating documentation.
+  ([`0a1c90e`](https://github.com/Elmorralito/save-ma-money/commit/0a1c90e6b499f81e13398291d4500413b9f58ac5))
+
+- **api**: Add Google docstrings across papita_txnsmodel package
+  ([#84](https://github.com/Elmorralito/save-ma-money/pull/84),
+  [`4223b65`](https://github.com/Elmorralito/save-ma-money/commit/4223b658e0228e5838c7776db7a41f9c5976f739))
+
+- **api**: Consolidate API reference and refresh monorepo documentation
+  ([#55](https://github.com/Elmorralito/save-ma-money/pull/55),
+  [`b0263b5`](https://github.com/Elmorralito/save-ma-money/commit/b0263b5a9476419246ed6e54cb728e03d67b3639))
+
+- **api**: Finish PPT-039 Auth contract and auth-smoke entrypoint
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **PPT-021**: Defining the design of the tracker/registrar module
+  ([#15](https://github.com/Elmorralito/save-ma-money/pull/15),
+  [`51c4ff6`](https://github.com/Elmorralito/save-ma-money/commit/51c4ff6b2cb67def079d2ca4fc0991ef71408366))
+
+- **PPT-023**: Finishing documentation. TODO: API documentation, it'll be done with corresponding
+  issue. ([#23](https://github.com/Elmorralito/save-ma-money/pull/23),
+  [`0f27c0d`](https://github.com/Elmorralito/save-ma-money/commit/0f27c0d355cde10cba08a84f38396070640abbd5))
+
+- **PPT-023**: Finishing documentation. TODO: API documentation, it'l…
+  ([#23](https://github.com/Elmorralito/save-ma-money/pull/23),
+  [`0f27c0d`](https://github.com/Elmorralito/save-ma-money/commit/0f27c0d355cde10cba08a84f38396070640abbd5))
+
+- **PPT-031**: Add expert-review findings register to v0 audit
+  ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+- **PPT-031**: Add v0 hotfix backlog, progress tracking, and pending gates
+  ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+- **PPT-031-A**: Data model audit and 3NF gap analysis (v0)
+  ([#35](https://github.com/Elmorralito/save-ma-money/pull/35),
+  [`a86467b`](https://github.com/Elmorralito/save-ma-money/commit/a86467b8e085aff2502110bd6bd97b5010906ccb))
+
+- **PPT-031-C**: Complete Supabase decision record and deprecate DuckDB upserter
+  ([#38](https://github.com/Elmorralito/save-ma-money/pull/38),
+  [`c6da1a6`](https://github.com/Elmorralito/save-ma-money/commit/c6da1a6e8f1eb6b347e47d59c5d7ad59181daab1))
+
+- **PPT-031-D**: Align API specs to v3 model and document auth contract
+  ([#39](https://github.com/Elmorralito/save-ma-money/pull/39),
+  [`bea9b0c`](https://github.com/Elmorralito/save-ma-money/commit/bea9b0cb81f94ae03c74687c1a6b934c44552ba0))
+
+- **PPT-031-D**: Align API specs to v3 model, auth contract, and UsersService fixes
+  ([#39](https://github.com/Elmorralito/save-ma-money/pull/39),
+  [`bea9b0c`](https://github.com/Elmorralito/save-ma-money/commit/bea9b0cb81f94ae03c74687c1a6b934c44552ba0))
+
+- **strata**: Updating memory. ([#90](https://github.com/Elmorralito/save-ma-money/pull/90),
+  [`93bec5b`](https://github.com/Elmorralito/save-ma-money/commit/93bec5bc604017b246d1cfceb8f0e2066cf19cac))
+
+### Features
+
+- Add python-semantic-release without touching root CHANGELOG
+  ([#104](https://github.com/Elmorralito/save-ma-money/pull/104),
+  [`c0c3f0d`](https://github.com/Elmorralito/save-ma-money/commit/c0c3f0d95e65fc0db74a2385c49d47b3dc0bcaf8))
+
+- Fixing logger and CLI. TODO: Fix registry not discovering plugins.
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Harden v3 services for PPT-041 API readiness
+  ([#54](https://github.com/Elmorralito/save-ma-money/pull/54),
+  [`9482682`](https://github.com/Elmorralito/save-ma-money/commit/948268220c20479da592d1c6de2076d0a6e48094))
+
+- Harden v3 services for PPT-041 API readiness
+  ([`e064e5f`](https://github.com/Elmorralito/save-ma-money/commit/e064e5f6b07d52f71595cc0ddb2b7155d556793b))
+
+- Implement PPT-031 v3 schema, balance reports, and transaction partitioning
+  ([#53](https://github.com/Elmorralito/save-ma-money/pull/53),
+  [`3ffeb19`](https://github.com/Elmorralito/save-ma-money/commit/3ffeb19f85adb58008fe1dc399830d87c43940d9))
+
+- Implement PPT-031 v3 schema, balance reports, and trans…
+  ([#53](https://github.com/Elmorralito/save-ma-money/pull/53),
+  [`3ffeb19`](https://github.com/Elmorralito/save-ma-money/commit/3ffeb19f85adb58008fe1dc399830d87c43940d9))
+
+- Logger handling and setup added. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Standardize DuckDB CLI arguments, enhance setup script logging, and capture its output for Alembic
+  integration. ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Update over the data model has been implemented. TODO: Do the rest of layers
+  ([#27](https://github.com/Elmorralito/save-ma-money/pull/27),
+  [`f9a11e7`](https://github.com/Elmorralito/save-ma-money/commit/f9a11e735a072d368139187b03bab25d6aec8890))
+
+- Update version numbers and enhance CLI help functionality
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Update version numbers and improve CLI error handling
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Working on CLI. ([#16](https://github.com/Elmorralito/save-ma-money/pull/16),
+  [`ad63e20`](https://github.com/Elmorralito/save-ma-money/commit/ad63e2005041358e50fa4971db5f8831e74d413a))
+
+- **api**: Add accounts and categories CRUD endpoints (PPT-036)
+  ([#84](https://github.com/Elmorralito/save-ma-money/pull/84),
+  [`4223b65`](https://github.com/Elmorralito/save-ma-money/commit/4223b658e0228e5838c7776db7a41f9c5976f739))
+
+- **api**: Add auth register/login routes and JWT tenant context
+  ([#82](https://github.com/Elmorralito/save-ma-money/pull/82),
+  [`78327f6`](https://github.com/Elmorralito/save-ma-money/commit/78327f682a8a7eabb642e4d0c706c96559b059fd))
+
+- **api**: Add tenant-scoped reports and structured DB health probes (PPT-038)
+  ([#90](https://github.com/Elmorralito/save-ma-money/pull/90),
+  [`93bec5b`](https://github.com/Elmorralito/save-ma-money/commit/93bec5bc604017b246d1cfceb8f0e2066cf19cac))
+
+- **api**: Add transactions and movements CRUD endpoints (PPT-037)
+  ([#88](https://github.com/Elmorralito/save-ma-money/pull/88),
+  [`4dd4738`](https://github.com/Elmorralito/save-ma-money/commit/4dd47385b596033a9f50a72fc66b6f29a4e73b31))
+
+- **api**: Bootstrap FastAPI app with health probes and B0 Docker stack
+  ([#81](https://github.com/Elmorralito/save-ma-money/pull/81),
+  [`cf66ba6`](https://github.com/Elmorralito/save-ma-money/commit/cf66ba6298632771395b8ee6fd2e6371cd3752bf))
+
+- **api**: Harden auth and extend Strata checks with Python/Bash review
+  ([#82](https://github.com/Elmorralito/save-ma-money/pull/82),
+  [`78327f6`](https://github.com/Elmorralito/save-ma-money/commit/78327f682a8a7eabb642e4d0c706c96559b059fd))
+
+- **api**: Register and login via Supabase Auth client
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **api**: Unify environments and reissue PPT-039 as Supabase Auth
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **api**: Verify Supabase Auth JWTs and provision tenants (PPT-039)
+  ([#91](https://github.com/Elmorralito/save-ma-money/pull/91),
+  [`6ecf400`](https://github.com/Elmorralito/save-ma-money/commit/6ecf400c11eca69017c12683a15edd15e7e28f0b))
+
+- **PPT-018**: Registrar ([#16](https://github.com/Elmorralito/save-ma-money/pull/16),
+  [`ad63e20`](https://github.com/Elmorralito/save-ma-money/commit/ad63e2005041358e50fa4971db5f8831e74d413a))
+
+- **PPT-024**: [model] Package papita-transactions-model and publish to PyPI
+  ([#104](https://github.com/Elmorralito/save-ma-money/pull/104),
+  [`c0c3f0d`](https://github.com/Elmorralito/save-ma-money/commit/c0c3f0d95e65fc0db74a2385c49d47b3dc0bcaf8))
+
+- **PPT-031**: Add user management and owner tracking system
+  ([#27](https://github.com/Elmorralito/save-ma-money/pull/27),
+  [`f9a11e7`](https://github.com/Elmorralito/save-ma-money/commit/f9a11e735a072d368139187b03bab25d6aec8890))
+
+### Performance Improvements
+
+- Redesigned the data model to match the business requirements better.
+  ([#12](https://github.com/Elmorralito/save-ma-money/pull/12),
+  [`649de08`](https://github.com/Elmorralito/save-ma-money/commit/649de0831418777f11c96fe79102757e26ac5ad0))
+
+- **api**: Cut hot-path overhead across list, cache, RL, and reports
+  ([#102](https://github.com/Elmorralito/save-ma-money/pull/102),
+  [`259e3e8`](https://github.com/Elmorralito/save-ma-money/commit/259e3e829df8d1d0385f824e596537d6f983ae4b))
+
+### Refactoring
+
+- Continued organizaing and refactoring the registrar to make it functional. TODO: Review the class
+  TypesDTO, since it's not parsing the tags correctly.
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Rename CLI argument parsing methods and enhance error handling
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+### Testing
+
+- Adding Unit tests. TODO: More unit tests.
+  ([#19](https://github.com/Elmorralito/save-ma-money/pull/19),
+  [`3b9f761`](https://github.com/Elmorralito/save-ma-money/commit/3b9f7610f205f6be3691eb626fdf41c7f343676b))
+
+- Align MV SQL assertions with SQLFluff join order
+  ([#53](https://github.com/Elmorralito/save-ma-money/pull/53),
+  [`3ffeb19`](https://github.com/Elmorralito/save-ma-money/commit/3ffeb19f85adb58008fe1dc399830d87c43940d9))
+
+- Cover __meta__ version resolution for Codecov patch
+  ([#104](https://github.com/Elmorralito/save-ma-money/pull/104),
+  [`c0c3f0d`](https://github.com/Elmorralito/save-ma-money/commit/c0c3f0d95e65fc0db74a2385c49d47b3dc0bcaf8))
+
+- Fixing tests. ([#27](https://github.com/Elmorralito/save-ma-money/pull/27),
+  [`f9a11e7`](https://github.com/Elmorralito/save-ma-money/commit/f9a11e735a072d368139187b03bab25d6aec8890))
