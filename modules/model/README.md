@@ -328,6 +328,45 @@ txns.upsert_records(
 )
 ```
 
+## Install
+
+**PyPI name:** `papita-transactions-model` · **Import:** `papita_txnsmodel`
+
+| Mode                      | Command                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Published (when released) | `pip install papita-transactions-model`                                                                             |
+| Poetry                    | `poetry add papita-transactions-model`                                                                              |
+| Monorepo path (this repo) | Root `pyproject.toml` path dep — `poetry install` from repo root                                                    |
+| TestPyPI                  | `pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ papita-transactions-model` |
+
+Alembic migrations remain in the **git checkout** (`modules/model/alembic/`); the published wheel is the importable library. Run migrations via [`bin/alembic.sh`](../../bin/alembic.sh) from this repository (or Docker).
+
+### Build / version / publish (PPT-024)
+
+```bash
+# Bump model version only (Poetry)
+./bin/version.sh --mod model --version 0.1.14 --skip-install
+# or: make dev-version MOD=model VERSION=0.1.14
+
+# Build sdist + wheel into dist/ (model only)
+./bin/package.sh --mod model
+# or: make package-model
+
+# Local smoke
+python -m venv /tmp/model-smoke && /tmp/model-smoke/bin/pip install dist/papita_transactions_model-*.whl
+/tmp/model-smoke/bin/python -c "import papita_txnsmodel; print(papita_txnsmodel.__version__)"
+```
+
+**CI publish:** [`.github/workflows/publish-model.yml`](../../.github/workflows/publish-model.yml)
+
+| Trigger                                                      | Target                              |
+| ------------------------------------------------------------ | ----------------------------------- |
+| Actions → **Publish model package** → `target=testpypi`      | TestPyPI (OIDC / Trusted Publisher) |
+| Same workflow → `target=pypi` and `confirm_pypi=publish`     | PyPI                                |
+| Git tag `model-vX.Y.Z` (must match `pyproject.toml` version) | PyPI                                |
+
+Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) on TestPyPI/PyPI for this repo, workflow file, and GitHub Environments `testpypi` / `pypi`. Do **not** commit API tokens.
+
 ## Package layout
 
 ```

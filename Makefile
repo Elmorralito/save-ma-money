@@ -16,6 +16,10 @@ dev: prep
 dev-version:
 	./bin/version.sh --version $(VERSION) --mod $(MOD)
 
+# Build sdist + wheel for modules/model only → dist/ (PPT-024 / PyPI).
+package-model:
+	/bin/bash ./bin/package.sh --mod model
+
 lite-dev: prep
 	$(PYTHON_CMD) lock
 	$(PYTHON_CMD) install

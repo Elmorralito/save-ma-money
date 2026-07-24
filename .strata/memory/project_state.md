@@ -10,15 +10,15 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-045 / #93: uvicorn packaging — `make api-up` starts Compose API (in-container
-  CMD); Settings `HOST`/`PORT` unused for bind; docs + redis smoke aligned
+- PPT-024 / #11: model-only packaging — `package.sh --mod model`, publish-model.yml
+  (TestPyPI/PyPI OIDC), README/CI docs, `__meta__` uses importlib.metadata
 
 ### Next action
 
-- Land PPT-045 PR; close #93 when merged
+- Land PPT-024 PR; configure Trusted Publishers on TestPyPI/PyPI; first TestPyPI dispatch
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
-- B0 API runtime is Docker-only (`make api-up` / `stack-up`)
+- PyPI publish gated by tag `model-v*` or dispatch `confirm_pypi=publish`

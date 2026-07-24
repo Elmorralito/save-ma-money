@@ -13,7 +13,7 @@ I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ign
 
 | Package              | README                                                 | Role                                                                                                                                                                      |
 | :------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations                                                                                                            |
+| **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations — PyPI: `papita-transactions-model` ([PPT-024](https://github.com/Elmorralito/save-ma-money/issues/11))    |
 | **papita-txnsapi**   | [`modules/api/README.md`](./modules/api/README.md)     | FastAPI REST surface; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 ---
