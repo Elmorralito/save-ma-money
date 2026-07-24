@@ -55,6 +55,21 @@ _modules_to_build() {
     printf '%s\n' "${LIBS_INPUT_PATH}/${MOD}"
 }
 
+# Prefer the Poetry CLI (snok/install-poetry, official installer). Fall back to
+# `python -m poetry` for envs where Poetry is installed as a module only.
+_run_poetry() {
+    if command -v poetry >/dev/null 2>&1; then
+        poetry "$@"
+        return $?
+    fi
+    if python -m poetry --version >/dev/null 2>&1; then
+        python -m poetry "$@"
+        return $?
+    fi
+    log "ERROR" "Poetry not found (need poetry on PATH or python -m poetry)."
+    return 1
+}
+
 package() {
     log "INFO" "Starting package process using Poetry (MOD=${MOD})..."
 
@@ -78,7 +93,7 @@ package() {
         }
         __package_name="$(basename "${lib}")"
         log "INFO" "Building sdist + wheel for ${__package_name}..."
-        if ! python -m poetry build -o "${LIBS_OUTPUT_PATH}" -v; then
+        if ! _run_poetry build -o "${LIBS_OUTPUT_PATH}" -v; then
             log "ERROR" "Failed to package ${__package_name}."
             failed=1
             continue

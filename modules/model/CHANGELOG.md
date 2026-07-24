@@ -405,7 +405,7 @@ This file is **not** the monorepo issue tracker changelog. Root
   ([#53](https://github.com/Elmorralito/save-ma-money/pull/53),
   [`3ffeb19`](https://github.com/Elmorralito/save-ma-money/commit/3ffeb19f85adb58008fe1dc399830d87c43940d9))
 
-- Cover __meta__ version resolution for Codecov patch
+- Cover **meta** version resolution for Codecov patch
   ([#104](https://github.com/Elmorralito/save-ma-money/pull/104),
   [`c0c3f0d`](https://github.com/Elmorralito/save-ma-money/commit/c0c3f0d95e65fc0db74a2385c49d47b3dc0bcaf8))
 
