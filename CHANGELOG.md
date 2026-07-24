@@ -2,7 +2,41 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feat/PPT-024: [model] Package papita-transactions-model and publish to PyPI** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 21:19:52+00:00</sub>_
+
+  > **Closed by** [_**#104**](https://github.com/Elmorralito/save-ma-money/pull/104): **feat(PPT-024): [model] Package papita-transactions-model and publish to PyPI**
+
+  > ## Summary
+
+  > - Model-only packaging: ./bin/package.sh --mod model / make package-model builds sdist + wheel into dist/.
+
+  > - Harden modules/model/pyproject.toml for public install; move pytest to Poetry dev group; **meta** reads version via importlib.metadata when installed from a wheel.
+
+  > - Add OIDC publish workflow (TestPyPI via dispatch; PyPI via model-v* tag or confirmed dispatch) with clean-venv import smoke.
+
+  >
+
+  > Closes #11
+
+  >
+
+  > ## Test plan
+
+  > - [x] make package-model → sdist + wheel in dist/
+
+  > - [x] Clean venv pip install wheel → import papita_txnsmodel OK (0.1.13a28)
+
+  > - [ ] Configure Trusted Publishers for GitHub Environments testpypi / pypi
+
+  > - [ ] Actions → Publish model package → target=testpypi
+
+  > - [ ] After TestPyPI OK: bump version, tag model-v… or dispatch pypi + confirm_pypi=publish
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 19:30:18+00:00</sub>_
 
