@@ -38,4 +38,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 USER appuser
 
+# Bind flags stay literal 0.0.0.0:8000 (HEALTHCHECK / EXPOSE / Compose publish assume :8000).
+# Settings HOST/PORT are unused for bind; host-side API_PORT only remaps publish (${API_PORT}:8000).
+# Never add --reload or --workers to this CMD (PPT-045 — single-worker Compose runtime).
 CMD ["uvicorn", "papita_txnsapi.main:app", "--host", "0.0.0.0", "--port", "8000"]

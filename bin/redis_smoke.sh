@@ -2,7 +2,7 @@
 # Smoke Redis wiring against a running Papita API (PPT-043).
 #
 # Prerequisites:
-#   - API up (make stack-up, or host uvicorn with REDIS_ENABLED=true)
+#   - API up (make api-up or make stack-up; uvicorn in the Compose container)
 #   - Redis reachable (Compose redis service or managed URL)
 #
 # Usage:

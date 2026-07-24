@@ -96,8 +96,10 @@ class Settings(BaseSettings):
         APP_NAME: Human-readable application title used in startup logs.
         APP_VERSION: Semantic version re-exported from package metadata.
         DEBUG: When ``True``, enables verbose diagnostics (reserved for future use).
-        HOST: Uvicorn bind address.
-        PORT: Uvicorn bind port.
+        HOST: Unused for process bind (PPT-045). Compose image ``CMD`` binds
+            ``0.0.0.0:8000``; kept for env-file compatibility only.
+        PORT: Unused for process bind (PPT-045). See ``HOST``; host publish uses
+            Compose ``API_PORT``, not this field.
         DATABASE_URL: PostgreSQL SQLAlchemy URL or an established connector class.
             When unset, falls back to the model default storage with a warning.
         LOG_LEVEL: Root log level applied to model and API loggers on init.
@@ -155,7 +157,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     DOCS_ENABLED: bool = False
 
-    # Server
+    # Server bind metadata only — uvicorn listen address comes from Dockerfile CMD (PPT-045).
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 

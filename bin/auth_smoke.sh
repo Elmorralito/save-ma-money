@@ -135,10 +135,9 @@ ACC_CODE="$(
 if [[ "${ACC_CODE}" == "404" ]]; then
   log ERROR "/accounts returned 404 — the API at ${API_BASE} does not expose domain routers."
   log ERROR "OpenAPI on that process often only has health/auth/budgets (stale uvicorn/docker image)."
-  log ERROR "Restart the API from this branch, then re-run make auth-smoke:"
-  log ERROR "  export PAPITA_ENV=${PAPITA_ENV}"
-  log ERROR "  poetry run uvicorn papita_txnsapi.main:app --app-dir modules/api/src --reload --host 0.0.0.0 --port 8000"
-  log ERROR "Or: docker compose --env-file environments/${PAPITA_ENV}/.env -f docker/docker-compose.yml up --build api"
+  log ERROR "Rebuild/restart the Compose API, then re-run make auth-smoke:"
+  log ERROR "  make api-up"
+  log ERROR "Or: make stack-up"
   exit 1
 fi
 if [[ "${ACC_CODE}" != "200" ]]; then

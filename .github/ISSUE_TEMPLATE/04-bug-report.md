@@ -36,7 +36,7 @@ Never paste secrets, tokens, or credentialed connection strings.
 | --------------- | ---------------------------------------- |
 | Branch / commit | <!-- -->                                 |
 | `PAPITA_ENV`    | local / staging / …                      |
-| Runtime         | host uvicorn / Compose / CI              |
+| Runtime         | Compose API (`make api-up`) / CI         |
 | DB              | Docker Postgres / other (no credentials) |
 
 ## Logs / evidence

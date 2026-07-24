@@ -159,10 +159,11 @@ poetry run pytest
 
 Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](./modules/model/README.md).
 
-API route tests will be added with the [#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic. When routers land, start the dev server with:
+Start the API (PPT-045) — uvicorn runs **inside Docker**:
 
 ```bash
-uvicorn papita_txnsapi.main:app --reload --host 0.0.0.0 --port 8000
+make api-up      # Compose api + Postgres/Redis/migrate
+# or: make stack-up
 ```
 
 See [`modules/api/README.md`](./modules/api/README.md) for env setup, auth flows, v3 data shapes, and the full endpoint catalog.

@@ -2,19 +2,18 @@
 
 ## Summary
 
-Standardize how `papita_txnsapi` is **launched under uvicorn** for B0 Compose and host/dev. This is **not** “add uvicorn” — the dependency, Dockerfile `CMD`, and README one-liners already exist. The gap is **canonical entrypoints**, Settings/`HOST`/`PORT` alignment, Make/Poetry convenience targets, worker guidance (especially vs Redis in-memory fallbacks), and runbook clarity so local and Compose paths do not drift.
+Standardize how `papita_txnsapi` is **launched under uvicorn** for B0 Compose. Uvicorn runs **inside the API Docker image** (not as a host Poetry process). The gap closed here is **canonical Make entrypoints**, Settings/`HOST`/`PORT` vs Dockerfile bind clarity, worker guidance (especially vs Redis in-memory fallbacks), and runbook clarity so paths do not drift.
 
 ## Current state (inspected)
 
-| Surface       | Today                                                                                                                                                     |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ASGI app      | `papita_txnsapi.main:app` + lifespan (password manager + optional Redis)                                                                                  |
-| Dep           | `uvicorn[standard]` in `modules/api/pyproject.toml`                                                                                                       |
-| Compose image | `docker/api/Dockerfile` → `CMD ["uvicorn", "papita_txnsapi.main:app", "--host", "0.0.0.0", "--port", "8000"]` (hardcoded; ignores Settings `HOST`/`PORT`) |
-| Host docs     | Ad-hoc `uvicorn … --reload` in `modules/api/README.md` / root README                                                                                      |
-| Make          | `stack-up` / `redis-up` / `redis-smoke` exist; **no** `api-up` / host uvicorn target                                                                      |
-| Poetry        | No `[project.scripts]` / console entry for API serve                                                                                                      |
-| Settings      | `HOST`, `PORT`, `PAPITA_ENV`, DB/Auth/Redis already on `Settings`                                                                                         |
+| Surface       | Today                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ASGI app      | `papita_txnsapi.main:app` + lifespan (password manager + optional Redis)                                                                               |
+| Dep           | `uvicorn[standard]` in `modules/api/pyproject.toml`                                                                                                    |
+| Compose image | `docker/api/Dockerfile` → `CMD ["uvicorn", "papita_txnsapi.main:app", "--host", "0.0.0.0", "--port", "8000"]` (literal; Settings `HOST`/`PORT` unused) |
+| Make          | `api-up` (Compose `api` + deps) / `stack-up` / `redis-up` / `redis-smoke`                                                                              |
+| Poetry        | No host serve script — runtime is Docker                                                                                                               |
+| Settings      | `HOST`, `PORT`, `PAPITA_ENV`, DB/Auth/Redis already on `Settings`                                                                                      |
 
 ## Depends on
 
@@ -24,7 +23,7 @@ Standardize how `papita_txnsapi` is **launched under uvicorn** for B0 Compose an
 
 ## Blocks
 
-- Cleaner local DX for Auth smoke / Redis smoke against a consistently started API
+- Cleaner local DX for Auth smoke / Redis smoke against a consistently started API container
 - Safer multi-replica notes before anyone enables `--workers` without Redis rate limits
 
 ## Platform rule (B0 + B1)
@@ -33,46 +32,45 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 
 ## Decisions to lock in this issue
 
-1. **Canonical host entrypoint** — prefer one of:
-   - `make api-up` (PAPITA_ENV=local, reads `environments/local/.env`, `--reload` for dev), and/or
-   - Poetry script e.g. `papita-api` / `poetry run papita-api`
-2. **Canonical Compose path** — keep Dockerfile CMD; optionally shell-form or entrypoint that passes `$HOST`/`$PORT` from env to match Settings.
-3. **Reload policy** — `--reload` **host/dev only**; never in Compose prod-like `CMD`.
-4. **Workers** — B0 default **single worker**. Document: in-memory rate limiter is process-local; multi-worker requires `REDIS_RATE_LIMIT_ENABLED=true` (+ Redis denylist). Defer gunicorn+uvicorn-workers unless justified.
-5. **Lifecycle** — uvicorn must run the FastAPI lifespan (Redis init/teardown); document graceful shutdown expectations.
-6. **Health contract unchanged** — `/api/v1/health`, `/ready`, `/live`, `/redis` remain smoke targets (`make redis-smoke` when Redis on).
+1. **Canonical entrypoint** — `make api-up` → Compose `api` service (uvicorn in-container). `make stack-up` for full explicit stack.
+2. **No host uvicorn for B0** — do not promote `poetry run uvicorn` as a day-to-day path; container `CMD` is SSOT.
+3. **Compose `HOST`/`PORT`** — **documented exception**: literal `0.0.0.0:8000` (HEALTHCHECK / `EXPOSE` / `${API_PORT}:8000` publish). Settings `HOST`/`PORT` are optional metadata.
+4. **Reload policy** — never `--reload` in Compose `CMD`.
+5. **Workers** — B0 default **single worker**. Document: in-memory rate limiter is process-local; multi-worker requires `REDIS_RATE_LIMIT_ENABLED=true` (+ Redis denylist). Defer gunicorn+uvicorn-workers unless justified.
+6. **Lifecycle** — uvicorn must run the FastAPI lifespan (Redis init/teardown).
+7. **Health contract unchanged** — `/api/v1/health`, `/ready`, `/live`, `/redis` remain smoke targets (`make redis-smoke`).
 
 ## Tasks / deliverables
 
 ### Ops / infra
 
-- [ ] Add Makefile target(s): e.g. `api-up` (host uvicorn + reload), document relationship to `stack-up` / `redis-up`
-- [ ] Optional Poetry console script or documented `poetry run uvicorn` wrapper with `cd`/PYTHONPATH clarity from repo root
-- [ ] Align Dockerfile/Compose CMD with `HOST`/`PORT` env (or document why flags stay literal `0.0.0.0:8000`)
-- [ ] Ensure Compose `api` service does not inject host `REDIS_URL=localhost` (already hardcoded `redis://redis:6379/0` — keep)
+- [x] Add Makefile target(s): `api-up` (Compose API container), document relationship to `stack-up` / `redis-up`
+- [x] Document that runtime is Docker (no Poetry console serve script for B0)
+- [x] Align Dockerfile/Compose CMD with `HOST`/`PORT` env (or document why flags stay literal `0.0.0.0:8000`)
+- [x] Ensure Compose `api` service does not inject host `REDIS_URL=localhost` (already hardcoded `redis://redis:6379/0` — keep)
 
 ### Docs
 
-- [ ] Update `modules/api/README.md` run sections: one host path, one Compose path; remove stale “when routers land”
-- [ ] Update `environments/README.md` with host vs Compose Redis URL split + uvicorn notes
-- [ ] Short ops note (`modules/api/README.md` or `docs/design/README.md` § Ops) on workers vs Redis rate-limit / denylist fail-closed
+- [x] Update `modules/api/README.md` run sections: Docker-canonical paths
+- [x] Update `environments/README.md` with Compose Redis URL + uvicorn-in-container notes
+- [x] Short ops note on workers vs Redis rate-limit / denylist fail-closed
 
 ### API package (minimal)
 
-- [ ] Only if needed: tiny `__main__.py` or script module that reads Settings and execs uvicorn programmatically (optional; Make + uvicorn CLI is enough)
+- [x] No `__main__.py` / host serve script — Make + Dockerfile `CMD` is enough
 
 ## API / infra integration
 
-- [ ] B0: `make redis-up` + host `api-up` → `/health/ready` true; optional `make redis-smoke`
-- [ ] B0: `make stack-up` → container healthcheck + ready
-- [ ] Env examples already document `HOST`/`PORT` or explicitly defer to uvicorn flags
-- [ ] No secrets committed (`.env` stays gitignored)
+- [x] B0: `make api-up` → `/health/ready` true; optional `make redis-smoke`
+- [x] B0: `make stack-up` → container healthcheck + ready
+- [x] Env examples document `HOST`/`PORT` as metadata and `API_PORT` for publish
+- [x] No secrets committed (`.env` stays gitignored)
 
 ## Requirements traceability
 
 | ID      | Scope                                           |
 | ------- | ----------------------------------------------- |
-| NFR-04  | Operability — reproducible local/Compose start  |
+| NFR-04  | Operability — reproducible Compose start        |
 | NFR-ops | Process packaging; readiness probes remain gate |
 | PPT-043 | Lifespan Redis pool must start under uvicorn    |
 
@@ -84,23 +82,24 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 - Changing REST routes or business logic in `papita_txnsmodel`
 - Registrar, DuckDB, RLS (B3)
 - Full PPT-044 security pack (CORS/TrustedHost/docs lockdown) — track on #89
+- Host Poetry uvicorn as a supported B0 runtime
 
 ## Acceptance criteria
 
-- [ ] Documented **one** canonical host command and **one** Compose path
-- [ ] Dockerfile/Compose CMD aligned with Settings `HOST`/`PORT` **or** explicitly documented exception
-- [ ] Make and/or Poetry convenience target(s) for local run
-- [ ] Worker guidance written (single-worker default; Redis required before multi-worker)
-- [ ] B0 smoke: API up → ready → optional `make redis-smoke`
-- [ ] README (+ env README) updated; no secrets in git
+- [x] Documented canonical Compose command(s) (`make api-up` / `make stack-up`)
+- [x] Dockerfile/Compose CMD aligned with Settings `HOST`/`PORT` **or** explicitly documented exception
+- [x] Make convenience target(s) that start uvicorn **in Docker**
+- [x] Worker guidance written (single-worker default; Redis required before multi-worker)
+- [x] B0 smoke: API container up → ready → optional `make redis-smoke`
+- [x] README (+ env README) updated; no secrets in git
 
 ## References
 
 - `modules/api/src/papita_txnsapi/main.py` — `create_app`, lifespan, module `app`
-- `docker/api/Dockerfile` — current uvicorn `CMD` + live healthcheck
+- `docker/api/Dockerfile` — uvicorn `CMD` + live healthcheck
 - `docker/docker-compose.yml` — `api` service env (Auth, DB, Redis)
-- `Makefile` — `stack-up`, `redis-up`, `redis-smoke`
-- `modules/api/README.md` — host uvicorn snippets
+- `Makefile` — `api-up`, `api-down`, `stack-up`, `redis-up`, `redis-smoke`
+- `modules/api/README.md` — Compose run paths
 - [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043 Redis
 - [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044 hardening
 - Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) PPT-032
