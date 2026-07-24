@@ -22,3 +22,5 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - Do not commit `environments/**/.env`
 - PSR writes modules/model/CHANGELOG.md only (not root CHANGELOG.md)
+
+- Prettier-format modules/model/CHANGELOG.md from PSR 1.0.0
