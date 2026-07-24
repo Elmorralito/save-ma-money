@@ -10,13 +10,14 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-024 / #11 PR #104 babysit: `__meta__` unit tests for Codecov patch coverage
-  (importlib.metadata + pyproject fallback paths)
+- PPT-024 first release: PSR created `model-v1.0.0` + GH release; publish failed
+  because `bin/package.sh` used `python -m poetry` (CLI-only Poetry in CI)
 
 ### Next action
 
-- Land PR #104 when CI green; configure Trusted Publishers; first live publish
-- Do not commit `environments/**/.env`
+- Land package.sh Poetry CLI fix; re-dispatch Publish model package → PyPI
+- Ensure PyPI/TestPyPI Trusted Publishers + `pypi`/`testpypi` environments
+- Note: GITHUB_TOKEN tag pushes do not cascade to publish-model.yml
 
 ### Uncommitted / staging notes
 
