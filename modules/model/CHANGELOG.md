@@ -10,6 +10,29 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.1 (2026-07-24)
+
+### Bug Fixes
+
+- **api**: Allow papita-transactions-model 1.x after first PSR release
+  ([#105](https://github.com/Elmorralito/save-ma-money/pull/105),
+  [`9e60ffe`](https://github.com/Elmorralito/save-ma-money/commit/9e60ffe8f15f3d2ded702993e115814d4d65995c))
+
+- **ci**: Prefer Poetry CLI in package.sh for OIDC publish builds
+  ([#105](https://github.com/Elmorralito/save-ma-money/pull/105),
+  [`9e60ffe`](https://github.com/Elmorralito/save-ma-money/commit/9e60ffe8f15f3d2ded702993e115814d4d65995c))
+
+- **ci**: Unblock model 1.0.0 publish (Poetry CLI + API pin)
+  ([#105](https://github.com/Elmorralito/save-ma-money/pull/105),
+  [`9e60ffe`](https://github.com/Elmorralito/save-ma-money/commit/9e60ffe8f15f3d2ded702993e115814d4d65995c))
+
+### Code Style
+
+- Prettier-format CHANGELOG after PSR 1.0.0 write
+  ([#105](https://github.com/Elmorralito/save-ma-money/pull/105),
+  [`9e60ffe`](https://github.com/Elmorralito/save-ma-money/commit/9e60ffe8f15f3d2ded702993e115814d4d65995c))
+
+
 ## v1.0.0 (2026-07-24)
 
 ### Bug Fixes
