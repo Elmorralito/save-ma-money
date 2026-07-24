@@ -2,9 +2,41 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
-- [ ] [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feature/PPT-024: Integrate package and repo versioning** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 19:30:18+00:00</sub>_
+
+  > **Closed by** [_**#103**](https://github.com/Elmorralito/save-ma-money/pull/103): **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose**
+
+  > ## Summary
+
+  > - Canonical B0 runtime is Docker: make api-up starts the Compose api service (uvicorn via Dockerfile CMD); make api-down / stack-up documented alongside.
+
+  > - Document Settings HOST/PORT as unused for bind; in-container listen stays 0.0.0.0:8000, host publish via API_PORT.
+
+  > - Align API/env/ops READMEs, smoke hints, and worker-vs-Redis guidance; keep PPT-044 security scope separate.
+
+  >
+
+  > Closes #93
+
+  >
+
+  > ## Test plan
+
+  > - [x] docker compose … up -d api (image present) → /health/live + /ready 200
+
+  > - [x] make redis-smoke OK against Compose API
+
+  > - [ ] make api-up after a fresh image pull/build when registry is reachable
+
+  > - [ ] Confirm Compose api still uses REDIS_URL=redis://redis:6379/0 (not localhost)
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-23 22:12:18+00:00</sub>_
 
