@@ -10,15 +10,15 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-045 / #93: uvicorn packaging — `make api-up` starts Compose API (in-container
-  CMD); Settings `HOST`/`PORT` unused for bind; docs + redis smoke aligned
+- PPT-024 / #11 PR #104 babysit: `__meta__` unit tests for Codecov patch coverage
+  (importlib.metadata + pyproject fallback paths)
 
 ### Next action
 
-- Land PPT-045 PR; close #93 when merged
+- Land PR #104 when CI green; configure Trusted Publishers; first live publish
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
-- B0 API runtime is Docker-only (`make api-up` / `stack-up`)
+- PSR writes modules/model/CHANGELOG.md only (not root CHANGELOG.md)

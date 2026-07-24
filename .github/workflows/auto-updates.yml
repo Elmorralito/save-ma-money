@@ -41,6 +41,9 @@ jobs:
           poetry install --no-interaction --with development,pre-commit
           python -m pip install pylint pytest pytest-cov coverage jinja2 requests
 
+      # Owns repo-root CHANGELOG.md only (GitHub issues tracker).
+      # Package release notes live in modules/model/CHANGELOG.md via release-model.yml
+      # (python-semantic-release) — never write that file from this job.
       - name: Update CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

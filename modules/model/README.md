@@ -328,6 +328,55 @@ txns.upsert_records(
 )
 ```
 
+## Install
+
+**PyPI name:** `papita-transactions-model` · **Import:** `papita_txnsmodel`
+
+| Mode                      | Command                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Published (when released) | `pip install papita-transactions-model`                                                                             |
+| Poetry                    | `poetry add papita-transactions-model`                                                                              |
+| Monorepo path (this repo) | Root `pyproject.toml` path dep — `poetry install` from repo root                                                    |
+| TestPyPI                  | `pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ papita-transactions-model` |
+
+Alembic migrations remain in the **git checkout** (`modules/model/alembic/`); the published wheel is the importable library. Run migrations via [`bin/alembic.sh`](../../bin/alembic.sh) from this repository (or Docker).
+
+### Build / version / publish (PPT-024)
+
+**Automatic versioning** uses [python-semantic-release](https://python-semantic-release.readthedocs.io/) on `main` ([`release-model.yml`](../../.github/workflows/release-model.yml)):
+
+- Updates **`modules/model/CHANGELOG.md` only** (never root [`CHANGELOG.md`](../../CHANGELOG.md) — that file is owned by [`auto-updates.yml`](../../.github/workflows/auto-updates.yml))
+- Bumps `pyproject.toml` and tags `model-v{version}`
+- PyPI upload: [`publish-model.yml`](../../.github/workflows/publish-model.yml) on those tags
+
+Use Conventional Commits with a **model** scope so bumps are detected:
+
+```text
+feat(model): add report window helper
+fix(model): correct soft-delete filter
+```
+
+```bash
+# Manual bump (escape hatch; prefer semantic-release on main)
+./bin/version.sh --mod model --version 0.1.14 --skip-install
+
+# Build sdist + wheel into dist/ (model only)
+./bin/package.sh --mod model
+# or: make package-model
+
+# Local smoke
+python -m venv /tmp/model-smoke && /tmp/model-smoke/bin/pip install dist/papita_transactions_model-*.whl
+/tmp/model-smoke/bin/python -c "import papita_txnsmodel; print(papita_txnsmodel.__version__)"
+```
+
+| Trigger                                                       | Target                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------ |
+| Merge conventional `*(model):` / model-path commits to `main` | `release-model.yml` → tag `model-v*` + model CHANGELOG |
+| Tag `model-vX.Y.Z`                                            | PyPI via `publish-model.yml`                           |
+| Actions → **Publish model package** → `target=testpypi`       | TestPyPI (OIDC)                                        |
+
+Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, `publish-model.yml`, and Environments `testpypi` / `pypi`. Do **not** commit API tokens.
+
 ## Package layout
 
 ```

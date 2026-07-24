@@ -1,7 +1,7 @@
 # save-ma-money
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2081-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2082-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
 ![interrogate score](./docs/interrogate_badge.svg)
 [![coverage score](./docs/coverage-badge.svg)](https://app.codecov.io/github/Elmorralito/save-ma-money)
 ![pre-commit.ci status](https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/main.svg)
@@ -13,7 +13,7 @@ I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ign
 
 | Package              | README                                                 | Role                                                                                                                                                                      |
 | :------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations                                                                                                            |
+| **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations — PyPI: `papita-transactions-model` ([PPT-024](https://github.com/Elmorralito/save-ma-money/issues/11))    |
 | **papita-txnsapi**   | [`modules/api/README.md`](./modules/api/README.md)     | FastAPI REST surface; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
 
 ---
