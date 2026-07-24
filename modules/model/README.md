@@ -343,10 +343,22 @@ Alembic migrations remain in the **git checkout** (`modules/model/alembic/`); th
 
 ### Build / version / publish (PPT-024)
 
+**Automatic versioning** uses [python-semantic-release](https://python-semantic-release.readthedocs.io/) on `main` ([`release-model.yml`](../../.github/workflows/release-model.yml)):
+
+- Updates **`modules/model/CHANGELOG.md` only** (never root [`CHANGELOG.md`](../../CHANGELOG.md) — that file is owned by [`auto-updates.yml`](../../.github/workflows/auto-updates.yml))
+- Bumps `pyproject.toml` and tags `model-v{version}`
+- PyPI upload: [`publish-model.yml`](../../.github/workflows/publish-model.yml) on those tags
+
+Use Conventional Commits with a **model** scope so bumps are detected:
+
+```text
+feat(model): add report window helper
+fix(model): correct soft-delete filter
+```
+
 ```bash
-# Bump model version only (Poetry)
+# Manual bump (escape hatch; prefer semantic-release on main)
 ./bin/version.sh --mod model --version 0.1.14 --skip-install
-# or: make dev-version MOD=model VERSION=0.1.14
 
 # Build sdist + wheel into dist/ (model only)
 ./bin/package.sh --mod model
@@ -357,15 +369,13 @@ python -m venv /tmp/model-smoke && /tmp/model-smoke/bin/pip install dist/papita_
 /tmp/model-smoke/bin/python -c "import papita_txnsmodel; print(papita_txnsmodel.__version__)"
 ```
 
-**CI publish:** [`.github/workflows/publish-model.yml`](../../.github/workflows/publish-model.yml)
+| Trigger                                                       | Target                                                 |
+| ------------------------------------------------------------- | ------------------------------------------------------ |
+| Merge conventional `*(model):` / model-path commits to `main` | `release-model.yml` → tag `model-v*` + model CHANGELOG |
+| Tag `model-vX.Y.Z`                                            | PyPI via `publish-model.yml`                           |
+| Actions → **Publish model package** → `target=testpypi`       | TestPyPI (OIDC)                                        |
 
-| Trigger                                                      | Target                              |
-| ------------------------------------------------------------ | ----------------------------------- |
-| Git tag `model-vX.Y.Z` (must match `pyproject.toml` version) | PyPI                                |
-| Actions → **Publish model package** → `target=testpypi`      | TestPyPI (OIDC / Trusted Publisher) |
-| Same workflow → `target=pypi` and `confirm_pypi=publish`     | PyPI (manual)                       |
-
-Bump version → merge → `git tag model-vX.Y.Z && git push origin model-vX.Y.Z`. Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, workflow, and Environments `testpypi` / `pypi`. Do **not** commit API tokens.
+Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, `publish-model.yml`, and Environments `testpypi` / `pypi`. Do **not** commit API tokens.
 
 ## Package layout
 

@@ -98,19 +98,20 @@ Use this matrix to predict required checks before opening a PR.
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                    |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :--------------------------------------------------------- |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests (B0), Codecov      |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`              |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                              |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                          |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                     |
-| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules             |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing             |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges    |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge         |
-| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | Tag `model-v*`; `workflow_dispatch` (TestPyPI / PyPI)      | Build + OIDC publish `papita-transactions-model` (PPT-024) |
+| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                             |
+| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------ |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests (B0), Codecov               |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                         |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`                       |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                                       |
+| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                                   |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                              |
+| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules                      |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing                      |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges             |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge                  |
+| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`             | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md` |
+| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | Tag `model-v*`; `workflow_dispatch` (TestPyPI / PyPI)      | Build + OIDC publish `papita-transactions-model` (PPT-024)          |
 
 ---
 
@@ -161,6 +162,17 @@ pre-commit install   # optional but recommended for commit-time hooks
 
 ## Workflows in detail
 
+### Release model (python-semantic-release, PPT-024)
+
+|                 |                                                                                                             |
+| :-------------- | :---------------------------------------------------------------------------------------------------------- |
+| **Trigger**     | Push to `main` touching `modules/model/**`; optional `workflow_dispatch` (+ force bump)                     |
+| **Tool**        | [python-semantic-release](https://python-semantic-release.readthedocs.io/) v10 (`directory: modules/model`) |
+| **Outputs**     | Bumps `modules/model/pyproject.toml`, updates **`modules/model/CHANGELOG.md`**, tags `model-v*`             |
+| **Not touched** | Repo-root [`CHANGELOG.md`](../CHANGELOG.md) — owned by [Auto Updates](#auto-updates) only                   |
+
+**Commit style for bumps:** Conventional Commits with model scope, e.g. `feat(model): …`, `fix(model): …` (or path-filtered commits under `modules/model/`). Title style `feat/PPT-024: …` alone does **not** drive a version bump.
+
 ### Publish model package (PPT-024)
 
 |             |                                                                                      |
@@ -170,7 +182,7 @@ pre-commit install   # optional but recommended for commit-time hooks
 | **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`)          |
 | **Gates**   | Tag version must match `modules/model/pyproject.toml`; clean-venv wheel import smoke |
 
-**Release flow:** bump version in `modules/model/pyproject.toml` → merge → tag `model-vX.Y.Z` (must match) → PyPI. Use Actions dispatch with `target=testpypi` for TestPyPI dry runs.
+**Release flow:** merge conventional model commits to `main` → `release-model.yml` tags `model-v*` → `publish-model.yml` publishes to PyPI. TestPyPI: dispatch **Publish model package** with `target=testpypi`.
 
 **Operator setup (once):** on [TestPyPI](https://test.pypi.org/) / [PyPI](https://pypi.org/), add a Trusted Publisher for this repository, workflow `publish-model.yml`, and the matching environment. Prefer environment protection on `pypi`. Do not store long-lived tokens in git.
 

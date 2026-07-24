@@ -10,15 +10,16 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-024 / #11: model-only packaging — `package.sh --mod model`, publish-model.yml
-  (TestPyPI/PyPI OIDC), README/CI docs, `__meta__` uses importlib.metadata
+- PPT-024 / #11: model packaging + python-semantic-release
+  (`modules/model/CHANGELOG.md` only; root CHANGELOG stays auto-updates.yml)
+  - publish-model.yml on model-v\* tags
 
 ### Next action
 
-- Land PPT-024 PR; configure Trusted Publishers; first TestPyPI dispatch / model-v\* tag
+- Land PPT-024 PR; configure Trusted Publishers; first feat(model) merge → tag → PyPI
 - Do not commit `environments/**/.env`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
-- Model publish: tag `model-v*` → PyPI; dispatch → TestPyPI (or confirmed PyPI)
+- PSR must not write root CHANGELOG.md
