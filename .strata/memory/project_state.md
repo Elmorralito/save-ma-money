@@ -10,13 +10,12 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-024 first release: PSR created `model-v1.0.0` + GH release; publish failed
-  because `bin/package.sh` used `python -m poetry` (CLI-only Poetry in CI)
+- PPT-024: PSR tagged `model-v1.0.0`; publish blocked by Poetry CLI + API pin `<1.0`
 
 ### Next action
 
-- Land package.sh Poetry CLI fix; re-dispatch Publish model package → PyPI
-- Ensure PyPI/TestPyPI Trusted Publishers + `pypi`/`testpypi` environments
+- Land package.sh Poetry CLI fix + API model dep `>=1.0.0,<2.0`
+- Re-dispatch Publish model package → PyPI (Trusted Publishers)
 - Note: GITHUB_TOKEN tag pushes do not cascade to publish-model.yml
 
 ### Uncommitted / staging notes
