@@ -82,7 +82,7 @@ jobs:
 
       # Node.js 24 runtime (v4 was Node 20 and triggered deprecation warnings).
       - name: Upload dist artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: model-dist
           path: dist/*
@@ -98,7 +98,7 @@ jobs:
       contents: read
     steps:
       - name: Download dist artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: model-dist
           path: dist
@@ -123,7 +123,7 @@ jobs:
       contents: read
     steps:
       - name: Download dist artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: model-dist
           path: dist
