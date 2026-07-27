@@ -23,3 +23,5 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - Do not commit `environments/**/.env`
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
+
+- Prettier-format modules/model/CHANGELOG.md (unblocks Dependabot QC)
