@@ -10,6 +10,35 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.2 (2026-07-27)
+
+### Code Style
+
+- Prettier-format CHANGELOG for QC all-files gate
+  ([`6b42a05`](https://github.com/Elmorralito/save-ma-money/commit/6b42a05a89dca65a40595bd436876cc81486d5b7))
+
+- Prettier-format CHANGELOG for QC all-files gate
+  ([`5b9a6da`](https://github.com/Elmorralito/save-ma-money/commit/5b9a6da3ae11c84b0cb1c7f2b75be06527dbfad1))
+
+- Prettier-format CHANGELOG for QC all-files gate
+  ([`3ea7f9d`](https://github.com/Elmorralito/save-ma-money/commit/3ea7f9d4121ab4ff9698785e1c4b81e68fe2bcd5))
+
+- Prettier-format CHANGELOG for QC all-files gate
+  ([#110](https://github.com/Elmorralito/save-ma-money/pull/110),
+  [`820443e`](https://github.com/Elmorralito/save-ma-money/commit/820443e61e1d7a16d09e6c351b80db1b83121527))
+
+### Continuous Integration
+
+- Update CI adoption badge [skip ci] ([#109](https://github.com/Elmorralito/save-ma-money/pull/109),
+  [`10cbcd0`](https://github.com/Elmorralito/save-ma-money/commit/10cbcd02109f3fbe8c986fd6632a02b8e9d823e4))
+
+### Documentation
+
+- **ci**: Refresh model README install path and harden PR/publish CI
+  ([#109](https://github.com/Elmorralito/save-ma-money/pull/109),
+  [`10cbcd0`](https://github.com/Elmorralito/save-ma-money/commit/10cbcd02109f3fbe8c986fd6632a02b8e9d823e4))
+
+
 ## v1.0.1 (2026-07-24)
 
 ### Bug Fixes
