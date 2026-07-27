@@ -19,7 +19,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 - [Which checks run on my PR?](#which-checks-run-on-my-pr)
 - [Workflow overview](#workflow-overview)
 - [Run checks locally](#run-checks-locally)
-- [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024))
+- [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi))
 - [CI Adoption Badge](#ci-adoption-badge)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Strata validation](#strata-validation)
@@ -47,10 +47,13 @@ flowchart TB
         BS[Bash Security]
         ST[Strata Check]
         SYN[Branch sync with main]
+        DEV[Publish model dev TestPyPI]
     end
 
     subgraph main [Merge to main]
         AU[Auto Updates]
+        REL[Release model PSR]
+        PYPI[Publish model PyPI]
     end
 
     QC --> |pre-commit + pytest + Codecov| Pass1[Gate]
@@ -64,7 +67,10 @@ flowchart TB
     SYN --> |not behind origin/main| Pass9[Gate]
 
     Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 & Pass9 --> Merge[Merge]
+    Pass1 & Pass2 & Pass9 --> |modules/model paths only| DEV
     Merge --> AU
+    Merge --> |modules/model paths + releasable commits| REL
+    REL --> |workflow_call on released=true| PYPI
     AU --> |CHANGELOG + badges| Push[Push to main]
 ```
 
@@ -96,25 +102,28 @@ Use this matrix to predict required checks before opening a PR.
 
 **Always on PRs:** Secret Scan (Gitleaks) — no path filter, full history · Branch sync with main — fail if the PR head is behind `origin/main`.
 
+**Model TestPyPI (optional publish, not a merge gate):** PRs that touch `modules/model/**` also run [Publish model (dev)](#publish-model-dev--testpypi) after the other PR checks pass. It is path-filtered and must not be required for merge (it waits on the other checks).
+
 ---
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                             |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :------------------------------------------------------------------ |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests (B0), Codecov               |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                         |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`                       |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                                       |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                                   |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                              |
-| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules                      |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing                      |
-| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                           | Fail if branch is behind `origin/main` (needs merge/rebase)         |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges             |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge                  |
-| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`             | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md` |
-| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | Tag `model-v*`; `workflow_dispatch` (TestPyPI / PyPI)      | Build + OIDC publish `papita-transactions-model` (PPT-024)          |
+| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                                                       |
+| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests (B0), Codecov                                         |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                                                   |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`                                                 |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                                                                 |
+| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                                                             |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                                                        |
+| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules                                                |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing                                                |
+| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                           | Fail if branch is behind `origin/main` (needs merge/rebase)                                   |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                       |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge                                            |
+| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`             | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release |
+| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`       | Build + OIDC publish `papita-transactions-model` (PPT-024)                                    |
+| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                   | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                               |
 
 ---
 
@@ -182,27 +191,49 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 
 ### Release model (python-semantic-release, PPT-024)
 
-|                 |                                                                                                             |
-| :-------------- | :---------------------------------------------------------------------------------------------------------- |
-| **Trigger**     | Push to `main` touching `modules/model/**`; optional `workflow_dispatch` (+ force bump)                     |
-| **Tool**        | [python-semantic-release](https://python-semantic-release.readthedocs.io/) v10 (`directory: modules/model`) |
-| **Outputs**     | Bumps `modules/model/pyproject.toml`, updates **`modules/model/CHANGELOG.md`**, tags `model-v*`             |
-| **Not touched** | Repo-root [`CHANGELOG.md`](../CHANGELOG.md) — owned by [Auto Updates](#auto-updates) only                   |
+|                 |                                                                                                                |
+| :-------------- | :------------------------------------------------------------------------------------------------------------- |
+| **Trigger**     | Push to `main` touching `modules/model/**`; optional `workflow_dispatch` (+ force bump)                        |
+| **Tool**        | [python-semantic-release](https://python-semantic-release.readthedocs.io/) v10 (`directory: modules/model`)    |
+| **Outputs**     | Bumps `modules/model/pyproject.toml`, updates **`modules/model/CHANGELOG.md`**, tags `model-v*`                |
+| **Publish**     | On `released=true`, **`workflow_call`** → [`publish-model.yml`](./workflows/publish-model.yml) (`target=pypi`) |
+| **Not touched** | Repo-root [`CHANGELOG.md`](../CHANGELOG.md) — owned by [Auto Updates](#auto-updates) only                      |
 
 **Commit style for bumps:** Conventional Commits with model scope, e.g. `feat(model): …`, `fix(model): …` (or path-filtered commits under `modules/model/`). Title style `feat/PPT-024: …` alone does **not** drive a version bump.
 
+**Why `workflow_call`:** tags created with `GITHUB_TOKEN` inside Actions often **do not** start other `on: push: tags` workflows. Calling publish from the release job avoids that cascade gap. Manual tag pushes (human/PAT) and `workflow_dispatch` remain as escape hatches.
+
 ### Publish model package (PPT-024)
 
-|             |                                                                                      |
-| :---------- | :----------------------------------------------------------------------------------- |
-| **Trigger** | Tag `model-v*` → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi`          |
-| **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                         |
-| **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`)          |
-| **Gates**   | Tag version must match `modules/model/pyproject.toml`; clean-venv wheel import smoke |
+|             |                                                                                                                   |
+| :---------- | :---------------------------------------------------------------------------------------------------------------- |
+| **Trigger** | `workflow_call` (from release / dev); tag `model-v*` → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi` |
+| **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                                                      |
+| **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`)                                       |
+| **Gates**   | Tag/ref version must match `modules/model/pyproject.toml` (stable); clean-venv wheel import smoke                 |
 
-**Release flow:** merge conventional model commits to `main` → `release-model.yml` tags `model-v*` → `publish-model.yml` publishes to PyPI. TestPyPI: dispatch **Publish model package** with `target=testpypi`.
+**Stable release flow:** merge conventional model commits to `main` → `release-model.yml` tags `model-v*` → **calls** `publish-model.yml` → **PyPI**.
 
-**Operator setup (once):** on [TestPyPI](https://test.pypi.org/) / [PyPI](https://pypi.org/), add a Trusted Publisher for this repository, workflow `publish-model.yml`, and the matching environment. Prefer environment protection on `pypi`. Do not store long-lived tokens in git.
+### Publish model (dev) → TestPyPI
+
+|             |                                                                                                                                                                                                                             |
+| :---------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger** | Pull request (non-draft, same-repo) with paths under `modules/model/**` (or the publish/dev scripts/workflows listed in the YAML)                                                                                           |
+| **Gate**    | [`wait_for_pr_checks.sh`](./scripts/wait_for_pr_checks.sh) — all other `pull_request` workflow runs for the head SHA must succeed; always requires **Secret Scan**, **Branch sync with main**, and **Code Quality Control** |
+| **Version** | Ephemeral stamp `{pyproject_version}.dev{github.run_id}` (PEP 440; not committed) via [`stamp_model_dev_version.py`](./scripts/stamp_model_dev_version.py)                                                                  |
+| **Publish** | Reuses `publish-model.yml` (`workflow_call`, `target=testpypi`, `stamp_dev_version=true`)                                                                                                                                   |
+| **Cadence** | Every qualifying PR push (`synchronize`); concurrency cancels in-progress runs for the same PR                                                                                                                              |
+| **Skipped** | Draft PRs; fork PRs; PRs with no `modules/model/**` (path filter)                                                                                                                                                           |
+
+```bash
+# Install a PR preview build from TestPyPI (pin the stamped version from the Actions summary)
+pip install \
+  -i https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  "papita-transactions-model==<version>.dev<run_id>"
+```
+
+**Operator setup (once):** on [TestPyPI](https://test.pypi.org/) / [PyPI](https://pypi.org/), add a Trusted Publisher for this repository, workflow **`publish-model.yml`** (the reusable file that performs OIDC), and the matching environment. For PR → TestPyPI, the `testpypi` GitHub Environment must allow deployments from PR head branches (not only `main`). Prefer environment protection on `pypi`. Do not store long-lived tokens in git.
 
 **Local:** `make package-model` · docs: [`modules/model/README.md`](../modules/model/README.md) § Install.
 
@@ -629,21 +660,23 @@ Missing file → skip with success (project may not use MCP).
 
 ## Supporting scripts
 
-| Script                                                             | Invoked by               | Description                                                              |
-| :----------------------------------------------------------------- | :----------------------- | :----------------------------------------------------------------------- |
-| [`branch_sync_check.sh`](./scripts/branch_sync_check.sh)           | Branch sync with main    | Fail if `HEAD` is behind `BASE_REF` (default `origin/main`)              |
-| [`migration_check.sh`](./scripts/migration_check.sh)               | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
-| [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)         | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
-| [`check_module_versions.py`](./scripts/check_module_versions.py)   | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
-| [`strata_check.sh`](./scripts/strata_check.sh)                     | Strata Check, pre-commit | Layout, budgets, frontmatter, strict pairing                             |
-| [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | pre-commit               | Sets `STRATA_STRICT_MODULES=1`, `STRATA_DIFF_SOURCE=staged`; skips in CI |
-| [`mcp_config_check.sh`](./scripts/mcp_config_check.sh)             | pre-commit               | MCP JSON structure + token scan                                          |
-| [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | pre-commit               | CI skip wrapper for MCP check                                            |
-| [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | pre-push (local)         | Advisory CI adoption report; never blocks push                           |
-| [`update_todos.py`](./scripts/update_todos.py)                     | Auto Updates             | CHANGELOG from GitHub API                                                |
-| [`evaluate_ci.py`](./scripts/evaluate_ci.py)                       | CI Adoption Badge        | CI tool detection, adoption scoring, README badge metadata               |
-| [`changelog_template.jinja`](./scripts/changelog_template.jinja)   | update_todos.py          | CHANGELOG section template                                               |
-| [`issue_template.jinja`](./scripts/issue_template.jinja)           | update_todos.py          | Per-issue CHANGELOG entry template                                       |
+| Script                                                               | Invoked by               | Description                                                              |
+| :------------------------------------------------------------------- | :----------------------- | :----------------------------------------------------------------------- |
+| [`branch_sync_check.sh`](./scripts/branch_sync_check.sh)             | Branch sync with main    | Fail if `HEAD` is behind `BASE_REF` (default `origin/main`)              |
+| [`wait_for_pr_checks.sh`](./scripts/wait_for_pr_checks.sh)           | Publish model (dev)      | Poll Actions until other PR checks for `COMMIT_SHA` succeed              |
+| [`stamp_model_dev_version.py`](./scripts/stamp_model_dev_version.py) | Publish model (dev)      | Rewrite model `project.version` to `{base}.dev{run_id}` for TestPyPI     |
+| [`migration_check.sh`](./scripts/migration_check.sh)                 | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
+| [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)           | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
+| [`check_module_versions.py`](./scripts/check_module_versions.py)     | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
+| [`strata_check.sh`](./scripts/strata_check.sh)                       | Strata Check, pre-commit | Layout, budgets, frontmatter, strict pairing                             |
+| [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)             | pre-commit               | Sets `STRATA_STRICT_MODULES=1`, `STRATA_DIFF_SOURCE=staged`; skips in CI |
+| [`mcp_config_check.sh`](./scripts/mcp_config_check.sh)               | pre-commit               | MCP JSON structure + token scan                                          |
+| [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                   | pre-commit               | CI skip wrapper for MCP check                                            |
+| [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh)   | pre-push (local)         | Advisory CI adoption report; never blocks push                           |
+| [`update_todos.py`](./scripts/update_todos.py)                       | Auto Updates             | CHANGELOG from GitHub API                                                |
+| [`evaluate_ci.py`](./scripts/evaluate_ci.py)                         | CI Adoption Badge        | CI tool detection, adoption scoring, README badge metadata               |
+| [`changelog_template.jinja`](./scripts/changelog_template.jinja)     | update_todos.py          | CHANGELOG section template                                               |
+| [`issue_template.jinja`](./scripts/issue_template.jinja)             | update_todos.py          | Per-issue CHANGELOG entry template                                       |
 
 Shared shell helpers: [`bin/utils.sh`](../bin/utils.sh) (`log`, `run_command`).
 

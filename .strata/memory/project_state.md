@@ -10,13 +10,13 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-024: model **1.0.1** on PyPI/TestPyPI; model README install/release refresh
-- Added `branch-sync.yml` + `branch_sync_check.sh` (fail PRs behind `origin/main`)
-- publish-model: bump artifact actions to Node.js 24 (`upload@v6`, `download@v7`)
+- Model release automation: PR → TestPyPI `.dev{run_id}` after checks; merge → PSR + `workflow_call` PyPI
+- Scripts: `wait_for_pr_checks.sh`, `stamp_model_dev_version.py`; workflows `publish-model-dev.yml` + reusable publish
+- Docs: `modules/model/README.md` + `.github/CI.md` release/TestPyPI sections
 
 ### Next action
 
-- Prefer dispatch publish when GITHUB_TOKEN tags do not cascade
+- Confirm GitHub Environment `testpypi` allows PR-branch deployments (Trusted Publisher already on `publish-model.yml`)
 - Avoid `[skip ci]` inside squash-merge bodies (skips release-model.yml)
 
 ### Uncommitted / staging notes

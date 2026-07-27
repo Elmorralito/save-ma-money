@@ -2,7 +2,8 @@
 # python-semantic-release for modules/model only (PPT-024).
 # Writes modules/model/CHANGELOG.md + bumps pyproject version + tags model-v*.
 # Does NOT touch repo-root CHANGELOG.md (owned by auto-updates.yml).
-# PyPI upload stays in publish-model.yml (triggered by model-v* tags).
+# On a successful release, calls publish-model.yml (workflow_call) so PyPI publish
+# still runs when GITHUB_TOKEN tag pushes do not cascade to other workflows.
 
 name: Release model (semantic-release)
 
@@ -13,6 +14,7 @@ on:
     paths:
       - "modules/model/**"
       - ".github/workflows/release-model.yml"
+      - ".github/workflows/publish-model.yml"
   workflow_dispatch:
     inputs:
       force:
@@ -37,6 +39,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      released: ${{ steps.meta.outputs.released }}
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
 
     steps:
       - name: Checkout release branch at workflow SHA
@@ -71,12 +77,30 @@ jobs:
           git_committer_name: "github-actions"
           git_committer_email: "actions@users.noreply.github.com"
 
-      - name: Summary
+      - name: Export release metadata
+        id: meta
         env:
           RELEASED: ${{ steps.release.outputs.released || steps.release_forced.outputs.released || 'false' }}
           VERSION: ${{ steps.release.outputs.version || steps.release_forced.outputs.version || '' }}
           TAG: ${{ steps.release.outputs.tag || steps.release_forced.outputs.tag || '' }}
         run: |
-          echo "released=${RELEASED}"
-          echo "version=${VERSION}"
-          echo "tag=${TAG}"
+          set -euo pipefail
+          {
+            echo "released=${RELEASED}"
+            echo "version=${VERSION}"
+            echo "tag=${TAG}"
+          } >>"${GITHUB_OUTPUT}"
+          echo "released=${RELEASED} version=${VERSION} tag=${TAG}"
+
+  publish:
+    name: Publish to PyPI
+    needs: release
+    if: needs.release.outputs.released == 'true' && needs.release.outputs.tag != ''
+    uses: ./.github/workflows/publish-model.yml
+    with:
+      target: pypi
+      ref: ${{ needs.release.outputs.tag }}
+      stamp_dev_version: false
+    permissions:
+      id-token: write
+      contents: read

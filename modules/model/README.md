@@ -383,13 +383,22 @@ Installed wheels resolve `__version__` via `importlib.metadata` for distribution
 ### TestPyPI
 
 ```bash
+# Latest uploaded TestPyPI build (may be a PR .dev preview or a stable re-upload)
 pip install \
   -i https://test.pypi.org/simple/ \
   --extra-index-url https://pypi.org/simple/ \
   papita-transactions-model
+
+# Pin a PR preview stamped by Publish model (dev): {version}.dev{run_id}
+pip install \
+  -i https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  "papita-transactions-model==1.0.2.dev18472938471"
 ```
 
 `--extra-index-url` pulls runtime dependencies from real PyPI when they are not mirrored on TestPyPI.
+
+**PR automation:** when a non-draft, same-repo PR changes `modules/model/**` and the other PR workflow checks pass (at least Secret Scan, Branch sync, Code Quality Control), [`publish-model-dev.yml`](../../.github/workflows/publish-model-dev.yml) publishes `{pyproject_version}.dev{run_id}` to TestPyPI. See [CI.md](../../.github/CI.md#publish-model-dev--testpypi).
 
 ### After install — database
 
@@ -446,14 +455,15 @@ python -m venv /tmp/model-smoke
 
 #### Release triggers
 
-| Trigger                                                                                        | Result                                                                                             |
-| :--------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
-| Push/merge to `main` touching `modules/model/**` (or `workflow_dispatch` on **Release model**) | PSR bumps version, updates `modules/model/CHANGELOG.md`, tags `model-v*`, creates a GitHub Release |
-| Tag `model-vX.Y.Z` (when the push is not from `GITHUB_TOKEN`)                                  | `publish-model.yml` → **PyPI**                                                                     |
-| Actions → **Publish model package** → `target=testpypi`                                        | **TestPyPI** (OIDC, environment `testpypi`)                                                        |
-| Actions → **Publish model package** → `target=pypi` + `confirm_pypi=publish`                   | **PyPI** (OIDC, environment `pypi`) — use when tag pushes did not cascade                          |
+| Trigger                                                                                        | Result                                                                                                    |
+| :--------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
+| PR (non-draft, same-repo) touching `modules/model/**` after other PR checks pass               | `publish-model-dev.yml` → TestPyPI as `{version}.dev{run_id}` (not committed)                             |
+| Push/merge to `main` touching `modules/model/**` (or `workflow_dispatch` on **Release model**) | PSR bumps version, updates `modules/model/CHANGELOG.md`, tags `model-v*`, then **`workflow_call` → PyPI** |
+| Tag `model-vX.Y.Z` (human/PAT; `GITHUB_TOKEN` tags usually do not cascade)                     | `publish-model.yml` → **PyPI** (escape hatch)                                                             |
+| Actions → **Publish model package** → `target=testpypi`                                        | **TestPyPI** (OIDC, environment `testpypi`)                                                               |
+| Actions → **Publish model package** → `target=pypi` + `confirm_pypi=publish`                   | **PyPI** (OIDC, environment `pypi`) — manual escape hatch                                                 |
 
-**Operator note:** Trusted Publishers are configured on PyPI/TestPyPI for workflow `publish-model.yml` and GitHub Environments `pypi` / `testpypi`. Do **not** commit API tokens. Tags created by `GITHUB_TOKEN` inside Actions often **do not** start other workflows — if a tag exists but PyPI was not updated, re-dispatch **Publish model package** manually (see [CI.md](../../.github/CI.md#publish-model-package-ppt-024)).
+**Operator note:** Trusted Publishers are configured on PyPI/TestPyPI for workflow **`publish-model.yml`** (reusable OIDC publisher) and GitHub Environments `pypi` / `testpypi`. The `testpypi` environment must allow PR branch deployments for dev publishes. Do **not** commit API tokens. Stable publishes after merge use `workflow_call` from `release-model.yml` so they do **not** depend on tag-push cascade (see [CI.md](../../.github/CI.md#publish-model-package-ppt-024)).
 
 ## Package layout
 

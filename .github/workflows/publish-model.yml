@@ -2,7 +2,11 @@
 # Publish papita-transactions-model (modules/model) to TestPyPI / PyPI (PPT-024).
 # Configure Trusted Publisher on PyPI/TestPyPI for this workflow + environment.
 # Secrets: none required when using OIDC (id-token: write). Never commit tokens.
-# Release by pushing a tag model-vX.Y.Z that matches modules/model/pyproject.toml.
+#
+# Triggers:
+#   - push tag model-v* → PyPI (human/PAT tags; GITHUB_TOKEN tags often do not cascade)
+#   - workflow_call from release-model.yml (stable PyPI) or publish-model-dev.yml (TestPyPI)
+#   - workflow_dispatch (manual TestPyPI / PyPI escape hatch)
 
 name: Publish model package
 
@@ -24,9 +28,25 @@ on:
         type: string
         required: false
         default: ""
+  workflow_call:
+    inputs:
+      target:
+        description: "Publish target index (testpypi | pypi)"
+        type: string
+        required: true
+      ref:
+        description: "Git ref/SHA/tag to checkout (empty = caller default ref)"
+        type: string
+        required: false
+        default: ""
+      stamp_dev_version:
+        description: "Stamp PEP 440 .dev{run_id} before build (TestPyPI PR previews)"
+        type: boolean
+        required: false
+        default: false
 
 concurrency:
-  group: publish-model-${{ github.ref }}
+  group: publish-model-${{ github.workflow }}-${{ github.ref }}-${{ inputs.target || 'tag' }}
   cancel-in-progress: false
 
 permissions:
@@ -35,9 +55,13 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      package_version: ${{ steps.pkg_ver.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -52,14 +76,22 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
 
+      - name: Stamp unique TestPyPI dev version
+        if: ${{ inputs.stamp_dev_version }}
+        id: stamp
+        run: |
+          set -euo pipefail
+          NEW_VER="$(python .github/scripts/stamp_model_dev_version.py --run-id "${GITHUB_RUN_ID}")"
+          echo "version=${NEW_VER}" >>"${GITHUB_OUTPUT}"
+          echo "Stamped papita-transactions-model==${NEW_VER}"
+
       - name: Build model sdist + wheel
         run: /bin/bash ./bin/package.sh --mod model
 
-      - name: Verify tag version matches pyproject (tag pushes)
-        if: startsWith(github.ref, 'refs/tags/model-v')
+      - name: Read package version
+        id: pkg_ver
         run: |
           set -euo pipefail
-          TAG_VER="${GITHUB_REF_NAME#model-v}"
           PKG_VER="$(python - <<'PY'
           import tomllib
           from pathlib import Path
@@ -67,7 +99,30 @@ jobs:
           print(data["project"]["version"])
           PY
           )"
+          echo "version=${PKG_VER}" >>"${GITHUB_OUTPUT}"
+          echo "package_version=${PKG_VER}"
+
+      - name: Verify tag version matches pyproject (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/model-v')
+        run: |
+          set -euo pipefail
+          TAG_VER="${GITHUB_REF_NAME#model-v}"
+          PKG_VER="${{ steps.pkg_ver.outputs.version }}"
           echo "tag=${TAG_VER} pyproject=${PKG_VER}"
+          test "${TAG_VER}" = "${PKG_VER}"
+
+      - name: Verify checkout ref tag matches pyproject (workflow_call stable)
+        if: >-
+          github.event_name == 'workflow_call' &&
+          !inputs.stamp_dev_version &&
+          inputs.ref != '' &&
+          startsWith(inputs.ref, 'model-v')
+        run: |
+          set -euo pipefail
+          TAG_VER="${{ inputs.ref }}"
+          TAG_VER="${TAG_VER#model-v}"
+          PKG_VER="${{ steps.pkg_ver.outputs.version }}"
+          echo "ref_tag=${TAG_VER} pyproject=${PKG_VER}"
           test "${TAG_VER}" = "${PKG_VER}"
 
       - name: Smoke-install wheel in clean venv
@@ -80,7 +135,6 @@ jobs:
           /tmp/model-wheel-smoke/bin/pip install "${WHEEL}"
           /tmp/model-wheel-smoke/bin/python -c "import papita_txnsmodel; from papita_txnsmodel import __version__; print('ok', __version__)"
 
-      # Node.js 24 runtime (v4 was Node 20 and triggered deprecation warnings).
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -90,7 +144,9 @@ jobs:
 
   publish-testpypi:
     needs: build
-    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi') ||
+      (github.event_name == 'workflow_call' && inputs.target == 'testpypi')
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -111,11 +167,20 @@ jobs:
           skip-existing: true
           verbose: true
 
+      - name: Summary
+        run: |
+          {
+            echo "## Published to TestPyPI"
+            echo ""
+            echo "\`papita-transactions-model==${{ needs.build.outputs.package_version }}\`"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
   publish-pypi:
     needs: build
     if: >-
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/model-v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && inputs.confirm_pypi == 'publish')
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && inputs.confirm_pypi == 'publish') ||
+      (github.event_name == 'workflow_call' && inputs.target == 'pypi')
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -134,3 +199,11 @@ jobs:
           packages-dir: dist/
           skip-existing: true
           verbose: true
+
+      - name: Summary
+        run: |
+          {
+            echo "## Published to PyPI"
+            echo ""
+            echo "\`papita-transactions-model==${{ needs.build.outputs.package_version }}\`"
+          } >>"${GITHUB_STEP_SUMMARY}"
