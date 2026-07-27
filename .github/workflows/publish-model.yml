@@ -80,8 +80,9 @@ jobs:
           /tmp/model-wheel-smoke/bin/pip install "${WHEEL}"
           /tmp/model-wheel-smoke/bin/python -c "import papita_txnsmodel; from papita_txnsmodel import __version__; print('ok', __version__)"
 
+      # Node.js 24 runtime (v4 was Node 20 and triggered deprecation warnings).
       - name: Upload dist artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: model-dist
           path: dist/*
@@ -97,7 +98,7 @@ jobs:
       contents: read
     steps:
       - name: Download dist artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: model-dist
           path: dist
@@ -122,7 +123,7 @@ jobs:
       contents: read
     steps:
       - name: Download dist artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: model-dist
           path: dist

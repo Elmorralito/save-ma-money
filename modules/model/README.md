@@ -1,6 +1,16 @@
 # Papita Transactions Data Model
 
-Welcome to the **backbone of financial data integrity** for the **save-ma-money** monorepo. The `papita-txnsmodel` package (`papita-transactions-model`) is the **system of record**: SQLModel schemas, Alembic migrations, repositories, services, and ingestion handlers. The sibling [`papita-txnsapi`](../api/README.md) package will expose HTTP routes that call these services — business rules live here, not in FastAPI routers.
+Welcome to the **backbone of financial data integrity** for the **save-ma-money** monorepo. The importable package is **`papita_txnsmodel`** (PyPI: [`papita-transactions-model`](https://pypi.org/project/papita-transactions-model/)). It is the **system of record**: SQLModel schemas, Alembic migrations, repositories, services, and ingestion handlers. The sibling [`papita-txnsapi`](../api/README.md) exposes HTTP routes that call these services — business rules live here, not in FastAPI routers.
+
+|                     |                                                                                                |
+| :------------------ | :--------------------------------------------------------------------------------------------- |
+| **PyPI**            | [`papita-transactions-model`](https://pypi.org/project/papita-transactions-model/)             |
+| **Import**          | `import papita_txnsmodel`                                                                      |
+| **Current version** | See [`pyproject.toml`](./pyproject.toml) / [`CHANGELOG.md`](./CHANGELOG.md) (package releases) |
+| **Python**          | `>=3.10,<3.15`                                                                                 |
+| **Issue**           | [PPT-024 / #11](https://github.com/Elmorralito/save-ma-money/issues/11)                        |
+
+**Contents:** [Overview](#overview) · [From v0 to v3](#from-v0-to-v3) · [Tenancy](#tenancy-and-security) · [Layers](#architectural-layers) · [Balance reports](#balance-reports-and-materialized-views) · [Database](#database-integration) · [Usage](#usage-examples) · [Install](#install) · [Layout](#package-layout) · [Migrations](#database-migrations) · [Testing](#testing) · [Related docs](#related-documentation)
 
 ![PostgreSQL ER diagram — papita_transactions v3 core + balance read models](../../docs/postgres_papita_transactions_v4.png)
 
@@ -10,7 +20,7 @@ Entity-relationship diagram for schema `papita_transactions`: **v3 core tables**
 
 Personal and small-business finance rarely starts in one clean database. Data arrives as bank CSVs, card portal exports, broker statements, spreadsheets, and manual corrections — each with its own column names, sign conventions, and category vocabulary. Without a shared domain layer, every import script re-implements validation, tenancy, and balance logic differently, and an API built on top inherits those inconsistencies.
 
-`papita-txnsmodel` solves that by treating finance as **structured, tenant-scoped domain data** in PostgreSQL (schema `papita_transactions`). Every path — bulk CSV ingest via handlers, direct service calls in notebooks, or future REST endpoints — flows through the same DTO validation, repository upserts, and service rules.
+`papita_txnsmodel` solves that by treating finance as **structured, tenant-scoped domain data** in PostgreSQL (schema `papita_transactions`). Every path — bulk CSV ingest via handlers, direct service calls in notebooks, or REST endpoints in `papita-txnsapi` — flows through the same DTO validation, repository upserts, and service rules.
 
 ### The problem space
 
@@ -330,59 +340,130 @@ txns.upsert_records(
 
 ## Install
 
-**PyPI name:** `papita-transactions-model` · **Import:** `papita_txnsmodel`
+**PyPI name:** [`papita-transactions-model`](https://pypi.org/project/papita-transactions-model/) · **Import:** `papita_txnsmodel` · **Requires:** Python `>=3.10,<3.15`
 
-| Mode                      | Command                                                                                                             |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Published (when released) | `pip install papita-transactions-model`                                                                             |
-| Poetry                    | `poetry add papita-transactions-model`                                                                              |
-| Monorepo path (this repo) | Root `pyproject.toml` path dep — `poetry install` from repo root                                                    |
-| TestPyPI                  | `pip install -i https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ papita-transactions-model` |
+The published wheel is the **importable library**. Alembic migrations stay in this git checkout (`modules/model/alembic/`) and are applied with [`bin/alembic.sh`](../../bin/alembic.sh) (or Docker) from the monorepo — they are not a separate installable console script in the wheel.
 
-Alembic migrations remain in the **git checkout** (`modules/model/alembic/`); the published wheel is the importable library. Run migrations via [`bin/alembic.sh`](../../bin/alembic.sh) from this repository (or Docker).
+### Quick start (PyPI)
+
+```bash
+# Latest release from PyPI
+pip install papita-transactions-model
+
+# Pin a release (recommended for apps; versions on PyPI / CHANGELOG.md)
+pip install "papita-transactions-model==1.0.1"
+
+# Poetry (external project)
+poetry add papita-transactions-model
+# or compatible range used by papita-transactions-api:
+poetry add "papita-transactions-model>=1.0.0,<2.0"
+```
+
+Verify the install:
+
+```bash
+python -c "import papita_txnsmodel; from papita_txnsmodel import __version__; print(__version__)"
+```
+
+Installed wheels resolve `__version__` via `importlib.metadata` for distribution `papita-transactions-model`. Source checkouts fall back to reading this module’s [`pyproject.toml`](./pyproject.toml).
+
+### Install modes
+
+| Mode                     | When to use                              | Command                                                              |
+| :----------------------- | :--------------------------------------- | :------------------------------------------------------------------- |
+| **PyPI (production)**    | Apps, CI consumers, external projects    | `pip install papita-transactions-model`                              |
+| **Pinned PyPI**          | Reproducible deploys                     | `pip install "papita-transactions-model==<version>"`                 |
+| **Poetry (external)**    | Poetry-managed apps outside this repo    | `poetry add papita-transactions-model`                               |
+| **Monorepo (develop)**   | Contributors working in `save-ma-money`  | From repo root: `poetry install` (path dep in root `pyproject.toml`) |
+| **Editable module only** | Local hack on model in isolation         | `pip install -e modules/model` (from repo root)                      |
+| **TestPyPI**             | Pre-release smoke against the test index | See [TestPyPI](#testpypi)                                            |
+
+**API module note:** `papita-transactions-api` depends on `papita-transactions-model (>=1.0.0,<2.0)`. Keep that range in sync when cutting model majors.
+
+### TestPyPI
+
+```bash
+pip install \
+  -i https://test.pypi.org/simple/ \
+  --extra-index-url https://pypi.org/simple/ \
+  papita-transactions-model
+```
+
+`--extra-index-url` pulls runtime dependencies from real PyPI when they are not mirrored on TestPyPI.
+
+### After install — database
+
+1. Provide a PostgreSQL URL (`postgresql+psycopg2://…`).
+2. From a **clone of this repository**, run migrations (wheel alone does not ship runnable Alembic env wiring for ops):
+
+```bash
+/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
+# or:
+/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+```
+
+3. Establish the connector in application code (see [Database integration](#database-integration)).
+
+Environment templates: [`.env.example`](../../.env.example) · Compose: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
 
 ### Build / version / publish (PPT-024)
 
-**Automatic versioning** uses [python-semantic-release](https://python-semantic-release.readthedocs.io/) on `main` ([`release-model.yml`](../../.github/workflows/release-model.yml)):
+Packaging and release automation for **this module only** ([#11](https://github.com/Elmorralito/save-ma-money/issues/11)):
 
-- Updates **`modules/model/CHANGELOG.md` only** (never root [`CHANGELOG.md`](../../CHANGELOG.md) — that file is owned by [`auto-updates.yml`](../../.github/workflows/auto-updates.yml))
-- Bumps `pyproject.toml` and tags `model-v{version}`
-- PyPI upload: [`publish-model.yml`](../../.github/workflows/publish-model.yml) on those tags
+| Concern                                          | Owner                                                                                                                                         |
+| :----------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| Version bump + `model-v*` tag + GH release notes | [`release-model.yml`](../../.github/workflows/release-model.yml) ([python-semantic-release](https://python-semantic-release.readthedocs.io/)) |
+| Package release notes                            | [`modules/model/CHANGELOG.md`](./CHANGELOG.md) **only**                                                                                       |
+| Monorepo issue tracker changelog                 | Root [`CHANGELOG.md`](../../CHANGELOG.md) via [`auto-updates.yml`](../../.github/workflows/auto-updates.yml) — **never** written by PSR       |
+| sdist / wheel → TestPyPI / PyPI                  | [`publish-model.yml`](../../.github/workflows/publish-model.yml) (OIDC [Trusted Publishers](https://docs.pypi.org/trusted-publishers/))       |
 
-Use Conventional Commits with a **model** scope so bumps are detected:
+**Commit style for bumps** — Conventional Commits with model scope (or path-filtered changes under `modules/model/`). Title style `feat/PPT-024: …` alone does **not** drive a version bump:
 
 ```text
 feat(model): add report window helper
 fix(model): correct soft-delete filter
 ```
 
-```bash
-# Manual bump (escape hatch; prefer semantic-release on main)
-./bin/version.sh --mod model --version 0.1.14 --skip-install
+**Avoid `[skip ci]` in squash-merge bodies** — GitHub skips all `push` workflows for that commit (including `release-model.yml`). Prefer a clean squash title/body, or put skip tokens only on standalone non-release commits.
 
-# Build sdist + wheel into dist/ (model only)
+#### Local build
+
+```bash
+# From repository root — model-only sdist + wheel → dist/
 ./bin/package.sh --mod model
 # or: make package-model
 
+# Manual version bump (escape hatch; prefer PSR on main)
+./bin/version.sh --mod model --version 1.0.2 --skip-install
+
 # Local smoke
-python -m venv /tmp/model-smoke && /tmp/model-smoke/bin/pip install dist/papita_transactions_model-*.whl
+python -m venv /tmp/model-smoke
+/tmp/model-smoke/bin/pip install dist/papita_transactions_model-*.whl
 /tmp/model-smoke/bin/python -c "import papita_txnsmodel; print(papita_txnsmodel.__version__)"
 ```
 
-| Trigger                                                       | Target                                                 |
-| ------------------------------------------------------------- | ------------------------------------------------------ |
-| Merge conventional `*(model):` / model-path commits to `main` | `release-model.yml` → tag `model-v*` + model CHANGELOG |
-| Tag `model-vX.Y.Z`                                            | PyPI via `publish-model.yml`                           |
-| Actions → **Publish model package** → `target=testpypi`       | TestPyPI (OIDC)                                        |
+`bin/package.sh` prefers the `poetry` CLI on `PATH` (as in CI via `snok/install-poetry`), with a `python -m poetry` fallback.
 
-Configure [Trusted Publishers](https://docs.pypi.org/trusted-publishers/) for this repo, `publish-model.yml`, and Environments `testpypi` / `pypi`. Do **not** commit API tokens.
+#### Release triggers
+
+| Trigger                                                                                        | Result                                                                                             |
+| :--------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
+| Push/merge to `main` touching `modules/model/**` (or `workflow_dispatch` on **Release model**) | PSR bumps version, updates `modules/model/CHANGELOG.md`, tags `model-v*`, creates a GitHub Release |
+| Tag `model-vX.Y.Z` (when the push is not from `GITHUB_TOKEN`)                                  | `publish-model.yml` → **PyPI**                                                                     |
+| Actions → **Publish model package** → `target=testpypi`                                        | **TestPyPI** (OIDC, environment `testpypi`)                                                        |
+| Actions → **Publish model package** → `target=pypi` + `confirm_pypi=publish`                   | **PyPI** (OIDC, environment `pypi`) — use when tag pushes did not cascade                          |
+
+**Operator note:** Trusted Publishers are configured on PyPI/TestPyPI for workflow `publish-model.yml` and GitHub Environments `pypi` / `testpypi`. Do **not** commit API tokens. Tags created by `GITHUB_TOKEN` inside Actions often **do not** start other workflows — if a tag exists but PyPI was not updated, re-dispatch **Publish model package** manually (see [CI.md](../../.github/CI.md#publish-model-package-ppt-024)).
 
 ## Package layout
 
 ```
 modules/model/
+├── pyproject.toml              # Package metadata + [tool.semantic_release]
+├── CHANGELOG.md                # Package releases (PSR; not root CHANGELOG.md)
 ├── alembic/                    # Migrations (alembic.ini at module root)
 ├── src/papita_txnsmodel/
+│   ├── __meta__.py             # Version (importlib.metadata or pyproject)
 │   ├── model/                  # SQLModel tables
 │   ├── access/                 # DTOs + repositories per domain
 │   ├── services/               # Business logic
@@ -416,13 +497,14 @@ Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [
 
 ## Testing
 
-**351** tests — layered coverage across access, database, services, handlers, and views.
+**406** tests (collected) — layered coverage across access, database, services, handlers, views, and package metadata.
 
-| Suite            | Location                                     | Requirements                                                 |
-| :--------------- | :------------------------------------------- | :----------------------------------------------------------- |
-| Unit (default)   | `tests/tests_papita_txnsmodel/`              | Mocked DB; no `DATABASE_URL` needed                          |
-| Integration      | `tests/.../integration/`                     | `DATABASE_URL` must be PostgreSQL; 4 tests skipped otherwise |
-| PPT-041 services | `tests/.../services/test_ppt041_services.py` | Account orchestration, transfers, reports, category guards   |
+| Suite            | Location                                     | Requirements                                                    |
+| :--------------- | :------------------------------------------- | :-------------------------------------------------------------- |
+| Unit (default)   | `tests/tests_papita_txnsmodel/`              | Mocked DB; no `DATABASE_URL` needed                             |
+| Integration      | `tests/.../integration/`                     | `DATABASE_URL` must be PostgreSQL; live tests skipped otherwise |
+| PPT-041 services | `tests/.../services/test_ppt041_services.py` | Account orchestration, transfers, reports, category guards      |
+| Package meta     | `tests/.../test_meta.py`                     | `__version__` via importlib.metadata / pyproject fallback       |
 
 ```bash
 # Standard gate (from repo root)
@@ -438,6 +520,9 @@ DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
 
 | Document                                                                                                                                                             | Description                                                                                       |
 | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
+| [`CHANGELOG.md`](./CHANGELOG.md)                                                                                                                                     | **Package** release notes (python-semantic-release)                                               |
+| [PyPI — papita-transactions-model](https://pypi.org/project/papita-transactions-model/)                                                                              | Published distributions                                                                           |
+| [`.github/CI.md` — Publish model](../../.github/CI.md#publish-model-package-ppt-024)                                                                                 | Release + OIDC publish workflows (PPT-024)                                                        |
 | [`docs/design/README.md`](../../docs/design/README.md)                                                                                                               | PPT-031 design program index                                                                      |
 | [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 frozen schema, constraints, G1 checklist                                                       |
 | [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../../docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)               | v0 inventory, 3NF analysis, NF register                                                           |
@@ -446,8 +531,8 @@ DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
 | [`docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)                 | B0/B1 validation, rollback, FR-14                                                                 |
 | [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)             | B0/B1 platform; B2/B3 deferred                                                                    |
 | [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)                                                            |
-| [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI scaffold and target REST contract                                                         |
+| [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI REST surface over this model                                                              |
 | [`README.md`](../../README.md)                                                                                                                                       | Monorepo overview and quick start                                                                 |
-| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                                 | Issue and release tracker                                                                         |
+| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                                 | Monorepo **issue** tracker (auto-updates; not package releases)                                   |
 
-Package version: [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).
+Package metadata: [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).
