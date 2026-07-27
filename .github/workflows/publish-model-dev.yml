@@ -1,0 +1,57 @@
+---
+# PR preview: publish a unique PEP 440 .dev{run_id} build of papita-transactions-model
+# to TestPyPI when modules/model changes and all other PR workflow checks have passed.
+# Same-repo PRs only (forks skipped — OIDC/environment). Drafts skipped.
+
+name: Publish model (dev)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "modules/model/**"
+      - ".github/workflows/publish-model-dev.yml"
+      - ".github/workflows/publish-model.yml"
+      - ".github/scripts/wait_for_pr_checks.sh"
+      - ".github/scripts/stamp_model_dev_version.py"
+
+concurrency:
+  group: publish-model-dev-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  checks: read
+
+jobs:
+  gate:
+    name: Wait for PR checks
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Wait until other PR checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          EXCLUDE_WORKFLOW_NAME: Publish model (dev)
+          TIMEOUT_SECONDS: "2700"
+          POLL_SECONDS: "30"
+        run: /bin/bash .github/scripts/wait_for_pr_checks.sh
+
+  publish:
+    name: Build + TestPyPI
+    needs: gate
+    uses: ./.github/workflows/publish-model.yml
+    with:
+      target: testpypi
+      ref: ${{ github.event.pull_request.head.sha }}
+      stamp_dev_version: true
+    permissions:
+      id-token: write
+      contents: read
