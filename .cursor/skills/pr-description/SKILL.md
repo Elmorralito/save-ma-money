@@ -72,11 +72,11 @@ do not quote the secret in the PR text.
 **Structure SSOT:** [`.github/PULL_REQUEST_TEMPLATE.md`](../../../.github/PULL_REQUEST_TEMPLATE.md).
 Fill that template (do not invent alternate section orders or drop required headings).
 
-| Source                 | Path / pattern                                                                                                                |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| GitHub PR template     | [`.github/PULL_REQUEST_TEMPLATE.md`](../../../.github/PULL_REQUEST_TEMPLATE.md) — **required structure**                      |
-| Issue / PR body drafts | [`docs/issues/README.md`](../../../docs/issues/README.md) Parts I–V; still-separate `docs/issues/PPT-044*.md` / `PPT-045*.md` |
-| Title notation         | `.cursor/rules/gen-custom/github_issue_conventions.mdc` → `{semantic}/PPT-{NNN}: [{domain}] {sentence case}`                  |
+| Source                 | Path / pattern                                                                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub PR template     | [`.github/PULL_REQUEST_TEMPLATE.md`](../../../.github/PULL_REQUEST_TEMPLATE.md) — **required structure**                                                                                                  |
+| Issue / PR body drafts | [`docs/issues/README.md`](../../../docs/issues/README.md) Parts I–VI; packaging design in [`ARCHITECTURE.md` Part IX](../../../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
+| Title notation         | `.cursor/rules/gen-custom/github_issue_conventions.mdc` → `{semantic}/PPT-{NNN}: [{domain}] {sentence case}`                                                                                              |
 
 ## Output format
 

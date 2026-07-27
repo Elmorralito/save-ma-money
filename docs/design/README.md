@@ -6,14 +6,14 @@ This directory holds two files:
 
 | File                                 | Role                                                                                      |
 | ------------------------------------ | ----------------------------------------------------------------------------------------- |
-| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Canonical design body** — v0 audit through migration runbook + PPT-044 (Parts I–VIII)   |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) | **Canonical design body** — v0 audit through migration runbook + PPT-044/045 (Parts I–IX) |
 | [`README.md`](README.md)             | **Program index** — issue map, gates (G0–G8), progress, ops entrypoints, links into Parts |
 
 Issue tracker and merged PR notes: [CHANGELOG.md](../../CHANGELOG.md). Monorepo overview and documentation hub: [root README](../../README.md).
 
 ## Primary architecture document
 
-**[`ARCHITECTURE.md`](ARCHITECTURE.md)** consolidates the former standalone design files into eight navigable parts:
+**[`ARCHITECTURE.md`](ARCHITECTURE.md)** consolidates the former standalone design files into nine navigable parts:
 
 | Part | Topic                                                                                      | Issue                                                                  |
 | ---- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
@@ -25,8 +25,9 @@ Issue tracker and merged PR notes: [CHANGELOG.md](../../CHANGELOG.md). Monorepo 
 | VI   | [Auth contract](ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                    | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E  |
 | VII  | [Migration runbook](ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)              | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)          |
 | VIII | [Post-MVP API hardening](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89)     | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)          |
+| IX   | [Uvicorn process packaging](ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)          |
 
-**Merged sources (removed):** `PPT-031-v0-audit.md`, `PPT-031-v1-schema.md`, `PPT-031-v4-extensions.md`, `PPT-031-api-model-mapping.md`, `PPT-033-api-coverage-matrix.md`, `PPT-031-auth-contract.md`, `PPT-031-migration-runbook.md`, `docs/issues/PPT-044-api-hardening-brief.md`, former `docs/ops/` checklists — content lives in `ARCHITECTURE.md` / this README (§ Ops).
+**Merged sources (removed):** `PPT-031-v0-audit.md`, `PPT-031-v1-schema.md`, `PPT-031-v4-extensions.md`, `PPT-031-api-model-mapping.md`, `PPT-033-api-coverage-matrix.md`, `PPT-031-auth-contract.md`, `PPT-031-migration-runbook.md`, `docs/issues/PPT-044-api-hardening-brief.md`, `docs/issues/PPT-045-uvicorn-process-packaging-brief.md`, former `docs/ops/` checklists — content lives in `ARCHITECTURE.md` / this README (§ Ops) / [`docs/issues/README.md` Part VI](../issues/README.md#part-vi--ppt-045-uvicorn-process-packaging-93).
 
 **Live implementation codemap:** [`.strata/docs/ARCHITECTURE.md`](../../.strata/docs/ARCHITECTURE.md) (code paths, not design authority).
 
@@ -46,16 +47,17 @@ Legacy API filenames (`API_Endpoints.md.md`, `API_Documentation.md.md`) redirect
 
 Design gates and code delivery are tracked separately. Current repo state:
 
-| Area                         | Status                                                                                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **v3 schema & migrations**   | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI              |
-| **Model layer (PPT-041)**    | Closed ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards                                                                  |
-| **Design program (PPT-031)** | Closed ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                         |
-| **API epic (PPT-032)**       | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Operator docs: [`modules/api/README.md`](../../modules/api/README.md) |
-| **API hardening (PPT-044)**  | Implemented ([#89](https://github.com/Elmorralito/save-ma-money/issues/89)) — [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89); P1–P7 Done                              |
-| **Redis (PPT-043)**          | Closed ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)) — cache, distributed RL, JWT denylist; see [ops below](#ops-redis--optional-b1-pooler)                                    |
+| Area                            | Status                                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **v3 schema & migrations**      | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI              |
+| **Model layer (PPT-041)**       | Closed ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards                                                                  |
+| **Design program (PPT-031)**    | Closed ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`ARCHITECTURE.md`](ARCHITECTURE.md)                                                                         |
+| **API epic (PPT-032)**          | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Operator docs: [`modules/api/README.md`](../../modules/api/README.md) |
+| **API hardening (PPT-044)**     | Implemented ([#89](https://github.com/Elmorralito/save-ma-money/issues/89)) — [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89); P1–P7 Done                              |
+| **Redis (PPT-043)**             | Closed ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)) — cache, distributed RL, JWT denylist; see [ops below](#ops-redis--optional-b1-pooler)                                    |
+| **Uvicorn packaging (PPT-045)** | Closed ([#93](https://github.com/Elmorralito/save-ma-money/issues/93)) — [Part IX](ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93); Compose `make api-up` SSOT                    |
 
-Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) records the #43-era matrix plus a post-delivery note; Part VIII records PPT-044; `.strata/memory/project_state.md` tracks the active sprint.
+Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-033-43) records the #43-era matrix plus a post-delivery note; Part VIII records PPT-044; Part IX records PPT-045 packaging; `.strata/memory/project_state.md` tracks the active sprint.
 
 ## Document ↔ issue map
 
@@ -73,10 +75,11 @@ Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-03
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VII                                                                                  | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)                                                                         | **Delivered (v3 seed)**                | `a75354933e79` baseline; validate on Docker/Supabase                                    |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VI                                                                                   | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E / [#49](https://github.com/Elmorralito/save-ma-money/issues/49) | **Implemented (Supabase Auth)**        | JWKS verify + provision; local HS256 tests only; refresh/logout via Supabase            |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) Part VIII                                                                                 | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)                                                                         | **Implemented**                        | Post-MVP API hardening (transport, bounds, abuse, disclosure, security pack)            |
+| [`ARCHITECTURE.md`](ARCHITECTURE.md) Part IX                                                                                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)                                                                         | **Closed**                             | Uvicorn process packaging (Compose `CMD` SSOT, workers vs Redis)                        |
 
 ## Ops (Redis + optional B1 pooler)
 
-Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/README.md). Env layout: [`environments/README.md`](../../environments/README.md). Design summary: [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89).
+Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/README.md). Env layout: [`environments/README.md`](../../environments/README.md). Design summary: [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89). Packaging: [Part IX](ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93).
 
 ### Redis (PPT-043 / B0 + B1)
 

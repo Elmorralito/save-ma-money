@@ -9,9 +9,9 @@
 | **ER diagrams**        | [v3 SVG](../postgres_papita_transactions_v3.svg) · [v4 SVG](../postgres_papita_transactions_v4.svg)                |
 
 This document consolidates the PPT-031 design program: v0 audit, v3 schema freeze, v4 extensions,
-API mapping, coverage matrix, auth contract, migration runbook, and post-MVP API hardening
-(PPT-044). Use the table of contents to navigate; implementation status for API routers is tracked
-in Part V / Part VIII and `.strata/memory/project_state.md`.
+API mapping, coverage matrix, auth contract, migration runbook, post-MVP API hardening (PPT-044),
+and uvicorn process packaging (PPT-045). Use the table of contents to navigate; implementation
+status for API routers is tracked in Part V / Part VIII and `.strata/memory/project_state.md`.
 
 ---
 
@@ -27,6 +27,7 @@ in Part V / Part VIII and `.strata/memory/project_state.md`.
 | VI   | [Auth contract](#part-vi--auth-contract-ppt-031-track-e)                    | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) Track E  |
 | VII  | [Migration runbook](#part-vii--migration-runbook-ppt-031-d-34)              | [#34](https://github.com/Elmorralito/save-ma-money/issues/34)          |
 | VIII | [Post-MVP API hardening](#part-viii--post-mvp-api-hardening-ppt-044-89)     | [#89](https://github.com/Elmorralito/save-ma-money/issues/89)          |
+| IX   | [Uvicorn process packaging](#part-ix--uvicorn-process-packaging-ppt-045-93) | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)          |
 
 ---
 
@@ -4109,7 +4110,7 @@ Env layout: [`environments/README.md`](../../environments/README.md).
 ### 7. Out of scope
 
 WAF/CDN · new domain features · RLS redesign · keyset pagination product · public admin metrics ·
-PPT-045 packaging ([#93](https://github.com/Elmorralito/save-ma-money/issues/93))
+process packaging (see [Part IX](#part-ix--uvicorn-process-packaging-ppt-045-93) / [#93](https://github.com/Elmorralito/save-ma-money/issues/93))
 
 ### 8. References
 
@@ -4118,3 +4119,61 @@ PPT-045 packaging ([#93](https://github.com/Elmorralito/save-ma-money/issues/93)
 - [`modules/api/README.md`](../../modules/api/README.md) — live REST + security contract
 - [Part V](#part-v--api-coverage-matrix-ppt-033-43) — endpoint coverage matrix
 - [Part VI](#part-vi--auth-contract-ppt-031-track-e) — auth contract
+- [Part IX](#part-ix--uvicorn-process-packaging-ppt-045-93) — uvicorn / Compose packaging
+
+---
+
+## Part IX — Uvicorn process packaging (PPT-045, #93)
+
+| Field              | Value                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------- |
+| **Issue**          | [#93](https://github.com/Elmorralito/save-ma-money/issues/93) (PPT-045)                              |
+| **Parent epic**    | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032)                              |
+| **Parent program** | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031)                              |
+| **Semantic**       | `ops/` (Compose process packaging; no new domain features)                                           |
+| **Canonical run**  | [`modules/api/README.md`](../../modules/api/README.md) (Docker-canonical paths)                      |
+| **Issue brief**    | [`docs/issues/README.md` Part VI](../issues/README.md#part-vi--ppt-045-uvicorn-process-packaging-93) |
+| **Last review**    | 2026-07-24 — closed by [PR #103](https://github.com/Elmorralito/save-ma-money/pull/103)              |
+
+How `papita_txnsapi` is launched under uvicorn for B0 Compose: container `CMD` as SSOT, Make
+entrypoints, bind/port exception, worker policy vs Redis, and lifespan/health contract. Operator
+detail stays in [`modules/api/README.md`](../../modules/api/README.md) and
+[`environments/README.md`](../../environments/README.md).
+
+### 1. Platform rule (B0 + B1)
+
+Validate packaging on **B0 Docker Postgres** (and Compose Redis when enabled). Supabase remains
+**Auth-only** for MVP; pooler DB is not required for this issue. Staging/prod may document managed
+Redis + uvicorn flags without deploying Kubernetes.
+
+### 2. Decisions locked
+
+| Decision            | Policy                                                                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Canonical start** | `make api-up` → Compose `api` (uvicorn in-container). `make stack-up` for the full explicit stack.                                                                                                |
+| **Runtime SSOT**    | Dockerfile `CMD` — do not promote host `poetry run uvicorn` as a day-to-day B0 path.                                                                                                              |
+| **Bind / port**     | Literal `0.0.0.0:8000` in `CMD` (HEALTHCHECK / `EXPOSE` / `${API_PORT}:8000` publish). Settings `HOST`/`PORT` are optional metadata.                                                              |
+| **Reload**          | Never `--reload` in Compose `CMD`.                                                                                                                                                                |
+| **Workers**         | B0 default **single worker**. In-memory rate limiter is process-local; multi-worker requires `REDIS_RATE_LIMIT_ENABLED=true` (+ Redis denylist). Defer gunicorn+uvicorn-workers unless justified. |
+| **Lifecycle**       | Uvicorn must run the FastAPI lifespan (Redis init/teardown).                                                                                                                                      |
+| **Health**          | `/api/v1/health`, `/ready`, `/live`, `/redis` unchanged as smoke targets (`make redis-smoke`).                                                                                                    |
+
+ASGI target: `papita_txnsapi.main:app`. Compose `api` keeps `REDIS_URL=redis://redis:6379/0` (not host `localhost`).
+
+### 3. Out of scope
+
+Kubernetes / ECS / systemd · TLS / reverse proxy · gunicorn worker fleet (unless ADR) · REST or
+`papita_txnsmodel` business-logic changes · Registrar / DuckDB / RLS (B3) · full PPT-044 security
+pack ([Part VIII](#part-viii--post-mvp-api-hardening-ppt-044-89) / #89) · host Poetry uvicorn as a
+supported B0 runtime.
+
+### 4. References
+
+- [#93](https://github.com/Elmorralito/save-ma-money/issues/93) — PPT-045 acceptance
+- [PR #103](https://github.com/Elmorralito/save-ma-money/pull/103) — closing PR
+- [`docker/api/Dockerfile`](../../docker/api/Dockerfile) — uvicorn `CMD` + healthcheck
+- [`docker/docker-compose.yml`](../../docker/docker-compose.yml) — `api` service
+- [`Makefile`](../../Makefile) — `api-up`, `api-down`, `stack-up`, `redis-up`, `redis-smoke`
+- [`modules/api/src/papita_txnsapi/main.py`](../../modules/api/src/papita_txnsapi/main.py) — `create_app`, lifespan
+- [#83](https://github.com/Elmorralito/save-ma-money/issues/83) — PPT-043 Redis lifespan / ready
+- [#89](https://github.com/Elmorralito/save-ma-money/issues/89) — PPT-044 hardening (distinct scope)
