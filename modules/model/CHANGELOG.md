@@ -32,7 +32,6 @@ This file is **not** the monorepo issue tracker changelog. Root
   ([#105](https://github.com/Elmorralito/save-ma-money/pull/105),
   [`9e60ffe`](https://github.com/Elmorralito/save-ma-money/commit/9e60ffe8f15f3d2ded702993e115814d4d65995c))
 
-
 ## v1.0.0 (2026-07-24)
 
 ### Bug Fixes
