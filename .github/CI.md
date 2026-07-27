@@ -46,6 +46,7 @@ flowchart TB
         TR[Trivy Security Scan]
         BS[Bash Security]
         ST[Strata Check]
+        SYN[Branch sync with main]
     end
 
     subgraph main [Merge to main]
@@ -60,8 +61,9 @@ flowchart TB
     TR --> |CVE + misconfig SARIF| Pass6[Gate]
     BS --> |ShellCheck security + Semgrep| Pass7[Gate]
     ST --> |.strata/ layout + pairing| Pass8[Gate]
+    SYN --> |not behind origin/main| Pass9[Gate]
 
-    Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 --> Merge[Merge]
+    Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 & Pass9 --> Merge[Merge]
     Merge --> AU
     AU --> |CHANGELOG + badges| Push[Push to main]
 ```
@@ -76,23 +78,23 @@ flowchart TB
 
 Use this matrix to predict required checks before opening a PR.
 
-| Change type                                 | Quality Control | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata |
-| :------------------------------------------ | :-------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: |
-| `docs/**` only                              |        —        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |
-| `modules/**` code                           |        ✓        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |
-| `pyproject.toml` / module deps              |        ✓        |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |
-| Model / Alembic / `docker/database/**`      |        ✓        |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |
-| `bin/**` or `.github/scripts/**`            |        ✓        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |
-| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |
-| `.github/workflows/**`                      |        ✓        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |
-| `.cursor/mcp.json`                          |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |
+| Change type                                 | Quality Control | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata | Branch sync |
+| :------------------------------------------ | :-------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: | :---------: |
+| `docs/**` only                              |        —        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
+| `modules/**` code                           |        ✓        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
+| `pyproject.toml` / module deps              |        ✓        |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |      ✓      |
+| Model / Alembic / `docker/database/**`      |        ✓        |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
+| `bin/**` or `.github/scripts/**`            |        ✓        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |      ✓      |
+| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |      ✓      |
+| `.github/workflows/**`                      |        ✓        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |      ✓      |
+| `.cursor/mcp.json`                          |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
 
 \* Runs only when matching [path filters](#workflow-overview) apply.
 † CodeQL runs on PRs **targeting `main`** only.
 ‡ Strata Check runs when root `pyproject.toml` changes (listed in its path filter).
 § Strata Check path filters do **not** include `.strata/**` — layout validation for memory-only edits is enforced locally via pre-commit, not this workflow.
 
-**Always on PRs:** Secret Scan (Gitleaks) — no path filter, full history.
+**Always on PRs:** Secret Scan (Gitleaks) — no path filter, full history · Branch sync with main — fail if the PR head is behind `origin/main`.
 
 ---
 
@@ -108,6 +110,7 @@ Use this matrix to predict required checks before opening a PR.
 | Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                              |
 | Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules                      |
 | Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing                      |
+| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                           | Fail if branch is behind `origin/main` (needs merge/rebase)         |
 | Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges             |
 | CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge                  |
 | Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`             | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md` |
@@ -128,6 +131,10 @@ pre-commit run --all-files
 
 # Supply chain (deps or workflow script changes)
 /bin/bash .github/scripts/supply_chain_check.sh
+
+# Branch not behind main (same gate as branch-sync.yml)
+git fetch origin main
+/bin/bash .github/scripts/branch_sync_check.sh
 
 # Strata layout + strict pairing (PR range vs main)
 STRATA_STRICT_MODULES=1 STRATA_BASE_REF=origin/main /bin/bash .github/scripts/strata_check.sh
@@ -161,6 +168,17 @@ pre-commit install   # optional but recommended for commit-time hooks
 ---
 
 ## Workflows in detail
+
+### Branch sync with main
+
+|               |                                                                                     |
+| :------------ | :---------------------------------------------------------------------------------- |
+| **Trigger**   | All pull requests; optional `workflow_dispatch`                                     |
+| **Script**    | [`scripts/branch_sync_check.sh`](./scripts/branch_sync_check.sh)                    |
+| **Pass when** | PR head is **not behind** `origin/main` (ahead-only feature commits are fine)       |
+| **Fail when** | `git rev-list --count HEAD..origin/main` &gt; 0 — merge or rebase `main`, then push |
+
+Checks out the PR head SHA (not the temporary merge commit) so the behind-count matches what you see locally.
 
 ### Release model (python-semantic-release, PPT-024)
 
@@ -613,6 +631,7 @@ Missing file → skip with success (project may not use MCP).
 
 | Script                                                             | Invoked by               | Description                                                              |
 | :----------------------------------------------------------------- | :----------------------- | :----------------------------------------------------------------------- |
+| [`branch_sync_check.sh`](./scripts/branch_sync_check.sh)           | Branch sync with main    | Fail if `HEAD` is behind `BASE_REF` (default `origin/main`)              |
 | [`migration_check.sh`](./scripts/migration_check.sh)               | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
 | [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)         | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
 | [`check_module_versions.py`](./scripts/check_module_versions.py)   | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
@@ -652,6 +671,7 @@ pre-commit run --all-files
 
 - Never commit `.env`, credentials, or real secrets
 - Pair `modules/**` / `bin/**` edits with `.strata/` (or adapter) updates
+- Keep the branch current with `main` (`git fetch origin && git merge origin/main` — Branch sync CI gate)
 - Keep PR scope focused
 - Use the PR body template: [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md)
 - New issues: use [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (epic / program / child / bug)
@@ -661,6 +681,22 @@ Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents
 ---
 
 ## Troubleshooting
+
+### Branch sync failed: behind `origin/main`
+
+```
+Branch is N commit(s) behind origin/main
+```
+
+Your PR head is missing commits that landed on `main`. Update and push:
+
+```bash
+git fetch origin
+git merge origin/main   # or: git rebase origin/main
+git push
+```
+
+Local preview: `/bin/bash .github/scripts/branch_sync_check.sh`
 
 ### Strata Check / `strata-validate` failed: code without memory update
 
@@ -757,8 +793,10 @@ Each scheduled workflow also supports **`workflow_dispatch`** from the Actions t
 | Python                    | 3.12                                              |
 | Poetry                    | 2.1.3 (`snok/install-poetry@v1`)                  |
 | PostgreSQL (migration CI) | `postgres:15-alpine`                              |
-| checkout                  | `actions/checkout@v5`                             |
-| setup-python              | `actions/setup-python@v5`                         |
+| checkout                  | `actions/checkout@v7`                             |
+| setup-python              | `actions/setup-python@v7`                         |
+| upload-artifact           | `actions/upload-artifact@v6` (Node.js 24)         |
+| download-artifact         | `actions/download-artifact@v7` (Node.js 24)       |
 | pre-commit action         | `pre-commit/action@v3.0.0`                        |
 | Codecov                   | `codecov/codecov-action@v4`                       |
 | Gitleaks                  | `gitleaks/gitleaks-action@e0c47f4…` (v3)          |
