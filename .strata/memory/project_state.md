@@ -10,17 +10,16 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- PPT-024: PSR tagged `model-v1.0.0`; publish blocked by Poetry CLI + API pin `<1.0`
+- PPT-024: model **1.0.1** on PyPI/TestPyPI; model README install/release refresh
+- Added `branch-sync.yml` + `branch_sync_check.sh` (fail PRs behind `origin/main`)
+- publish-model: bump artifact actions to Node.js 24 (`upload@v6`, `download@v7`)
 
 ### Next action
 
-- Land package.sh Poetry CLI fix + API model dep `>=1.0.0,<2.0`
-- Re-dispatch Publish model package → PyPI (Trusted Publishers)
-- Note: GITHUB_TOKEN tag pushes do not cascade to publish-model.yml
+- Prefer dispatch publish when GITHUB_TOKEN tags do not cascade
+- Avoid `[skip ci]` inside squash-merge bodies (skips release-model.yml)
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env`
-- PSR writes modules/model/CHANGELOG.md only (not root CHANGELOG.md)
-
-- Prettier-format modules/model/CHANGELOG.md from PSR 1.0.0
+- PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml

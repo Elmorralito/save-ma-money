@@ -1,0 +1,52 @@
+---
+# Fail when a PR (or dispatched) branch is behind main and needs merge/rebase.
+# Being ahead of main is normal for feature work and does not fail.
+
+name: Branch sync with main
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Base ref to compare against (default origin/main)"
+        type: string
+        required: false
+        default: "origin/main"
+
+concurrency:
+  group: branch-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  branch-sync:
+    name: Not behind main
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout PR head (full history)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Checkout current ref (full history)
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main for comparison
+        run: git fetch --no-tags origin main:refs/remotes/origin/main
+
+      - name: Check branch is not behind main
+        env:
+          BASE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.base_ref || 'origin/main' }}
+          HEAD_REF: HEAD
+        run: /bin/bash .github/scripts/branch_sync_check.sh
