@@ -6,11 +6,26 @@ on:
     types: [opened, synchronize, reopened]
     paths-ignore:
       - "docs/**"
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/web-ci.yml"
   push:
     branches:
       - main
     paths-ignore:
       - "docs/**"
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/web-ci.yml"
+
   schedule:
     - cron: "0 7 * * 1"
   workflow_dispatch:

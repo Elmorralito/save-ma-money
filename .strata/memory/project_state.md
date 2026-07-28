@@ -10,18 +10,20 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- Changelog tidy: Prettier-escape root `CHANGELOG.md` globs/underscores; drop extra blank line in `modules/model/CHANGELOG.md` (QC/all-files gate)
-- Model release automation: PR → TestPyPI `.dev{run_id}` after checks; merge → PSR + `workflow_call` PyPI
-- Scripts: `wait_for_pr_checks.sh`, `stamp_model_dev_version.py`; workflows `publish-model-dev.yml` + reusable publish
-- Docs: `modules/model/README.md` + `.github/CI.md` release/TestPyPI sections
+- **PPT-047 / #113:** Scaffolded `modules/web` (`@papita/web`) — Vite + React 19 + TS strict,
+  pnpm workspace (`pnpm-workspace.yaml`, committed `pnpm-lock.yaml`), ESLint 9 + Prettier +
+  Vitest smoke, Vite `/api` → `:8000` proxy, Makefile `web-*`, path-filtered `web-ci.yml`,
+  Dependabot npm, Node 22 pins (`.nvmrc` / `.node-version`)
+- Poetry/Python workspace unchanged; web quality via Web CI (not Python pre-commit)
+- Strata: map entry for `modules/web` in `.strata/docs/ARCHITECTURE.md`
 
 ### Next action
 
-- Confirm GitHub Environment `testpypi` allows PR-branch deployments (Trusted Publisher already on `publish-model.yml`)
-- Avoid `[skip ci]` inside squash-merge bodies (skips release-model.yml)
+- Open/merge PR for PPT-047; then PPT-048 OpenAPI client (#114) and/or PPT-051 design shell (#116)
+- Docs indexes for web (root README / AGENTS / `docs/issues`) → PPT-058 / #123
 
 ### Uncommitted / staging notes
 
-- Do not commit `environments/**/.env`
+- Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
+- `modules/**` changes need a paired `.strata/` touch (strict mode)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
-- `modules/**` CHANGELOG edits need a paired `.strata/` touch (strict mode)

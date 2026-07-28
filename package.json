@@ -1,0 +1,15 @@
+{
+  "name": "save-ma-money",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "web:dev": "pnpm --filter @papita/web dev",
+    "web:lint": "pnpm --filter @papita/web lint",
+    "web:test": "pnpm --filter @papita/web test",
+    "web:build": "pnpm --filter @papita/web build"
+  }
+}

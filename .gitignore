@@ -12,6 +12,8 @@ __pycache__/
 .env
 
 node_modules/
+modules/web/dist/
+modules/web/coverage/
 .mypy_cache/
 .pytest_cache/
 .venv/

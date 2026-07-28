@@ -1,0 +1,30 @@
+.app {
+  max-width: 40rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+}
+
+.app h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+}
+
+.app p {
+  margin: 0 0 1.25rem;
+  color: #444;
+}
+
+.app button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #222;
+  border-radius: 0.25rem;
+  background: #f7f7f7;
+  cursor: pointer;
+}
+
+.app button:hover {
+  background: #ececec;
+}

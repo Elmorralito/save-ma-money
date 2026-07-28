@@ -59,6 +59,26 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - CI/CD
+      - frontend
+    commit-message:
+      prefix: deps
+      include: scope
+    groups:
+      npm-web:
+        patterns:
+          - "*"
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
