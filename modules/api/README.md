@@ -226,6 +226,8 @@ In-container bind is literal `0.0.0.0:8000` ([`docker/api/Dockerfile`](../../doc
 | OpenAPI JSON | http://localhost:8000/api/openapi.json    |
 | Health ready | http://localhost:8000/api/v1/health/ready |
 
+**Web TypeScript consumers (PPT-065):** after OpenAPI-affecting API changes, refresh the committed web artifact with `make web-openapi` (offline dump — no Compose required). See [`modules/web/README.md`](../web/README.md#openapi-typegen-ci-strategy-ppt-065--130--locked-b).
+
 The API container uses `DATABASE_URL=...@postgres-db:5435/papita` and `REDIS_URL=redis://redis:6379/0` on the Compose network. Healthcheck: `/api/v1/health/live`.
 
 Database + Redis only (no API): `docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d` (or `make redis-up` for Redis alone).

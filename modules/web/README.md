@@ -22,14 +22,50 @@ pnpm install
 
 ## Scripts
 
-| Make (repo root) | pnpm (repo root) | Purpose                           |
-| ---------------- | ---------------- | --------------------------------- |
-| `make web-dev`   | `pnpm web:dev`   | Vite dev server (default `:5173`) |
-| `make web-lint`  | `pnpm web:lint`  | ESLint + Prettier check           |
-| `make web-test`  | `pnpm web:test`  | Vitest (jsdom)                    |
-| `make web-build` | `pnpm web:build` | `tsc -b` + production bundle      |
+| Make (repo root)      | pnpm (repo root)          | Purpose                                                             |
+| --------------------- | ------------------------- | ------------------------------------------------------------------- |
+| `make web-dev`        | `pnpm web:dev`            | Vite dev server (default `:5173`)                                   |
+| `make web-lint`       | `pnpm web:lint`           | ESLint + Prettier check                                             |
+| `make web-test`       | `pnpm web:test`           | Vitest (jsdom)                                                      |
+| `make web-build`      | `pnpm web:build`          | `tsc -b` + production bundle                                        |
+| `make generate-types` | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact |
+| `make check-types`    | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                         |
+| `make sync-openapi`   | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
+| `make check-openapi`  | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
+| `make web-openapi`    | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
 
 Package-local: `pnpm --filter @papita/web <script>`.
+
+## OpenAPI typegen CI strategy (PPT-065 / #130) — **locked: B**
+
+**Decision:** commit a schema artifact and generate TypeScript from that file. Web CI does **not** boot the API.
+
+| Layer        | Mechanism                                                                                   | Catches                                                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Artifact     | `modules/web/openapi/openapi.json`                                                          | Checked into git                                                                                                          |
+| Types        | `openapi-typescript` → `src/types/api.d.ts`                                                 | `pnpm web:check-types` in [web-ci.yml](../../.github/workflows/web-ci.yml)                                                |
+| API↔artifact | Offline `create_app().openapi()` via [`bin/export_openapi.py`](../../bin/export_openapi.py) | [openapi-contract.yml](../../.github/workflows/openapi-contract.yml) on `modules/api/src/**` + model `model/` / `access/` |
+
+The exporter normalizes `info.version` so API package semver bumps alone do not force artifact regen. Optional `make sync-openapi-live` only allows `localhost` / `127.0.0.1`.
+
+**Why not live API in Web CI (option A):** `web-ci` stays Node-only and path-filtered; no Compose/Postgres. Option A would couple every web PR to a heavy API boot with no reusable “API already up” workflow.
+
+**Developer regen (after API OpenAPI-affecting changes):**
+
+```bash
+make web-openapi   # sync-openapi && generate-types
+# commit: modules/web/openapi/openapi.json + modules/web/src/types/api.d.ts
+```
+
+Offline sync is the default (no `make api-up`, no `DOCS_ENABLED` required). Optional live parity:
+
+```bash
+make sync-openapi-live   # needs make api-up with DEBUG or DOCS_ENABLED=true
+```
+
+If live fetch returns 404, enable docs on the running API or use `make sync-openapi` instead.
+
+Thin schema aliases live in `src/types/domain.ts`. HTTP client / TanStack Query wiring is [#114](https://github.com/Elmorralito/save-ma-money/issues/114).
 
 ## Vite `/api` proxy
 
@@ -51,8 +87,9 @@ Package-local: `pnpm --filter @papita/web <script>`.
 
 - TypeScript: `strict` + `noUncheckedIndexedAccess`; path alias `@/*` → `src/*`.
 - ESLint 9 (flat) + Prettier + `eslint-plugin-react-hooks` + `@tanstack/eslint-plugin-query`.
+- OpenAPI types must stay in sync (`make check-types`); API PRs must refresh the artifact (`make check-openapi`).
 - Python pre-commit remains for Python; web quality is enforced by [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml).
 
 ## Out of scope here
 
-Feature screens, BFF cookie auth, OpenAPI client, design system / shadcn shell, nginx image — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
+Feature screens, BFF cookie auth, thin HTTP/Query client (#114), design system / shadcn shell, nginx image — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).

@@ -1,0 +1,5792 @@
+{
+  "components": {
+    "schemas": {
+      "AccountCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /accounts``.\n\nExactly one extension block should match ``account_kind``; others are ignored\nby ``extension_payload`` when absent.\n\nAttributes:\n    name: Display name; 1–255 characters after trimming.\n    description: Optional free-text description.\n    account_kind: Lowercase slug parsed to ``AccountKind``.\n    ledger_side: Lowercase slug parsed to ``LedgerSide``.\n    currency: ISO 4217 code; defaults to ``USD``.\n    initial_value: Optional opening balance before ledger postings (>= 0).\n    banking_details: Required shape for checking/savings/cash kinds.\n    trading_details: Required shape for investment brokerage kind.\n    real_estate_details: Required shape for real-estate kind.\n    credit_card_details: Required shape for credit-card kind.\n    loan_details: Required shape for loan/mortgage kind.",
+        "properties": {
+          "account_kind": {
+            "title": "Account Kind",
+            "type": "string"
+          },
+          "banking_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BankingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "credit_card_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "default": "USD",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "initial_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Value"
+          },
+          "ledger_side": {
+            "title": "Ledger Side",
+            "type": "string"
+          },
+          "loan_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoanDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "real_estate_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RealEstateDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trading_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TradingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "account_kind",
+          "ledger_side"
+        ],
+        "title": "AccountCreate",
+        "type": "object"
+      },
+      "AccountResponse": {
+        "description": "Account resource returned by list, detail, create, and update endpoints.\n\nAttributes:\n    id: Account UUID.\n    name: Display name.\n    account_kind: Lowercase API slug for ``AccountKind``.\n    ledger_side: Lowercase API slug for ``LedgerSide``.\n    currency: ISO 4217 code.\n    balance: Resolved display balance (MV row or ``initial_value`` per G8).\n    is_active: Whether the account is soft-active.\n    opened_at: When the account was opened, if recorded.\n    closed_at: When the account was closed, if applicable.\n    created_at: Row creation timestamp.\n    updated_at: Last modification timestamp.\n    banking_details: Present for banking-backed kinds when loaded.\n    trading_details: Present for brokerage kinds when loaded.\n    real_estate_details: Present for real-estate kinds when loaded.\n    credit_card_details: Present for credit-card kinds when loaded.\n    loan_details: Present for loan kinds when loaded.",
+        "properties": {
+          "account_kind": {
+            "title": "Account Kind",
+            "type": "string"
+          },
+          "balance": {
+            "default": 0.0,
+            "title": "Balance",
+            "type": "number"
+          },
+          "banking_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BankingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "credit_card_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "ledger_side": {
+            "title": "Ledger Side",
+            "type": "string"
+          },
+          "loan_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoanDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opened At"
+          },
+          "real_estate_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RealEstateDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trading_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TradingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "account_kind",
+          "ledger_side",
+          "currency",
+          "is_active"
+        ],
+        "title": "AccountResponse",
+        "type": "object"
+      },
+      "AccountUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for ``PUT /accounts/{account_id}``.\n\nAll fields are optional; only set fields are merged onto the existing DTO.\nExtension blocks follow the same kind-to-field mapping as ``AccountCreate``.\n\nAttributes:\n    name: New display name; 1–255 characters when provided.\n    description: Replacement description text.\n    currency: New ISO 4217 code (uppercased on apply).\n    initial_value: Updated opening balance hint (>= 0).\n    is_active: Soft-active flag; maps to DTO ``active``.\n    banking_details: Partial or full banking extension update.\n    trading_details: Partial or full trading extension update.\n    real_estate_details: Partial or full real-estate extension update.\n    credit_card_details: Partial or full credit-card extension update.\n    loan_details: Partial or full loan extension update.",
+        "properties": {
+          "banking_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BankingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "credit_card_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreditCardDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "initial_value": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Initial Value"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "loan_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LoanDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "real_estate_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RealEstateDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trading_details": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TradingDetailsSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "AccountUpdate",
+        "type": "object"
+      },
+      "AuthHealthResponse": {
+        "additionalProperties": false,
+        "description": "API↔Supabase Auth communication health for ``GET /health/auth``.\n\nAttributes:\n    status: ``healthy`` when Auth is up (or local skip); ``unhealthy`` otherwise.\n    provider: Active ``AUTH_PROVIDER`` value.\n    reachable: Whether the Auth probe succeeded (local skip counts as reachable).\n    latency_ms: Round-trip Auth health latency when a network probe ran.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of Auth status (never raw errors).",
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/AuthProbeDetail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "provider": {
+            "enum": [
+              "local",
+              "supabase"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "healthy",
+              "unhealthy"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "provider",
+          "reachable",
+          "checked_at",
+          "detail"
+        ],
+        "title": "AuthHealthResponse",
+        "type": "object"
+      },
+      "AuthProbeDetail": {
+        "description": "Allowlisted Auth probe detail strings returned to HTTP clients.\n\nMembers are stable wire labels for OpenAPI / operators — never raw exception\ntext. Values:\n\n* ``HEALTHY`` — GoTrue health returned a success status.\n* ``SKIPPED_LOCAL`` — ``AUTH_PROVIDER=local``; no network call.\n* ``NOT_CONFIGURED`` — Supabase URL or anon key missing.\n* ``UNREACHABLE`` — timeout or transport failure reaching Auth.\n* ``PROBE_FAILED`` — unexpected error or Auth HTTP 4xx on the probe.\n* ``UNHEALTHY_STATUS`` — Auth HTTP 5xx on the health endpoint.",
+        "enum": [
+          "supabase auth healthy",
+          "auth provider is local — supabase probe skipped",
+          "supabase auth not configured",
+          "supabase auth unreachable",
+          "supabase auth probe failed",
+          "supabase auth reported unhealthy"
+        ],
+        "title": "AuthProbeDetail",
+        "type": "string"
+      },
+      "BalanceResponse": {
+        "description": "Response for ``GET /accounts/{account_id}/balance``.\n\nAttributes:\n    account_id: UUID of the queried account.\n    balance: Ledger or materialized balance amount.\n    currency: Balance currency code.\n    as_of: Timestamp of the last balance activity, when available.",
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "balance": {
+            "title": "Balance",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "balance",
+          "currency"
+        ],
+        "title": "BalanceResponse",
+        "type": "object"
+      },
+      "BankingDetailsSchema": {
+        "additionalProperties": false,
+        "description": "Banking extension fields for checking, savings, and cash accounts.\n\nAttributes:\n    entity: Financial institution or custodian name.\n    account_number: Optional masked or full account number.",
+        "properties": {
+          "account_number": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Number"
+          },
+          "entity": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Entity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity"
+        ],
+        "title": "BankingDetailsSchema",
+        "type": "object"
+      },
+      "Body_login_api_v1_auth_login_post": {
+        "properties": {
+          "client_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Id"
+          },
+          "client_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "format": "password",
+            "title": "Client Secret"
+          },
+          "grant_type": {
+            "anyOf": [
+              {
+                "pattern": "^password$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grant Type"
+          },
+          "password": {
+            "format": "password",
+            "title": "Password",
+            "type": "string"
+          },
+          "scope": {
+            "default": "",
+            "title": "Scope",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_api_v1_auth_login_post",
+        "type": "object"
+      },
+      "CashFlowByAccountItem": {
+        "description": "Per-account cash-flow rollup (stubbed empty in MVP).",
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_name": {
+            "default": "",
+            "title": "Account Name",
+            "type": "string"
+          },
+          "inflows": {
+            "default": 0.0,
+            "title": "Inflows",
+            "type": "number"
+          },
+          "net": {
+            "default": 0.0,
+            "title": "Net",
+            "type": "number"
+          },
+          "outflows": {
+            "default": 0.0,
+            "title": "Outflows",
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id"
+        ],
+        "title": "CashFlowByAccountItem",
+        "type": "object"
+      },
+      "CashFlowReportResponse": {
+        "description": "Response body for ``GET /reports/cash-flow``.",
+        "properties": {
+          "by_account": {
+            "items": {
+              "$ref": "#/components/schemas/CashFlowByAccountItem"
+            },
+            "title": "By Account",
+            "type": "array"
+          },
+          "closing_balance": {
+            "default": 0.0,
+            "title": "Closing Balance",
+            "type": "number"
+          },
+          "net_cash_flow": {
+            "default": 0.0,
+            "title": "Net Cash Flow",
+            "type": "number"
+          },
+          "opening_balance": {
+            "default": 0.0,
+            "title": "Opening Balance",
+            "type": "number"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "total_inflows": {
+            "default": 0.0,
+            "title": "Total Inflows",
+            "type": "number"
+          },
+          "total_outflows": {
+            "default": 0.0,
+            "title": "Total Outflows",
+            "type": "number"
+          }
+        },
+        "required": [
+          "period"
+        ],
+        "title": "CashFlowReportResponse",
+        "type": "object"
+      },
+      "CategoryCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /categories``.\n\nAttributes:\n    name: Display name; 1–255 characters after trimming.\n    description: Optional free-text description.\n    category_type: Lowercase slug parsed to ``CategoryKind``.\n    parent_id: Optional parent category for hierarchical trees.\n    icon: Optional icon key or identifier (max 64 chars).\n    color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).",
+        "properties": {
+          "category_type": {
+            "title": "Category Type",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "maxLength": 7,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "required": [
+          "name",
+          "category_type"
+        ],
+        "title": "CategoryCreate",
+        "type": "object"
+      },
+      "CategoryResponse": {
+        "description": "Category resource returned by CRUD endpoints.\n\nAttributes:\n    id: Category UUID.\n    name: Display name.\n    category_type: Lowercase API slug for ``CategoryKind``.\n    parent_id: Parent category UUID when nested; otherwise ``None``.\n    icon: Optional icon key.\n    color: Optional hex color.\n    is_active: Whether the category is soft-active.\n    created_at: Row creation timestamp.\n    updated_at: Last modification timestamp.\n    subcategories: Direct child summaries for list enrichment.",
+        "properties": {
+          "category_type": {
+            "title": "Category Type",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "subcategories": {
+            "items": {
+              "$ref": "#/components/schemas/CategorySubcategoryResponse"
+            },
+            "title": "Subcategories",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category_type",
+          "is_active"
+        ],
+        "title": "CategoryResponse",
+        "type": "object"
+      },
+      "CategorySubcategoryResponse": {
+        "description": "Nested subcategory summary on list responses.\n\nAttributes:\n    id: Child category UUID.\n    name: Child display name.\n    category_type: Lowercase API slug for the child's ``CategoryKind``.",
+        "properties": {
+          "category_type": {
+            "title": "Category Type",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category_type"
+        ],
+        "title": "CategorySubcategoryResponse",
+        "type": "object"
+      },
+      "CategoryTrendItem": {
+        "description": "Category trend stub (empty in MVP).",
+        "properties": {
+          "average_monthly": {
+            "default": 0.0,
+            "title": "Average Monthly",
+            "type": "number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "change_percentage": {
+            "default": 0.0,
+            "title": "Change Percentage",
+            "type": "number"
+          },
+          "trend": {
+            "default": "stable",
+            "title": "Trend",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "title": "CategoryTrendItem",
+        "type": "object"
+      },
+      "CategoryUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for ``PUT /categories/{category_id}``.\n\nAll fields are optional; only set fields are merged onto the existing DTO.\n\nAttributes:\n    name: New display name; 1–255 characters when provided.\n    description: Replacement description text.\n    category_type: New kind slug; maps to DTO ``category_kind``.\n    parent_id: New parent reference or ``None`` to clear hierarchy.\n    icon: Updated icon key (max 64 chars).\n    color: Updated hex color (max 7 chars).\n    is_active: Soft-active flag; maps to DTO ``active``.",
+        "properties": {
+          "category_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Type"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "maxLength": 7,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          }
+        },
+        "title": "CategoryUpdate",
+        "type": "object"
+      },
+      "CreditCardDetailsSchema": {
+        "additionalProperties": false,
+        "description": "Credit card extension fields.\n\nAttributes:\n    credit_limit: Maximum revolving credit; must be positive.",
+        "properties": {
+          "credit_limit": {
+            "exclusiveMinimum": 0.0,
+            "title": "Credit Limit",
+            "type": "number"
+          }
+        },
+        "required": [
+          "credit_limit"
+        ],
+        "title": "CreditCardDetailsSchema",
+        "type": "object"
+      },
+      "DatabaseHealthResponse": {
+        "additionalProperties": false,
+        "description": "API↔database communication health for ``GET /health/database``.\n\nAttributes:\n    status: ``healthy`` when the probe succeeds; ``unhealthy`` otherwise.\n    connected: Whether the API could execute the constant probe against PostgreSQL.\n    latency_ms: Round-trip duration in milliseconds when connected.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of the communication status (never raw errors).",
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "connected": {
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/DatabaseProbeDetail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Round-trip probe latency in ms (parameterized SELECT of literal 1)",
+            "title": "Latency Ms"
+          },
+          "status": {
+            "enum": [
+              "healthy",
+              "unhealthy"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "connected",
+          "checked_at",
+          "detail"
+        ],
+        "title": "DatabaseHealthResponse",
+        "type": "object"
+      },
+      "DatabaseProbeDetail": {
+        "description": "Allowlisted probe detail strings returned to HTTP clients.\n\nValues are fixed constants so responses never echo exception text, connection\nURLs, or other attacker-/environment-influenced content.",
+        "enum": [
+          "api-database link healthy",
+          "connector not initialized",
+          "database engine unavailable",
+          "probe failed"
+        ],
+        "title": "DatabaseProbeDetail",
+        "type": "string"
+      },
+      "DeferredResponse": {
+        "description": "501 response body for deferred MVP endpoints.\n\nAttributes:\n    detail: Default message pointing to the API mapping doc.\n    deferred_reason: Optional override explaining why the route is not implemented.",
+        "properties": {
+          "deferred_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deferred Reason"
+          },
+          "detail": {
+            "default": "Not implemented in MVP — see docs/design/ARCHITECTURE.md Part IV",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "title": "DeferredResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "description": "Aggregate health status for ``GET /health``.\n\nAttributes:\n    status: Overall service health label (``healthy`` or ``degraded``).\n    version: Application version string from package metadata.\n    timestamp: UTC time when the probe was evaluated.\n    database: Database connectivity label (``connected`` or ``disconnected``).\n    database_latency_ms: Round-trip probe latency in milliseconds when connected.\n    auth: Supabase Auth connectivity (``connected``, ``disconnected``, or ``skipped``).\n    auth_latency_ms: Auth probe latency when a live Auth check ran successfully.\n    auth_detail: Allowlisted Auth probe detail.\n    redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).\n    redis_latency_ms: Redis probe latency when a live Redis check ran successfully.\n    redis_detail: Allowlisted Redis probe detail.",
+        "properties": {
+          "auth": {
+            "default": "skipped",
+            "enum": [
+              "connected",
+              "disconnected",
+              "skipped"
+            ],
+            "title": "Auth",
+            "type": "string"
+          },
+          "auth_detail": {
+            "$ref": "#/components/schemas/AuthProbeDetail",
+            "default": "auth provider is local — supabase probe skipped"
+          },
+          "auth_latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auth Latency Ms"
+          },
+          "database": {
+            "enum": [
+              "connected",
+              "disconnected"
+            ],
+            "title": "Database",
+            "type": "string"
+          },
+          "database_latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Database Latency Ms"
+          },
+          "redis": {
+            "default": "skipped",
+            "enum": [
+              "connected",
+              "disconnected",
+              "skipped"
+            ],
+            "title": "Redis",
+            "type": "string"
+          },
+          "redis_detail": {
+            "$ref": "#/components/schemas/RedisProbeDetail",
+            "default": "redis disabled"
+          },
+          "redis_latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redis Latency Ms"
+          },
+          "status": {
+            "default": "healthy",
+            "enum": [
+              "healthy",
+              "degraded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "version": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "timestamp",
+          "database"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "LivenessResponse": {
+        "additionalProperties": false,
+        "description": "Kubernetes liveness probe payload.\n\nAttributes:\n    alive: ``True`` when the process is running (default ``True``).",
+        "properties": {
+          "alive": {
+            "default": true,
+            "title": "Alive",
+            "type": "boolean"
+          }
+        },
+        "title": "LivenessResponse",
+        "type": "object"
+      },
+      "LoanDetailsSchema": {
+        "additionalProperties": false,
+        "description": "Loan extension fields.\n\nAttributes:\n    is_paid_off: Whether the loan balance has been fully settled.\n    insurance_payment: Recurring insurance component of the payment (>= 0).\n    extras_payment: Additional recurring fees beyond principal/interest (>= 0).",
+        "properties": {
+          "extras_payment": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Extras Payment",
+            "type": "number"
+          },
+          "insurance_payment": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Insurance Payment",
+            "type": "number"
+          },
+          "is_paid_off": {
+            "default": false,
+            "title": "Is Paid Off",
+            "type": "boolean"
+          }
+        },
+        "title": "LoanDetailsSchema",
+        "type": "object"
+      },
+      "LogoutRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/logout`` (session revoke).\n\nUnder Supabase, ``refresh_token`` is required for GoTrue ``sign_out``.\n``access_token`` may also be supplied via ``Authorization: Bearer`` on the\nroute when omitted here. When Redis is enabled, the access JWT is denylisted.\n\nAttributes:\n    refresh_token: Refresh token to invalidate at Supabase Auth.\n    access_token: Optional access JWT for precise session revoke / denylist.",
+        "properties": {
+          "access_token": {
+            "anyOf": [
+              {
+                "maxLength": 8192,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Token"
+          },
+          "refresh_token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "LogoutRequest",
+        "type": "object"
+      },
+      "MonthlyTrendItem": {
+        "description": "One period bucket for trends.",
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "savings_rate": {
+            "default": 0.0,
+            "title": "Savings Rate",
+            "type": "number"
+          },
+          "total_income": {
+            "default": 0.0,
+            "title": "Total Income",
+            "type": "number"
+          },
+          "total_spending": {
+            "default": 0.0,
+            "title": "Total Spending",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "MonthlyTrendItem",
+        "type": "object"
+      },
+      "MovementCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /movements``.",
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "currency": {
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "movement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              }
+            ],
+            "title": "Movement Date"
+          },
+          "scheduled": {
+            "default": false,
+            "title": "Scheduled",
+            "type": "boolean"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_account_id",
+          "destination_account_id",
+          "amount",
+          "currency",
+          "movement_date"
+        ],
+        "title": "MovementCreate",
+        "type": "object"
+      },
+      "MovementExecuteResponse": {
+        "description": "Response body for ``POST /movements/{movement_id}/execute``.",
+        "properties": {
+          "executed_at": {
+            "format": "date-time",
+            "title": "Executed At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "executed_at"
+        ],
+        "title": "MovementExecuteResponse",
+        "type": "object"
+      },
+      "MovementResponse": {
+        "description": "Movement (TRANSFER) resource returned by alias CRUD endpoints.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "destination_account_id": {
+            "format": "uuid",
+            "title": "Destination Account Id",
+            "type": "string"
+          },
+          "destination_account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "movement_date": {
+            "format": "date",
+            "title": "Movement Date",
+            "type": "string"
+          },
+          "source_account_id": {
+            "format": "uuid",
+            "title": "Source Account Id",
+            "type": "string"
+          },
+          "source_account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "source_account_id",
+          "destination_account_id",
+          "amount",
+          "currency",
+          "status",
+          "description",
+          "movement_date"
+        ],
+        "title": "MovementResponse",
+        "type": "object"
+      },
+      "MovementUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for ``PUT /movements/{movement_id}`` (PENDING only).",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "destination_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Id"
+          },
+          "movement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Date"
+          },
+          "source_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Id"
+          }
+        },
+        "title": "MovementUpdate",
+        "type": "object"
+      },
+      "OAuthCodeExchangeRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).\n\nCompletes OAuth when the client holds the authorization ``code`` and the\nPKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``\nwhen the redirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    auth_code: Authorization ``code`` from the OAuth redirect query string.\n    code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.\n    redirect_to: Optional redirect URI that must match the authorize step.\n    display_name: Optional profile override when Auth metadata is incomplete.",
+        "properties": {
+          "auth_code": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Auth Code",
+            "type": "string"
+          },
+          "code_verifier": {
+            "maxLength": 128,
+            "minLength": 16,
+            "title": "Code Verifier",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderType",
+            "default": "google"
+          },
+          "redirect_to": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect To"
+          }
+        },
+        "required": [
+          "auth_code",
+          "code_verifier"
+        ],
+        "title": "OAuthCodeExchangeRequest",
+        "type": "object"
+      },
+      "OAuthStartResponse": {
+        "description": "Authorize URL and PKCE verifier from ``GET /auth/oauth/{provider}``.\n\nClients open ``url`` in a browser (or use ``follow=true`` for cookie-based\nPKCE). ``code_verifier`` must be sent back on ``POST /auth/oauth/callback``\nunless the browser cookie flow is used.\n\nAttributes:\n    provider: OAuth channel (``google`` or ``github`` only).\n    url: Supabase / IdP authorize URL including the PKCE challenge.\n    code_verifier: PKCE verifier the client must retain for code exchange.",
+        "properties": {
+          "code_verifier": {
+            "maxLength": 128,
+            "minLength": 16,
+            "title": "Code Verifier",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "url": {
+            "maxLength": 4096,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "url",
+          "code_verifier"
+        ],
+        "title": "OAuthStartResponse",
+        "type": "object"
+      },
+      "PaginatedResponse_AccountResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AccountResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[AccountResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_CategoryResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[CategoryResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_MovementResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MovementResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[MovementResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_TransactionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[TransactionResponse]",
+        "type": "object"
+      },
+      "ProviderType": {
+        "description": "Signup / identity channel for ``users.provider_type``.\n\n``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``\nare Supabase Auth OAuth providers; values match Supabase provider ids.",
+        "enum": [
+          "email",
+          "google",
+          "github"
+        ],
+        "title": "ProviderType",
+        "type": "string"
+      },
+      "ReadinessResponse": {
+        "additionalProperties": false,
+        "description": "Kubernetes readiness probe payload.\n\nAttributes:\n    ready: ``True`` when the process can accept traffic (dependencies up).",
+        "properties": {
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready"
+        ],
+        "title": "ReadinessResponse",
+        "type": "object"
+      },
+      "RealEstateDetailsSchema": {
+        "additionalProperties": false,
+        "description": "Real-estate extension fields.\n\nAttributes:\n    address: Street address of the property.\n    city: City or locality.\n    country: ISO-style country name or code.\n    total_area: Total land area; must be positive.\n    built_area: Built or usable area; must be positive.\n    area_unit: API slug for area unit (e.g. ``sq_mt``); validated against\n        ``RealEstateAreaUnit``.\n    ownership: API slug for ownership type; validated against\n        ``RealEstateOwnership``.\n    participation: Fractional ownership share in (0, 1]; default 1.0.",
+        "properties": {
+          "address": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Address",
+            "type": "string"
+          },
+          "area_unit": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Area Unit",
+            "type": "string"
+          },
+          "built_area": {
+            "exclusiveMinimum": 0.0,
+            "title": "Built Area",
+            "type": "number"
+          },
+          "city": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "country": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Country",
+            "type": "string"
+          },
+          "ownership": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Ownership",
+            "type": "string"
+          },
+          "participation": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Participation",
+            "type": "number"
+          },
+          "total_area": {
+            "exclusiveMinimum": 0.0,
+            "title": "Total Area",
+            "type": "number"
+          }
+        },
+        "required": [
+          "address",
+          "city",
+          "country",
+          "total_area",
+          "built_area",
+          "area_unit",
+          "ownership"
+        ],
+        "title": "RealEstateDetailsSchema",
+        "type": "object"
+      },
+      "RedisHealthResponse": {
+        "additionalProperties": false,
+        "description": "API↔Redis communication health for ``GET /health/redis``.\n\nAttributes:\n    status: ``healthy`` when Redis is up (or disabled skip); ``unhealthy`` otherwise.\n    reachable: Whether the Redis probe succeeded (disabled skip counts as reachable).\n    latency_ms: Round-trip Redis PING latency when a network probe ran.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of Redis status (never raw errors).\n    required: Whether Redis is required for readiness (``REDIS_ENABLED``).",
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/RedisProbeDetail"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "maximum": 60000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "reachable": {
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "required": {
+            "default": false,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "healthy",
+              "unhealthy"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "reachable",
+          "checked_at",
+          "detail"
+        ],
+        "title": "RedisHealthResponse",
+        "type": "object"
+      },
+      "RedisProbeDetail": {
+        "description": "Allowlisted Redis probe detail strings returned to HTTP clients.",
+        "enum": [
+          "api-redis link healthy",
+          "redis disabled",
+          "redis client unavailable",
+          "probe failed"
+        ],
+        "title": "RedisProbeDetail",
+        "type": "string"
+      },
+      "RefreshRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).\n\nLocal Auth mode does not accept this body meaningfully (route returns 501).\n\nAttributes:\n    refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.",
+        "properties": {
+          "refresh_token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ],
+        "title": "RefreshRequest",
+        "type": "object"
+      },
+      "RegisterRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/register``.\n\nCreates an Auth user (Supabase) or local password row, then provisions\n``papita_transactions.users``. Password signup is email-only; Google/GitHub\nmust use the OAuth/SSO routes.\n\nAttributes:\n    email: Contact email and canonical login identifier; 5–255 characters.\n    password: Plain-text password; 8–128 characters (never echoed back).\n    display_name: Optional human-readable name shown in the app.\n    phone: Optional E.164-style phone number.\n    provider: Password signup channel (``email`` only).\n    username: Optional handle override; when omitted, derived from email.",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "maxLength": 255,
+            "minLength": 5,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 7,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "provider": {
+            "const": "email",
+            "default": "email",
+            "title": "Provider",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 6,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "RegisterRequest",
+        "type": "object"
+      },
+      "ReportPeriod": {
+        "description": "Inclusive report date window.",
+        "properties": {
+          "end_date": {
+            "format": "date",
+            "title": "End Date",
+            "type": "string"
+          },
+          "start_date": {
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date",
+          "end_date"
+        ],
+        "title": "ReportPeriod",
+        "type": "object"
+      },
+      "SpendingBreakdownItem": {
+        "description": "One spending group in the breakdown list.",
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "percentage": {
+            "default": 0.0,
+            "title": "Percentage",
+            "type": "number"
+          },
+          "transaction_count": {
+            "default": 0,
+            "title": "Transaction Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "amount"
+        ],
+        "title": "SpendingBreakdownItem",
+        "type": "object"
+      },
+      "SpendingReportResponse": {
+        "description": "Response body for ``GET /reports/spending``.",
+        "properties": {
+          "breakdown": {
+            "items": {
+              "$ref": "#/components/schemas/SpendingBreakdownItem"
+            },
+            "title": "Breakdown",
+            "type": "array"
+          },
+          "group_by": {
+            "default": "category",
+            "title": "Group By",
+            "type": "string"
+          },
+          "net_savings": {
+            "default": 0.0,
+            "title": "Net Savings",
+            "type": "number"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "total_income": {
+            "default": 0.0,
+            "title": "Total Income",
+            "type": "number"
+          },
+          "total_spending": {
+            "default": 0.0,
+            "title": "Total Spending",
+            "type": "number"
+          },
+          "trend": {
+            "items": {
+              "$ref": "#/components/schemas/SpendingTrendPoint"
+            },
+            "title": "Trend",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period"
+        ],
+        "title": "SpendingReportResponse",
+        "type": "object"
+      },
+      "SpendingTrendPoint": {
+        "description": "Optional daily trend point (stubbed empty in MVP).",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "income": {
+            "default": 0.0,
+            "title": "Income",
+            "type": "number"
+          },
+          "spending": {
+            "default": 0.0,
+            "title": "Spending",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date"
+        ],
+        "title": "SpendingTrendPoint",
+        "type": "object"
+      },
+      "SsoSessionRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/sso`` after client-side Supabase OAuth tokens.\n\nUse when the SPA already obtained an Auth session (e.g. fragment/hash flow).\nPrefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the\nredirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    access_token: Supabase access JWT from the OAuth session.\n    refresh_token: Supabase refresh token from the OAuth session.\n    display_name: Optional profile override when Auth metadata is incomplete.",
+        "properties": {
+          "access_token": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Access Token",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderType",
+            "default": "google"
+          },
+          "refresh_token": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Refresh Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "refresh_token"
+        ],
+        "title": "SsoSessionRequest",
+        "type": "object"
+      },
+      "TokenResponse": {
+        "description": "OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.\n\nLocal login sets ``refresh_token`` to ``None``. Supabase paths populate both\naccess and refresh tokens when Auth issues a session.\n\nAttributes:\n    access_token: Bearer JWT for protected API routes.\n    token_type: Always ``bearer`` for clients that expect OAuth2 shape.\n    expires_in: Access-token lifetime in seconds (``>= 1``).\n    refresh_token: Optional Supabase refresh token for rotation/logout.",
+        "properties": {
+          "access_token": {
+            "title": "Access Token",
+            "type": "string"
+          },
+          "expires_in": {
+            "minimum": 1.0,
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "refresh_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
+          },
+          "token_type": {
+            "default": "bearer",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "access_token",
+          "expires_in"
+        ],
+        "title": "TokenResponse",
+        "type": "object"
+      },
+      "TradingDetailsSchema": {
+        "additionalProperties": false,
+        "description": "Trading extension fields for investment brokerage accounts.\n\nAttributes:\n    buy_value: Positive purchase or cost basis per position unit.\n    units: Number of position units held (default 1, must be positive).",
+        "properties": {
+          "buy_value": {
+            "exclusiveMinimum": 0.0,
+            "title": "Buy Value",
+            "type": "number"
+          },
+          "units": {
+            "default": 1,
+            "exclusiveMinimum": 0.0,
+            "title": "Units",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "buy_value"
+        ],
+        "title": "TradingDetailsSchema",
+        "type": "object"
+      },
+      "TransactionBulkCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /transactions/bulk``.",
+        "properties": {
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionCreate"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "transactions"
+        ],
+        "title": "TransactionBulkCreate",
+        "type": "object"
+      },
+      "TransactionBulkResponse": {
+        "description": "Response body for ``POST /transactions/bulk``.",
+        "properties": {
+          "created": {
+            "minimum": 0.0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "failed": {
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionResponse"
+            },
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "created",
+          "failed"
+        ],
+        "title": "TransactionBulkResponse",
+        "type": "object"
+      },
+      "TransactionCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /transactions`` (INCOME/EXPENSE only).",
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "currency": {
+            "default": "USD",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Tags",
+            "type": "array"
+          },
+          "transaction_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              }
+            ],
+            "title": "Transaction Date"
+          },
+          "transaction_type": {
+            "enum": [
+              "income",
+              "expense"
+            ],
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "category_id",
+          "transaction_type",
+          "amount",
+          "transaction_date"
+        ],
+        "title": "TransactionCreate",
+        "type": "object"
+      },
+      "TransactionResponse": {
+        "description": "Transaction resource returned by CRUD endpoints.",
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Name"
+          },
+          "amount": {
+            "title": "Amount",
+            "type": "number"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Name"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_recurring": {
+            "default": false,
+            "title": "Is Recurring",
+            "type": "boolean"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "transaction_date": {
+            "format": "date",
+            "title": "Transaction Date",
+            "type": "string"
+          },
+          "transaction_type": {
+            "title": "Transaction Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "transaction_type",
+          "status",
+          "amount",
+          "currency",
+          "description",
+          "transaction_date"
+        ],
+        "title": "TransactionResponse",
+        "type": "object"
+      },
+      "TransactionUpdate": {
+        "additionalProperties": false,
+        "description": "Request body for ``PUT /transactions/{transaction_id}``.",
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "reference_number": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Number"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "transaction_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Date"
+          },
+          "transaction_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Type"
+          }
+        },
+        "title": "TransactionUpdate",
+        "type": "object"
+      },
+      "TrendInsight": {
+        "description": "Narrative insight stub (empty in MVP).",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "TrendInsight",
+        "type": "object"
+      },
+      "TrendsReportResponse": {
+        "description": "Response body for ``GET /reports/trends``.",
+        "properties": {
+          "analysis_period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "category_trends": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryTrendItem"
+            },
+            "title": "Category Trends",
+            "type": "array"
+          },
+          "insights": {
+            "items": {
+              "$ref": "#/components/schemas/TrendInsight"
+            },
+            "title": "Insights",
+            "type": "array"
+          },
+          "monthly_trends": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyTrendItem"
+            },
+            "title": "Monthly Trends",
+            "type": "array"
+          },
+          "period": {
+            "default": "monthly",
+            "title": "Period",
+            "type": "string"
+          }
+        },
+        "required": [
+          "analysis_period"
+        ],
+        "title": "TrendsReportResponse",
+        "type": "object"
+      },
+      "UserResponse": {
+        "description": "Public user profile returned by register and ``GET /auth/me``.\n\nNever includes password or other secrets. ``provider`` is the signup channel\n(email/Google/GitHub); ``auth_provider`` is where credentials are stored\n(``supabase`` vs local tests).\n\nAttributes:\n    id: Tenant user id (Auth ``sub`` when ``auth_provider`` is ``supabase``).\n    username: Unique handle (often derived from email).\n    email: Canonical login email.\n    display_name: Optional human-readable name.\n    phone: Optional phone from Auth/profile.\n    provider: Signup / identity channel (``ProviderType``).\n    auth_provider: Credential store label (``supabase`` or ``local``).\n    created_at: Row creation timestamp (required on the DTO).",
+        "properties": {
+          "auth_provider": {
+            "default": "supabase",
+            "enum": [
+              "supabase",
+              "local"
+            ],
+            "title": "Auth Provider",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderType",
+            "default": "email"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "created_at"
+        ],
+        "title": "UserResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "OAuth2PasswordBearer": {
+        "flows": {
+          "password": {
+            "scopes": {},
+            "tokenUrl": "/api/v1/auth/login"
+          }
+        },
+        "type": "oauth2"
+      }
+    }
+  },
+  "info": {
+    "title": "Save Ma Money API",
+    "version": "0.0.0-contract"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/accounts": {
+      "get": {
+        "description": "List tenant accounts with optional filters and balances from ``account_balances``.\n\nWhen Redis is enabled, responses are cached per owner and query params (cache-aside).\nMutations bump the accounts namespace version so prior entries miss.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n    account_kind: Optional filter by account kind slug.\n    ledger_side: Optional filter by asset or liability slug.\n    is_active: Optional filter by active status.\n\nReturns:\n    Paginated account rows enriched with effective balances per item.",
+        "operationId": "list_accounts_api_v1_accounts_get",
+        "parameters": [
+          {
+            "description": "Filter by account kind slug",
+            "in": "query",
+            "name": "account_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by account kind slug",
+              "title": "Account Kind"
+            }
+          },
+          {
+            "description": "Filter by asset or liability",
+            "in": "query",
+            "name": "ledger_side",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by asset or liability",
+              "title": "Ledger Side"
+            }
+          },
+          {
+            "description": "Filter by active status",
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by active status",
+              "title": "Is Active"
+            }
+          },
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_AccountResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Accounts",
+        "tags": [
+          "Accounts"
+        ]
+      },
+      "post": {
+        "description": "Create an account and optional kind-specific extension row.\n\nArgs:\n    body: Validated create payload including core account fields and extension data.\n    owner: Authenticated tenant from JWT; used as ``owner_id`` on the new record.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    Created account with extension details and initial effective balance.\n\nRaises:\n    HTTPException: 404 when the owner DTO lacks a persisted id (unexpected).\n    ValueError: Propagated from the service layer on invalid business input.",
+        "operationId": "create_account_api_v1_accounts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Account",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}": {
+      "delete": {
+        "description": "Soft-delete an account owned by the authenticated tenant.\n\nArgs:\n    account_id: Primary key of the account to delete.\n    owner: Authenticated tenant from JWT.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    ``None``; response body is empty on success.\n\nRaises:\n    HTTPException: 404 when the account is missing or not owned by the tenant.",
+        "operationId": "delete_account_api_v1_accounts__account_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Account",
+        "tags": [
+          "Accounts"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a single account with extension details and current balance.\n\nArgs:\n    account_id: Primary key of the account to fetch.\n    owner: Authenticated tenant from JWT.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n\nReturns:\n    Account payload including kind-specific extension fields and computed balance.\n\nRaises:\n    HTTPException: 404 when the account is missing or not owned by the tenant.",
+        "operationId": "get_account_api_v1_accounts__account_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Account",
+        "tags": [
+          "Accounts"
+        ]
+      },
+      "put": {
+        "description": "Update an account and optional extension row.\n\nArgs:\n    account_id: Primary key of the account to update.\n    body: Partial update payload merged onto the existing DTO.\n    owner: Authenticated tenant from JWT.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    Updated account with extension details and current effective balance.\n\nRaises:\n    HTTPException: 404 when the account is missing or not owned by the tenant.\n    ValueError: Propagated from the service layer on invalid business input.",
+        "operationId": "update_account_api_v1_accounts__account_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Account",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/{account_id}/balance": {
+      "get": {
+        "description": "Return the current balance from the ``account_balances`` materialized view.\n\nArgs:\n    account_id: Primary key of the account whose balance is requested.\n    owner: Authenticated tenant from JWT.\n    accounts_service: Injected accounts service scoped to the request lifecycle.\n\nReturns:\n    Balance snapshot with currency; falls back to ``initial_value`` when MV has no row.\n\nRaises:\n    HTTPException: 404 when the account is missing or not owned by the tenant.",
+        "operationId": "get_account_balance_api_v1_accounts__account_id__balance_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Account Balance",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "description": "OAuth2 password flow — Supabase Auth sign-in or local credential verify.\n\nClients must put the **email** in the OAuth2 ``username`` form field when\n``AUTH_PROVIDER=supabase``. Local mode still accepts email or derived username.\nSupabase login provisionally ensures a Papita row by Auth ``sub``; recent\norphan Auth users may be deleted if provision fails (not for inactive tenants).\n\nArgs:\n    form: OAuth2 password form (``username`` + ``password``).\n    _rate_limit: Per-IP login rate-limit dependency (side effect only).\n    settings: Selects Auth mode and JWT/session defaults.\n    users_service: Verifies credentials (local) or ensures Auth-linked user.\n    auth_manager: Issues HS256 access tokens in local mode only.\n\nReturns:\n    ``TokenResponse`` with access token; Supabase also returns ``refresh_token``.\n\nRaises:\n    HTTPException: 401 for bad credentials; 429 when Auth rate-limits; other\n        provision/Auth failures mapped from helpers.",
+        "operationId": "login_api_v1_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_api_v1_auth_login_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "description": "Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.\n\n* ``AUTH_PROVIDER=supabase`` — calls Supabase ``sign_out``, then denylists the\n  access token when Redis is enabled so remaining JWT TTL cannot be reused.\n* ``AUTH_PROVIDER=local`` — when Redis is enabled, denylists the access token\n  and returns 204; otherwise returns HTTP 501 (no refresh/session store).\n\nAccess token may be supplied in the JSON body or as ``Authorization: Bearer``.\nPer-IP OAuth/auth rate limits apply (logout may run before tenant context).\n\nArgs:\n    body: Refresh token (required for Supabase) and optional access token.\n    settings: Application settings selecting Auth provider.\n    credentials: Optional bearer credentials for the access JWT.\n    session_store: Redis-backed JWT denylist (no-op when Redis disabled).\n    _rate_limit: Per-IP auth rate-limit dependency (side effect only).\n\nReturns:\n    Empty 204 response on success, or deferred JSON with status 501 in local\n    mode without Redis.\n\nRaises:\n    HTTPException: 400 when access token missing; 401 on Auth errors;\n        429 when the per-IP auth limit is exceeded; 503 when Auth misconfigured.",
+        "operationId": "logout_api_v1_auth_logout_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "description": "Return the authenticated user profile (protected route smoke test).\n\nUses ``get_current_owner``, which verifies the bearer JWT and may refresh\nAuth-linked profile fields under Supabase mode. When Redis is required,\nrevoked tokens are rejected (denylist fail-closed). Tenant API rate limits\napply (same Free/Pro/Enterprise quotas as other protected routers).\n\nArgs:\n    owner: Authenticated tenant user resolved from the bearer JWT.\n    _rate_limit: Tenant API rate-limit dependency (side effect only).\n\nReturns:\n    Public ``UserResponse`` for the current session user (never includes password).\n\nRaises:\n    HTTPException: 401 when credentials are missing/invalid/revoked; 429 when\n        the tenant API quota is exceeded; 503 when the Redis denylist is\n        required but unavailable.",
+        "operationId": "get_current_user_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Current User",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/callback": {
+      "get": {
+        "description": "Browser redirect target for Supabase OAuth (PKCE cookie + ``code``).\n\nUse with ``GET /auth/oauth/{provider}?follow=true`` so the PKCE verifier,\nprovider, and ``redirect_to`` are available from HTTP-only cookies. Clears\nthose cookies after a successful exchange.\n\nArgs:\n    request: Incoming redirect; cookies supply verifier/provider/redirect.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n    code: Authorization code query param from the IdP.\n    error: Optional IdP error code when authorize failed.\n    error_description: Optional human-readable IdP error text.\n\nReturns:\n    JSON body matching ``TokenResponse`` with PKCE cookies cleared.\n\nRaises:\n    HTTPException: 501 when not Supabase; 400 missing code/cookies; 401 on Auth errors.",
+        "operationId": "oauth_callback_get_api_v1_auth_oauth_callback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error_description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Description"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Callback Get",
+        "tags": [
+          "Authentication"
+        ]
+      },
+      "post": {
+        "description": "Complete Supabase OAuth with authorization ``code`` + PKCE verifier.\n\nCalls GoTrue ``exchange_code_for_session``, then provisions\n``papita_transactions.users`` by Auth ``sub``. Preferred completion path for\nAPI clients that can store the ``code_verifier`` from authorize start.\n\nArgs:\n    body: Provider, auth code, PKCE verifier, optional redirect and name.\n    request: Used to allowlist ``redirect_to`` against the API callback URL.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n\nReturns:\n    Supabase session tokens as ``TokenResponse``.\n\nRaises:\n    HTTPException: 501 when not Supabase; 400/401 on provider or exchange errors.",
+        "operationId": "oauth_callback_post_api_v1_auth_oauth_callback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OAuthCodeExchangeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Oauth Callback Post",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/oauth/{provider}": {
+      "get": {
+        "description": "Start Supabase OAuth (PKCE) via ``sign_in_with_oauth``.\n\nReturns the authorize ``url`` and ``code_verifier``. Clients must keep the\nverifier and send it with the authorization ``code`` to\n``POST /auth/oauth/callback``.\n\nWhen ``follow=true``, responds with ``302`` to the IdP and stores the PKCE\nverifier, provider, and ``redirect_to`` in HTTP-only cookies for\n``GET /auth/oauth/callback``. Cookie ``Secure`` follows settings\n(``AUTH_COOKIE_SECURE`` / non-debug default).\n\nArgs:\n    provider: Path segment (``google`` or ``github``).\n    request: Used to resolve the allowlisted redirect URI.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    redirect_to: Optional allowlisted redirect override.\n    follow: When ``True``, 302-redirect and set PKCE cookies.\n\nReturns:\n    ``OAuthStartResponse`` JSON, or ``RedirectResponse`` when ``follow=true``.\n\nRaises:\n    HTTPException: 501 when not Supabase; 404 unknown provider; 400 bad redirect;\n        502 when Supabase fails to start OAuth.",
+        "operationId": "start_oauth_api_v1_auth_oauth__provider__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "redirect_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Redirect To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "follow",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Follow",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OAuthStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Oauth",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "description": "Rotate Supabase Auth access/refresh tokens.\n\nWhen ``AUTH_PROVIDER=local``, returns HTTP 501 (no refresh-token store).\n\nArgs:\n    body: Current Supabase refresh token.\n    _rate_limit: Per-IP OAuth/refresh rate-limit dependency (side effect only).\n    settings: Application settings selecting Auth provider.\n\nReturns:\n    New access and refresh tokens from Supabase Auth, or a deferred JSON body\n    with status 501 in local mode.\n\nRaises:\n    HTTPException: 401 on invalid refresh token; 400 on malformed Auth response;\n        503 when Supabase URL/anon key are missing.",
+        "operationId": "refresh_token_api_v1_auth_refresh_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Token",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/register": {
+      "post": {
+        "description": "Register a new user via Supabase Auth (or local ``UsersService``).\n\nEmail is the canonical login identity. A schema ``username`` handle is\nderived from the email local-part when not supplied. Under Supabase, Auth\nsignup runs first; Papita provision is idempotent. Provision failure after a\nsuccessful Auth create triggers best-effort Admin orphan cleanup.\n\nArgs:\n    body: Registration payload (email, password, optional profile fields).\n    _rate_limit: Per-IP register rate-limit dependency (side effect only).\n    settings: Selects ``supabase`` vs ``local`` Auth mode.\n    users_service: Creates or links the tenant ``users`` row.\n\nReturns:\n    Public ``UserResponse`` for the new or already-linked tenant user.\n\nRaises:\n    HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,\n        429 rate limit, 503 misconfigured Supabase, etc.).",
+        "operationId": "register_user_api_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register User",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/sso": {
+      "post": {
+        "description": "Complete OAuth when the client already holds Supabase session tokens.\n\nPrefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the\nredirect yields a ``code``. This endpoint remains for hash/fragment clients\nthat already called Supabase JS and hold access/refresh tokens.\n\nArgs:\n    body: Provider, access token, refresh token, optional display name.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n\nReturns:\n    Validated session as ``TokenResponse`` (refresh falls back to the body).\n\nRaises:\n    HTTPException: 501 when not Supabase; 401 if session is rejected; 400 on\n        provision failures.",
+        "operationId": "complete_sso_api_v1_auth_sso_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SsoSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Sso",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/budgets": {
+      "get": {
+        "description": "List budgets — deferred post-MVP.\n\nReturns:\n    DeferredResponse: Explains that budget listing is not available in MVP.",
+        "operationId": "list_budgets_api_v1_budgets_get",
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Budgets",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      },
+      "post": {
+        "description": "Create budget — deferred post-MVP.\n\nReturns:\n    DeferredResponse: Explains that budget creation is not available in MVP.",
+        "operationId": "create_budget_api_v1_budgets_post",
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Budget",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      }
+    },
+    "/api/v1/budgets/{budget_id}": {
+      "delete": {
+        "description": "Delete budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget deletion is not available in MVP.",
+        "operationId": "delete_budget_api_v1_budgets__budget_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Budget",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      },
+      "get": {
+        "description": "Get budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget retrieval is not available in MVP.",
+        "operationId": "get_budget_api_v1_budgets__budget_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Budget",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      },
+      "put": {
+        "description": "Update budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget updates are not available in MVP.",
+        "operationId": "update_budget_api_v1_budgets__budget_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Budget",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      }
+    },
+    "/api/v1/budgets/{budget_id}/allocations": {
+      "post": {
+        "description": "Budget allocations — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that allocation updates are not available in MVP.",
+        "operationId": "update_budget_allocations_api_v1_budgets__budget_id__allocations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Budget Allocations",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      }
+    },
+    "/api/v1/budgets/{budget_id}/summary": {
+      "get": {
+        "description": "Budget summary — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget summaries are not available in MVP.",
+        "operationId": "get_budget_summary_api_v1_budgets__budget_id__summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Budget Summary",
+        "tags": [
+          "Budgets (deferred)"
+        ]
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "description": "List tenant and global seed categories with optional hierarchy nesting.\n\nWhen Redis is enabled, list responses are cache-aside with versioned keys.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    categories_service: Injected categories service scoped to the request lifecycle.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n    parent_id: Optional parent category id; when omitted, returns top-level categories\n        with nested subcategory summaries.\n    category_type: Optional income/expense slug filter.\n\nReturns:\n    Paginated categories; top-level rows include embedded subcategory lists when\n    ``parent_id`` is not set.",
+        "operationId": "list_categories_api_v1_categories_get",
+        "parameters": [
+          {
+            "description": "Filter by parent category",
+            "in": "query",
+            "name": "parent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by parent category",
+              "title": "Parent Id"
+            }
+          },
+          {
+            "description": "Filter by income or expense",
+            "in": "query",
+            "name": "category_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by income or expense",
+              "title": "Category Type"
+            }
+          },
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_CategoryResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Categories",
+        "tags": [
+          "Categories"
+        ]
+      },
+      "post": {
+        "description": "Create a tenant-owned category.\n\nArgs:\n    body: Validated create payload converted to a categories DTO.\n    owner: Authenticated tenant from JWT.\n    categories_service: Injected categories service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    Newly created category owned by the authenticated tenant.\n\nRaises:\n    HTTPException: 404 when the service rejects global-category mutation attempts.\n    ValueError: Propagated for other validation failures from the service layer.",
+        "operationId": "create_category_api_v1_categories_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Category",
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/v1/categories/{category_id}": {
+      "delete": {
+        "description": "Soft-delete a tenant-owned category.\n\nArgs:\n    category_id: Primary key of the category to delete.\n    owner: Authenticated tenant from JWT.\n    categories_service: Injected categories service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    ``None``; response body is empty on success.\n\nRaises:\n    HTTPException: 404 when the category is missing, global, or not owned by the tenant.",
+        "operationId": "delete_category_api_v1_categories__category_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Category",
+        "tags": [
+          "Categories"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a tenant-owned or global seed category by id.\n\nArgs:\n    category_id: Primary key of the category to fetch.\n    owner: Authenticated tenant from JWT.\n    categories_service: Injected categories service scoped to the request lifecycle.\n\nReturns:\n    Category payload for a visible tenant-owned or global seed row.\n\nRaises:\n    HTTPException: 404 when the category is not visible to the tenant.",
+        "operationId": "get_category_api_v1_categories__category_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Category",
+        "tags": [
+          "Categories"
+        ]
+      },
+      "put": {
+        "description": "Update a tenant-owned category.\n\nArgs:\n    category_id: Primary key of the category to update.\n    body: Partial update payload merged onto the existing DTO.\n    owner: Authenticated tenant from JWT.\n    categories_service: Injected categories service scoped to the request lifecycle.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    Updated category owned by the authenticated tenant.\n\nRaises:\n    HTTPException: 404 when the category is missing, global, or not owned by the tenant.\n    ValueError: Propagated for other validation failures from the service layer.",
+        "operationId": "update_category_api_v1_categories__category_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "category_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Category Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Category",
+        "tags": [
+          "Categories"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Return application status, version, database, Auth, and Redis connectivity.\n\nAlways returns HTTP 200 with ``status`` of ``healthy`` or ``degraded``. Use\n``/health/ready`` when orchestrators should fail traffic on dependency loss.\n\nArgs:\n    request: Incoming request (reads ``app.state.redis``).\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings supplying version and Auth/Redis configuration.\n    connector: Database connector class used for a lightweight readiness query.\n\nReturns:\n    Composite ``HealthResponse`` marked ``degraded`` when the database is down,\n    required Supabase Auth is unreachable, or required Redis is down.",
+        "operationId": "get_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Health",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/auth": {
+      "get": {
+        "description": "Probe API↔Supabase Auth (GoTrue) communication health.\n\nCalls ``GET {SUPABASE_URL}/auth/v1/health`` when ``AUTH_PROVIDER=supabase``.\nLocal HS256 mode reports healthy with a skipped detail (no network call).\n\nArgs:\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings with Auth provider and Supabase credentials.\n\nReturns:\n    ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);\n    otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.",
+        "operationId": "get_auth_health_api_v1_health_auth_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Auth Health",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/database": {
+      "get": {
+        "description": "Probe API↔database communication health.\n\nRuns a constant parameterized probe against PostgreSQL and reports whether the\nlink is up plus round-trip latency. Accepts no client-supplied SQL or detail text.\n\nArgs:\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings with probe timeout.\n    connector: Database connector class used for the probe query.\n\nReturns:\n    ``DatabaseHealthResponse`` with ``status=healthy`` when connected; otherwise\n    a 503 ``JSONResponse`` with ``status=unhealthy`` and an allowlisted detail.",
+        "operationId": "get_database_health_api_v1_health_database_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabaseHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Database Health",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/live": {
+      "get": {
+        "description": "Liveness probe — confirm the API process is running.\n\nDoes not check database, Auth, or Redis. Use ``/health/ready`` for dependency gates.\nNot rate-limited so orchestrators can poll aggressively.\n\nArgs:\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n\nReturns:\n    ``LivenessResponse`` with ``alive=True`` when the process can serve HTTP.",
+        "operationId": "get_liveness_api_v1_health_live_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Liveness",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "description": "Readiness probe — fail open traffic when DB, required Auth, or required Redis is down.\n\nDatabase connectivity, Auth reachability (including local skip as ok), and Redis\n(when ``REDIS_ENABLED``) must succeed for ``ready=True``.\n\nArgs:\n    request: Incoming request (reads ``app.state.redis``).\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings selecting Auth/Redis requirements.\n    connector: Database connector class used for a lightweight readiness query.\n\nReturns:\n    ``ReadinessResponse`` with ``ready=True`` when dependencies accept traffic;\n    otherwise a 503 ``JSONResponse`` with ``ready=False``.",
+        "operationId": "get_readiness_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Readiness",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/health/redis": {
+      "get": {
+        "description": "Probe API↔Redis communication health.\n\nWhen ``REDIS_ENABLED=false``, reports healthy with a disabled/skipped detail.\nWhen enabled, issues ``PING`` against the lifespan client.\n\nArgs:\n    request: Incoming request (reads ``app.state.redis``).\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings with Redis flags.\n\nReturns:\n    ``RedisHealthResponse`` with ``status=healthy`` when Redis is up (or skipped);\n    otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.",
+        "operationId": "get_redis_health_api_v1_health_redis_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedisHealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Redis Health",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/api/v1/meta/client-contract": {
+      "get": {
+        "description": "Return the effective PPT-044 client contract and migration checklist.\n\nArgs:\n    settings: Application settings (bulk/window limits and compat flags).\n\nReturns:\n    JSON snapshot of secure defaults, effective values, compat flags, and\n    stable ``X-Papita-Error-Code`` values clients should handle.",
+        "operationId": "get_client_contract_api_v1_meta_client_contract_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Client Contract Api V1 Meta Client Contract Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Client Contract",
+        "tags": [
+          "Meta"
+        ]
+      }
+    },
+    "/api/v1/movements": {
+      "get": {
+        "description": "List tenant transfer rows with optional source/destination and date filters.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    transactions_service: Injected service providing ``list_transfers``.\n    filters: Bundled query parameters mapped to service kwargs.\n\nReturns:\n    Paginated ``MovementResponse`` items for TRANSFER rows owned by ``owner``.",
+        "operationId": "list_movements_api_v1_movements_get",
+        "parameters": [
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by source account",
+            "in": "query",
+            "name": "source_account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source account",
+              "title": "Source Account Id"
+            }
+          },
+          {
+            "description": "Filter by destination account",
+            "in": "query",
+            "name": "destination_account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by destination account",
+              "title": "Destination Account Id"
+            }
+          },
+          {
+            "description": "Filter by pending/completed/cancelled",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by pending/completed/cancelled",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by start date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by start date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "Filter by end date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by end date",
+              "title": "End Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_MovementResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Movements",
+        "tags": [
+          "Movements"
+        ]
+      },
+      "post": {
+        "description": "Create a transfer between two tenant-owned accounts.\n\n``create_transfer`` always persists PENDING. When ``scheduled`` is false, the\nhandler immediately calls ``complete_transfer`` so the response reflects COMPLETED\nand balance views are refreshed once. Scheduled (PENDING) creates skip MV refresh.\n\nArgs:\n    body: Transfer create payload (accounts, amount, currency, scheduled flag).\n    owner: Authenticated tenant that will own the transfer.\n    transactions_service: Injected service for create/complete helpers.\n    accounts_service: Injected service used to validate account ownership.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementResponse for the created (and possibly completed) transfer.\n\nRaises:\n    HTTPException: 404/422 from account validation; 401 when owner id is missing.",
+        "operationId": "create_movement_api_v1_movements_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovementCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Movement",
+        "tags": [
+          "Movements"
+        ]
+      }
+    },
+    "/api/v1/movements/{movement_id}": {
+      "delete": {
+        "description": "Cancel a pending transfer by setting status to CANCELLED.\n\nNote:\n    This is not a soft-delete of the row; cancelled transfers remain in the ledger.\n    Cancelling PENDING does not change completed MV totals, so views are not refreshed.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service providing ``cancel``.\n    redis: Optional Redis client for cache invalidation.\n\nRaises:\n    HTTPException: 404 when missing or cancel fails; 422 when not PENDING.",
+        "operationId": "delete_movement_api_v1_movements__movement_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Movement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Movement",
+        "tags": [
+          "Movements"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a single transfer with linked account names.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant from JWT.\n    transactions_service: Injected service for owner-scoped get-by-id.\n\nReturns:\n    MovementResponse including source/destination names when linked DTOs load.\n\nRaises:\n    HTTPException: 404 when the transfer is missing, not owned, or not TRANSFER.",
+        "operationId": "get_movement_api_v1_movements__movement_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Movement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Movement",
+        "tags": [
+          "Movements"
+        ]
+      },
+      "put": {
+        "description": "Update a pending transfer via upsert of the merged DTO.\n\nPENDING rows do not affect completed ledger MVs, so balance views are not\nrefreshed here (cache versions are still bumped).\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    body: Partial update fields applied onto the existing PENDING transfer.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service for load and upsert.\n    accounts_service: Injected service used to re-validate account legs.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementResponse for the updated transfer row.\n\nRaises:\n    HTTPException: 404 when missing; 422 when not PENDING or legs/currency invalid.",
+        "operationId": "update_movement_api_v1_movements__movement_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Movement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MovementUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Movement",
+        "tags": [
+          "Movements"
+        ]
+      }
+    },
+    "/api/v1/movements/{movement_id}/execute": {
+      "post": {
+        "description": "Complete a pending scheduled transfer.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service providing ``complete_transfer``.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementExecuteResponse with completed status and execution timestamp.\n\nRaises:\n    HTTPException: 404 when missing or complete fails; 422 when not PENDING.",
+        "operationId": "execute_movement_api_v1_movements__movement_id__execute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "movement_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Movement Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Execute Movement",
+        "tags": [
+          "Movements"
+        ]
+      }
+    },
+    "/api/v1/reports/budget-performance": {
+      "get": {
+        "description": "Return deferred budget-performance stub (FR-09 / v4.1).\n\nRequires a valid JWT so the deferred surface stays tenant-authenticated even\nthough no report data is produced until budgets exist.\n\nArgs:\n    owner: Authenticated tenant from JWT (required; unused until budgets land).\n\nReturns:\n    DeferredResponse explaining that budget-performance is not in MVP.",
+        "operationId": "get_budget_performance_report_api_v1_reports_budget_performance_get",
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Budget Performance Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/cash-flow": {
+      "get": {
+        "description": "Return cash-flow summary for the authenticated tenant.\n\nInflows/outflows include TRANSFER legs. Balance freshness uses\n``refresh_balance_materialized_views`` when ``refresh_balances`` is true\n(defaults to false to avoid authenticated DoS; pass ``true`` for G9 freshness).\n``closing_balance`` maps from service ``portfolio_total``; opening/by-account\nfields may be stubbed in MVP. Cached in Redis when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    filters: Date window, optional ``account_id``, and refresh flag.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    CashFlowReportResponse for the tenant (and optional account filter).\n\nRaises:\n    HTTPException: 401 without JWT; 400 when tenant account validation fails.",
+        "operationId": "get_cash_flow_report_api_v1_reports_cash_flow_get",
+        "parameters": [
+          {
+            "description": "Report start date",
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "description": "Report start date",
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report end date",
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "Report end date",
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Refresh balance MVs before query (omit to use server default)",
+            "in": "query",
+            "name": "refresh_balances",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Refresh balance MVs before query (omit to use server default)",
+              "title": "Refresh Balances"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashFlowReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Cash Flow Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/export": {
+      "get": {
+        "description": "Export a tenant-scoped report as CSV or JSON; deferred formats return 501.\n\nDelegates to ``ReportService.export`` for spending, cash-flow, or trends.\n``xlsx`` and ``pdf`` return HTTP 501 with ``DeferredResponse`` and do not\ncall the service. Export is not cached (streaming / large payloads).\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    filters: Report type, format, date window, and optional filters.\n\nReturns:\n    JSONResponse for JSON payloads, raw CSV ``Response`` for ``format=csv``,\n    or 501 JSON for deferred export formats.\n\nRaises:\n    HTTPException: 401 without JWT; 400 when query validation or ownership fails.",
+        "operationId": "export_report_api_v1_reports_export_get",
+        "parameters": [
+          {
+            "description": "Report to export",
+            "in": "query",
+            "name": "report_type",
+            "required": true,
+            "schema": {
+              "description": "Report to export",
+              "title": "Report Type",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Export format (csv or json)",
+            "in": "query",
+            "name": "format",
+            "required": true,
+            "schema": {
+              "description": "Export format (csv or json)",
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report start date",
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "description": "Report start date",
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report end date",
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "Report end date",
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Spending group_by",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "default": "category",
+              "description": "Spending group_by",
+              "title": "Group By",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Trends period",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "monthly",
+              "description": "Trends period",
+              "title": "Period",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Export Report Api V1 Reports Export Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Export Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/spending": {
+      "get": {
+        "description": "Return spending and income totals for the authenticated tenant only.\n\nAggregates COMPLETED EXPENSE rows (plus separate INCOME totals) via\n``ReportService.spending``. Response shaping and stub enrichment fields are\napplied in ``SpendingReportResponse.from_service``. Cached in Redis when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT; required for all ledger reads.\n    report_service: Injected report aggregation service.\n    filters: Date window, optional ``account_id``, and ``group_by`` parameters.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    SpendingReportResponse mapped from the lean service payload.\n\nRaises:\n    HTTPException: 401 without JWT; 404 when ``account_id`` is not owned by\n        the tenant; 400 when date/group validation fails in query models.",
+        "operationId": "get_spending_report_api_v1_reports_spending_get",
+        "parameters": [
+          {
+            "description": "Report start date",
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "description": "Report start date",
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report end date",
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "Report end date",
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Group by category or account",
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "default": "category",
+              "description": "Group by category or account",
+              "title": "Group By",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpendingReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Spending Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/trends": {
+      "get": {
+        "description": "Return income/expense time-series trends for the authenticated tenant only.\n\n``months`` (or explicit dates) define the analysis window; series buckets use\nthe requested ``period``. Category insights remain stubbed empty in MVP.\nCached in Redis when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    filters: Period, date window (or months), optional account/category filters.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    TrendsReportResponse with ``monthly_trends`` derived from the service series.\n\nRaises:\n    HTTPException: 401 without JWT; 400 when filters or ownership checks fail.",
+        "operationId": "get_trends_report_api_v1_reports_trends_get",
+        "parameters": [
+          {
+            "description": "Number of months to analyze",
+            "in": "query",
+            "name": "months",
+            "required": false,
+            "schema": {
+              "default": 6,
+              "description": "Number of months to analyze",
+              "maximum": 120,
+              "minimum": 1,
+              "title": "Months",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Series bucket size",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "monthly",
+              "description": "Series bucket size",
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Explicit analysis start date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Explicit analysis start date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "Explicit analysis end date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Explicit analysis end date",
+              "title": "End Date"
+            }
+          },
+          {
+            "description": "Optional category filter",
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional category filter",
+              "title": "Category Id"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Trends Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/transactions": {
+      "get": {
+        "description": "List tenant transactions with optional G4 filters.\n\nBy default TRANSFER rows are excluded (``exclude_transfer=True``) unless the\nclient filters ``transaction_type=transfer``. Short-TTL Redis cache-aside when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    transactions_service: Injected service providing ``list_transactions``.\n    filters: Bundled query parameters mapped to service kwargs.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    Paginated ``TransactionResponse`` items owned by ``owner``.",
+        "operationId": "list_transactions_api_v1_transactions_get",
+        "parameters": [
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Filter by primary account (from or to)",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by primary account (from or to)",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category Id"
+            }
+          },
+          {
+            "description": "Filter by income/expense/transfer",
+            "in": "query",
+            "name": "transaction_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by income/expense/transfer",
+              "title": "Transaction Type"
+            }
+          },
+          {
+            "description": "Filter by pending/completed/cancelled",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by pending/completed/cancelled",
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by start date",
+            "in": "query",
+            "name": "start_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by start date",
+              "title": "Start Date"
+            }
+          },
+          {
+            "description": "Filter by end date",
+            "in": "query",
+            "name": "end_date",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by end date",
+              "title": "End Date"
+            }
+          },
+          {
+            "description": "Minimum amount filter",
+            "in": "query",
+            "name": "min_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Minimum amount filter",
+              "title": "Min Amount"
+            }
+          },
+          {
+            "description": "Maximum amount filter",
+            "in": "query",
+            "name": "max_amount",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Maximum amount filter",
+              "title": "Max Amount"
+            }
+          },
+          {
+            "description": "Search in description",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 256,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Search in description",
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_TransactionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Transactions",
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "post": {
+        "description": "Create an INCOME or EXPENSE transaction for the authenticated tenant.\n\nOptional ``Idempotency-Key`` header (when Redis is enabled) makes retries safe:\na repeated key returns the original create response without inserting again.\n\nArgs:\n    body: Create payload (account, category, type, amount, date, optional fields).\n    owner: Authenticated tenant that will own the new row.\n    transactions_service: Injected service providing ``create``.\n    settings: Application settings (idempotency TTL).\n    redis: Optional Redis client for cache invalidation / idempotency.\n    idempotency_key: Optional client key for safe retries.\n\nReturns:\n    TransactionResponse for the persisted row.\n\nRaises:\n    HTTPException: 401 when owner id is missing; 409 when idempotency key is\n        pending; domain errors may surface as 400 via the global handler.",
+        "operationId": "create_transaction_api_v1_transactions_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/bulk": {
+      "post": {
+        "description": "Create multiple INCOME/EXPENSE transactions for the authenticated tenant.\n\nEach item is created independently; ``ValueError`` / ``TypeError`` on an item\nincrements ``failed`` without aborting the remainder of the batch. Optional\n``Idempotency-Key`` replays a prior bulk response when Redis is enabled.\n\nArgs:\n    body: Bulk payload containing one or more ``TransactionCreate`` items.\n    owner: Authenticated tenant that will own every created row.\n    transactions_service: Injected service used for per-item ``create``.\n    settings: Application settings (idempotency TTL).\n    redis: Optional Redis client for cache invalidation / idempotency.\n    idempotency_key: Optional client key for safe retries.\n\nReturns:\n    TransactionBulkResponse with counts and successfully created items.\n\nRaises:\n    HTTPException: 401 when the owner context lacks a primary key; 409 when\n        an idempotency key is still pending; 422 when the batch exceeds\n        ``API_BULK_MAX_TRANSACTIONS``.",
+        "operationId": "bulk_create_transactions_api_v1_transactions_bulk_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionBulkCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionBulkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Bulk Create Transactions",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transaction_id}": {
+      "delete": {
+        "description": "Soft-delete a tenant-owned transaction.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    owner: Authenticated tenant that must own the row.\n    transactions_service: Injected service providing soft ``delete``.\n    redis: Optional Redis client for cache invalidation.\n\nRaises:\n    HTTPException: 404 when the row is missing or not owned by ``owner``.",
+        "operationId": "delete_transaction_api_v1_transactions__transaction_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a single tenant-owned transaction with linked names.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    owner: Authenticated tenant from JWT.\n    transactions_service: Injected service for owner-scoped get-by-id.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    TransactionResponse including account/category names when linked DTOs load.\n\nRaises:\n    HTTPException: 404 when the row is missing or not owned by ``owner``.",
+        "operationId": "get_transaction_api_v1_transactions__transaction_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      },
+      "put": {
+        "description": "Update a tenant-owned INCOME/EXPENSE transaction via upsert.\n\nTRANSFER rows must be updated through ``PUT /movements`` instead.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    body: Partial update fields applied onto the existing DTO.\n    owner: Authenticated tenant that must own the row.\n    transactions_service: Injected service for get and upsert.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    TransactionResponse for the updated row.\n\nRaises:\n    HTTPException: 404 when missing; 422 when the row is a TRANSFER.",
+        "operationId": "update_transaction_api_v1_transactions__transaction_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transaction_id}/split": {
+      "post": {
+        "description": "Defer transaction split until v4 ``transaction_splits`` (MVP stub).\n\nArgs:\n    transaction_id: Path identifier reserved for a future split target row.\n\nReturns:\n    DeferredResponse explaining that split is not implemented in MVP.",
+        "operationId": "split_transaction_api_v1_transactions__transaction_id__split_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeferredResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Split Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    }
+  }
+}
