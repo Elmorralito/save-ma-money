@@ -14,12 +14,15 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
   pnpm workspace (`pnpm-workspace.yaml`, committed `pnpm-lock.yaml`), ESLint 9 + Prettier +
   Vitest smoke, Vite `/api` → `:8000` proxy, Makefile `web-*`, path-filtered `web-ci.yml`,
   Dependabot npm, Node 22 pins (`.nvmrc` / `.node-version`)
+- **npm Dependabot #136:** keep `typescript` on `~5.9` until `typescript-eslint` supports TS 7+
+  (Dependabot group bump tried `~7.0.2` and broke Web CI lint)
 - Poetry/Python workspace unchanged; web quality via Web CI (not Python pre-commit)
 - Strata: map entry for `modules/web` in `.strata/docs/ARCHITECTURE.md`
 
 ### Next action
 
-- Open/merge PR for PPT-047; then PPT-048 OpenAPI client (#114) and/or PPT-051 design shell (#116)
+- Merge green Dependabot PRs (#134/#135) and PPT-065 (#137); finish #136 after TS pin
+- PPT-048 OpenAPI client (#114) and/or PPT-051 design shell (#116)
 - Docs indexes for web (root README / AGENTS / `docs/issues`) → PPT-058 / #123
 
 ### Uncommitted / staging notes
