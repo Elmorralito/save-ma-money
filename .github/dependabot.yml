@@ -74,6 +74,10 @@ updates:
     commit-message:
       prefix: deps
       include: scope
+    # typescript-eslint does not support TypeScript 7 yet — keep ~5.9 in modules/web.
+    ignore:
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
     groups:
       npm-web:
         patterns:
