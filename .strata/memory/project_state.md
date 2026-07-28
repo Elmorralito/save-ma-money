@@ -10,6 +10,7 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- Changelog tidy: Prettier-escape root `CHANGELOG.md` globs/underscores; drop extra blank line in `modules/model/CHANGELOG.md` (QC/all-files gate)
 - Model release automation: PR → TestPyPI `.dev{run_id}` after checks; merge → PSR + `workflow_call` PyPI
 - Scripts: `wait_for_pr_checks.sh`, `stamp_model_dev_version.py`; workflows `publish-model-dev.yml` + reusable publish
 - Docs: `modules/model/README.md` + `.github/CI.md` release/TestPyPI sections
@@ -23,5 +24,4 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - Do not commit `environments/**/.env`
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
-
-- Prettier-format modules/model/CHANGELOG.md (unblocks Dependabot QC)
+- `modules/**` CHANGELOG edits need a paired `.strata/` touch (strict mode)

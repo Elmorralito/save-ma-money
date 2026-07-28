@@ -4,7 +4,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feat/PPT-024: [model] Package papita-transactions-model and publish to PyPI** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 21:19:52+00:00</sub>_
 
-  > **Closed by** [_**#104**](https://github.com/Elmorralito/save-ma-money/pull/104): **feat(PPT-024): [model] Package papita-transactions-model and publish to PyPI**
+  > **Closed by** [\_**#104**](https://github.com/Elmorralito/save-ma-money/pull/104): **feat(PPT-024): [model] Package papita-transactions-model and publish to PyPI**
 
   > ## Summary
 
@@ -12,7 +12,7 @@
 
   > - Harden modules/model/pyproject.toml for public install; move pytest to Poetry dev group; **meta** reads version via importlib.metadata when installed from a wheel.
 
-  > - Add OIDC publish workflow (TestPyPI via dispatch; PyPI via model-v* tag or confirmed dispatch) with clean-venv import smoke.
+  > - Add OIDC publish workflow (TestPyPI via dispatch; PyPI via model-v\* tag or confirmed dispatch) with clean-venv import smoke.
 
   >
 
@@ -40,7 +40,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#93](https://github.com/Elmorralito/save-ma-money/issues/93)**_] :: **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 20:22:50+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 19:30:18+00:00</sub>_
 
-  > **Closed by** [_**#103**](https://github.com/Elmorralito/save-ma-money/pull/103): **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose**
+  > **Closed by** [\_**#103**](https://github.com/Elmorralito/save-ma-money/pull/103): **ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose**
 
   > ## Summary
 
@@ -74,7 +74,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#89](https://github.com/Elmorralito/save-ma-money/issues/89)**_] :: **fix/PPT-044: [api] Post-MVP API security and operational hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:16:14+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-23 22:12:18+00:00</sub>_
 
-  > **Closed by** [_**#102**](https://github.com/Elmorralito/save-ma-money/pull/102): **fix/PPT-044: [api] Post-MVP hardening, efficiency, and design SSOT**
+  > **Closed by** [\_**#102**](https://github.com/Elmorralito/save-ma-money/pull/102): **fix/PPT-044: [api] Post-MVP hardening, efficiency, and design SSOT**
 
   > **Branch:** docs/create-issue-skill · **Base:** main (83d5c66) · **10 commits** · **90 files**
 
@@ -154,7 +154,7 @@
 
   > - SQL pagination for account/category lists; digest idempotency request bodies
 
-  > - Security pack: headers, TrustedHost, CORS fail-fast on * when not DEBUG, docs gated by DEBUG/DOCS_ENABLED
+  > - Security pack: headers, TrustedHost, CORS fail-fast on \* when not DEBUG, docs gated by DEBUG/DOCS_ENABLED
 
   > - Client-contract middleware/meta; rate limits on auth/budgets/health; Redis cache/RL polish
 
@@ -170,7 +170,7 @@
 
   > - ARCHITECTURE Part VIII (PPT-044); design README § Ops (Redis + B1 pooler)
 
-  > - Delete docs/ops/* checklists and docs/issues/PPT-044-api-hardening-brief.md; retarget AGENTS/strata/API/env READMEs
+  > - Delete docs/ops/\* checklists and docs/issues/PPT-044-api-hardening-brief.md; retarget AGENTS/strata/API/env READMEs
 
   >
 
@@ -204,7 +204,7 @@
 
   > .strata/MANIFEST.md
 
-  > .strata/docs/ops/*
+  > .strata/docs/ops/\*
 
   > .strata/issues/20260713-03-ppt044-api-hardening.md
 
@@ -216,19 +216,19 @@
 
   > docs/issues/PPT-044-api-hardening-brief.md (deleted)
 
-  > docs/ops/* (deleted)
+  > docs/ops/\* (deleted)
 
   > environments/{local,staging,production}/.env.example
 
   > modules/api/README.md
 
-  > modules/api/src/papita_txnsapi/** (settings, cache, rate_limit, client_contract, middleware, routers, schemas)
+  > modules/api/src/papita_txnsapi/\*\* (settings, cache, rate_limit, client_contract, middleware, routers, schemas)
 
-  > modules/api/tests/** (security_pack, client_contract, redis, RL, …)
+  > modules/api/tests/\*\* (security_pack, client_contract, redis, RL, …)
 
-  > modules/model/src/papita_txnsmodel/** (base repository, categories, reports, transactions, accounts, balances)
+  > modules/model/src/papita_txnsmodel/\*\* (base repository, categories, reports, transactions, accounts, balances)
 
-  > modules/model/tests_papita_txnsmodel/** (ppt041, prf_efficiency, repository)
+  > modules/model/tests_papita_txnsmodel/\*\* (ppt041, prf_efficiency, repository)
 
   >
 
@@ -294,7 +294,7 @@
 
   > - [ ] CI green on this PR (API + model unit jobs)
 
-  > - [ ] With DEBUG=false: docs off, CORS rejects *, TrustedHost enforces ALLOWED_HOSTS, security headers present
+  > - [ ] With DEBUG=false: docs off, CORS rejects \*, TrustedHost enforces ALLOWED_HOSTS, security headers present
 
   > - [ ] Soft-deleted accounts/categories/txns stay hidden on list/get; upsert does not revive
 
@@ -308,7 +308,7 @@
 
   > - [ ] Optional Redis: cache version reuse + rate limits when REDIS_ENABLED=true and REDIS_URL set (names only; values in local .env, not committed)
 
-  > - [ ] Confirm environments/**/.env secrets are **not** in the PR
+  > - [ ] Confirm environments/\*\*/.env secrets are **not** in the PR
 
   > - [ ] Skim design Part VIII / README § Ops vs deleted docs/ops — links from AGENTS/API README resolve
 
@@ -380,7 +380,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#42](https://github.com/Elmorralito/save-ma-money/issues/42)**_] :: **feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:37+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 23:17:31+00:00</sub>_
 
-  > **Closed by** [_**#95**](https://github.com/Elmorralito/save-ma-money/pull/95): **docs/PPT-032: [api] Consolidate API and issue documentation for epic close-out**
+  > **Closed by** [\_**#95**](https://github.com/Elmorralito/save-ma-money/pull/95): **docs/PPT-032: [api] Consolidate API and issue documentation for epic close-out**
 
   > ## Summary
 
@@ -452,7 +452,7 @@
 
   > - Expand docs/issues/README.md Parts I–V (simplify, Supabase G7, epic #42, PPT-039, Redis)
 
-  > - Remove standalone: simplify, PPT-031-C, PPT-039 reissue, PPT-043 Redis, _gh_body_PPT-032, _gh_body_PPT-039
+  > - Remove standalone: simplify, PPT-031-C, PPT-039 reissue, PPT-043 Redis, \_gh_body_PPT-032, \_gh_body_PPT-039
 
   >
 
@@ -508,9 +508,9 @@
 
   > docs/issues/README.md
 
-  > docs/issues/_gh_body_PPT-032-epic.md (deleted)
+  > docs/issues/\_gh_body_PPT-032-epic.md (deleted)
 
-  > docs/issues/_gh_body_PPT-039.md (deleted)
+  > docs/issues/\_gh_body_PPT-039.md (deleted)
 
   > docs/ops/b1-supabase-deploy-checklist.md
 
@@ -606,7 +606,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#83](https://github.com/Elmorralito/save-ma-money/issues/83)**_] :: **feat/PPT-043: [api] Redis integration for distributed cache, sessions, and rate limiting** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:03:54+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-17 22:40:06+00:00</sub>_
 
-  > **Closed by** [_**#94**](https://github.com/Elmorralito/save-ma-money/pull/94): **feat(PPT-043): integrate Redis for cache, sessions, and rate limits (PPT-…**
+  > **Closed by** [\_**#94**](https://github.com/Elmorralito/save-ma-money/pull/94): **feat(PPT-043): integrate Redis for cache, sessions, and rate limits (PPT-…**
 
   > ## Summary
 
@@ -640,7 +640,7 @@
 
   > - Versioned tenant cache (papita:{PAPITA_ENV}:…) with per-route TTLs and X-Cache
 
-  > - Atomic Lua sliding-window rate limits; tenant Free/Pro/Enterprise quotas + X-RateLimit-*
+  > - Atomic Lua sliding-window rate limits; tenant Free/Pro/Enterprise quotas + X-RateLimit-\*
 
   > - Logout JWT denylist fail-closed when Redis is required (503 if unavailable)
 
@@ -660,7 +660,7 @@
 
   > - Atomic Redis rate limiter (auth + tenant API); in-memory fallback when Redis off
 
-  > - Settings: REDIS__, per-namespace cache TTLs, idempotency TTL, API_RATE_LIMIT__
+  > - Settings: REDIS**, per-namespace cache TTLs, idempotency TTL, API_RATE_LIMIT**
 
   >
 
@@ -694,7 +694,7 @@
 
   >
 
-  > - environments/*/.env.example, environments/README.md, modules/api/README.md
+  > - environments/\*/.env.example, environments/README.md, modules/api/README.md
 
   > - PPT-045 brief + issues README map; strata architecture/project_state notes
 
@@ -718,7 +718,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#50](https://github.com/Elmorralito/save-ma-money/issues/50)**_] :: **test/PPT-040: [api] Integration test suite and B0 CI gate (Auth-first)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-16 14:10:20+00:00</sub>_
 
-  > **Closed by** [_**#92**](https://github.com/Elmorralito/save-ma-money/pull/92): **test/PPT-040: [api] Integration suite and B0 CI (Auth-first)**
+  > **Closed by** [\_**#92**](https://github.com/Elmorralito/save-ma-money/pull/92): **test/PPT-040: [api] Integration suite and B0 CI (Auth-first)**
 
   > ## Summary
 
@@ -762,7 +762,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#49](https://github.com/Elmorralito/save-ma-money/issues/49)**_] :: **feat/PPT-039: [api] Supabase Auth (replace local JWT issuance)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:05+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-15 17:45:38+00:00</sub>_
 
-  > **Closed by** [_**#91**](https://github.com/Elmorralito/save-ma-money/pull/91): **ops/PPT-039: [api] Supabase Auth (JWKS, OAuth, tenant link)**
+  > **Closed by** [\_**#91**](https://github.com/Elmorralito/save-ma-money/pull/91): **ops/PPT-039: [api] Supabase Auth (JWKS, OAuth, tenant link)**
 
   > **Branch:** ops/PPT-039 (tracks origin/ops/PPT-039, clean)
 
@@ -790,7 +790,7 @@
 
   > - environments/{local,staging,production}/.env.example, environments/README.md, settings/PAPITA_ENV loading
 
-  > - Compose injects SUPABASE_* (incl. service role / OAuth) into the API service
+  > - Compose injects SUPABASE\_\* (incl. service role / OAuth) into the API service
 
   > - deploy/auth_smoke.sh, B1/deploy helpers, untrack generated docs/coverage.xml
 
@@ -902,7 +902,7 @@
 
   > - [ ] Compose API receives SUPABASE_URL / anon / service-role / OAuth redirect env
 
-  > - [ ] Confirm environments/**/.env (secrets) are **not** in the PR
+  > - [ ] Confirm environments/\*\*/.env (secrets) are **not** in the PR
 
   > - [ ] CI secrets path deferred to #50 — note any local-only Auth keys in review comments
 
@@ -940,7 +940,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#48](https://github.com/Elmorralito/save-ma-money/issues/48)**_] :: **feat/PPT-038: [api] Reports read models (spending, cash-flow, trends, export)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:04+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 21:49:15+00:00</sub>_
 
-  > **Closed by** [_**#90**](https://github.com/Elmorralito/save-ma-money/pull/90): **feat(api): add tenant-scoped reports and structured DB health probes (PPT-038)**
+  > **Closed by** [\_**#90**](https://github.com/Elmorralito/save-ma-money/pull/90): **feat(api): add tenant-scoped reports and structured DB health probes (PPT-038)**
 
   > Wire FR-12 report endpoints under /api/v1/reports so authenticated tenants can query spending, cash flow, trends, and CSV/JSON exports via ReportService, while budget performance remains a JWT-gated 501. At the same time, harden health database probing with allowlisted details and latency, and document follow-on API hardening (PPT-044 / #89) plus Conventional Commit issue-title guidance.
 
@@ -1004,7 +1004,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#47](https://github.com/Elmorralito/save-ma-money/issues/47)**_] :: **feat/PPT-037: [api] Transactions CRUD and movements TRANSFER alias router** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:55:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-13 17:01:10+00:00</sub>_
 
-  > **Closed by** [_**#88**](https://github.com/Elmorralito/save-ma-money/pull/88): **feat(api): add transactions and movements CRUD endpoints (PPT-037)**
+  > **Closed by** [\_**#88**](https://github.com/Elmorralito/save-ma-money/pull/88): **feat(api): add transactions and movements CRUD endpoints (PPT-037)**
 
   > ## Summary
 
@@ -1082,7 +1082,7 @@
 
   > - **Symlinks**: .agents/AGENTS.md → .cursor/AGENTS.md, .agents/CLAUDE.md → .cursor/CLAUDE.md
 
-  > - strata_check.sh validates .agents/ paths; strict pairing accepts .agents/** or .cursor/AGENTS.md / .cursor/CLAUDE.md
+  > - strata_check.sh validates .agents/ paths; strict pairing accepts .agents/\*\* or .cursor/AGENTS.md / .cursor/CLAUDE.md
 
   > - Updated: .github/CI.md, README.md, .strata/MANIFEST.md, strata-strict-pairing.md, project_adapters.mdc
 
@@ -1094,7 +1094,7 @@
 
   > - **Separation of concerns:** /transactions rejects TRANSFER updates with **422** → use /movements; business logic stays in TransactionsService.
 
-  > - **List filters:** Query params bundled into Pydantic dependency classes; service kwargs use TypedDicts to satisfy mypy through **kwargs unpacking.
+  > - **List filters:** Query params bundled into Pydantic dependency classes; service kwargs use TypedDicts to satisfy mypy through \*\*kwargs unpacking.
 
   > - **Pagination:** Count + fetch happen in SQL, not in-memory DataFrame slicing.
 
@@ -1108,7 +1108,7 @@
 
   > - Transaction split (501)
 
-  > - /reports/* ([#48](https://github.com/Elmorralito/save-ma-money/issues/48))
+  > - /reports/\* ([#48](https://github.com/Elmorralito/save-ma-money/issues/48))
 
   > - Supabase B1 wiring ([#49](https://github.com/Elmorralito/save-ma-money/issues/49))
 
@@ -1152,7 +1152,7 @@
 
 - [x] [_**[#46](https://github.com/Elmorralito/save-ma-money/issues/46)**_] :: **feat/PPT-036: [api] Accounts and categories CRUD (v3 model)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:52+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 20:28:06+00:00</sub>_
 
-  > **Closed by** [_**#84**](https://github.com/Elmorralito/save-ma-money/pull/84): **feat(api): add accounts and categories CRUD endpoints (PPT-036)**
+  > **Closed by** [\_**#84**](https://github.com/Elmorralito/save-ma-money/pull/84): **feat(api): add accounts and categories CRUD endpoints (PPT-036)**
 
   > Implement PPT-036 / #46: eleven tenant-scoped REST routes for accounts and categories, wired through existing model services with pagination, enum slug conversion, extension fields (G1), MV-backed balances with G8 initial_value fallback, list filters (G4), and global category immutability (G7). Before this change the API had health, auth, and deferred budgets only; account and category CRUD lived solely in the model layer. After this change authenticated tenants can manage accounts and categories via /api/v1/accounts and /api/v1/categories, with cross-tenant access returning 404 and inactive records hidden on GET.
 
@@ -1216,7 +1216,7 @@
 
 - [x] [_**[#44](https://github.com/Elmorralito/save-ma-money/issues/44)**_] :: **feat/PPT-035: [api] Auth routes and tenant context module (local JWT)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-10 16:14:39+00:00</sub>_
 
-  > **Closed by** [_**#82**](https://github.com/Elmorralito/save-ma-money/pull/82): **feat/PPT-035: [api] Auth routes and tenant context**
+  > **Closed by** [\_**#82**](https://github.com/Elmorralito/save-ma-money/pull/82): **feat/PPT-035: [api] Auth routes and tenant context**
 
   > ## Summary
 
@@ -1238,7 +1238,7 @@
 
   > ### Auth hardening (post-PPT-035)
 
-  > - **Rate limiting** — in-memory sliding-window limiter on /auth/register and /auth/login; returns 429 with X-RateLimit-* headers; configurable via AUTH_RATE_LIMIT_* env vars (B0 single-instance; Redis deferred to PPT-043)
+  > - **Rate limiting** — in-memory sliding-window limiter on /auth/register and /auth/login; returns 429 with X-RateLimit-_ headers; configurable via AUTH*RATE_LIMIT*_ env vars (B0 single-instance; Redis deferred to PPT-043)
 
   > - **JWT type validation** — decode_token(..., expected_type=...) and get_current_owner() reject tokens with wrong type claim
 
@@ -1254,7 +1254,7 @@
 
   > - strata-validate pre-commit hook now uses always_run: true (evaluates full staged diff on every commit)
 
-  > - Strata Check workflow installs Poetry/pre-commit and enables code review; path triggers include .github/scripts/**
+  > - Strata Check workflow installs Poetry/pre-commit and enables code review; path triggers include .github/scripts/\*\*
 
   >
 
@@ -1282,7 +1282,7 @@
 
   > - [x] pre-commit run strata-validate / Strata code review on changed Python and Bash files
 
-  > - [x] Rebuild Docker API image so :8000 serves /auth/* routes (docker compose -f docker/docker-compose.yml up --build -d api)
+  > - [x] Rebuild Docker API image so :8000 serves /auth/\* routes (docker compose -f docker/docker-compose.yml up --build -d api)
 
   > - [ ] B1 Supabase pooler smoke (manual, post-merge)
 
@@ -1310,7 +1310,7 @@
 
   > - [x] modules/api/src/papita_txnsapi/dependencies/rate_limit.py
 
-  > - [x] modules/api/src/papita_txnsapi/config/settings.py — AUTH_RATE_LIMIT_*
+  > - [x] modules/api/src/papita*txnsapi/config/settings.py — AUTH_RATE_LIMIT*\*
 
   > - [x] modules/api/src/papita_txnsapi/core/security.py — JWT type claim validation
 
@@ -1370,7 +1370,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#43](https://github.com/Elmorralito/save-ma-money/issues/43)**_] :: **docs/PPT-033: [api] Validate API spec against v3 model implementation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-07 23:54:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-09 18:05:24+00:00</sub>_
 
-  > **Closed by** [_**#80**](https://github.com/Elmorralito/save-ma-money/pull/80): **docs/PPT-033: [api] Validate API spec against v3 model implementation**
+  > **Closed by** [\_**#80**](https://github.com/Elmorralito/save-ma-money/pull/80): **docs/PPT-033: [api] Validate API spec against v3 model implementation**
 
   > ## Summary
 
@@ -1422,7 +1422,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#52](https://github.com/Elmorralito/save-ma-money/issues/52)**_] :: **ops/PPT-042: [infra] CI adoption badge GitHub Action** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 01:30:57+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 20:36:13+00:00</sub>_
 
-  > **Closed by** [_**#56**](https://github.com/Elmorralito/save-ma-money/pull/56): **ci(badge): add CI adoption scoring workflow and README badge (PPT-042)**
+  > **Closed by** [\_**#56**](https://github.com/Elmorralito/save-ma-money/pull/56): **ci(badge): add CI adoption scoring workflow and README badge (PPT-042)**
 
   > Implement ops/PPT-042 (#52): a config-file-based CI maturity evaluator that scores repository adoption signals, maintains a dynamic shields.io badge in README.md, and gives developers optional local pre-push feedback. Before this change, CI maturity was documented only in .github/CI.md with no automated visibility in the README or repeatable rubric.
 
@@ -1454,7 +1454,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#51](https://github.com/Elmorralito/save-ma-money/issues/51)**_] :: **perf/PPT-041: [model] Harden v3 data model for API readiness** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 00:27:45+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 18:07:44+00:00</sub>_
 
-  > **Closed by** [_**#54**](https://github.com/Elmorralito/save-ma-money/pull/54): **feat(model): harden v3 services for PPT-041 API readiness**
+  > **Closed by** [\_**#54**](https://github.com/Elmorralito/save-ma-money/pull/54): **feat(model): harden v3 services for PPT-041 API readiness**
 
   > Close model-layer gaps from the PPT-032 coverage audit (G1, G3, G5) so the FastAPI epic can wire routers against a complete service surface. Before this change, AccountsService only exposed base CRUD, TransactionsService refreshed balance MVs only on bulk upsert, ReportService did not exist, tenancy was mock-tested only, and repository upserts could fail for owned tables due to a missing owner context on pre-read. The root README still described a legacy monorepo layout (registrar/plugins, 228 tests, issue #25) and lacked a business/technical overview aligned with PPT-031 and PPT-032.
 
@@ -1476,13 +1476,13 @@
 
   > - modules/model/src/papita_txnsmodel/services/reports.py (new): implement ReportService.spending, cash_flow, trends, and export per mapping §5.8 / FR-12
 
-  > - modules/model/src/papita_txnsmodel/services/categories.py: block tenant writes to global categories (owner_id IS NULL) via _reject_global_category_write and _existing_category_owner_id
+  > - modules/model/src/papita_txnsmodel/services/categories.py: block tenant writes to global categories (owner_id IS NULL) via \_reject_global_category_write and \_existing_category_owner_id
 
   > - modules/model/src/papita_txnsmodel/services/**init**.py: export ReportService, owner balance services, and refresh_balance_materialized_views
 
   > - modules/model/src/papita_txnsmodel/access/base/repository.py: fix upsert_record to pass dto_type to get_record_by_id, use add when no row exists / merge when found, and forward owner from OwnedTableRepository.upsert_record
 
-  > - modules/model/src/papita_txnsmodel/access/categories/repository.py: use SQLAlchemy .is_(None) so global category rows are readable in live queries
+  > - modules/model/src/papita*txnsmodel/access/categories/repository.py: use SQLAlchemy .is*(None) so global category rows are readable in live queries
 
   > - modules/model/tests/tests_papita_txnsmodel/services/test_ppt041_services.py (new): unit tests for account orchestration, transfer helpers, ReportService, and global-category write guard
 
@@ -1502,7 +1502,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#34](https://github.com/Elmorralito/save-ma-money/issues/34)**_] :: **PPT-031-E: Alembic migration + Supabase PostgreSQL validation** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:38+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-08 01:51:39+00:00</sub>_
 
-  > **Closed by** [_**#53**](https://github.com/Elmorralito/save-ma-money/pull/53): **feat(model)!: implement PPT-031 v3 schema, balance reports, and trans…**
+  > **Closed by** [\_**#53**](https://github.com/Elmorralito/save-ma-money/pull/53): **feat(model)!: implement PPT-031 v3 schema, balance reports, and trans…**
 
   > feat(model)!: implement PPT-031 v3 schema, balance reports, and transaction partitioning
 
@@ -1554,7 +1554,7 @@
 
   > workflows/quality-control.yml, and five reformatted views/balance_reports/
 
-  > *.sql files. Stage them before commit or land in a follow-up chore commit.
+  > \*.sql files. Stage them before commit or land in a follow-up chore commit.
 
   >
 
@@ -1980,9 +1980,9 @@
 
 - [x] [_**[#41](https://github.com/Elmorralito/save-ma-money/issues/41)**_] :: **Add GitHub Actions security scanning, Strata validation, and local pre-commit guardrails** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 21:59:30+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 22:00:49+00:00</sub>_
 
-  > **Closed by** [_**#40**](https://github.com/Elmorralito/save-ma-money/pull/40): **ci(security): add GitHub security workflows, Strata scaffold, and agent docs**
+  > **Closed by** [\_**#40**](https://github.com/Elmorralito/save-ma-money/pull/40): **ci(security): add GitHub security workflows, Strata scaffold, and agent docs**
 
-  > Previously, CI covered quality (pre-commit/pytest), migrations, and supply-chain auditing via pip-audit only. There was no SAST, secret scanning, filesystem CVE/IaC scanning, or validation of agent project memory. Supply-chain path filters still referenced gitignored poetry.lock; quality-control ignored a non-existent .docs/* path.
+  > Previously, CI covered quality (pre-commit/pytest), migrations, and supply-chain auditing via pip-audit only. There was no SAST, secret scanning, filesystem CVE/IaC scanning, or validation of agent project memory. Supply-chain path filters still referenced gitignored poetry.lock; quality-control ignored a non-existent .docs/\* path.
 
   >
 
@@ -1994,13 +1994,13 @@
 
   > - Secret leaks: undetected in CI → full-history Gitleaks scan on every PR
 
-  > - Code vulnerabilities: none → CodeQL security-extended on modules/** changes
+  > - Code vulnerabilities: none → CodeQL security-extended on modules/\*\* changes
 
   > - CVE/IaC: pip-audit onrivy filesystem scan + SARIF on manifest/docker paths
 
   > - Agent memory: none → .strata/ scaffold with PR validation (strict module pairing)
 
-  > - Docs-only PRs: ran full QC → skipped via paths-ignore: docs/**
+  > - Docs-only PRs: ran full QC → skipped via paths-ignore: docs/\*\*
 
   > - Supply-chain: dead poetry.lock path filter → removed; weekly schedule retained
 
@@ -2010,13 +2010,13 @@
 
   > - .github/workflows/gitleaks.yml: new workflow — PR/push/weekly secret scan; full git history; gitleaks-action pinned to SHA e0c47f4f... (v3)
 
-  > - .github/workflows/codeql.yml: new workflow — Python SAST with Poetry install; path-filtered to modules/**; init/analyze pinned to CodeQL v3 SHA
+  > - .github/workflows/codeql.yml: new workflow — Python SAST with Poetry install; path-filtered to modules/\*\*; init/analyze pinned to CodeQL v3 SHA
 
   > - .github/workflows/trivy.yml: new workflow — filesystem vuln+misconfig scan; trivy-action SHA-pinned (v0.36.0); SARIF upload via upload-sarif v4 SHA; secrets scanner omitted (Gitleaks is primary)
 
-  > - .github/workflows/strata-check.yml: new workflow — validates .strata/ layout on code-path PRs; strict mode requires .strata/ updates when modules/** changes
+  > - .github/workflows/strata-check.yml: new workflow — validates .strata/ layout on code-path PRs; strict mode requires .strata/ updates when modules/\*\* changes
 
-  > - .github/workflows/quali: fix paths-ignore to docs/**; add concurrency group
+  > - .github/workflows/quali: fix paths-ignore to docs/\*\*; add concurrency group
 
   > - .github/workflows/supply-chain-check.yml: remove dead poetry.lock paths; add concurrency, weekly schedule, and workflow_dispatch
 
@@ -2026,7 +2026,7 @@
 
   > - .gitleaks.toml: allowlist .env.example placeholders and template strings
 
-  > - .strata/**: initialize Strata layout v3 scaffold (memory, issues, docs tiers); MANIFEST and ARCHITECTURE customized for this monorepo
+  > - .strata/\*\*: initialize Strata layout v3 scaffold (memory, issues, docs tiers); MANIFEST and ARCHITECTURE customized for this monorepo
 
   > - AGENTS.md: new operational hub — repo map, layers, env, CI matrix, PR checklist
 
@@ -2040,7 +2040,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#33](https://github.com/Elmorralito/save-ma-money/issues/33)**_] :: **PPT-031-D: API spec realignment to v3 model** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:36+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 21:15:11+00:00</sub>_
 
-  > **Closed by** [_**#39**](https://github.com/Elmorralito/save-ma-money/pull/39): **docs(PPT-031-D)!: align API specs to v3 model and document auth contract**
+  > **Closed by** [\_**#39**](https://github.com/Elmorralito/save-ma-money/pull/39): **docs(PPT-031-D)!: align API specs to v3 model and document auth contract**
 
   > Deliver PPT-031 Track C (#33) and partial Track E (G5): canonical API endpoint mapping to the v3 schema, rewritten integration guide (FR-17), local-JWT auth contract (FR-10/FR-11), and UsersService register/login business logic for #25.
 
@@ -2068,7 +2068,7 @@
 
   > - docs/design/PPT-031-v1-schema.md: Resolve “needs #33” markers in §2.1– §2.2; link to mapping doc for categories/movements decisions
 
-  > - modules/model/src/papita_txnsmodel/services/users.py: Add ensure_password_manager(), verify_credentials(), register(), and _find_by_login_identifier() (Argon2 verify, duplicate checks, inactive user guard)
+  > - modules/model/src/papita_txnsmodel/services/users.py: Add ensure_password_manager(), verify_credentials(), register(), and \_find_by_login_identifier() (Argon2 verify, duplicate checks, inactive user guard)
 
   > - modules/model/tests/tests_papita_txnsmodel/services/test_users.py (new): Unit tests for auth methods (9 cases)
 
@@ -2082,11 +2082,11 @@
 
   >
 
-  > BREAKING CHANGE: API spec aligned to v3 — register uses username (not full_name); account_type → account_kind; initial_balance → initial_value; budget_id removed from transactions; /budgets/* and /auth/refresh|logout return 501 in MVP; /movements backed by TRANSFER transactions. See docs/design/PPT-031-api-model-mapping.md §8 for consumer migration notes.
+  > BREAKING CHANGE: API spec aligned to v3 — register uses username (not full_name); account_type → account_kind; initial_balance → initial_value; budget_id removed from transactions; /budgets/\* and /auth/refresh|logout return 501 in MVP; /movements backed by TRANSFER transactions. See docs/design/PPT-031-api-model-mapping.md §8 for consumer migration notes.
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#31](https://github.com/Elmorralito/save-ma-money/issues/31)**_] :: **PPT-031-C: Supabase × FastAPI integration decision record** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:35+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 20:45:43+00:00</sub>_
 
-  > **Closed by** [_**#38**](https://github.com/Elmorralito/save-ma-money/pull/38): **docs(PPT-031-C): complete Supabase decision record and deprecate DuckDB upserter**
+  > **Closed by** [\_**#38**](https://github.com/Elmorralito/save-ma-money/pull/38): **docs(PPT-031-C): complete Supabase decision record and deprecate DuckDB upserter**
 
   > Closes the Track B deliverable for GitHub issue #31 by expanding the skeleton decision brief into a full Supabase × FastAPI integration record, adding a root .env.example template, and aligning registry docs with proposed gate G7 (B0 local Docker Postgres + B1 Supabase for staging/prod; B2/B3 deferred pending G5 auth contract and #34 RLS work). Also deprecates DuckDBUpserter in the code to align with the documented PostgreSQL-only platform decision.
 
@@ -2128,7 +2128,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#32](https://github.com/Elmorralito/save-ma-money/issues/32)**_] :: **PPT-031-B: Target schema iterations v1–v3 + ER diagram** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:35+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 19:28:43+00:00</sub>_
 
-  > **Closed by** [_**#37**](https://github.com/Elmorralito/save-ma-money/pull/37): **docs(PPT-031-B): add v1–v3 target schema, v4 extensions, and ER diagrams**
+  > **Closed by** [\_**#37**](https://github.com/Elmorralito/save-ma-money/pull/37): **docs(PPT-031-B): add v1–v3 target schema, v4 extensions, and ER diagrams**
 
   > Deliver PPT-031 Track A steps A2–A4 ([#32](https://github.com/Elmorralito/save-ma-money/issues/32)) and post-MVP additive schema design on top of the v0 audit ([#30](https://github.com/Elmorralito/save-ma-money/issues/30)). Before this change, #32 deliverables were marked “pending” in the design index with no frozen target schema, migration outline, or ER artifacts. After this change, v3 is documented for G1 maintainer sign-off on [#28](https://github.com/Elmorralito/save-ma-money/issues/28), and v4 extensions are specified as a separate post-G1 migration wave without reopening the v3 freeze.
 
@@ -2180,7 +2180,7 @@
 
 - [x] [_**[#30](https://github.com/Elmorralito/save-ma-money/issues/30)**_] :: **PPT-031-A: Data model audit and 3NF gap analysis (v0)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-02 00:20:33+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-06 14:38:22+00:00</sub>_
 
-  > **Closed by** [_**#35**](https://github.com/Elmorralito/save-ma-money/pull/35): **docs(PPT-031-A): Data model audit and 3NF gap analysis (v0)**
+  > **Closed by** [\_**#35**](https://github.com/Elmorralito/save-ma-money/pull/35): **docs(PPT-031-A): Data model audit and 3NF gap analysis (v0)**
 
   > docs(PPT-031): add expert-review findings register to v0 audit
 
@@ -2260,7 +2260,7 @@
 
 - [x] [_**[#26](https://github.com/Elmorralito/save-ma-money/issues/26)**_] :: **feature/PPT-031: Add users to the data model** :: _<sub style="vertical-align: middle; color: #636363;">2026-01-28 00:17:05+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-02-04 23:31:20+00:00</sub>_
 
-  > **Closed by** [_**#27**](https://github.com/Elmorralito/save-ma-money/pull/27): **Feat/ppt 031**
+  > **Closed by** [\_**#27**](https://github.com/Elmorralito/save-ma-money/pull/27): **Feat/ppt 031**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#5](https://github.com/Elmorralito/save-ma-money/issues/5)**_] :: **feature/PPT-019** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:44:08+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-01-07 22:44:59+00:00</sub>_
 
@@ -2268,11 +2268,11 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#10](https://github.com/Elmorralito/save-ma-money/issues/10)**_] :: **docs/PPT-023: API Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:41:26+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-01-02 23:06:15+00:00</sub>_
 
-  > **Closed by** [_**#23**](https://github.com/Elmorralito/save-ma-money/pull/23): **docs(PPT-023): Finishing documentation. TODO: API documentation, it'l…**
+  > **Closed by** [\_**#23**](https://github.com/Elmorralito/save-ma-money/pull/23): **docs(PPT-023): Finishing documentation. TODO: API documentation, it'l…**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#18](https://github.com/Elmorralito/save-ma-money/issues/18)**_] :: **feat/PPT-027: Update the file system accessors to use smart-open instead.** :: _<sub style="vertical-align: middle; color: #636363;">2025-12-22 22:31:51+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 04:07:55+00:00</sub>_
 
-  > **Closed by** [_**#22**](https://github.com/Elmorralito/save-ma-money/pull/22): **feat(PPT-027): Introduce CSV file plugin and CLI support**
+  > **Closed by** [\_**#22**](https://github.com/Elmorralito/save-ma-money/pull/22): **feat(PPT-027): Introduce CSV file plugin and CLI support**
 
   > - Added CSVFilePlugin for loading and processing CSV files, integrating with the transaction tracking system.
 
@@ -2284,7 +2284,7 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#20](https://github.com/Elmorralito/save-ma-money/issues/20)**_] :: **feat/PPT-028: Add feature to list available plugins** :: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 00:25:15+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 02:42:12+00:00</sub>_
 
-  > **Closed by** [_**#21**](https://github.com/Elmorralito/save-ma-money/pull/21): **feat(PPT-028): Enhance plugin metadata and CLI utilities**
+  > **Closed by** [\_**#21**](https://github.com/Elmorralito/save-ma-money/pull/21): **feat(PPT-028): Enhance plugin metadata and CLI utilities**
 
   > - Introduced author information in the plugin metadata model, allowing for detailed author attribution.
 
@@ -2296,24 +2296,24 @@
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#14](https://github.com/Elmorralito/save-ma-money/issues/14)**_] :: **test/PPT-025: Unit test design, implementation and code refinement** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-05 20:07:41+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-12-27 01:05:24+00:00</sub>_
 
-  > **Closed by** [_**#19**](https://github.com/Elmorralito/save-ma-money/pull/19): **test(PPT-025)**
+  > **Closed by** [\_**#19**](https://github.com/Elmorralito/save-ma-money/pull/19): **test(PPT-025)**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#4](https://github.com/Elmorralito/save-ma-money/issues/4)**_] :: **feature/PPT-018** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:29:57+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-11-29 15:46:35+00:00</sub>_
 
-  > **Closed by** [_**#16**](https://github.com/Elmorralito/save-ma-money/pull/16): **feat(PPT-018): Registrar**
+  > **Closed by** [\_**#16**](https://github.com/Elmorralito/save-ma-money/pull/16): **feat(PPT-018): Registrar**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#8](https://github.com/Elmorralito/save-ma-money/issues/8)**_] :: **docs/PPT-021: Tracker/Loader Documentation** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:39:56+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-10 01:41:35+00:00</sub>_
 
-  > **Closed by** [_**#15**](https://github.com/Elmorralito/save-ma-money/pull/15): **docs(PPT-021): Defining the design of the tracker/registrar module**
+  > **Closed by** [\_**#15**](https://github.com/Elmorralito/save-ma-money/pull/15): **docs(PPT-021): Defining the design of the tracker/registrar module**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#9](https://github.com/Elmorralito/save-ma-money/issues/9)**_] :: **build/PPT-022: Data model indexer** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 15:40:47+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-05 20:03:12+00:00</sub>_
 
-  > **Closed by** [_**#12**](https://github.com/Elmorralito/save-ma-money/pull/12): **build(PPT-022): Data model indexer**
+  > **Closed by** [\_**#12**](https://github.com/Elmorralito/save-ma-money/pull/12): **build(PPT-022): Data model indexer**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#3](https://github.com/Elmorralito/save-ma-money/issues/3)**_] :: **build/PPT-017** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-19 00:19:36+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 02:18:51+00:00</sub>_
 
-  > **Closed by** [_**#6**](https://github.com/Elmorralito/save-ma-money/pull/6): **build(PPT-017): Creating CI actions**
+  > **Closed by** [\_**#6**](https://github.com/Elmorralito/save-ma-money/pull/6): **build(PPT-017): Creating CI actions**
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#1](https://github.com/Elmorralito/save-ma-money/issues/1)**_] :: **feature/PPT-016** :: _<sub style="vertical-align: middle; color: #636363;">2025-09-18 23:46:39+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2025-09-22 22:16:22+00:00</sub>_
 
-  > **Closed by** [_**#2**](https://github.com/Elmorralito/save-ma-money/pull/2): **feat(PPT-016): Adding data model.**
+  > **Closed by** [\_**#2**](https://github.com/Elmorralito/save-ma-money/pull/2): **feat(PPT-016): Adding data model.**
