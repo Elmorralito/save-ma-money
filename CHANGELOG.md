@@ -6,15 +6,13 @@
 
 - [ ] [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ops/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
 
-- [ ] [_**[#130](https://github.com/Elmorralito/save-ma-money/issues/130)**_] :: **ci/PPT-065: [web] Lock OpenAPI typegen CI strategy** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:10+00:00</sub>_ :weary:
-
 - [ ] [_**[#129](https://github.com/Elmorralito/save-ma-money/issues/129)**_] :: **feat/PPT-064: [web] Client guard for Papita breaking-changes contract** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:08+00:00</sub>_ :weary:
 
 - [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
 - [ ] [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary:
 
-- [ ] [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary:
 
 - [ ] [_**[#125](https://github.com/Elmorralito/save-ma-money/issues/125)**_] :: **feat/PPT-060: [web] Supabase auth edge-case MVP matrix for BFF** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:03+00:00</sub>_ :weary:
 
@@ -32,17 +30,497 @@
 
 - [ ] [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary:
 
-- [ ] [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary:
 
 - [ ] [_**[#116](https://github.com/Elmorralito/save-ma-money/issues/116)**_] :: **feat/PPT-051: [web] Tailwind + shadcn design system and app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:48+00:00</sub>_ :weary:
 
-- [ ] [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary:
 
-- [ ] [_**[#114](https://github.com/Elmorralito/save-ma-money/issues/114)**_] :: **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:45+00:00</sub>_ :weary:
-
-- [ ] [_**[#113](https://github.com/Elmorralito/save-ma-money/issues/113)**_] :: **chore/PPT-047: [web] Scaffold modules/web + pnpm + Web CI** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:44+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#114](https://github.com/Elmorralito/save-ma-money/issues/114)**_] :: **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:45+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#130](https://github.com/Elmorralito/save-ma-money/issues/130)**_] :: **ci/PPT-065: [web] Lock OpenAPI typegen CI strategy** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:10+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 20:25:37+00:00</sub>_
+
+  > **Closed by** [_**#137**](https://github.com/Elmorralito/save-ma-money/pull/137): **ci/PPT-065: [web] Lock OpenAPI typegen strategy B with dual CI gates**
+
+  > **Branch:** ci/PPT-065 · **Base:** main · **1 commit** · **20 files**
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Locks OpenAPI TypeScript generation to **strategy B** (committed openapi.json artifact) for PPT-065 / #130, with offline export tooling and dual CI drift gates so #114 can rely on a single, documented typegen path without booting the API in Web CI.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Thin HTTP client / TanStack Query / credentials wiring (#114)
+
+  > - Feature screens, BFF auth, nginx (#112 later children)
+
+  > - Changing the FastAPI OpenAPI schema design
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Offline create_app().openapi() export (no Compose / docs gate)
+
+  > - Artifact gate also watches model model/ + access/ (OpenAPI enum/DTO bleed)
+
+  > - info.version normalized to avoid package-version-only churn
+
+  > - Live fetch allowlisted to localhost only
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **CI / ops**
+
+  >
+
+  > - New openapi-contract.yml — Poetry job compares committed artifact to fresh offline dump
+
+  > - web-ci.yml — pnpm web:check-types after install
+
+  > - Makefile / root pnpm scripts: sync-openapi, check-openapi, generate-types, check-types, web-openapi
+
+  >
+
+  > **Web**
+
+  >
+
+  > - Commit modules/web/openapi/openapi.json + generated src/types/api.d.ts + thin domain.ts
+
+  > - Add openapi-typescript and scripts/check-types.mjs
+
+  > - Document locked strategy B in modules/web/README.md
+
+  >
+
+  > **Docs / agent memory**
+
+  >
+
+  > - .github/CI.md, API README pointer, AGENTS + .strata pairing for strict mode
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~20 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +
+
+  > .github/CI.md | 69 +-
+
+  > .github/workflows/openapi-contract.yml | 60 +
+
+  > .github/workflows/web-ci.yml | 3 +
+
+  > .strata/docs/ARCHITECTURE.md | 2 +-
+
+  > .strata/memory/project_state.md | 8 +-
+
+  > Makefile | 21 +
+
+  > bin/export_openapi.py | 179 +
+
+  > bin/export_openapi.sh | 42 +
+
+  > modules/api/README.md | 2 +
+
+  > modules/web/.prettierignore | 2 +
+
+  > modules/web/README.md | 51 +-
+
+  > modules/web/eslint.config.js | 2 +-
+
+  > modules/web/openapi/openapi.json | 5792 +
+
+  > modules/web/package.json | 5 +-
+
+  > modules/web/scripts/check-types.mjs | 54 +
+
+  > modules/web/src/types/api.d.ts | 4498 +
+
+  > modules/web/src/types/domain.ts | 10 +
+
+  > package.json | 4 +-
+
+  > pnpm-lock.yaml | 192 +-
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 781e8d2 ci/PPT-065: [web] Lock OpenAPI typegen strategy B with dual CI gates
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make web-openapi / make check-openapi / make check-types — pass (local)
+
+  > - pnpm web:lint / pnpm web:test / pnpm web:build — pass (local)
+
+  > - Intentional api.d.ts drift — fails check-types as expected
+
+  > - Pre-commit on commit — pass
+
+  > - GitHub Actions on this PR — not yet observed
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm Web CI runs check-types on this PR
+
+  > - [ ] Confirm OpenAPI Web Contract job runs and passes
+
+  > - [ ] Spot-check modules/web/README.md strategy B section for operator clarity
+
+  > - [ ] After merge, close #130 referencing this PR
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Large committed generated files (openapi.json / api.d.ts) will show up in schema-change diffs — intentional for strategy B
+
+  > > - Model-only PRs that affect OpenAPI now trigger openapi-contract (broader path filter) — may surprise authors who forget make web-openapi
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Artifact info.version is normalized to 0.0.0-contract; runtime /api/openapi.json still exposes the real package version when docs are enabled
+
+  > > - HTTP client / query wiring remains #114
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #130
+
+  > - Parent epic: #112
+
+  > - Unblocks: #114
+
+  > - Docs: modules/web/README.md (strategy B)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#113](https://github.com/Elmorralito/save-ma-money/issues/113)**_] :: **chore/PPT-047: [web] Scaffold modules/web + pnpm + Web CI** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:44+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 17:34:16+00:00</sub>_
+
+  > **Closed by** [_**#133**](https://github.com/Elmorralito/save-ma-money/pull/133): **chore/PPT-047: [web] Scaffold modules/web + pnpm + Web CI**
+
+  > **Branch:** chore/PPT-047 · **Base:** main · **1 commit** · **37 files**
+
+  >
+
+  > **Suggested title:** chore/PPT-047: [web] Scaffold modules/web + pnpm + Web CI
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Adds the Phase 0 frontend package for epic PPT-046: a presentation-only Vite + React 19 + TypeScript SPA under modules/web (@papita/web), wired into a root pnpm 9 workspace with Makefile targets and path-filtered Web CI. Poetry/Python quality gates stay unchanged; web lint/test/build do not require a live API.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Feature screens, BFF cookie auth, nginx prod image (later [#112](https://github.com/Elmorralito/save-ma-money/issues/112) children)
+
+  > - OpenAPI client ([#114](https://github.com/Elmorralito/save-ma-money/issues/114)), design-system shell ([#116](https://github.com/Elmorralito/save-ma-money/issues/116)), Zod/RHF ([#120](https://github.com/Elmorralito/save-ma-money/issues/120))
+
+  > - Root README / AGENTS / docs/issues web indexing ([PPT-058 / #123](https://github.com/Elmorralito/save-ma-money/issues/123))
+
+  > - Any reimplementation of papita_txnsmodel business logic in TypeScript
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Committed pnpm-lock.yaml + frozen-lockfile Web CI (Node 22 via .nvmrc)
+
+  > - Vite /api → http://localhost:8000 proxy for same-origin local API calls
+
+  > - ESLint 9 flat + Prettier + react-hooks + TanStack Query plugin; Vitest smoke test
+
+  > - Dependabot npm at repo root; Python QC ignores pure web/npm pin paths
+
+  > - Prettier/yamllint ignore machine-generated pnpm-lock.yaml
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web scaffold**
+
+  >
+
+  > - modules/web: Vite React-TS app, TS strict + noUncheckedIndexedAccess, @/* path alias
+
+  > - Public-only modules/web/.env.example (VITE_*); README covers Node 22 / pnpm 9, proxy, ALLOWED_ORIGINS
+
+  >
+
+  > **Monorepo / ops**
+
+  >
+
+  > - Root pnpm-workspace.yaml, package.json (web:* scripts), Makefile web-dev|lint|test|build
+
+  > - .nvmrc / .node-version pin Node 22
+
+  >
+
+  > **CI / tooling**
+
+  >
+
+  > - .github/workflows/web-ci.yml path-filtered: install → lint → test → build
+
+  > - quality-control.yml paths-ignore for web/npm pin-only changes
+
+  > - Dependabot npm ecosystem; .prettierignore / .yamllint / pre-commit exclude for pnpm-lock.yaml
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - Codemap + project_state/MEMORY/MANIFEST note modules/web (strict pairing)
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (37 files)</summary>
+
+  >
+
+  >
+
+  > .github/dependabot.yml | 20 +
+
+  > .github/workflows/quality-control.yml | 15 +
+
+  > .github/workflows/web-ci.yml | 63 +
+
+  > .gitignore | 2 +
+
+  > .node-version | 1 +
+
+  > .nvmrc | 1 +
+
+  > .pre-commit-config.yaml | 4 +-
+
+  > .prettierignore | 3 +
+
+  > .strata/MANIFEST.md | 1 +
+
+  > .strata/docs/ARCHITECTURE.md | 1 +
+
+  > .strata/memory/MEMORY.md | 4 +-
+
+  > .strata/memory/project_state.md | 18 +-
+
+  > .yamllint | 9 +-
+
+  > Makefile | 14 +
+
+  > modules/web/** | scaffold (Vite React-TS + tooling)
+
+  > package.json | 15 +
+
+  > pnpm-lock.yaml | 2906 +
+
+  > pnpm-workspace.yaml | 2 +
+
+  > 37 files changed, 3453 insertions(+), 14 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 809244b chore/PPT-047: [web] Scaffold modules/web + pnpm + Web CI
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm web:lint — pass (local)
+
+  > - pnpm web:test — pass (1 Vitest smoke)
+
+  > - pnpm web:build — pass (tsc -b + Vite)
+
+  > - pnpm install --frozen-lockfile — pass (local)
+
+  > - Pre-commit on commit (incl. strata-validate, yamllint, prettier) — pass
+
+  > - GitHub Actions Web CI on this PR — not observed yet (runs after push)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm Web CI is green on the PR
+
+  > - [ ] make web-lint && make web-test && make web-build on a clean checkout with Node 22 + pnpm 9
+
+  > - [ ] Optional: make web-dev with make api-up and hit /api/v1/health via the Vite proxy
+
+  > - [ ] Confirm a Python-only PR still runs quality-control; a web-only PR skips it and runs Web CI
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Root package.json / pnpm workspace is new — contributors need Node 22 + pnpm 9 for web targets (documented in modules/web/README.md)
+
+  > > - Pre-commit prettier historically rewrote pnpm-lock.yaml; mitigated via .prettierignore + hook/yamllint excludes — watch first Dependabot npm PR
+
+  > > - Pure Makefile edits still can trigger Python QC (Makefile is shared with Python ops)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Scaffold only: no auth, no OpenAPI client, no Tailwind/shadcn yet
+
+  > > - Cross-origin API calls from :5173 without the proxy require adding http://localhost:5173 to ALLOWED_ORIGINS (proxy path is same-origin)
+
+  > > - Root README / agent indexes for web are deferred to #123
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#113](https://github.com/Elmorralito/save-ma-money/issues/113) (PPT-047)
+
+  > - Parent epic: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Follow-up docs index: [#123](https://github.com/Elmorralito/save-ma-money/issues/123) (PPT-058)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#11](https://github.com/Elmorralito/save-ma-money/issues/11)**_] :: **feat/PPT-024: [model] Package papita-transactions-model and publish to PyPI** :: _<sub style="vertical-align: middle; color: #636363;">2025-10-01 21:22:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-24 21:19:52+00:00</sub>_
 
