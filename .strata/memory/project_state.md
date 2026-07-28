@@ -18,11 +18,14 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
   `modules/web/openapi/openapi.json`, `make sync-openapi` / `check-openapi` (offline
   `app.openapi()` via `bin/export_openapi.py`), `make generate-types` / `check-types`,
   `web-ci` type drift gate + `openapi-contract.yml` API↔artifact gate (stale-artifact mitigation)
+- **npm Dependabot #136:** Vite 8 / Vitest 4 / ESLint 10 group bump; keep `typescript` on
+  `~5.9` (typescript-eslint lacks TS 7); Dependabot ignores TS majors
 - Poetry/Python workspace unchanged; web quality via Web CI (not Python pre-commit)
 - Strata: map entry for `modules/web` in `.strata/docs/ARCHITECTURE.md`
 
 ### Next action
 
+- Merge npm-web Dependabot #136 after CI green
 - PPT-048 OpenAPI client (#114) on top of locked typegen; and/or PPT-051 design shell (#116)
 - Docs indexes for web (root README / `docs/issues`) → PPT-058 / #123
 
