@@ -75,3 +75,24 @@ web-test:
 
 web-build:
 	pnpm web:build
+
+# OpenAPI typegen strategy B (PPT-065 / #130): committed artifact + generated TS types.
+# Offline dump — no Compose/DB. After API schema changes: sync-openapi && generate-types.
+sync-openapi:
+	/bin/bash ./bin/export_openapi.sh
+
+check-openapi:
+	/bin/bash ./bin/export_openapi.sh --check
+
+# Optional live fetch (docs must be enabled on the running API). Prefer sync-openapi.
+sync-openapi-live:
+	/bin/bash ./bin/export_openapi.sh --from-url http://localhost:8000/api/openapi.json
+
+generate-types:
+	pnpm web:generate-types
+
+check-types:
+	pnpm web:check-types
+
+# Full local contract refresh used after API OpenAPI-affecting changes.
+web-openapi: sync-openapi generate-types
