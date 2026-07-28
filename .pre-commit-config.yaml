@@ -16,7 +16,8 @@ repos:
     hooks:
       - id: prettier
         types_or: [yaml, python, toml, json, markdown]
-        exclude: '(\.svg$|@docs/coverage\.xml$)'
+        # pnpm-lock.yaml is machine-generated; prettier/yamllint must not rewrite it.
+        exclude: '(\.svg$|@docs/coverage\.xml$|^pnpm-lock\.yaml$)'
         args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml", "*.json"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
@@ -134,6 +135,7 @@ repos:
     hooks:
       - id: yamllint
         files: "^.*\\.(yaml|yml)$"
+        exclude: "^pnpm-lock\\.yaml$"
 
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.12

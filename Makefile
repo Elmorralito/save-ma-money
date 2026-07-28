@@ -61,3 +61,17 @@ stack-down:
 # Redis readiness smoke against a running API container (make api-up / stack-up).
 redis-smoke:
 	/bin/bash ./bin/redis_smoke.sh
+
+# Web SPA (PPT-047): Vite + React under modules/web (pnpm workspace).
+# Requires Node 22+ and pnpm 9 (see modules/web/README.md). API optional for lint/test/build.
+web-dev:
+	pnpm web:dev
+
+web-lint:
+	pnpm web:lint
+
+web-test:
+	pnpm web:test
+
+web-build:
+	pnpm web:build

@@ -1,9 +1,12 @@
 ---
 
 yaml-files:
-  - '*.yaml'
-  - '*.yml'
-  - '.yamllint'
+  - "*.yaml"
+  - "*.yml"
+  - ".yamllint"
+
+ignore: |
+  pnpm-lock.yaml
 
 rules:
   anchors: enable

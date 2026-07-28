@@ -1,0 +1,63 @@
+name: Web CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "Makefile"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/web-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - "Makefile"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/web-ci.yml"
+
+  workflow_dispatch:
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm web:lint
+
+      - name: Test
+        run: pnpm web:test
+
+      - name: Build
+        run: pnpm web:build
