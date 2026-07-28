@@ -53,6 +53,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Check OpenAPI TypeScript types
+        run: pnpm web:check-types
+
       - name: Lint
         run: pnpm web:lint
 

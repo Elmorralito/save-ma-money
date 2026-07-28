@@ -72,6 +72,8 @@ save-ma-money/
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX).
 
+**Web OpenAPI types (PPT-065):** strategy **B** — committed `modules/web/openapi/openapi.json` + `openapi-typescript` → `modules/web/src/types/api.d.ts`. After API/model OpenAPI-affecting changes run `make web-openapi`. CI: `web-ci.yml` (`check-types`) + `openapi-contract.yml` (artifact vs offline `app.openapi()`; paths include API src + model `model/`/`access/`). Exporter normalizes `info.version`. See `modules/web/README.md`.
+
 ---
 
 ## Layered architecture (model package)

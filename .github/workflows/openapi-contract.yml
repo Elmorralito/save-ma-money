@@ -1,0 +1,60 @@
+name: OpenAPI Web Contract
+
+# PPT-065 strategy B mitigation: when the API surface changes, fail if the
+# committed modules/web/openapi/openapi.json artifact was not refreshed.
+# Web CI stays Node-only; this job is Poetry-only and does not boot Compose.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      # API surface + model types that bleed into OpenAPI via API schemas/enums.
+      - "modules/api/src/**"
+      - "modules/model/src/papita_txnsmodel/model/**"
+      - "modules/model/src/papita_txnsmodel/access/**"
+      - "modules/web/openapi/**"
+      - "bin/export_openapi.py"
+      - "bin/export_openapi.sh"
+      - ".github/workflows/openapi-contract.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/api/src/**"
+      - "modules/model/src/papita_txnsmodel/model/**"
+      - "modules/model/src/papita_txnsmodel/access/**"
+      - "modules/web/openapi/**"
+      - "bin/export_openapi.py"
+      - "bin/export_openapi.sh"
+      - ".github/workflows/openapi-contract.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: openapi-contract-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  openapi-artifact:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.1.3
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Check committed OpenAPI artifact
+        run: /bin/bash ./bin/export_openapi.sh --check

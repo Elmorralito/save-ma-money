@@ -39,6 +39,8 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 flowchart TB
     subgraph pr [Pull request]
         QC[Code Quality Control]
+        WEB[Web CI]
+        OAPI[OpenAPI Web Contract]
         GL[Secret Scan]
         SC[Supply Chain Check]
         MC[Migration Check]
@@ -57,6 +59,8 @@ flowchart TB
     end
 
     QC --> |pre-commit + pytest + Codecov| Pass1[Gate]
+    WEB --> |pnpm lint/test/build + check-types| PassWeb[Gate]
+    OAPI --> |artifact vs app.openapi| PassOapi[Gate]
     GL --> |full history| Pass2[Gate]
     SC --> |poetry check + pip-audit| Pass3[Gate]
     MC --> |Alembic round-trip| Pass4[Gate]
@@ -66,13 +70,15 @@ flowchart TB
     ST --> |.strata/ layout + pairing| Pass8[Gate]
     SYN --> |not behind origin/main| Pass9[Gate]
 
-    Pass1 & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 & Pass9 --> Merge[Merge]
+    Pass1 & PassWeb & PassOapi & Pass2 & Pass3 & Pass4 & Pass5 & Pass6 & Pass7 & Pass8 & Pass9 --> Merge[Merge]
     Pass1 & Pass2 & Pass9 --> |modules/model paths only| DEV
     Merge --> AU
     Merge --> |modules/model paths + releasable commits| REL
     REL --> |workflow_call on released=true| PYPI
     AU --> |CHANGELOG + badges| Push[Push to main]
 ```
+
+> Path-filtered: Web CI and OpenAPI Web Contract only run when their path filters match; they are merge gates when present on the PR.
 
 **Concurrency:** Most workflows use per-ref concurrency groups and **cancel in-progress** runs when a newer commit lands on the same branch.
 
@@ -84,16 +90,18 @@ flowchart TB
 
 Use this matrix to predict required checks before opening a PR.
 
-| Change type                                 | Quality Control | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata | Branch sync |
-| :------------------------------------------ | :-------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: | :---------: |
-| `docs/**` only                              |        —        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
-| `modules/**` code                           |        ✓        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
-| `pyproject.toml` / module deps              |        ✓        |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |      ✓      |
-| Model / Alembic / `docker/database/**`      |        ✓        |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
-| `bin/**` or `.github/scripts/**`            |        ✓        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |      ✓      |
-| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |      ✓      |
-| `.github/workflows/**`                      |        ✓        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |      ✓      |
-| `.cursor/mcp.json`                          |        ✓        |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
+| Change type                                 | Quality Control | Web CI | OpenAPI contract | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata | Branch sync |
+| :------------------------------------------ | :-------------: | :----: | :--------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: | :---------: |
+| `docs/**` only                              |        —        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
+| `modules/web/**` only                       |        —        |   ✓    |       —\*        |    ✓     |      —       |     —     |   ✓†   |   —   |    —     |   ✓    |      ✓      |
+| `modules/api/src/**` or model OpenAPI bleed |        ✓        |   —    |        ✓         |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
+| `modules/**` code                           |        ✓        |  —\*   |       —\*        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
+| `pyproject.toml` / module deps              |        ✓        |  —\*   |        —         |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |      ✓      |
+| Model / Alembic / `docker/database/**`      |        ✓        |   —    |        —         |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
+| `bin/**` or `.github/scripts/**`            |        ✓        |   —    |       —\*        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |      ✓      |
+| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |      ✓      |
+| `.github/workflows/**`                      |        ✓        |  —\*   |       —\*        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |      ✓      |
+| `.cursor/mcp.json`                          |        ✓        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
 
 \* Runs only when matching [path filters](#workflow-overview) apply.
 † CodeQL runs on PRs **targeting `main`** only.
@@ -108,22 +116,24 @@ Use this matrix to predict required checks before opening a PR.
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                   | Purpose                                                                                       |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------- | :-------------------------------------------------------------------------------------------- |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**`        | pre-commit, pytest, Postgres live tests (B0), Codecov                                         |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)    | PostgreSQL Alembic round-trip + drift check                                                   |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC             | `poetry check`, version metadata, `pip-audit`                                                 |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                 | Full-history secret detection                                                                 |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC | Python SAST (`security-extended`)                                                             |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC           | Filesystem CVE + IaC misconfig (SARIF)                                                        |
-| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                           | ShellCheck security codes + Semgrep bash rules                                                |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                       | `.strata/` layout + strict code/memory pairing                                                |
-| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                           | Fail if branch is behind `origin/main` (needs merge/rebase)                                   |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                       |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`    | Score CI maturity and update README adoption badge                                            |
-| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`             | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release |
-| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`       | Build + OIDC publish `papita-transactions-model` (PPT-024)                                    |
-| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                   | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                               |
+| Workflow             | File                                                                     | Triggers                                                      | Purpose                                                                                       |
+| :------------------- | :----------------------------------------------------------------------- | :------------------------------------------------------------ | :-------------------------------------------------------------------------------------------- |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web     | pre-commit, pytest, Postgres live tests (B0), Codecov                                         |
+| Web CI               | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                         | PR + push to `main` (`modules/web/**`, pnpm lock/workspace)   | pnpm lint/test/build + OpenAPI `check-types` (strategy B)                                     |
+| OpenAPI Web Contract | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)     | PR + push (API src, model model/access, web OpenAPI artifact) | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)       | PostgreSQL Alembic round-trip + drift check                                                   |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                | `poetry check`, version metadata, `pip-audit`                                                 |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                    | Full-history secret detection                                                                 |
+| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC    | Python SAST (`security-extended`)                                                             |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC              | Filesystem CVE + IaC misconfig (SARIF)                                                        |
+| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                              | ShellCheck security codes + Semgrep bash rules                                                |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                          | `.strata/` layout + strict code/memory pairing                                                |
+| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                              | Fail if branch is behind `origin/main` (needs merge/rebase)                                   |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                   | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                       |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`       | Score CI maturity and update README adoption badge                                            |
+| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`                | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release |
+| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`          | Build + OIDC publish `papita-transactions-model` (PPT-024)                                    |
+| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                      | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                               |
 
 ---
 
@@ -157,6 +167,11 @@ STRATA_STRICT_MODULES=1 STRATA_BASE_REF=origin/main /bin/bash .github/scripts/st
 # Migrations — full CI sequence (requires running Postgres)
 export DB_URL="postgresql+psycopg2://papita:papita@localhost:5432/papita_test"
 /bin/bash .github/scripts/migration_check.sh
+
+# Web OpenAPI contract (PPT-065 strategy B — offline; no Compose)
+make check-openapi
+pnpm install --frozen-lockfile && make check-types
+# After API schema changes: make web-openapi && commit artifact + api.d.ts
 
 # Bash security gate (ShellCheck security codes + Semgrep; Docker required for Semgrep)
 SECURITY_CODES='SC2046,SC2048,SC2068,SC2086,SC2115,SC2145,SC2154,SC2164,SC2206,SC2207,SC2294,SC2479'
