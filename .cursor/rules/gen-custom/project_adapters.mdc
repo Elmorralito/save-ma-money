@@ -12,4 +12,20 @@ Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.
 
 **Do not duplicate or edit adapter content in this rule file.** Code-style enforcement stays in sibling `gen-custom/*.mdc` rules. Project memory and routing live in [`.strata/MANIFEST.md`](../../.strata/MANIFEST.md).
 
-When API status or operational conventions change, update **`.cursor/AGENTS.md`** / **`.cursor/CLAUDE.md`** and pair with `.strata/` updates when `modules/**` changes (strata strict mode).
+### Repo skills (under `.cursor/skills/`)
+
+| Skill | Use when |
+| ----- | -------- |
+| [`create-issue/`](../skills/create-issue/) | New GitHub issues from ISSUE_TEMPLATE (`/create-issue`) |
+| [`pr-description/`](../skills/pr-description/) | Paste-ready PR bodies from [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) |
+
+### When something changes
+
+| Change | Update |
+| ------ | ------ |
+| API routers, auth, setup, CI, PR checklist | `.cursor/AGENTS.md` (+ thin notes in `CLAUDE.md` if needed) |
+| Code-style / structure / migrations / issue titles | Matching `gen-custom/*.mdc` |
+| Architecture decisions, backlog, learnings | `.strata/` via `/strata:capture` / `/strata:save` |
+| `modules/**` or `bin/**` code | Pair with `.strata/` (strata strict mode) |
+
+Design SSOT for closed post-MVP packs: ARCHITECTURE Parts VIII (PPT-044) and IX (PPT-045); issue index in `docs/issues/README.md`.

@@ -30,9 +30,8 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 | Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer and shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25))                                                                                                                                                                                                                                                                |
-| Active packages | `papita-txnsmodel` (`modules/model`), `papita-txnsapi` (`modules/api`)                                                                                                                                                                                                                                                                                                                                              |
-| Not in tree yet | `registrar` / `papita-txnsregistrar` (referenced in pytest paths only)                                                                                                                                                                                                                                                                                                                                              |
-| Database        | **PostgreSQL only** — DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31))                                                                                                                                                                                                                                                                                                          |
+| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`)                                                                                                                                                                                                                                                                |
+| Database        | **PostgreSQL only** ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)). Do not add DuckDB URLs or dialect work.                                                                                                                                                                                                                                                                                        |
 | Auth direction  | **Supabase project owns user management + Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)): register/login via Supabase Auth; API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`). Compose must inject `SUPABASE_*`. See `docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49` and learning `supabase-auth-ownership`. |
 
 ---
@@ -43,7 +42,7 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 save-ma-money/
 ├── pyproject.toml              # workspace root (package-mode = false)
 ├── modules/
-│   ├── model/                  # papita-txnsmodel — primary implementation
+│   ├── model/                  # papita_txnsmodel — domain + Alembic
 │   │   ├── src/papita_txnsmodel/
 │   │   │   ├── model/          # SQLModel tables (schema: papita_transactions)
 │   │   │   ├── access/         # DTOs + repositories per domain
@@ -52,25 +51,26 @@ save-ma-money/
 │   │   │   └── database/       # SQLDatabaseConnector, upsert helpers
 │   │   ├── alembic/            # migrations (alembic.ini in module root)
 │   │   └── tests/
-│   └── api/                    # papita-txnsapi — FastAPI MVP (PPT-032 epic)
+│   └── api/                    # papita_txnsapi — FastAPI MVP (PPT-032 epic)
 │       └── src/papita_txnsapi/
 │           ├── main.py         # create_app, lifespan, ASGI app
-│           ├── config/settings.py
-│           ├── core/           # security, exceptions, db_health, rate_limit
-│           ├── dependencies/   # auth, pagination, services
-│           ├── routers/v1/     # health, auth, accounts, categories, transactions, movements
+│           ├── config/         # settings, environment, logger
+│           ├── core/           # security, redis, rate_limit, db_health, …
+│           ├── dependencies/   # auth, pagination, services, redis
+│           ├── routers/v1/     # health, auth, accounts, categories, txns, movements, reports, budgets
 │           ├── schemas/        # request/response, query_params, converters
 │           └── middleware/
-├── bin/                     # alembic.sh, test.sh, utils.sh
-├── docker/database/            # local Postgres 15 Compose
+├── environments/               # PAPITA_ENV profiles (local|staging|production)
+├── bin/                        # alembic.sh, test.sh, smokes, utils.sh
+├── docker/                     # database/, api/, redis/, docker-compose.yml
 ├── docs/design/ · docs/issues/ # human design program (PPT-031)
-├── .cursor/                    # canonical agent adapters + gen-custom rules
+├── .cursor/                    # adapters, gen-custom rules, skills
 ├── .agents/                    # symlinks to .cursor/ adapters (Codex)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata)
+└── .github/workflows/          # CI (quality, security, migrations, strata, publish)
 ```
 
-Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Legacy v0 names (`assets`, `liabilities`, `indexers`, `types`) are removed from the v3 schema.
+Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX).
 
 ---
 
@@ -90,7 +90,7 @@ Model (SQLModel) → Access (DTO + Repository) → Service → Handler
 | Service    | `services/<domain>.py`                      | Inherit `BaseService`; validate DTO types                                                     |
 | Handler    | `handlers/`                                 | Inherit `AbstractLoadHandler` / `BaseLoadTableHandler` for ingest                             |
 
-First-party import roots: `papita_txnsmodel`, `papita_txnsapi`, `papita_txnsregistrar` (when added).
+First-party import roots: `papita_txnsmodel`, `papita_txnsapi`.
 
 **API layer rule:** routers validate auth, map schemas, and delegate to model services — no business logic in routers.
 
@@ -112,7 +112,7 @@ export PAPITA_ENV=local   # default for API Settings, Alembic, Compose
 docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
 ```
 
-Always set `DATABASE_URL` to a PostgreSQL URL. Omitting it can trigger legacy DuckDB fallback paths.
+Always set `DATABASE_URL` to a PostgreSQL URL.
 
 ---
 
@@ -161,7 +161,7 @@ PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRA
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
 
-B1 staging checklist + smoke: [`docs/design/README.md` § Ops](../docs/design/README.md#optional-b1-hosted-postgres-pooler) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md). PPT-044: [`docs/design/ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89).
+B1 staging checklist + smoke: [`docs/design/README.md` § Ops](../docs/design/README.md#optional-b1-hosted-postgres-pooler) (optional hosted PG). **PPT-039 Auth:** [`docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49`](../docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49) ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); smoke `make auth-smoke`. Env layout: [`environments/README.md`](../environments/README.md). PPT-044: [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89). PPT-045: [`ARCHITECTURE.md` Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93).
 
 When editing SQLModel classes, add an Alembic revision under `modules/model/alembic/versions/`.
 
@@ -171,13 +171,13 @@ When editing SQLModel classes, add an Alembic revision under `modules/model/alem
 
 Detailed rules live in [`.cursor/rules/gen-custom/`](rules/gen-custom/). Summary:
 
-| Tool            | Setting                                                                                  |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| Black           | Line length **120**, target py3.12                                                       |
-| isort           | Black profile; first-party: `papita_txnsapi`, `papita_txnsmodel`, `papita_txnsregistrar` |
-| mypy            | Gradual typing; tests excluded                                                           |
-| pylint / flake8 | Max line 120; max args 8; complexity 18                                                  |
-| Docstrings      | Google style with Args/Returns/Raises                                                    |
+| Tool            | Setting                                                          |
+| --------------- | ---------------------------------------------------------------- |
+| Black           | Line length **120**, target py3.12                               |
+| isort           | Black profile; first-party: `papita_txnsapi`, `papita_txnsmodel` |
+| mypy            | Gradual typing; tests excluded                                   |
+| pylint / flake8 | Max line 120; max args 8; complexity 18                          |
+| Docstrings      | Google style with Args/Returns/Raises                            |
 
 Patterns: guard clauses and early returns; `logger = logging.getLogger(__name__)`; DB ops wrapped in try/except with rollback; soft delete by default.
 
@@ -191,17 +191,18 @@ Prefer **minimal diffs** — match surrounding code; do not refactor unrelated a
 
 Use the right tier for the question:
 
-| Need                    | Where                                                                                                                                             |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session state / backlog | `.strata/memory/`, `.strata/issues/` (see MANIFEST load order)                                                                                    |
-| Codemap                 | [`.strata/docs/ARCHITECTURE.md`](../.strata/docs/ARCHITECTURE.md)                                                                                 |
-| PPT-031 design program  | [`docs/design/README.md`](../docs/design/README.md) · [`docs/design/ARCHITECTURE.md`](../docs/design/ARCHITECTURE.md)                             |
-| Auth contract           | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)     |
-| API ↔ model mapping     | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33) |
-| Target REST contract    | [`modules/api/README.md`](../modules/api/README.md)                                                                                               |
-| Issue briefs            | [`docs/issues/`](../docs/issues/)                                                                                                                 |
-| Human README            | [`README.md`](../README.md)                                                                                                                       |
-| CI workflows & scripts  | [`.github/CI.md`](../.github/CI.md)                                                                                                               |
+| Need                         | Where                                                                                                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session state / backlog      | `.strata/memory/`, `.strata/issues/` (see MANIFEST load order)                                                                                                                                       |
+| Codemap                      | [`.strata/docs/ARCHITECTURE.md`](../.strata/docs/ARCHITECTURE.md)                                                                                                                                    |
+| PPT-031 design program       | [`docs/design/README.md`](../docs/design/README.md) · [`docs/design/ARCHITECTURE.md`](../docs/design/ARCHITECTURE.md)                                                                                |
+| Auth contract                | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                                                        |
+| API ↔ model mapping          | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                                                    |
+| Target REST contract         | [`modules/api/README.md`](../modules/api/README.md)                                                                                                                                                  |
+| Issue briefs                 | [`docs/issues/README.md`](../docs/issues/README.md) (merged SSOT; Parts I–VI)                                                                                                                        |
+| Post-MVP hardening / uvicorn | [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) · [Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
+| Human README                 | [`README.md`](../README.md)                                                                                                                                                                          |
+| CI workflows & scripts       | [`.github/CI.md`](../.github/CI.md)                                                                                                                                                                  |
 
 Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:save`; do not duplicate routing rules here.
 

@@ -10,16 +10,16 @@ Project memory is repo-owned under `.strata/` (strata format, `layout_version: 3
 
 ## Claude Code quick context
 
-| Topic        | Summary                                                                                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repo         | Python 3.12 Poetry monorepo — financial transaction data                                                                                                |
-| Packages     | `papita-txnsmodel` (implemented), `papita-txnsapi` (FastAPI MVP — routers wired)                                                                        |
-| DB           | PostgreSQL / schema `papita_transactions` — no new DuckDB work                                                                                          |
-| API status   | Runnable app: health, auth, accounts, categories, transactions, movements, reports ([#42](https://github.com/Elmorralito/save-ma-money/issues/42) epic) |
-| Active work  | PPT-032 epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) close-out (children #43–#50 closed); post-MVP PPT-043–045                    |
-| Design docs  | `docs/design/` (PPT-031 program), `docs/issues/` (briefs)                                                                                               |
-| Agent memory | `.strata/` — use strata plugin commands below                                                                                                           |
-| Adapters     | Canonical: `.cursor/AGENTS.md` + `.cursor/CLAUDE.md`; Strata validates `.agents/` symlinks                                                              |
+| Topic        | Summary                                                                                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Repo         | Python 3.12 Poetry monorepo — financial transaction data                                                                                                                                                           |
+| Packages     | `papita-transactions-model` / `papita_txnsmodel`; `papita-transactions-api` / `papita_txnsapi` (MVP routers wired)                                                                                                 |
+| DB           | PostgreSQL / schema `papita_transactions` only                                                                                                                                                                     |
+| API status   | Runnable app: health, auth, accounts, categories, transactions, movements, reports (+ budgets 501) ([#42](https://github.com/Elmorralito/save-ma-money/issues/42))                                                 |
+| Active work  | PPT-032 epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) close-out; open post-MVP PPT-043 Redis [#83](https://github.com/Elmorralito/save-ma-money/issues/83) (PPT-044/#89 + PPT-045/#93 closed) |
+| Design docs  | `docs/design/` (PPT-031 program), `docs/issues/` (briefs)                                                                                                                                                          |
+| Agent memory | `.strata/` — use strata plugin commands below                                                                                                                                                                      |
+| Adapters     | Canonical: `.cursor/AGENTS.md` + `.cursor/CLAUDE.md`; Strata validates `.agents/` symlinks                                                                                                                         |
 
 ---
 
@@ -60,7 +60,8 @@ Do not bulk-load cold archives or all learnings — load on demand per MANIFEST 
 - **Auth:** follow `docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e` when touching login/JWT/users
 - **API wiring:** business logic stays in `papita_txnsmodel` services; routers map schemas + `owner` only
 - **List filters:** use `Depends(get_*_list_query)` + `TypedDict` service kwargs when adding filtered list routes
-- **Deprecated:** do not add DuckDB URLs or reintroduce registrar assumptions without checking the tree
+- **DB:** PostgreSQL only — do not add DuckDB URLs or dialects
+- **API start:** prefer `make api-up` (Compose uvicorn); do not promote host Poetry uvicorn for B0
 - **Adapters:** edit `.cursor/AGENTS.md` / `.cursor/CLAUDE.md` only — never duplicate into `.strata/` or rules
 
 For code style enforcement details, see [`.cursor/rules/gen-custom/`](rules/gen-custom/) (also applies when using Claude in Cursor).

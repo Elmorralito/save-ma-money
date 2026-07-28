@@ -258,7 +258,7 @@ pip install \
    ```
 
 4. **Pytest + coverage** via [`bin/test.sh`](../bin/test.sh)
-   - `testpaths`: `modules/model/tests`, `modules/api/tests`, `modules/registrar/tests` (registrar not in tree yet)
+   - `testpaths`: `modules/model/tests`, `modules/api/tests`
    - Coverage measured on **source packages**: `--cov=./modules/model/src --cov=./modules/api/src` (aligned with Codecov)
    - Env: `AUTH_PROVIDER=local` (Supabase is Auth-only; JWT smoke is manual: `make auth-smoke`)
    - Coverage XML: `docs/coverage.xml`

@@ -149,8 +149,14 @@ class AccountService(BaseService):
 - Never manually create database sessions; use the decorator-provided `_db_session`.
 - Use soft deletes by default (`soft_delete_records()`).
 - Use upsert operations for idempotent data loading.
-- Support both PostgreSQL and DuckDB dialects.
+- Target **PostgreSQL** only. Do not add DuckDB URLs or dialect branches.
 - Use `SCHEMA_NAME = "papita_transactions"` for all database operations.
+
+## API Wiring (when touching `papita_txnsapi`)
+
+- Routers: auth + schema mapping + `owner` scoping only; delegate to model `*Service` methods.
+- List filters that blow pylint arg limits: bundle via `schemas/query_params.py` (`Depends(get_*_list_query)`) and unpack `TypedDict` kwargs.
+- Use `_require_uuid()` before passing DTO primary keys into services.
 
 ## Data Conversion
 

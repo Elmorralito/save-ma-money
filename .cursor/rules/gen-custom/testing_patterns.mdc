@@ -24,7 +24,8 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 - Coverage paths (source packages, Codecov-aligned): `./modules/model/src`, `./modules/api/src`.
 - Coverage report: XML format to `docs/coverage.xml`.
 - Import mode: `importlib`.
-- Test paths: `./modules/api/tests`, `./modules/model/tests`, `./modules/registrar/tests`.
+- Test paths: `./modules/api/tests`, `./modules/model/tests`.
+- B0 CI / local API tests use `AUTH_PROVIDER=local` against Docker Postgres. Supabase Auth is validated with `make auth-smoke`, not as a pytest IdP.
 
 ### Test Organization
 

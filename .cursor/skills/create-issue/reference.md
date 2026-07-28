@@ -21,9 +21,9 @@
 
 ```text
 feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase Auth
-ops/PPT-045: [api] Standardize uvicorn process packaging for host and Compose
+ops/PPT-045: [api] Standardize uvicorn packaging in Compose
 fix/PPT-044: [api] Post-MVP API security and operational hardening
-feat/PPT-034: [api] FastAPI app scaffold, middleware, and health probes
+feat/PPT-036: [api] Accounts and categories CRUD (v3 model)
 fix/PPT-046: [infra] Badge workflow loops on docs-only pushes
 ```
 

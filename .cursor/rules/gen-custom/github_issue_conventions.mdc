@@ -5,7 +5,6 @@ globs:
   - docs/design/**
   - modules/model/**
   - modules/api/**
-  - modules/registrar/**
   - bin/**
   - .github/**
 alwaysApply: true
@@ -42,6 +41,7 @@ Issue/PR/commit type should track [Semantic Commit Messages](https://gist.github
 ```text
 ✅ feat/PPT-036: [api] Accounts and categories CRUD (v3 model)
 ✅ fix/PPT-044: [api] Post-MVP API security and operational hardening
+✅ ops/PPT-045: [api] Standardize uvicorn packaging in Compose
 ✅ feat/PPT-032: [EPIC][api] FastAPI MVP on v3 model + Supabase PostgreSQL
 ❌ harden/PPT-044: [api] …          ← not an official commit type
 ❌ PPT-039: ops(api): Supabase B1…  ← wrong ordering
@@ -58,8 +58,7 @@ Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `C
 |----------|--------|---------------|
 | `feat`, `fix` | `[model]` | `modules/model/src/`, `modules/model/tests/`, `modules/model/alembic/` |
 | `feat`, `fix` | `[api]` | `modules/api/src/`, `modules/api/tests/` |
-| `feat`, `fix` | `[registrar]` | `modules/registrar/src/`, `modules/registrar/tests/` |
-| `ops`, `fix`, `ci` | `[infra]` | `bin/`, `docker/`, `.github/` |
+| `ops`, `fix`, `ci` | `[infra]` | `bin/`, `docker/`, `.github/`, `Makefile` |
 | `test` | any | `modules/**/tests/`, `.github/workflows/` |
 
 When closing code for a feature or fix, the PR/issue body should cite the touched paths under **Tasks / deliverables** or **References**.
@@ -77,7 +76,10 @@ GitHub issue chooser templates live under [`.github/ISSUE_TEMPLATE/`](../../.git
 
 Prefer those files when creating or editing issues via `gh issue create` / `gh issue edit`. Do not invent alternate section orders.
 
-**Agent automation:** [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`) asks type → fields → optional context, fills the matching template, then creates the issue on origin with `gh`.
+**Agent automation:**
+
+- Issues: [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`)
+- PR bodies: [`.cursor/skills/pr-description/`](../skills/pr-description/) + [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md)
 
 ### Program issue skeleton (summary)
 
@@ -106,14 +108,31 @@ Prefer those files when creating or editing issues via `gh issue create` / `gh i
 - **Blocked by** line at footer
 - Platform integration model + canonical documentation tables
 
-## Program hierarchy (PPT-031)
+### Platform rule (B0 + B1) — current posture
 
-| Layer | Example |
-|-------|---------|
-| Epic | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) PPT-031 |
-| Design tracks | PPT-031-A…E (#30–#34) |
-| Model hardening | PPT-041 (#51) — blocks API epic |
-| API epic | PPT-032 (#42) |
-| API sub-issues | PPT-033–040 (#43–#50) |
+- **B0:** Docker Postgres (+ Compose Redis/API when the issue touches them). Canonical API: `make api-up`.
+- **Auth:** Supabase project owns identity; validate with `make auth-smoke`. Do **not** treat Supabase-hosted PG/pooler as an Auth or epic gate.
+- **B1 pooler (`:6543`):** optional hosted-Postgres connectivity; Alembic must use direct `:5432` (`DATABASE_URL_MIGRATIONS`).
 
-API work blocks on **#34 + #51** before PPT-033. Business logic stays in `papita_txnsmodel`; API issues wire routers only.
+## Program hierarchy (PPT-031 / PPT-032)
+
+| Layer | Example | Status |
+|-------|---------|--------|
+| Design epic | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) PPT-031 | Closed |
+| Design tracks | PPT-031-A…E (#30–#34) | Mixed (see `docs/design/`) |
+| Model hardening | PPT-041 (#51) | Gate for API |
+| API epic | PPT-032 (#42) | Open (children #43–#50 closed) |
+| Post-MVP | PPT-043 Redis (#83), PPT-044 hardening (#89), PPT-045 uvicorn (#93) | #89/#93 closed; #83 open |
+
+API children wired routers only; business logic stays in `papita_txnsmodel`.
+
+## Docs SSOT (do not re-split closed briefs)
+
+| Topic | Canonical location |
+| ----- | ------------------ |
+| Program / issue briefs index | [`docs/issues/README.md`](../../docs/issues/README.md) |
+| PPT-044 hardening | [`ARCHITECTURE.md` Part VIII](../../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) |
+| PPT-045 uvicorn packaging | [`ARCHITECTURE.md` Part IX](../../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
+| Ops index (Redis, B1 pooler) | [`docs/design/README.md` § Ops](../../docs/design/README.md#ops-redis--optional-b1-pooler) |
+
+Merged-away standalone briefs (content lives in the README / ARCHITECTURE only): e.g. `PPT-045-uvicorn-process-packaging-brief.md`, `PPT-044-api-hardening-brief.md`.
