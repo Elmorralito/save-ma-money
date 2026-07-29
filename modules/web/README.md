@@ -65,7 +65,24 @@ make sync-openapi-live   # needs make api-up with DEBUG or DOCS_ENABLED=true
 
 If live fetch returns 404, enable docs on the running API or use `make sync-openapi` instead.
 
-Thin schema aliases live in `src/types/domain.ts`. HTTP client / TanStack Query wiring is [#114](https://github.com/Elmorralito/save-ma-money/issues/114).
+Thin schema aliases live in `src/types/domain.ts`.
+
+## Thin HTTP client + TanStack Query (PPT-048 / #114)
+
+Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business logic in TypeScript — typed HTTP + Query wiring only.
+
+| Piece            | Location                                       | Notes                                                                        |
+| ---------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| `apiFetch`       | `src/api/http.ts`                              | `credentials: 'include'`; `AbortSignal`; no `Authorization` header           |
+| Base URL         | `src/api/config.ts`                            | Default same-origin (`""`) → Vite `/api` proxy; optional `VITE_API_BASE_URL` |
+| Errors           | `src/api/errors.ts`                            | `PapitaApiError` maps `X-Papita-Error-Code` + discovery headers              |
+| Contract helpers | `src/api/contract.ts`                          | `bulkMaxTransactions` / `reportWindowMaxDays` from body (prefer) or headers  |
+| Probes           | `src/api/meta.ts`, `health.ts`                 | Unauthenticated health + `GET /api/v1/meta/client-contract`                  |
+| Query            | `queryKeys.ts`, `queries.ts`, `queryClient.ts` | `queryOptions()`; `staleTime` 60s; **no 4xx retries**                        |
+
+**Credentials policy:** always send cookies (`credentials: 'include'`) so PPT-049 BFF HttpOnly sessions work without client changes. Do **not** store JWTs in `localStorage` / JS-readable storage or attach Bearer tokens from the SPA (PDF Axios interceptor pattern is superseded).
+
+**Local smoke:** `make api-up` then `make web-dev` — the App scaffold shows health status + bulk/report limits from the contract probe.
 
 ## Vite `/api` proxy
 

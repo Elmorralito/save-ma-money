@@ -74,6 +74,8 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web OpenAPI types (PPT-065):** strategy **B** — committed `modules/web/openapi/openapi.json` + `openapi-typescript` → `modules/web/src/types/api.d.ts`. After API/model OpenAPI-affecting changes run `make web-openapi`. CI: `web-ci.yml` (`check-types`) + `openapi-contract.yml` (artifact vs offline `app.openapi()`; paths include API src + model `model/`/`access/`). Exporter normalizes `info.version`. See `modules/web/README.md`.
 
+**Web thin API client (PPT-048):** `modules/web/src/api/` — `apiFetch` (`credentials: 'include'`, no Bearer), `queryKeys` / `queryOptions`, `PapitaApiError` + discovery headers, health/meta probes only. Domain logic stays in Python.
+
 ---
 
 ## Layered architecture (model package)
