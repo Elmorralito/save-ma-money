@@ -39,9 +39,12 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 
 def _clear_auth_singletons() -> None:
     """Reset Settings cache and AuthSecurityManager after env/provider changes."""
+    from papita_txnsapi.core.bff_session import clear_memory_bff_sessions
+
     get_settings.cache_clear()
     AuthSecurityManager.reset_instances()
     clear_transactions_service_cache()
+    clear_memory_bff_sessions()
 
 
 @pytest.fixture

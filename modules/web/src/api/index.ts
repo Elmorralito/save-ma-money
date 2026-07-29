@@ -12,7 +12,22 @@ export {
   parseDiscoveryHeaders,
   type DiscoveryHeaders,
 } from "@/api/headers";
-export { apiFetch, type ApiFetchOptions, type ApiFetchResult } from "@/api/http";
+export {
+  bffLogin,
+  bffLogout,
+  bffRefresh,
+  bffRegister,
+  getBffSession,
+  type BffSession,
+  type BffUser,
+} from "@/api/auth";
+export { clearCsrfToken, getCsrfToken, setCsrfToken } from "@/api/csrf";
+export {
+  apiFetch,
+  setUnauthorizedHandler,
+  type ApiFetchOptions,
+  type ApiFetchResult,
+} from "@/api/http";
 export { getHealth, getHealthLive } from "@/api/health";
 export { getClientContract } from "@/api/meta";
 export {

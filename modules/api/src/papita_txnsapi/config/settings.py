@@ -190,6 +190,8 @@ class Settings(BaseSettings):
     AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: int = 20
     # When None, OAuth PKCE cookies use Secure when DEBUG is false.
     AUTH_COOKIE_SECURE: bool | None = None
+    # BFF HttpOnly session cookie lifetime (PPT-049). Memory store when Redis off.
+    BFF_SESSION_MAX_AGE_SECONDS: int = Field(default=604_800, ge=60, le=31_536_000)
 
     # Health / ops probes (PPT-044)
     HEALTH_RATE_LIMIT_ENABLED: bool = True

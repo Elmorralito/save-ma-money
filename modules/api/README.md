@@ -43,6 +43,7 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                                                                                                      | Yes |
 | `/budgets/*`                             | Deferred — v4.1 ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)) | 501 |
 | `/auth/refresh`, `/auth/logout`          | **Supabase:** implemented (session rotate / sign-out + optional Redis denylist). **Local HS256:** 501                                                                      | —   |
+| `/bff/auth/*`                            | PPT-049 browser BFF: HttpOnly `papita_sid` session cookie; JWTs server-side; CSRF `X-Papita-CSRF`. Coexists with Bearer `/auth/*` (`make auth-smoke`)                      | Yes |
 | `/transactions/{id}/split`               | Deferred — v4 `transaction_splits`                                                                                                                                         | 501 |
 
 **Enum convention:** API JSON uses lowercase slugs (`expense`, `checking`); PostgreSQL stores uppercase enums (`EXPENSE`, `CHECKING`).

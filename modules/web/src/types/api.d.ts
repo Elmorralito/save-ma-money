@@ -487,6 +487,112 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bff/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bff Login
+         * @description Authenticate and set an HttpOnly session-id cookie (JWTs stay server-side).
+         */
+        post: operations["bff_login_api_v1_bff_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bff Logout
+         * @description Clear BFF session cookie, revoke at IdP when possible, denylist access JWT.
+         */
+        post: operations["bff_logout_api_v1_bff_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bff Refresh
+         * @description Rotate tokens inside the BFF session store (cookie required).
+         */
+        post: operations["bff_refresh_api_v1_bff_auth_refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bff Register
+         * @description Register via the same Auth/UsersService path as ``POST /auth/register``.
+         *
+         *     Does not create a BFF session — clients should call ``POST /bff/auth/login`` next.
+         */
+        post: operations["bff_register_api_v1_bff_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bff Session
+         * @description Probe BFF session for SPA bootstrap.
+         *
+         *     Returns ``authenticated: false`` (200) when no valid cookie/Bearer — avoids
+         *     treating anonymous bootstrap as an error. When authenticated via cookie,
+         *     includes ``csrf_token`` for mutation headers.
+         */
+        get: operations["bff_session_api_v1_bff_auth_session_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/budgets": {
         parameters: {
             query?: never;
@@ -1701,6 +1807,61 @@ export interface components {
             account_number?: string | null;
             /** Entity */
             entity: string;
+        };
+        /**
+         * BffLoginRequest
+         * @description JSON body for ``POST /bff/auth/login``.
+         *
+         *     Attributes:
+         *         email: Canonical login identity (OAuth2 ``username`` field for token login).
+         *         password: Plain-text password (never logged or echoed).
+         */
+        BffLoginRequest: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /**
+         * BffRegisterRequest
+         * @description JSON body for ``POST /bff/auth/register`` (same fields as ``/auth/register``).
+         */
+        BffRegisterRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+            /** Phone */
+            phone?: string | null;
+            /**
+             * Provider
+             * @default email
+             * @constant
+             */
+            provider: "email";
+            /** Username */
+            username?: string | null;
+        };
+        /**
+         * BffSessionResponse
+         * @description Public BFF session probe / login response (no JWTs).
+         *
+         *     Attributes:
+         *         authenticated: Whether a valid session cookie was resolved.
+         *         user: Public profile when authenticated.
+         *         csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.
+         *         session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).
+         */
+        BffSessionResponse: {
+            /** Authenticated */
+            authenticated: boolean;
+            /** Csrf Token */
+            csrf_token?: string | null;
+            /** Session Backend */
+            session_backend?: string | null;
+            user?: components["schemas"]["UserResponse"] | null;
         };
         /** Body_login_api_v1_auth_login_post */
         Body_login_api_v1_auth_login_post: {
@@ -3355,6 +3516,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bff_login_api_v1_bff_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BffLoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BffSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bff_logout_api_v1_bff_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bff_refresh_api_v1_bff_auth_refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BffSessionResponse"];
+                };
+            };
+        };
+    };
+    bff_register_api_v1_bff_auth_register_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BffRegisterRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bff_session_api_v1_bff_auth_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BffSessionResponse"];
                 };
             };
         };
