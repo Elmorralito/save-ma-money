@@ -36,9 +36,235 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#114](https://github.com/Elmorralito/save-ma-money/issues/114)**_] :: **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:45+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#114](https://github.com/Elmorralito/save-ma-money/issues/114)**_] :: **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:45+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 14:56:34+00:00</sub>_
+
+  > **Closed by** [_**#138**](https://github.com/Elmorralito/save-ma-money/pull/138): **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)**
+
+  > **Branch:** feat/PPT-048 · **Base:** main · **1 commit** · **26 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the remaining PPT-048 / #114 work after strategy-B typegen landed in #130: a thin fetch client and TanStack Query wiring so the SPA can call papita_txnsapi with typed probes and cookie-ready credentials — without porting model business logic to TypeScript.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - BFF cookie session / Bearer-from-JS auth ([#115](https://github.com/Elmorralito/save-ma-money/issues/115))
+
+  > - Feature screens (accounts/txns/reports — #117+)
+
+  > - Zod/RHF forms ([#120](https://github.com/Elmorralito/save-ma-money/issues/120))
+
+  > - Re-deciding OpenAPI typegen CI (locked **B** in [#130](https://github.com/Elmorralito/save-ma-money/issues/130))
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - credentials: 'include' from day one so PPT-049 BFF cookies are drop-in
+
+  > - queryOptions for health + client-contract; smart retry skips 4xx
+
+  > - App scaffold shows live probe status when API is up
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web client (modules/web/src/api/)**
+
+  >
+
+  > - apiFetch with AbortSignal, same-origin base URL / optional VITE_API_BASE_URL, no Authorization header
+
+  > - PapitaApiError + discovery header parsing (X-Papita-Error-Code, bulk/report limits)
+
+  > - Contract helpers prefer JSON body from GET /api/v1/meta/client-contract, fall back to headers
+
+  > - Health + meta read helpers only (prove wiring)
+
+  > - Shared QueryClient (staleTime 60s; no 4xx retries) + queryKeys / queryOptions
+
+  >
+
+  > **App / types / docs**
+
+  >
+
+  > - QueryClientProvider in main.tsx; minimal App probe UI
+
+  > - domain.ts health aliases + ClientContract shape (OpenAPI body is free-form)
+
+  > - README credentials policy; .cursor/AGENTS.md pointer
+
+  >
+
+  > **Tests / deps**
+
+  >
+
+  > - Unit tests for queryKeys, errors, http, contract, queryClient; App test with Query provider
+
+  > - Add @tanstack/react-query v5
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (26 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +
+
+  > modules/web/README.md | 19 ++++++-
+
+  > modules/web/package.json | 1 +
+
+  > modules/web/src/App.test.tsx | 66 +++++++++++++++++++++-
+
+  > modules/web/src/App.tsx | 48 ++++++++++++++--
+
+  > modules/web/src/api/* | thin client + unit tests
+
+  > modules/web/src/main.tsx | 8 ++-
+
+  > modules/web/src/test/createTestQueryClient.ts | 14 +++++
+
+  > modules/web/src/test/queryWrapper.tsx | 14 +++++
+
+  > modules/web/src/types/domain.ts | 43 ++++++++++++++
+
+  > pnpm-lock.yaml | 18 ++++++
+
+  > 26 files changed, 859 insertions(+), 11 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 8dd6353 feat/PPT-048: [web] Add thin OpenAPI HTTP client and TanStack Query wiring
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm web:lint — pass
+
+  > - pnpm web:test — pass (12 tests)
+
+  > - pnpm web:build — pass
+
+  > - pnpm web:check-types — pass (OpenAPI types in sync)
+
+  > - GitHub Actions on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Web CI green on this PR (web-ci.yml: check-types, lint, test, build)
+
+  > - [ ] Optional local smoke: make api-up + make web-dev → App shows health + bulk/report limits
+
+  > - [ ] Confirm no Bearer / JWT storage added in review
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - App now issues unauthenticated /api/v1/health and /meta/client-contract requests on load; without make api-up the UI shows unavailable/— (expected for scaffold)
+
+  > > - Cookie credentials: 'include' is ready for #115 but session endpoints do not exist yet — no auth behavior change until BFF lands
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - ClientContract is a hand-mirrored interface because OpenAPI types the endpoint body as a free-form object
+
+  > > - Feature domains should extend queryKeys / add helpers under src/api/ — do not invent ad-hoc keys in screens
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#114](https://github.com/Elmorralito/save-ma-money/issues/114) (PPT-048)
+
+  > - Parent epic: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on / builds on: [#113](https://github.com/Elmorralito/save-ma-money/issues/113), [#130](https://github.com/Elmorralito/save-ma-money/issues/130)
+
+  > - Unblocks: [#115](https://github.com/Elmorralito/save-ma-money/issues/115), [#129](https://github.com/Elmorralito/save-ma-money/issues/129), feature screens #117+
+
+  > - Docs: modules/web/README.md, modules/api/README.md
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#130](https://github.com/Elmorralito/save-ma-money/issues/130)**_] :: **ci/PPT-065: [web] Lock OpenAPI typegen CI strategy** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:10+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 20:25:37+00:00</sub>_
 
