@@ -5,6 +5,9 @@ import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { bffLogin } from "@/api/auth";
 import { isPapitaApiError } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
 
 export function LoginPage() {
@@ -26,8 +29,8 @@ export function LoginPage() {
         "from" in location.state &&
         typeof (location.state as { from?: unknown }).from === "string"
           ? (location.state as { from: string }).from
-          : "/";
-      await navigate(from, { replace: true });
+          : "/dashboard";
+      await navigate(from === "/" ? "/dashboard" : from, { replace: true });
     },
     onError: (err: unknown) => {
       setError(isPapitaApiError(err) ? err.message : "Login failed");
@@ -35,7 +38,7 @@ export function LoginPage() {
   });
 
   if (sessionQuery.data?.authenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -45,13 +48,18 @@ export function LoginPage() {
   }
 
   return (
-    <main className="app">
-      <h1>Sign in</h1>
-      <p>Session cookies only — JWTs never touch the browser.</p>
-      <form className="auth-form" onSubmit={onSubmit}>
-        <label>
-          Email
-          <input
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+        <p className="text-sm text-muted-foreground">
+          Session cookies only — JWTs never touch the browser.
+        </p>
+      </div>
+      <form className="space-y-4" onSubmit={onSubmit}>
+        <div className="space-y-2">
+          <Label htmlFor="login-email">Email</Label>
+          <Input
+            id="login-email"
             type="email"
             name="email"
             autoComplete="username"
@@ -61,10 +69,11 @@ export function LoginPage() {
               setEmail(event.target.value);
             }}
           />
-        </label>
-        <label>
-          Password
-          <input
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="login-password">Password</Label>
+          <Input
+            id="login-password"
             type="password"
             name="password"
             autoComplete="current-password"
@@ -75,19 +84,25 @@ export function LoginPage() {
               setPassword(event.target.value);
             }}
           />
-        </label>
+        </div>
         {error ? (
-          <p role="alert" className="auth-error">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         ) : null}
-        <button type="submit" disabled={loginMutation.isPending}>
+        <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
           {loginMutation.isPending ? "Signing in…" : "Sign in"}
-        </button>
+        </Button>
       </form>
-      <p>
-        No account? <Link to="/register">Register</Link>
+      <p className="text-sm text-muted-foreground">
+        No account?{" "}
+        <Link
+          to="/register"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          Register
+        </Link>
       </p>
-    </main>
+    </div>
   );
 }

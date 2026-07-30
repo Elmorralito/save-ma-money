@@ -84,13 +84,13 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 
 ## BFF cookie auth (PPT-049 / #115)
 
-| Piece         | Location                      | Notes                                                                                   |
-| ------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
-| BFF routes    | `POST/GET /api/v1/bff/auth/*` | login, register, session, refresh, logout                                               |
-| Cookie        | `papita_sid`                  | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
-| CSRF          | `X-Papita-CSRF`               | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
-| SPA routes    | `/login`, `/register`, `/`    | `RequireAuth` redirects anonymous users to login                                        |
-| Session query | `queryKeys.auth.session()`    | Bootstrap via `GET /bff/auth/session`                                                   |
+| Piece         | Location                                                    | Notes                                                                                   |
+| ------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| BFF routes    | `POST/GET /api/v1/bff/auth/*`                               | login, register, session, refresh, logout                                               |
+| Cookie        | `papita_sid`                                                | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
+| CSRF          | `X-Papita-CSRF`                                             | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
+| SPA routes    | `/login`, `/register`, `/dashboard` (+ stub feature routes) | `RequireAuth` + `AppLayout`; anonymous users redirect to login                          |
+| Session query | `queryKeys.auth.session()`                                  | Bootstrap via `GET /bff/auth/session`                                                   |
 
 **Threat model (short):**
 
@@ -116,13 +116,31 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 - Copy `.env.example` → `.env.local` for local overrides (gitignored via `*.local`).
 - Never put secrets, service-role keys, or JWT signing material in `VITE_*` variables.
 
+## Design system + app shell (PPT-051 / #116)
+
+| Piece      | Location                  | Notes                                                                                                 |
+| ---------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite` |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                       |
+| Routes     | `src/App.tsx`             | Lazy stubs: dashboard, accounts, categories, transactions, movements, reports + login/register        |
+
+Add a component:
+
+```bash
+cd modules/web
+pnpm dlx shadcn@latest add <component>   # uses components.json aliases
+```
+
+Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex colors.
+
 ## Quality gates
 
 - TypeScript: `strict` + `noUncheckedIndexedAccess`; path alias `@/*` → `src/*`.
-- ESLint 9 (flat) + Prettier + `eslint-plugin-react-hooks` + `@tanstack/eslint-plugin-query`.
+- ESLint (flat) + Prettier + `eslint-plugin-react-hooks` + `eslint-plugin-jsx-a11y` + `@tanstack/eslint-plugin-query`.
 - OpenAPI types must stay in sync (`make check-types`); API PRs must refresh the artifact (`make check-openapi`).
 - Python pre-commit remains for Python; web quality is enforced by [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml).
 
 ## Out of scope here
 
-Feature CRUD screens, design system / shadcn shell, nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
+Feature CRUD screens (PPT-052+), Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
