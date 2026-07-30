@@ -220,12 +220,12 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 
 ### Publish model package (PPT-024)
 
-|             |                                                                                                                   |
-| :---------- | :---------------------------------------------------------------------------------------------------------------- |
-| **Trigger** | `workflow_call` (from release / dev); tag `model-v*` → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi` |
-| **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                                                      |
-| **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`)                                       |
-| **Gates**   | Tag/ref version must match `modules/model/pyproject.toml` (stable); clean-venv wheel import smoke                 |
+|             |                                                                                                                                                                                                                                                                                                                                |
+| :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger** | `workflow_call` (from release / dev); tag `model-v*` → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi`                                                                                                                                                                                                              |
+| **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                                                                                                                                                                                                                                                                   |
+| **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`). Publish steps set `attestations: false` because PEP 740 attestations use the **caller** workflow as Build Config URI while the publisher is registered as `publish-model.yml` ([warehouse#11096](https://github.com/pypi/warehouse/issues/11096)) |
+| **Gates**   | Tag/ref version must match `modules/model/pyproject.toml` (stable); clean-venv wheel import smoke                                                                                                                                                                                                                              |
 
 **Stable release flow:** merge conventional model commits to `main` → `release-model.yml` tags `model-v*` → **calls** `publish-model.yml` → **PyPI**.
 

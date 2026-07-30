@@ -166,6 +166,10 @@ jobs:
           packages-dir: dist/
           skip-existing: true
           verbose: true
+          # Attestation Build Config URI is the *caller* workflow when this file is
+          # reused via workflow_call; PyPI checks it against the Trusted Publisher
+          # (this file). Disable until warehouse supports reusable-workflow attestations.
+          attestations: false
 
       - name: Summary
         run: |
@@ -204,6 +208,8 @@ jobs:
           packages-dir: dist/
           skip-existing: true
           verbose: true
+          # Same reusable-workflow attestation mismatch as TestPyPI (see above).
+          attestations: false
 
       - name: Summary
         run: |
