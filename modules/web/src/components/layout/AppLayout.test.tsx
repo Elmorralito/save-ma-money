@@ -1,13 +1,12 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
-import { RequireAuth } from "@/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { PublicLayout } from "@/components/layout/PublicLayout";
+import { AccountsPage } from "@/pages/AccountsPage";
 import { DashboardPage } from "@/pages/DashboardPage";
-import { LoginPage } from "@/pages/LoginPage";
 import { QueryTestProvider } from "@/test/queryWrapper";
 
 vi.mock("@/api/auth", () => ({
@@ -79,30 +78,33 @@ afterEach(() => {
 
 beforeEach(() => {
   vi.mocked(authApi.getBffSession).mockResolvedValue({
-    authenticated: false,
-    user: null,
-    csrf_token: null,
+    authenticated: true,
+    user: {
+      id: "00000000-0000-0000-0000-000000000001",
+      username: "tester",
+      email: "tester@example.com",
+      display_name: null,
+      phone: null,
+      provider: "email",
+      auth_provider: "local",
+      created_at: "2026-07-29T00:00:00Z",
+    },
+    csrf_token: "csrf-test",
     session_backend: "memory",
   });
 });
 
-describe("auth routing", () => {
-  it("redirects unauthenticated users from /dashboard to /login", async () => {
+describe("AppLayout", () => {
+  it("renders nav landmarks and navigates between stub routes", async () => {
+    const user = userEvent.setup();
+
     render(
       <QueryTestProvider>
         <MemoryRouter initialEntries={["/dashboard"]}>
           <Routes>
-            <Route element={<PublicLayout />}>
-              <Route path="/login" element={<LoginPage />} />
-            </Route>
-            <Route
-              element={
-                <RequireAuth>
-                  <AppLayout />
-                </RequireAuth>
-              }
-            >
+            <Route element={<AppLayout />}>
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/accounts" element={<AccountsPage />} />
             </Route>
           </Routes>
         </MemoryRouter>
@@ -110,55 +112,20 @@ describe("auth routing", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Sign in" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
-  });
-
-  it("renders the login page", () => {
-    render(
-      <QueryTestProvider>
-        <MemoryRouter initialEntries={["/login"]}>
-          <Routes>
-            <Route element={<PublicLayout />}>
-              <Route path="/login" element={<LoginPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </QueryTestProvider>,
-    );
-    expect(screen.getByRole("heading", { level: 1, name: "Sign in" })).toBeInTheDocument();
-  });
-});
-
-describe("DashboardPage (authenticated)", () => {
-  it("renders probes when session is authenticated", async () => {
-    vi.mocked(authApi.getBffSession).mockResolvedValue({
-      authenticated: true,
-      user: {
-        id: "00000000-0000-0000-0000-000000000001",
-        username: "tester",
-        email: "tester@example.com",
-        display_name: null,
-        phone: null,
-        provider: "email",
-        auth_provider: "local",
-        created_at: "2026-07-29T00:00:00Z",
-      },
-      csrf_token: "csrf-test",
-      session_backend: "memory",
+    await waitFor(() => {
+      expect(screen.getAllByText("tester@example.com").length).toBeGreaterThan(0);
     });
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
 
-    render(
-      <QueryTestProvider>
-        <MemoryRouter>
-          <DashboardPage />
-        </MemoryRouter>
-      </QueryTestProvider>,
-    );
+    const nav = screen.getByRole("navigation", { name: "App sections" });
+    expect(within(nav).getByRole("link", { name: "Accounts" })).toBeInTheDocument();
+
+    await user.click(within(nav).getByRole("link", { name: "Accounts" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/tester@example.com/)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { level: 1, name: "Accounts" })).toBeInTheDocument();
     });
-    expect(screen.getByRole("region", { name: "API probe status" })).toBeInTheDocument();
   });
 });

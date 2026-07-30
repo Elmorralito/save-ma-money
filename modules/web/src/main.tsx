@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 
 import { createAppQueryClient } from "@/api/queryClient";
 import App from "@/App";
+import { Toaster } from "@/components/ui/sonner";
 import "./index.css";
 
 const rootElement = document.getElementById("root");
@@ -17,6 +18,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>,
 );

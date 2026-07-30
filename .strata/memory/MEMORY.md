@@ -4,9 +4,9 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — PPT-047 web scaffold (`modules/web`); Supabase owns Auth (PPT-039).
+- [Project state](project_state.md) — PPT-051 design shell on `modules/web`; Supabase owns Auth (PPT-039).
 - [Active issues](../issues/ACTIVE.md) — (none; PPT-040 open on #92).
-- [Open backlog](../issues/OPEN.md) — PPT-046 web epic children after #113; PPT-040 Codecov; PPT-043 Redis.
+- [Open backlog](../issues/OPEN.md) — PPT-046 feature screens after #116; PPT-040 Codecov; PPT-043 Redis.
 
 ## Rules by trigger
 

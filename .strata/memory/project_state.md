@@ -10,28 +10,20 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- **PPT-049 / #115 / PR #141:** BFF HttpOnly `papita_sid` session in API + web auth UI;
-  babysit: CI TestClient `AUTH_COOKIE_SECURE=false`, session-id rotate on refresh,
-  log digests, `.trivyignore` for stale GHSA on patched `react-router@7.18.2`;
-  expanded mocked-Supabase BFF + store tests for `codecov/patch`
-- **PPT-047 / #113:** Scaffolded `modules/web` (`@papita/web`) — Vite + React 19 + TS strict,
-  pnpm workspace (`pnpm-workspace.yaml`, committed `pnpm-lock.yaml`), ESLint 9 + Prettier +
-  Vitest smoke, Vite `/api` → `:8000` proxy, Makefile `web-*`, path-filtered `web-ci.yml`,
-  Dependabot npm, Node 22 pins (`.nvmrc` / `.node-version`)
-- **PPT-065 / #130:** Locked OpenAPI typegen **strategy B** — committed
-  `modules/web/openapi/openapi.json`, `make sync-openapi` / `check-openapi` (offline
-  `app.openapi()` via `bin/export_openapi.py`), `make generate-types` / `check-types`,
-  `web-ci` type drift gate + `openapi-contract.yml` API↔artifact gate (stale-artifact mitigation)
-- **npm Dependabot #136:** Vite 8 / Vitest 4 / ESLint 10 group bump; keep `typescript` on
-  `~5.9` (typescript-eslint lacks TS 7); Dependabot ignores TS majors
+- **PPT-051 / #116:** Tailwind v4 + shadcn/ui shell in `modules/web` — CSS-variable tokens
+  (light + `.dark`), primitives (`ui/*`), `PublicLayout` / `AppLayout`, lazy stub routes
+  (dashboard/accounts/categories/transactions/movements/reports), jsx-a11y + layout smoke;
+  BFF auth from PPT-049 kept (real session, no mock auth)
+- **PPT-049 / #115 / PR #141:** BFF HttpOnly `papita_sid` session in API + web auth UI (merged)
+- **PPT-047 / #113 · PPT-065 / #130 · PPT-048 / #114:** web scaffold, OpenAPI strategy B,
+  thin HTTP client + TanStack Query (prior)
 - Poetry/Python workspace unchanged; web quality via Web CI (not Python pre-commit)
-- Strata: map entry for `modules/web` in `.strata/docs/ARCHITECTURE.md`
 
 ### Next action
 
-- Land PR #141 (PPT-049) after quality-control + Trivy FS green
+- Open/merge PR for PPT-051 (`feat/PPT-051`)
+- PPT-052 accounts/categories UI (#117); PPT-055 forms kit (#120) when ready
 - PPT-068 email verification (#139); PPT-069 non-goals guardrail (#140)
-- PPT-051 design shell (#116) when auth BFF is merged
 
 ### Uncommitted / staging notes
 

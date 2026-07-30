@@ -1,30 +1,82 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthRedirectBridge } from "@/auth/AuthRedirectBridge";
 import { RequireAuth } from "@/auth/RequireAuth";
-import { HomePage } from "@/pages/HomePage";
-import { LoginPage } from "@/pages/LoginPage";
-import { RegisterPage } from "@/pages/RegisterPage";
+import { AppLayout } from "@/components/layout/AppLayout";
+import { PublicLayout } from "@/components/layout/PublicLayout";
 
-import "./App.css";
+const LoginPage = lazy(async () => {
+  const mod = await import("@/pages/LoginPage");
+  return { default: mod.LoginPage };
+});
+const RegisterPage = lazy(async () => {
+  const mod = await import("@/pages/RegisterPage");
+  return { default: mod.RegisterPage };
+});
+const DashboardPage = lazy(async () => {
+  const mod = await import("@/pages/DashboardPage");
+  return { default: mod.DashboardPage };
+});
+const AccountsPage = lazy(async () => {
+  const mod = await import("@/pages/AccountsPage");
+  return { default: mod.AccountsPage };
+});
+const CategoriesPage = lazy(async () => {
+  const mod = await import("@/pages/CategoriesPage");
+  return { default: mod.CategoriesPage };
+});
+const TransactionsPage = lazy(async () => {
+  const mod = await import("@/pages/TransactionsPage");
+  return { default: mod.TransactionsPage };
+});
+const MovementsPage = lazy(async () => {
+  const mod = await import("@/pages/MovementsPage");
+  return { default: mod.MovementsPage };
+});
+const ReportsPage = lazy(async () => {
+  const mod = await import("@/pages/ReportsPage");
+  return { default: mod.ReportsPage };
+});
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+      Loading…
+    </div>
+  );
+}
 
 function App() {
   return (
     <BrowserRouter>
       <AuthRedirectBridge />
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route
-          path="/"
-          element={
-            <RequireAuth>
-              <HomePage />
-            </RequireAuth>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
+
+          <Route
+            element={
+              <RequireAuth>
+                <AppLayout />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/movements" element={<MovementsPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+          </Route>
+
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
