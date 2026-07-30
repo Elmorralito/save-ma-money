@@ -24,6 +24,7 @@ from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.handlers import register_exception_handlers
 from papita_txnsapi.core.rate_limit import bind_rate_limiters
 from papita_txnsapi.core.redis import close_redis, init_redis
+from papita_txnsapi.middleware.bff_csrf import BffCsrfMiddleware
 from papita_txnsapi.middleware.client_contract import ClientContractMiddleware
 from papita_txnsapi.middleware.request_logging import RequestLoggingMiddleware
 from papita_txnsapi.middleware.security_headers import SecurityHeadersMiddleware
@@ -39,6 +40,7 @@ _PROD_CORS_HEADERS = [
     "Accept",
     "Idempotency-Key",
     "X-Request-ID",
+    "X-Papita-CSRF",
 ]
 
 
@@ -118,6 +120,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(ClientContractMiddleware)
+    # Cookie-session mutations require X-Papita-CSRF (PPT-049); Bearer clients exempt.
+    app.add_middleware(BffCsrfMiddleware)
     # Settings requires non-empty ALLOWED_HOSTS when DEBUG=false (staging/prod).
     if not app_settings.DEBUG:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(app_settings.ALLOWED_HOSTS))

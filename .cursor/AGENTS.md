@@ -76,6 +76,8 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web thin API client (PPT-048):** `modules/web/src/api/` — `apiFetch` (`credentials: 'include'`, no Bearer), `queryKeys` / `queryOptions`, `PapitaApiError` + discovery headers, health/meta probes only. Domain logic stays in Python.
 
+**Web BFF cookie auth (PPT-049):** API `/api/v1/bff/auth/*` + `BffSessionStore` (Redis or memory; **not** JWT denylist). Cookie `papita_sid` (HttpOnly); CSRF `X-Papita-CSRF`. SPA login/register + `RequireAuth`; `get_current_owner` accepts Bearer **or** BFF cookie. `make auth-smoke` (Bearer) still valid alongside BFF.
+
 ---
 
 ## Layered architecture (model package)

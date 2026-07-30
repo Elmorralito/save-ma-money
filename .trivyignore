@@ -1,0 +1,5 @@
+# react-router@7.18.2 is the patched 7.x line for GHSA-qwww-vcr4-c8h2
+# (upstream: >=7.18.2 and >=8.3.0). Trivy's DB still lists only 8.3.0 as fixed;
+# react-router-dom has no 8.x release yet. This SPA does not use unstable RSC APIs.
+# https://github.com/remix-run/react-router/security/advisories/GHSA-qwww-vcr4-c8h2
+GHSA-qwww-vcr4-c8h2

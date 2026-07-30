@@ -80,9 +80,25 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 | Probes           | `src/api/meta.ts`, `health.ts`                 | Unauthenticated health + `GET /api/v1/meta/client-contract`                  |
 | Query            | `queryKeys.ts`, `queries.ts`, `queryClient.ts` | `queryOptions()`; `staleTime` 60s; **no 4xx retries**                        |
 
-**Credentials policy:** always send cookies (`credentials: 'include'`) so PPT-049 BFF HttpOnly sessions work without client changes. Do **not** store JWTs in `localStorage` / JS-readable storage or attach Bearer tokens from the SPA (PDF Axios interceptor pattern is superseded).
+**Credentials policy:** always send cookies (`credentials: 'include'`) for BFF HttpOnly sessions (PPT-049 / #115). Do **not** store JWTs in `localStorage` / JS-readable storage or attach Bearer tokens from the SPA (PDF Axios interceptor pattern is superseded).
 
-**Local smoke:** `make api-up` then `make web-dev` — the App scaffold shows health status + bulk/report limits from the contract probe.
+## BFF cookie auth (PPT-049 / #115)
+
+| Piece         | Location                      | Notes                                                                                   |
+| ------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
+| BFF routes    | `POST/GET /api/v1/bff/auth/*` | login, register, session, refresh, logout                                               |
+| Cookie        | `papita_sid`                  | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
+| CSRF          | `X-Papita-CSRF`               | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
+| SPA routes    | `/login`, `/register`, `/`    | `RequireAuth` redirects anonymous users to login                                        |
+| Session query | `queryKeys.auth.session()`    | Bootstrap via `GET /bff/auth/session`                                                   |
+
+**Threat model (short):**
+
+- **XSS:** HttpOnly session cookie is not readable from JS, so stolen XSS cannot exfiltrate JWTs from storage. Treat XSS as still critical (CSRF token + UI state are reachable). Prefer CSP / dependency hygiene.
+- **CSRF:** SameSite=Lax plus required `X-Papita-CSRF` on unsafe methods when the session cookie is present (Bearer token clients are exempt).
+- **Token clients:** `make auth-smoke` and direct `Authorization: Bearer` against `/api/v1/auth/*` still work; they coexist with BFF cookies.
+
+**Local smoke:** `make api-up` then `make web-dev` — open `/login`, sign in (local HS256 or Supabase), confirm `/` shows session + contract probes. Memory BFF sessions are process-local (document multi-worker limitation; Redis when `REDIS_ENABLED=true`).
 
 ## Vite `/api` proxy
 
@@ -109,4 +125,4 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 
 ## Out of scope here
 
-Feature screens, BFF cookie auth, thin HTTP/Query client (#114), design system / shadcn shell, nginx image — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
+Feature CRUD screens, design system / shadcn shell, nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).

@@ -15,6 +15,9 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
 # Force local HS256 for unit tests even when environments/local/.env has supabase Auth.
 os.environ["AUTH_PROVIDER"] = "local"
+# TestClient is HTTP — Secure cookies are not stored/sent; keep BFF cookies usable in CI
+# even when DEBUG=false (CI default) would otherwise imply Secure cookies.
+os.environ["AUTH_COOKIE_SECURE"] = "false"
 os.environ.setdefault("AUTH_RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("API_RATE_LIMIT_ENABLED", "false")
 os.environ.setdefault("HEALTH_RATE_LIMIT_ENABLED", "false")
@@ -39,9 +42,12 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 
 def _clear_auth_singletons() -> None:
     """Reset Settings cache and AuthSecurityManager after env/provider changes."""
+    from papita_txnsapi.core.bff_session import clear_memory_bff_sessions
+
     get_settings.cache_clear()
     AuthSecurityManager.reset_instances()
     clear_transactions_service_cache()
+    clear_memory_bff_sessions()
 
 
 @pytest.fixture

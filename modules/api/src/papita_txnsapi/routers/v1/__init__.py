@@ -7,6 +7,7 @@ tenant-scoped CRUD routes.
 Routes exposed (prefix relative to app mount):
     ``/health`` — liveness, readiness, database, Auth, and composite health (no tenant scope).
     ``/auth`` — register, login, profile; refresh/logout via Supabase Auth sessions.
+    ``/bff/auth`` — HttpOnly cookie session (PPT-049); JWTs stay server-side.
     ``/accounts`` — tenant-scoped account CRUD via :class:`~papita_txnsmodel.services.accounts.AccountsService`.
     ``/categories`` — tenant + global seed categories via
         :class:`~papita_txnsmodel.services.categories.CategoriesService`.
@@ -27,6 +28,7 @@ from fastapi import APIRouter
 from papita_txnsapi.routers.v1 import (
     accounts,
     auth,
+    bff_auth,
     budgets,
     categories,
     health,
@@ -40,6 +42,7 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(meta.router)
 api_v1_router.include_router(auth.router)
+api_v1_router.include_router(bff_auth.router)
 api_v1_router.include_router(accounts.router)
 api_v1_router.include_router(categories.router)
 api_v1_router.include_router(transactions.router)

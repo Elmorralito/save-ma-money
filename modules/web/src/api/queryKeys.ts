@@ -6,6 +6,10 @@
  */
 export const queryKeys = {
   all: ["papita"] as const,
+  auth: {
+    all: ["papita", "auth"] as const,
+    session: () => ["papita", "auth", "session"] as const,
+  },
   meta: {
     all: ["papita", "meta"] as const,
     clientContract: () => ["papita", "meta", "client-contract"] as const,

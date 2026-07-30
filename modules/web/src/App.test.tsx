@@ -1,8 +1,20 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import App from "@/App";
+import * as authApi from "@/api/auth";
+import { RequireAuth } from "@/auth/RequireAuth";
+import { HomePage } from "@/pages/HomePage";
+import { LoginPage } from "@/pages/LoginPage";
 import { QueryTestProvider } from "@/test/queryWrapper";
+
+vi.mock("@/api/auth", () => ({
+  getBffSession: vi.fn(),
+  bffLogin: vi.fn(),
+  bffLogout: vi.fn(),
+  bffRegister: vi.fn(),
+  bffRefresh: vi.fn(),
+}));
 
 vi.mock("@/api/health", () => ({
   getHealth: vi.fn(async () => ({
@@ -58,14 +70,86 @@ vi.mock("@/api/meta", () => ({
   })),
 }));
 
-describe("App", () => {
-  it("renders the scaffold heading and contract probe section", () => {
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+beforeEach(() => {
+  vi.mocked(authApi.getBffSession).mockResolvedValue({
+    authenticated: false,
+    user: null,
+    csrf_token: null,
+    session_backend: "memory",
+  });
+});
+
+describe("auth routing", () => {
+  it("redirects unauthenticated users from / to /login", async () => {
     render(
       <QueryTestProvider>
-        <App />
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/"
+              element={
+                <RequireAuth>
+                  <HomePage />
+                </RequireAuth>
+              }
+            />
+          </Routes>
+        </MemoryRouter>
       </QueryTestProvider>,
     );
-    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Sign in" })).toBeInTheDocument();
+    });
+  });
+
+  it("renders the login page", () => {
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={["/login"]}>
+          <LoginPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+    expect(screen.getByRole("heading", { level: 1, name: "Sign in" })).toBeInTheDocument();
+  });
+});
+
+describe("HomePage (authenticated)", () => {
+  it("renders probes when session is authenticated", async () => {
+    vi.mocked(authApi.getBffSession).mockResolvedValue({
+      authenticated: true,
+      user: {
+        id: "00000000-0000-0000-0000-000000000001",
+        username: "tester",
+        email: "tester@example.com",
+        display_name: null,
+        phone: null,
+        provider: "email",
+        auth_provider: "local",
+        created_at: "2026-07-29T00:00:00Z",
+      },
+      csrf_token: "csrf-test",
+      session_backend: "memory",
+    });
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/tester@example.com/)).toBeInTheDocument();
+    });
     expect(screen.getByRole("region", { name: "API probe status" })).toBeInTheDocument();
   });
 });

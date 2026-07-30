@@ -500,6 +500,148 @@
         "title": "BankingDetailsSchema",
         "type": "object"
       },
+      "BffLoginRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /bff/auth/login``.\n\nAttributes:\n    email: Canonical login identity (OAuth2 ``username`` field for token login).\n    password: Plain-text password (never logged or echoed).",
+        "properties": {
+          "email": {
+            "maxLength": 255,
+            "minLength": 5,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "BffLoginRequest",
+        "type": "object"
+      },
+      "BffRegisterRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /bff/auth/register`` (same fields as ``/auth/register``).",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "maxLength": 255,
+            "minLength": 5,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "maxLength": 128,
+            "minLength": 8,
+            "title": "Password",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 7,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "provider": {
+            "const": "email",
+            "default": "email",
+            "title": "Provider",
+            "type": "string"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 6,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "title": "BffRegisterRequest",
+        "type": "object"
+      },
+      "BffSessionResponse": {
+        "additionalProperties": false,
+        "description": "Public BFF session probe / login response (no JWTs).\n\nAttributes:\n    authenticated: Whether a valid session cookie was resolved.\n    user: Public profile when authenticated.\n    csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.\n    session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).",
+        "properties": {
+          "authenticated": {
+            "title": "Authenticated",
+            "type": "boolean"
+          },
+          "csrf_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csrf Token"
+          },
+          "session_backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Backend"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "authenticated"
+        ],
+        "title": "BffSessionResponse",
+        "type": "object"
+      },
       "Body_login_api_v1_auth_login_post": {
         "properties": {
           "client_id": {
@@ -3599,6 +3741,154 @@
         "summary": "Complete Sso",
         "tags": [
           "Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/login": {
+      "post": {
+        "description": "Authenticate and set an HttpOnly session-id cookie (JWTs stay server-side).",
+        "operationId": "bff_login_api_v1_bff_auth_login_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BffLoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BffSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bff Login",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/logout": {
+      "post": {
+        "description": "Clear BFF session cookie, revoke at IdP when possible, denylist access JWT.",
+        "operationId": "bff_logout_api_v1_bff_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Bff Logout",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/refresh": {
+      "post": {
+        "description": "Rotate tokens inside the BFF session store (cookie required).",
+        "operationId": "bff_refresh_api_v1_bff_auth_refresh_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BffSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Bff Refresh",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/register": {
+      "post": {
+        "description": "Register via the same Auth/UsersService path as ``POST /auth/register``.\n\nDoes not create a BFF session — clients should call ``POST /bff/auth/login`` next.",
+        "operationId": "bff_register_api_v1_bff_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BffRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bff Register",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/session": {
+      "get": {
+        "description": "Probe BFF session for SPA bootstrap.\n\nReturns ``authenticated: false`` (200) when no valid cookie/Bearer — avoids\ntreating anonymous bootstrap as an error. When authenticated via cookie,\nincludes ``csrf_token`` for mutation headers.",
+        "operationId": "bff_session_api_v1_bff_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BffSessionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Bff Session",
+        "tags": [
+          "BFF Authentication"
         ]
       }
     },

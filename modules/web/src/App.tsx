@@ -1,55 +1,31 @@
-import { useQuery } from "@tanstack/react-query";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-import {
-  bulkMaxTransactions,
-  clientContractQueryOptions,
-  healthQueryOptions,
-  reportWindowMaxDays,
-} from "@/api";
+import { AuthRedirectBridge } from "@/auth/AuthRedirectBridge";
+import { RequireAuth } from "@/auth/RequireAuth";
+import { HomePage } from "@/pages/HomePage";
+import { LoginPage } from "@/pages/LoginPage";
+import { RegisterPage } from "@/pages/RegisterPage";
 
 import "./App.css";
 
 function App() {
-  const title = import.meta.env.VITE_APP_TITLE ?? "Papita";
-  const healthQuery = useQuery(healthQueryOptions());
-  const contractQuery = useQuery(clientContractQueryOptions());
-
-  const bulkMax = bulkMaxTransactions(contractQuery.data);
-  const windowMax = reportWindowMaxDays(contractQuery.data);
-
   return (
-    <main className="app">
-      <h1>{title}</h1>
-      <p>
-        Thin API client wiring (PPT-048). Domain features land in later epic children; auth cookies
-        land in PPT-049.
-      </p>
-      <section aria-label="API probe status">
-        <h2>Contract probes</h2>
-        <ul>
-          <li>
-            Health:{" "}
-            {healthQuery.isPending
-              ? "loading…"
-              : healthQuery.isError
-                ? "unavailable (start API with make api-up)"
-                : (healthQuery.data?.status ?? "unknown")}
-          </li>
-          <li>
-            Bulk max:{" "}
-            {contractQuery.isPending ? "loading…" : contractQuery.isError ? "—" : (bulkMax ?? "—")}
-          </li>
-          <li>
-            Report window max days:{" "}
-            {contractQuery.isPending
-              ? "loading…"
-              : contractQuery.isError
-                ? "—"
-                : (windowMax ?? "—")}
-          </li>
-        </ul>
-      </section>
-    </main>
+    <BrowserRouter>
+      <AuthRedirectBridge />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/"
+          element={
+            <RequireAuth>
+              <HomePage />
+            </RequireAuth>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

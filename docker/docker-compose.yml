@@ -108,6 +108,9 @@ services:
     environment:
       # App settings (compose --env-file environments/<env>/.env supplies these)
       PAPITA_ENV: "${PAPITA_ENV:-local}"
+      # DEBUG defaults true for B0 local Compose; when false, ALLOWED_HOSTS is required.
+      DEBUG: "${DEBUG:-true}"
+      DOCS_ENABLED: "${DOCS_ENABLED:-true}"
       AUTH_PROVIDER: "${AUTH_PROVIDER:-local}"
       SUPABASE_URL: "${SUPABASE_URL:-}"
       SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}"
@@ -116,11 +119,14 @@ services:
       SUPABASE_OAUTH_REDIRECT_TO: "${SUPABASE_OAUTH_REDIRECT_TO:-}"
       AUTH_RATE_LIMIT_ENABLED: "${AUTH_RATE_LIMIT_ENABLED:-true}"
       AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: "${AUTH_OAUTH_RATE_LIMIT_PER_MINUTE:-20}"
+      AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-false}"
       JWT_SECRET_KEY: "${JWT_SECRET_KEY:-replace-with-long-random-secret-min-32-chars}"
       # Tenant DB stays on Compose Postgres (Auth users live in Supabase Auth, not this DB)
       DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
-      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["*"]}'
+      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}'
+      # Required when DEBUG=false (TrustedHost). Harmless when DEBUG=true.
+      ALLOWED_HOSTS: '${ALLOWED_HOSTS:-["localhost","127.0.0.1","api","testserver"]}'
       DATABASE_POOL_SIZE: "${DATABASE_POOL_SIZE:-5}"
       # In-compose Redis DNS (do not reuse host REDIS_URL=localhost from .env)
       REDIS_URL: "redis://redis:6379/0"
