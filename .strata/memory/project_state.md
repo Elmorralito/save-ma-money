@@ -23,9 +23,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Next action
 
-- Finish gates (`pnpm --filter @papita/web test`, API auth unit tests); rebuild API image if
-  Compose is stale (`make api-all`)
-- Prefer **two PRs** when committing: PPT-052 web UI vs local auth DX / Makefile
+- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) (Codecov patch follow-up
+  tests for `supabase_auth_local` / `get_by_email` / `should_auto_confirm_email`)
 - PPT-055 forms kit (#120); PPT-068 email verification (#139); PPT-069 non-goals (#140)
 
 ### Uncommitted / staging notes
