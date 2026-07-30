@@ -23,8 +23,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Next action
 
-- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) (Codecov patch follow-up
-  tests for `supabase_auth_local` / `get_by_email` / `should_auto_confirm_email`)
+- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) — also fixes TestPyPI
+  publish skip (`publish-model.yml` must gate on `inputs.target`, not `event_name == workflow_call`)
 - PPT-055 forms kit (#120); PPT-068 email verification (#139); PPT-069 non-goals (#140)
 
 ### Uncommitted / staging notes
