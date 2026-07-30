@@ -10,6 +10,9 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- **PPT-049 / #115 / PR #141:** BFF HttpOnly `papita_sid` session in API + web auth UI;
+  babysit: CI TestClient `AUTH_COOKIE_SECURE=false`, session-id rotate on refresh,
+  log digests, `.trivyignore` for stale GHSA on patched `react-router@7.18.2`
 - **PPT-047 / #113:** Scaffolded `modules/web` (`@papita/web`) — Vite + React 19 + TS strict,
   pnpm workspace (`pnpm-workspace.yaml`, committed `pnpm-lock.yaml`), ESLint 9 + Prettier +
   Vitest smoke, Vite `/api` → `:8000` proxy, Makefile `web-*`, path-filtered `web-ci.yml`,
@@ -25,9 +28,9 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Next action
 
-- Merge npm-web Dependabot #136 after CI green
-- PPT-048 OpenAPI client (#114) on top of locked typegen; and/or PPT-051 design shell (#116)
-- Docs indexes for web (root README / `docs/issues`) → PPT-058 / #123
+- Land PR #141 (PPT-049) after quality-control + Trivy FS green
+- PPT-068 email verification (#139); PPT-069 non-goals guardrail (#140)
+- PPT-051 design shell (#116) when auth BFF is merged
 
 ### Uncommitted / staging notes
 

@@ -8,6 +8,7 @@ HttpOnly session-id cookie. Direct token clients keep using ``/auth/*``.
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from typing import Annotated
@@ -22,6 +23,7 @@ from papita_txnsapi.core.bff_session import (
     DEFAULT_BFF_SESSION_MAX_AGE_SECONDS,
     BffSessionRecord,
     BffSessionStore,
+    new_session_id,
     parse_owner_id_hint,
 )
 from papita_txnsapi.core.security import AuthSecurityManager
@@ -59,6 +61,9 @@ from papita_txnsmodel.services.users import UsersService
 
 logger = logging.getLogger(__name__)
 
+# Opaque ids from ``secrets.token_urlsafe`` (and length bound for Set-Cookie safety).
+_BFF_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+
 router = APIRouter(prefix="/bff/auth", tags=["BFF Authentication"])
 
 
@@ -68,7 +73,13 @@ def _session_max_age(settings: Settings) -> int:
 
 
 def _set_session_cookie(response: Response, *, session_id: str, settings: Settings) -> None:
-    """Attach the HttpOnly ``papita_sid`` cookie to ``response``."""
+    """Attach the HttpOnly ``papita_sid`` cookie to ``response``.
+
+    ``session_id`` must be server-generated opaque entropy (see ``new_session_id``),
+    never a client-supplied value. Callers must not pass ``request.cookies`` values.
+    """
+    if _BFF_SESSION_ID_RE.fullmatch(session_id) is None:
+        raise ValueError("invalid BFF session id for Set-Cookie")
     response.set_cookie(
         key=BFF_SESSION_COOKIE,
         value=session_id,
@@ -393,8 +404,11 @@ def bff_refresh(
         )
 
     updated = _refresh_record(settings=settings, record=record)
-    bff_store.update(session_id, updated, ttl_seconds=_session_max_age(settings))
-    _set_session_cookie(response, session_id=session_id, settings=settings)
+    # Rotate the opaque cookie id so Set-Cookie never echoes a client-supplied value.
+    rotated_id = new_session_id()
+    bff_store.delete(session_id)
+    bff_store.update(rotated_id, updated, ttl_seconds=_session_max_age(settings))
+    _set_session_cookie(response, session_id=rotated_id, settings=settings)
 
     auth_manager = AuthSecurityManager(settings)
     expected_type = settings.JWT_TOKEN_TYPE if settings.AUTH_PROVIDER == "local" else None

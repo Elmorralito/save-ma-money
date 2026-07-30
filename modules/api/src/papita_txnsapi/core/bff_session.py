@@ -16,6 +16,7 @@ Key exports:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import secrets
@@ -169,7 +170,9 @@ class BffSessionStore:
         try:
             return BffSessionRecord.from_json(raw)
         except ValueError:
-            logger.warning("Dropping corrupt BFF session id=%s…", session_id[:8])
+            # Log only a truncated digest — never raw cookie/session material (log injection).
+            digest = hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:12]
+            logger.warning("Dropping corrupt BFF session id_digest=%s", digest)
             self.delete(session_id)
             return None
 
