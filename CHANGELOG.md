@@ -36,9 +36,241 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary:
 
-- [ ] [_**[#116](https://github.com/Elmorralito/save-ma-money/issues/116)**_] :: **feat/PPT-051: [web] Tailwind + shadcn design system and app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:48+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#116](https://github.com/Elmorralito/save-ma-money/issues/116)**_] :: **feat/PPT-051: [web] Tailwind + shadcn design system and app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-30 18:02:53+00:00</sub>_
+
+  > **Closed by** [_**#142**](https://github.com/Elmorralito/save-ma-money/pull/142): **feat/PPT-051: [web] Tailwind + shadcn design system and app shell**
+
+  > **Branch:** feat/PPT-051 · **Base:** main · **1 commit** · **39 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-051: [web] Tailwind + shadcn design system and app shell
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Implements PPT-051 (#116): Tailwind CSS v4 + shadcn/ui design tokens/primitives and a responsive app shell so Phase 2 feature screens have a shared layout. Existing BFF cookie auth (PPT-049) is kept; stub routes replace the temporary HomePage probes landing.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Feature CRUD data wiring (PPT-052+ / #117–#119)
+
+  > - Zod/RHF forms standards (PPT-055 / #120)
+
+  > - Full session user chip polish (PPT-062 / #127)
+
+  > - nginx packaging (PPT-057 / #122)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Real BFF session in the shell (no mock auth) after #115
+
+  > - Lazy-loaded stub routes ready for PPT-052+
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web (modules/web)**
+
+  >
+
+  > - Tailwind v4 (@tailwindcss/vite) + CSS-variable tokens (light + .dark) + prefers-reduced-motion
+
+  > - shadcn/ui primitives: Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner
+
+  > - PublicLayout / AppLayout (desktop sidebar, mobile drawer, email + Sign out)
+
+  > - Lazy stub routes: dashboard, accounts, categories, transactions, movements, reports
+
+  > - Auth pages restyled on tokens/primitives; RequireAuth unchanged in posture
+
+  > - eslint-plugin-jsx-a11y + layout smoke test
+
+  > - README design-system section
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - Project state / MEMORY / ARCHITECTURE / MANIFEST pointers for PPT-051
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~39 files)</summary>
+
+  >
+
+  >
+
+  > .strata/MANIFEST.md | 2 +-
+
+  > .strata/docs/ARCHITECTURE.md | 2 +-
+
+  > .strata/memory/MEMORY.md | 4 +-
+
+  > .strata/memory/project_state.md | 26 +-
+
+  > modules/web/README.md | 36 +-
+
+  > modules/web/components.json | 21 +
+
+  > modules/web/eslint.config.js | 8 +-
+
+  > modules/web/package.json | 16 +-
+
+  > modules/web/src/App.css | 60 -
+
+  > modules/web/src/App.test.tsx | 29 +-
+
+  > modules/web/src/App.tsx | 86 +-
+
+  > modules/web/src/auth/RequireAuth.tsx | 6 +-
+
+  > .../web/src/components/layout/AppLayout.test.tsx | 131 ++
+
+  > modules/web/src/components/layout/AppLayout.tsx | 136 ++
+
+  > modules/web/src/components/layout/PublicLayout.tsx | 19 +
+
+  > modules/web/src/components/layout/navItems.ts | 14 +
+
+  > modules/web/src/components/ui/* | (primitives)
+
+  > modules/web/src/index.css | 126 +-
+
+  > modules/web/src/lib/utils.ts | 7 +
+
+  > modules/web/src/main.tsx | 2 +
+
+  > modules/web/src/pages/* | (stubs + auth restyle)
+
+  > modules/web/vite.config.ts | 3 +-
+
+  > pnpm-lock.yaml | 2344 +++++++++++++++++++-
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 47ecd86 feat/PPT-051: [web] Add Tailwind + shadcn design system and app shell
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make web-lint — pass (local)
+
+  > - make web-test — pass (15 tests)
+
+  > - make web-build — pass
+
+  > - Pre-commit (incl. strata validate) — pass on commit
+
+  > - GitHub Actions on this PR — not yet observed
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm Web CI green on the PR
+
+  > - [ ] make web-dev + optional make api-up: login → navigate stub routes; mobile drawer at ~320px; tab focus rings on Button/Input/nav
+
+  > - [ ] Confirm no JWT/storage regression (cookies only)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - eslint-plugin-jsx-a11y peer range lists ESLint ≤9 while the package uses ESLint 10 (works locally; watch for plugin updates)
+
+  > > - Large pnpm-lock.yaml churn from Tailwind/Radix/shadcn deps — review Dependabot noise separately if needed
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Feature pages are stubs only; dashboard still hosts temporary contract probes until PPT-054
+
+  > > - Dark tokens are wired; no theme toggle ships in this PR
+
+  > > - Minimal header email + Sign out only — fuller chip is PPT-062
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #116 (PPT-051)
+
+  > - Parent epic: #112 (PPT-046)
+
+  > - Depends on closed: #113, #114, #115, #130
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-30 15:04:32+00:00</sub>_
 
