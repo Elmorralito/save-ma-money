@@ -2,6 +2,10 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
+- [ ] [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary:
+
+- [ ] [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary:
+
 - [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
 
 - [ ] [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ops/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
@@ -34,9 +38,291 @@
 
 - [ ] [_**[#116](https://github.com/Elmorralito/save-ma-money/issues/116)**_] :: **feat/PPT-051: [web] Tailwind + shadcn design system and app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:48+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#115](https://github.com/Elmorralito/save-ma-money/issues/115)**_] :: **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:46+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-30 15:04:32+00:00</sub>_
+
+  > **Closed by** [_**#141**](https://github.com/Elmorralito/save-ma-money/pull/141): **feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP**
+
+  > **Branch:** feat/PPT-049 · **Base:** main · **1 commit** · **35 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-049: [web] BFF HttpOnly cookie session with Supabase IdP
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-049 / #115**: browser auth terminates at a thin BFF inside papita_txnsapi. The SPA keeps only an HttpOnly session-id cookie; access/refresh JWTs stay server-side and are attached in-process for existing get_current_owner routes. Login/register/session/logout UX lands under modules/web with CSRF on cookie-authenticated mutations. Local Compose also injects DEBUG / ALLOWED_HOSTS so the API no longer crash-loops when TrustedHost validation runs without those vars.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Email confirmation vertical ([#139](https://github.com/Elmorralito/save-ma-money/issues/139) PPT-068)
+
+  > - Redis session durability polish ([#124](https://github.com/Elmorralito/save-ma-money/issues/124) PPT-059)
+
+  > - Auth edge-case matrix ([#125](https://github.com/Elmorralito/save-ma-money/issues/125) PPT-060)
+
+  > - Session user chip ([#127](https://github.com/Elmorralito/save-ma-money/issues/127) PPT-062)
+
+  > - Feature CRUD screens (#117+)
+
+  > - TypeScript ports of UsersService / model business rules ([#140](https://github.com/Elmorralito/save-ma-money/issues/140) PPT-069)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Cookie papita_sid + separate BffSessionStore (not JWT denylist)
+
+  > - CSRF via X-Papita-CSRF; Bearer / make auth-smoke coexistence
+
+  > - SPA route guards + 401 → BFF refresh → login redirect
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **API / BFF**
+
+  >
+
+  > - New /api/v1/bff/auth/* (login, register, session, refresh, logout)
+
+  > - BffSessionStore (Redis when REDIS_ENABLED, else memory)
+
+  > - get_current_owner accepts Bearer **or** BFF cookie (optional silent Supabase refresh)
+
+  > - BffCsrfMiddleware for cookie-session mutations
+
+  > - BFF_SESSION_MAX_AGE_SECONDS setting; CORS allowlist includes X-Papita-CSRF
+
+  >
+
+  > **Web**
+
+  >
+
+  > - react-router-dom: /login, /register, guarded /
+
+  > - BFF client helpers, in-memory CSRF, credentials: 'include'
+
+  > - Session queryOptions + RequireAuth + unauthorized redirect bridge
+
+  > - Threat-model note in modules/web/README.md
+
+  >
+
+  > **Ops**
+
+  >
+
+  > - Compose injects DEBUG, DOCS_ENABLED, ALLOWED_HOSTS, AUTH_COOKIE_SECURE for local API boot
+
+  >
+
+  > **Contract / docs**
+
+  >
+
+  > - Regenerated OpenAPI artifact + api.d.ts; API README catalog row; AGENTS note
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - API BFF cookie/CSRF/Bearer coexistence tests; web auth routing tests
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (35 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +
+
+  > docker/docker-compose.yml | 8 +-
+
+  > docs/interrogate_badge.svg | 8 +-
+
+  > modules/api/README.md | 1 +
+
+  > modules/api/src/papita_txnsapi/config/settings.py | 2 +
+
+  > modules/api/src/papita_txnsapi/core/bff_session.py | 236 +
+
+  > modules/api/src/papita_txnsapi/dependencies/auth.py| 86 +-
+
+  > modules/api/src/papita_txnsapi/dependencies/bff_session.py | 29 +
+
+  > modules/api/src/papita_txnsapi/main.py | 4 +
+
+  > modules/api/src/papita_txnsapi/middleware/bff_csrf.py | 97 +
+
+  > modules/api/src/papita_txnsapi/routers/v1/**init**.py | 3 +
+
+  > modules/api/src/papita_txnsapi/routers/v1/bff_auth.py | 454 +
+
+  > modules/api/src/papita_txnsapi/schemas/bff_auth.py | 48 +
+
+  > modules/api/tests/conftest.py | 3 +
+
+  > modules/api/tests/test_bff_auth.py | 126 +
+
+  > modules/web/README.md | 22 +-
+
+  > modules/web/openapi/openapi.json | 290 +
+
+  > modules/web/package.json | 3 +-
+
+  > modules/web/src/App.css | 30 +
+
+  > modules/web/src/App.test.tsx | 98 +-
+
+  > modules/web/src/App.tsx | 68 +-
+
+  > modules/web/src/api/auth.ts | 84 +
+
+  > modules/web/src/api/csrf.ts | 20 +
+
+  > modules/web/src/api/http.ts | 96 +-
+
+  > modules/web/src/api/index.ts | 17 +-
+
+  > modules/web/src/api/queryKeys.test.ts | 4 +-
+
+  > modules/web/src/api/queryKeys.ts | 4 +
+
+  > modules/web/src/auth/* | new
+
+  > modules/web/src/pages/* | new
+
+  > modules/web/src/types/api.d.ts | 285 +
+
+  > pnpm-lock.yaml | 45 +
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 7c9397b feat/PPT-049: [web] Add BFF HttpOnly cookie session with Supabase IdP
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - poetry run pytest modules/api/tests/test_bff_auth.py (+ related auth tests) — pass (earlier in session)
+
+  > - pnpm --filter @papita/web test / lint / build — pass (earlier in session)
+
+  > - Pre-commit on commit (isort, black, flake8, pylint, mypy, interrogate, prettier, etc.) — pass
+
+  > - CI on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] make api-up then make web-dev; open /login, register/login with Supabase (or local if configured)
+
+  > - [ ] Confirm DevTools: HttpOnly papita_sid; no access/refresh JWT in localStorage / JS storage
+
+  > - [ ] Mutation without X-Papita-CSRF → 403; with CSRF from session → logout succeeds
+
+  > - [ ] GET /api/v1/auth/me with Bearer still works (make auth-smoke coexistence)
+
+  > - [ ] Web CI + API CI green on the PR
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Memory BFF sessions are process-local (multi-worker needs Redis — follow-up #124)
+
+  > > - Compose now defaults DEBUG=true for local B0 when unset; staging/prod must set DEBUG/ALLOWED_HOSTS explicitly via env file
+
+  > > - OpenAPI artifact regenerated — API↔web contract CI must stay green
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Supabase confirm-email may block usable sessions until #139; pending-confirm UX is not in this PR
+
+  > > - Design-system shell (#116) may still stub auth in parallel; this PR ships functional BFF pages
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#115](https://github.com/Elmorralito/save-ma-money/issues/115) (PPT-049)
+
+  > - Parent epic: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Related: [#139](https://github.com/Elmorralito/save-ma-money/issues/139), [#124](https://github.com/Elmorralito/save-ma-money/issues/124), [#125](https://github.com/Elmorralito/save-ma-money/issues/125)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#114](https://github.com/Elmorralito/save-ma-money/issues/114)**_] :: **feat/PPT-048: [web] OpenAPI types + thin API client (no domain logic)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:45+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 14:56:34+00:00</sub>_
 
