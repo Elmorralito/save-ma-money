@@ -12,7 +12,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - **PPT-049 / #115 / PR #141:** BFF HttpOnly `papita_sid` session in API + web auth UI;
   babysit: CI TestClient `AUTH_COOKIE_SECURE=false`, session-id rotate on refresh,
-  log digests, `.trivyignore` for stale GHSA on patched `react-router@7.18.2`
+  log digests, `.trivyignore` for stale GHSA on patched `react-router@7.18.2`;
+  expanded mocked-Supabase BFF + store tests for `codecov/patch`
 - **PPT-047 / #113:** Scaffolded `modules/web` (`@papita/web`) — Vite + React 19 + TS strict,
   pnpm workspace (`pnpm-workspace.yaml`, committed `pnpm-lock.yaml`), ESLint 9 + Prettier +
   Vitest smoke, Vite `/api` → `:8000` proxy, Makefile `web-*`, path-filtered `web-ci.yml`,
