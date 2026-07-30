@@ -1,0 +1,92 @@
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import * as authApi from "@/api/auth";
+import { LoginPage } from "@/pages/LoginPage";
+import { RegisterPage } from "@/pages/RegisterPage";
+import { QueryTestProvider } from "@/test/queryWrapper";
+
+vi.mock("@/api/auth", () => ({
+  getBffSession: vi.fn(),
+  bffLogin: vi.fn(),
+  bffLogout: vi.fn(),
+  bffRegister: vi.fn(),
+  bffRefresh: vi.fn(),
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
+
+describe("RegisterPage", () => {
+  beforeEach(() => {
+    vi.mocked(authApi.getBffSession).mockResolvedValue({
+      authenticated: false,
+      user: null,
+      csrf_token: null,
+      session_backend: "memory",
+    });
+  });
+
+  it("requires matching passwords and toggles visibility", async () => {
+    const user = userEvent.setup();
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <RegisterPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Email"), "a@example.com");
+    await user.type(screen.getByLabelText("Password"), "SecurePass1!");
+    await user.type(screen.getByLabelText("Confirm password"), "Different1!");
+    await user.click(screen.getByRole("button", { name: "Register" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Passwords do not match");
+    expect(authApi.bffRegister).not.toHaveBeenCalled();
+
+    const showButtons = screen.getAllByRole("button", { name: "Show password" });
+    expect(showButtons.length).toBe(2);
+    await user.click(showButtons[0]!);
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+  });
+
+  it("registers then shows the login registered banner", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authApi.bffRegister).mockResolvedValue({
+      id: "11111111-1111-1111-1111-111111111111",
+      username: "alice01",
+      email: "a@example.com",
+      display_name: null,
+      phone: null,
+      provider: "email",
+      auth_provider: "supabase",
+      created_at: "2026-07-30T00:00:00Z",
+    });
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={["/register"]}>
+          <Routes>
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Email"), "a@example.com");
+    await user.type(screen.getByLabelText("Password"), "SecurePass1!");
+    await user.type(screen.getByLabelText("Confirm password"), "SecurePass1!");
+    await user.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(() => {
+      expect(authApi.bffRegister).toHaveBeenCalled();
+    });
+    expect(await screen.findByRole("status")).toHaveTextContent(/Account created/i);
+  });
+});

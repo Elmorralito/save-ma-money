@@ -15,12 +15,19 @@ from papita_txnsapi.core.supabase_auth import (
     clear_supabase_client_cache,
     create_supabase_admin_client,
     create_supabase_auth_client,
+    supabase_admin_confirm_email,
     supabase_admin_delete_user,
     supabase_auth_user_created_recently,
     supabase_refresh_session,
     supabase_sign_in,
     supabase_sign_out,
     supabase_sign_up,
+)
+from papita_txnsapi.core.supabase_auth_local import (
+    SupabaseClientOverrides,
+    supabase_admin_create_user,
+    supabase_register_user,
+    supabase_sign_in_with_optional_auto_confirm,
 )
 
 
@@ -68,6 +75,49 @@ def test_classify_supabase_auth_error_rate_limit() -> None:
         fallback="failed",
     )
     assert status_code == 429
+    assert "rate limit" in detail.lower()
+
+
+def test_supabase_admin_create_user_skips_email() -> None:
+    subject = uuid.uuid4()
+    client = MagicMock()
+    client.auth.admin.create_user.return_value = SimpleNamespace(
+        user=SimpleNamespace(id=str(subject), email="a@example.local"),
+    )
+    result = supabase_admin_create_user(
+        supabase_url="https://example.supabase.co",
+        service_role_key="service-role",
+        email="a@example.local",
+        password="SecurePass1!",
+        profile=SupabaseSignUpProfile(username="alice01"),
+        client=client,
+    )
+    assert result.user_id == subject
+    assert result.access_token is None
+    payload = client.auth.admin.create_user.call_args.args[0]
+    assert payload["email_confirm"] is True
+    assert payload["user_metadata"]["username"] == "alice01"
+
+
+def test_supabase_register_user_prefers_admin_create() -> None:
+    subject = uuid.uuid4()
+    admin = MagicMock()
+    admin.auth.admin.create_user.return_value = SimpleNamespace(
+        user=SimpleNamespace(id=str(subject), email="a@example.local"),
+    )
+    anon = MagicMock()
+    result = supabase_register_user(
+        supabase_url="https://example.supabase.co",
+        anon_key="anon",
+        email="a@example.local",
+        password="SecurePass1!",
+        service_role_key="service-role",
+        prefer_admin_create=True,
+        clients=SupabaseClientOverrides(anon=anon, admin=admin),
+    )
+    assert result.user_id == subject
+    admin.auth.admin.create_user.assert_called_once()
+    anon.auth.sign_up.assert_not_called()
 
 
 def test_classify_supabase_auth_error_masks_raw_4xx_detail() -> None:
@@ -78,6 +128,27 @@ def test_classify_supabase_auth_error_masks_raw_4xx_detail() -> None:
     assert status_code == 400
     assert detail == "Authentication request failed"
     assert "stacktrace" not in detail
+
+
+def test_classify_supabase_auth_error_email_not_confirmed() -> None:
+    status_code, detail = classify_supabase_auth_error(
+        AuthApiError("Email not confirmed", 400, "email_not_confirmed"),
+        fallback="failed",
+    )
+    assert status_code == 401
+    assert detail == "Email not confirmed"
+
+
+def test_supabase_admin_confirm_email() -> None:
+    subject = uuid.uuid4()
+    client = MagicMock()
+    supabase_admin_confirm_email(
+        supabase_url="https://example.supabase.co",
+        service_role_key="service-role",
+        user_id=subject,
+        client=client,
+    )
+    client.auth.admin.update_user_by_id.assert_called_once_with(str(subject), {"email_confirm": True})
 
 
 def test_supabase_admin_delete_user() -> None:
@@ -153,6 +224,75 @@ def test_supabase_sign_in_requires_access_token() -> None:
     assert result.access_token == "tok"
     assert result.refresh_token == "rtok"
     assert result.expires_in == 120
+
+
+def test_supabase_sign_in_with_optional_auto_confirm_retries_when_unconfirmed() -> None:
+    subject = uuid.uuid4()
+    client = MagicMock()
+    client.auth.sign_in_with_password.side_effect = [
+        AuthApiError("Invalid login credentials", 400, "invalid_credentials"),
+        SimpleNamespace(
+            user=SimpleNamespace(id=str(subject), email="a@example.local"),
+            session=SimpleNamespace(access_token="tok", refresh_token="rtok", expires_in=120),
+        ),
+    ]
+    with (
+        patch(
+            "papita_txnsapi.core.supabase_auth_local._auth_user_email_unconfirmed",
+            return_value=True,
+        ) as mock_unconfirmed,
+        patch(
+            "papita_txnsapi.core.supabase_auth_local.maybe_auto_confirm_auth_email",
+            return_value=True,
+        ) as mock_confirm,
+    ):
+        result = supabase_sign_in_with_optional_auto_confirm(
+            supabase_url="https://example.supabase.co",
+            anon_key="anon",
+            email="a@example.local",
+            password="SecurePass1!",
+            service_role_key="service-role",
+            auth_user_id=subject,
+            auto_confirm=True,
+            client=client,
+        )
+    assert result.access_token == "tok"
+    mock_unconfirmed.assert_called_once()
+    mock_confirm.assert_called_once()
+    assert client.auth.sign_in_with_password.call_count == 2
+
+
+def test_supabase_sign_in_with_optional_auto_confirm_skips_when_already_confirmed() -> None:
+    subject = uuid.uuid4()
+    client = MagicMock()
+    client.auth.sign_in_with_password.side_effect = AuthApiError(
+        "Invalid login credentials",
+        400,
+        "invalid_credentials",
+    )
+    with (
+        patch(
+            "papita_txnsapi.core.supabase_auth_local._auth_user_email_unconfirmed",
+            return_value=False,
+        ) as mock_unconfirmed,
+        patch(
+            "papita_txnsapi.core.supabase_auth_local.maybe_auto_confirm_auth_email",
+        ) as mock_confirm,
+    ):
+        with pytest.raises(AuthApiError):
+            supabase_sign_in_with_optional_auto_confirm(
+                supabase_url="https://example.supabase.co",
+                anon_key="anon",
+                email="a@example.local",
+                password="wrong-password",
+                service_role_key="service-role",
+                auth_user_id=subject,
+                auto_confirm=True,
+                client=client,
+            )
+    mock_unconfirmed.assert_called_once()
+    mock_confirm.assert_not_called()
+    assert client.auth.sign_in_with_password.call_count == 1
 
 
 def test_supabase_refresh_session_rotates_tokens() -> None:

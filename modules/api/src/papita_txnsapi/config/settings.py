@@ -177,6 +177,10 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_ROLE_KEY: str | None = None
     SUPABASE_JWT_AUDIENCE: str = "authenticated"
     SUPABASE_OAUTH_REDIRECT_TO: str | None = None
+    # When True, confirm Auth emails via Admin API after signup / on login retry when
+    # Supabase "Confirm email" left the user without a session. ``None`` → enabled for
+    # ``PAPITA_ENV=local`` only (never default-on in staging/production).
+    AUTH_AUTO_CONFIRM_EMAIL: bool | None = None
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
     ALLOWED_HOSTS: list[str] = Field(default_factory=list)
     FALLBACK_ACTION: FallbackAction = FallbackAction.LOG
@@ -388,6 +392,17 @@ class Settings(BaseSettings):
         if self.AUTH_COOKIE_SECURE is not None:
             return self.AUTH_COOKIE_SECURE
         return not self.DEBUG
+
+    def should_auto_confirm_email(self) -> bool:
+        """Whether Admin Auth may confirm emails for local BFF/password login.
+
+        Returns:
+            Explicit ``AUTH_AUTO_CONFIRM_EMAIL`` when set; otherwise ``True`` only
+            when the active environment is ``local``.
+        """
+        if self.AUTH_AUTO_CONFIRM_EMAIL is not None:
+            return bool(self.AUTH_AUTO_CONFIRM_EMAIL)
+        return active_environment() == "local"
 
 
 @lru_cache()

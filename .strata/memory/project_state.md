@@ -10,23 +10,26 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- **PPT-051 / #116:** Tailwind v4 + shadcn/ui shell in `modules/web` — CSS-variable tokens
-  (light + `.dark`), primitives (`ui/*`), `PublicLayout` / `AppLayout`, lazy stub routes
-  (dashboard/accounts/categories/transactions/movements/reports), jsx-a11y + layout smoke;
-  BFF auth from PPT-049 kept (real session, no mock auth)
-- **PPT-049 / #115 / PR #141:** BFF HttpOnly `papita_sid` session in API + web auth UI (merged)
-- **PPT-047 / #113 · PPT-065 / #130 · PPT-048 / #114:** web scaffold, OpenAPI strategy B,
-  thin HTTP client + TanStack Query (prior)
-- Poetry/Python workspace unchanged; web quality via Web CI (not Python pre-commit)
+- **PPT-052 / #117 (in progress):** Accounts + categories UI in `modules/web` — list/detail,
+  controlled form dialogs, `formatMoney`, list “first 100” note, global category 404 →
+  read-only; update payloads omit empty optionals; Vitest coverage for create/detail/delete
+  - auth register UX
+- **Local Supabase auth DX:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`);
+  Admin register (`email_confirm`) avoids SMTP 429; login auto-confirm only when Auth email
+  is unconfirmed (`supabase_sign_in_with_optional_auto_confirm`)
+- **Ops:** `make api-all` / `make api-all-down`; web error copy points at `api-all` for 502/proxy
+- **PPT-051 / #116:** Tailwind v4 + shadcn shell (prior)
+- **PPT-049 / #115 / PR #141:** BFF HttpOnly session (merged)
 
 ### Next action
 
-- Open/merge PR for PPT-051 (`feat/PPT-051`)
-- PPT-052 accounts/categories UI (#117); PPT-055 forms kit (#120) when ready
-- PPT-068 email verification (#139); PPT-069 non-goals guardrail (#140)
+- Finish gates (`pnpm --filter @papita/web test`, API auth unit tests); rebuild API image if
+  Compose is stale (`make api-all`)
+- Prefer **two PRs** when committing: PPT-052 web UI vs local auth DX / Makefile
+- PPT-055 forms kit (#120); PPT-068 email verification (#139); PPT-069 non-goals (#140)
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
-- `modules/**` changes need a paired `.strata/` touch (strict mode)
+- `modules/**` changes need a paired `.strata/` touch (strict mode) — updated this session
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml

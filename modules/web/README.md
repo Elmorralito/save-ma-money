@@ -13,11 +13,15 @@ This package is presentation-only. Domain rules stay in `papita_txnsmodel` behin
 
 Java is **not** required for the web module.
 
+The SPA proxies `/api` to the Compose API on `:8000`. Start the backend with **`make api-all`** (full stack + health wait) or `make api-up` before `make web-dev`. A **502** from the Vite proxy usually means the API container is down.
+
 From the repo root:
 
 ```bash
 corepack enable   # optional; or: npm install -g pnpm@9
 pnpm install
+make api-all      # Postgres + Redis + API (wait for /health/live)
+make web-dev      # Vite on :5173
 ```
 
 ## Scripts
@@ -118,12 +122,12 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 
 ## Design system + app shell (PPT-051 / #116)
 
-| Piece      | Location                  | Notes                                                                                                 |
-| ---------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite` |
-| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                       |
-| Routes     | `src/App.tsx`             | Lazy stubs: dashboard, accounts, categories, transactions, movements, reports + login/register        |
+| Piece      | Location                  | Notes                                                                                                                    |
+| ---------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                    |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                   |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                          |
+| Routes     | `src/App.tsx`             | Lazy routes: accounts (+ detail), categories CRUD (PPT-052); stubs for dashboard/txns/movements/reports + login/register |
 
 Add a component:
 
@@ -141,6 +145,18 @@ Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex co
 - OpenAPI types must stay in sync (`make check-types`); API PRs must refresh the artifact (`make check-openapi`).
 - Python pre-commit remains for Python; web quality is enforced by [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml).
 
+## Feature screens (PPT-052)
+
+Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms are controlled (Login-style) until Zod/RHF lands in [#120](https://github.com/Elmorralito/save-ma-money/issues/120). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
+
+| Detail          | Behavior                                                                           |
+| --------------- | ---------------------------------------------------------------------------------- |
+| List window     | First page only (`limit=100`); footer notes when `total > 100`                     |
+| Money display   | `src/lib/formatMoney.ts` (presentation only)                                       |
+| Update payloads | Omit empty optional fields so edits do not wipe server values                      |
+| Errors          | `formatApiError` — 502/503/504 → start API; 429 → server detail or generic backoff |
+| Auth UX         | Register confirm-password + show/hide; login banner after successful register      |
+
 ## Out of scope here
 
-Feature CRUD screens (PPT-052+), Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
+Transactions/movements/dashboard UI (PPT-053/054), Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).

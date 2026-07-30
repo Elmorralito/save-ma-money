@@ -3,15 +3,17 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { bffRegister } from "@/api/auth";
-import { isPapitaApiError } from "@/api/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
+import { formatApiError } from "@/lib/formatApiError";
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -21,13 +23,17 @@ export function RegisterPage() {
       await navigate("/login", { replace: true, state: { registered: true } });
     },
     onError: (err: unknown) => {
-      setError(isPapitaApiError(err) ? err.message : "Registration failed");
+      setError(formatApiError(err, "Registration failed"));
     },
   });
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
     registerMutation.mutate({
       email: email.trim(),
       password,
@@ -73,9 +79,8 @@ export function RegisterPage() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="register-password">Password</Label>
-          <Input
+          <PasswordInput
             id="register-password"
-            type="password"
             name="password"
             autoComplete="new-password"
             required
@@ -83,6 +88,20 @@ export function RegisterPage() {
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);
+            }}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="register-confirm-password">Confirm password</Label>
+          <PasswordInput
+            id="register-confirm-password"
+            name="confirm_password"
+            autoComplete="new-password"
+            required
+            minLength={8}
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
             }}
           />
         </div>
