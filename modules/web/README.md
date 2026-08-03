@@ -26,22 +26,24 @@ make web-dev      # Vite on :5173
 
 ## Scripts
 
-| Make (repo root)         | pnpm (repo root)          | Purpose                                                             |
-| ------------------------ | ------------------------- | ------------------------------------------------------------------- |
-| `make web-dev`           | `pnpm web:dev`            | Vite dev server (default `:5173`)                                   |
-| `make web-lint`          | `pnpm web:lint`           | ESLint + Prettier check                                             |
-| `make web-test`          | `pnpm web:test`           | Vitest (jsdom)                                                      |
-| `make web-build`         | `pnpm web:build`          | `tsc -b` + production bundle                                        |
-| `make generate-types`    | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact |
-| `make check-types`       | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                         |
-| `make sync-openapi`      | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
-| `make check-openapi`     | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
-| `make web-openapi`       | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
-| `make web-e2e-seed`      | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)     |
-| `make web-test-coverage` | `pnpm web:test:coverage`  | Vitest + v8 coverage thresholds (PPT-056 / #121)                    |
-| `make web-e2e`           | `pnpm web:test:e2e`       | Playwright critical path + axe (needs `make api-all`)               |
-| `make web-lhci`          | `pnpm web:lhci`           | Lighthouse CI lab budgets against `vite preview`                    |
-| `make web-audit`         | `pnpm web:audit`          | `pnpm audit --prod` for `@papita/web`                               |
+| Make (repo root)         | pnpm (repo root)          | Purpose                                                              |
+| ------------------------ | ------------------------- | -------------------------------------------------------------------- |
+| `make web-dev`           | `pnpm web:dev`            | Vite dev server (default `:5173`)                                    |
+| `make web-up`            | —                         | nginx Compose SPA (`WEB_PORT`, default `:3000`) + API deps (PPT-057) |
+| `make web-down`          | —                         | Stop the Compose `web` service                                       |
+| `make web-lint`          | `pnpm web:lint`           | ESLint + Prettier check                                              |
+| `make web-test`          | `pnpm web:test`           | Vitest (jsdom)                                                       |
+| `make web-build`         | `pnpm web:build`          | `tsc -b` + production bundle                                         |
+| `make generate-types`    | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact  |
+| `make check-types`       | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                          |
+| `make sync-openapi`      | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)        |
+| `make check-openapi`     | —                         | Fail if the committed artifact drifts from a fresh offline dump      |
+| `make web-openapi`       | —                         | `sync-openapi` + `generate-types` (after API schema changes)         |
+| `make web-e2e-seed`      | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)      |
+| `make web-test-coverage` | `pnpm web:test:coverage`  | Vitest + v8 coverage thresholds (PPT-056 / #121)                     |
+| `make web-e2e`           | `pnpm web:test:e2e`       | Playwright critical path + axe (needs `make api-all`)                |
+| `make web-lhci`          | `pnpm web:lhci`           | Lighthouse CI lab budgets against `vite preview`                     |
+| `make web-audit`         | `pnpm web:audit`          | `pnpm audit --prod` for `@papita/web`                                |
 
 Package-local: `pnpm --filter @papita/web <script>`.
 
@@ -259,14 +261,15 @@ Deferred polish (not blockers): full screen-reader scripted journeys, mobile nat
 
 ### Security checklist (BFF / CSP / deps)
 
-| Check                     | Status / owner                                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                               |
-| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                              |
-| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                                     |
-| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                                    |
-| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                                     |
-| CSP headers               | **Launch packaging** ([#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057) — SPA ships without CSP meta today; prefer proxy/nginx CSP at ship |
+| Check                     | Status / owner                                                                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                 |
+| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                |
+| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                       |
+| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                      |
+| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                       |
+| CSP headers               | **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)** — may share a PR with nginx packaging; SPA ships without CSP meta today |
+| nginx Compose packaging   | **PPT-057 / [#122](https://github.com/Elmorralito/save-ma-money/issues/122)** — `docker/web/` + `make web-up` (same-origin `/api`)                    |
 
 PR template section **Web security checklist** must be signed off on web/auth PRs.
 
@@ -274,10 +277,41 @@ PR template section **Web security checklist** must be signed off on web/auth PR
 
 `vite.config.ts` proxies `/api` → `http://localhost:8000` so local browser calls stay same-origin. Start the API with `make api-up` when you need a live backend; **lint / test / build do not require the API**.
 
+## nginx Compose packaging (PPT-057 / #122)
+
+Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage image: pnpm build → `nginx:alpine` with SPA fallback and `/api` reverse-proxy to the `api` service.
+
+| Piece      | Location                          | Notes                                                                                                 |
+| ---------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Dockerfile | `docker/web/Dockerfile`           | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`            |
+| nginx      | `docker/web/nginx.conf`           | `try_files` SPA shell; proxy `/api` → `api:8000`; preserves `Set-Cookie` (`papita_sid` `Path=/api`)   |
+| Compose    | `docker/docker-compose.yml` `web` | Publishes `WEB_PORT` (default `3000`); `depends_on` healthy `api` + `redis` (BFF durability, PPT-059) |
+| Make       | `make web-up` / `web-down`        | Builds/starts `web` + deps; smokes `/` + `/api/v1/health/live`. `make stack-up` includes `web`        |
+
+**Local Vite vs Compose nginx**
+
+| Mode              | Command                         | Origin                          | When to use                                  |
+| ----------------- | ------------------------------- | ------------------------------- | -------------------------------------------- |
+| Day-to-day DX     | `make api-all` + `make web-dev` | Vite `:5173` (proxy → `:8000`)  | Hot reload, feature work                     |
+| Packaging / smoke | `make web-up`                   | nginx `WEB_PORT` (default 3000) | Validate prod-shaped same-origin BFF cookies |
+
+Cookie notes (aligned with [BFF section](#bff-cookie-auth-ppt-049--115)):
+
+- Browser talks only to nginx; `/api` is same-origin → no brittle cross-site cookie CORS.
+- `papita_sid` remains HttpOnly, `SameSite=Lax`, `Path=/api`; nginx must not rewrite cookie Path.
+- Staging/prod: set `ALLOWED_ORIGINS` to the **web** origin(s); never `*` with credentials. Redis required in the stack (no memory BFF fallback).
+- CSP / extra SPA security headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (PPT-063).
+
+```bash
+make web-up
+# open http://localhost:3000/ → login via BFF; cookies scoped to Path=/api on the web origin
+```
+
 ## CORS / `ALLOWED_ORIGINS`
 
-- API default / documented local CORS targets include `http://localhost:3000` (and `127.0.0.1:3000`).
+- API default / documented local CORS targets include `http://localhost:3000` (and `127.0.0.1:3000`) for the nginx SPA and `http://localhost:5173` for Vite.
 - With the Vite proxy, the browser talks to Vite (`:5173`) and `/api` is same-origin — CORS is not involved for those calls.
+- With `make web-up`, the browser talks to nginx (`:3000`) and `/api` is same-origin through the proxy — CORS is not involved for those calls either.
 - If you call the API **cross-origin** from `:5173` (no proxy / absolute `VITE_API_BASE_URL` to `:8000`), add `http://localhost:5173` to `ALLOWED_ORIGINS` in `environments/local/.env`.
 
 ## `VITE_*` env rules
@@ -369,4 +403,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx/CSP image packaging ([#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057), mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, CSP headers ([#128](https://github.com/Elmorralito/save-ma-money/issues/128) / PPT-063), mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). nginx Compose packaging is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057 (`make web-up`). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).

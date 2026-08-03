@@ -68,7 +68,7 @@ save-ma-money/
 │       └── src/                # presentation only — no domain logic
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
 ├── bin/                        # alembic.sh, test.sh, smokes, utils.sh, web_e2e_seed.*
-├── docker/                     # database/, api/, redis/, docker-compose.yml
+├── docker/                     # database/, api/, redis/, web/ (nginx SPA), docker-compose.yml
 ├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
 ├── .cursor/                    # adapters, gen-custom rules, skills
 ├── .agents/                    # symlinks to .cursor/ adapters (Codex)
@@ -78,7 +78,7 @@ save-ma-money/
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).
 
-**Web setup (pnpm ≠ Poetry):** Node **22** + pnpm **9** via root `pnpm-workspace.yaml` / `packageManager`. Install with `pnpm install` (not `poetry install`). Day-to-day: `make web-dev` / `web-lint` / `web-test` / `web-build`. Do **not** port `papita_txnsmodel` rules into TypeScript — UI + TanStack Query + BFF session only. SSOT: [`modules/web/README.md`](../modules/web/README.md). Field RUM / Sentry deferred post-MVP; lab Lighthouse/CWV only in PPT-056 / [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
+**Web setup (pnpm ≠ Poetry):** Node **22** + pnpm **9** via root `pnpm-workspace.yaml` / `packageManager`. Install with `pnpm install` (not `poetry install`). Day-to-day: `make web-dev` / `web-lint` / `web-test` / `web-build`. Packaging smoke: `make web-up` (nginx Compose, PPT-057 / #122). Do **not** port `papita_txnsmodel` rules into TypeScript — UI + TanStack Query + BFF session only. SSOT: [`modules/web/README.md`](../modules/web/README.md). Field RUM / Sentry deferred post-MVP; lab Lighthouse/CWV only in PPT-056 / [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
 
 **Web OpenAPI types (PPT-065):** strategy **B** — committed `modules/web/openapi/openapi.json` + `openapi-typescript` → `modules/web/src/types/api.d.ts`. After API/model OpenAPI-affecting changes run `make web-openapi`. CI: `web-ci.yml` (`check-types`) + `openapi-contract.yml` (artifact vs offline `app.openapi()`; paths include API src + model `model/`/`access/`). Exporter normalizes `info.version`. See `modules/web/README.md`.
 
@@ -88,7 +88,7 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Forms use Zod + RHF (`src/forms/`, PPT-055 / #120). Global category write 404 → read-only UX.
 
-**Web quality gate (PPT-056 / #121):** Vitest coverage in `web-ci`; Playwright critical path + axe + Lighthouse in `web-e2e.yml` (Compose). `globalSetup` → `make web-e2e-seed` only (PPT-061 / #126). Auth assumptions: PPT-060 / #125 (confirmed seed user). CSP headers deferred to PPT-057 / #122.
+**Web quality gate (PPT-056 / #121):** Vitest coverage in `web-ci`; Playwright critical path + axe + Lighthouse in `web-e2e.yml` (Compose). `globalSetup` → `make web-e2e-seed` only (PPT-061 / #126). Auth assumptions: PPT-060 / #125 (confirmed seed user). nginx packaging: PPT-057 / #122 (`docker/web/`, `make web-up`); CSP headers: PPT-063 / #128.
 
 **Local Supabase email confirm:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`) + service role → Admin register without SMTP; login auto-confirm only when Auth email is unconfirmed (see `modules/api/README.md` Authentication).
 

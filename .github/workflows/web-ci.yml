@@ -5,24 +5,30 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "modules/web/**"
+      - "docker/web/**"
+      - "docker/docker-compose.yml"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - "Makefile"
       - ".nvmrc"
       - ".node-version"
+      - ".dockerignore"
       - ".github/workflows/web-ci.yml"
   push:
     branches:
       - main
     paths:
       - "modules/web/**"
+      - "docker/web/**"
+      - "docker/docker-compose.yml"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - "Makefile"
       - ".nvmrc"
       - ".node-version"
+      - ".dockerignore"
       - ".github/workflows/web-ci.yml"
 
   workflow_dispatch:
@@ -70,3 +76,30 @@ jobs:
 
       - name: Build
         run: pnpm web:build
+
+  # PPT-057 / #122 — validate multi-stage nginx image (no full Compose required).
+  web-docker:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-web-ci')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build web nginx image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web/Dockerfile
+          push: false
+          build-args: |
+            VITE_APP_TITLE=Papita
+            VITE_PAPITA_BREAKING_CHANGES_ID=ppt-044
+            VITE_API_BASE_URL=
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: papita-web:ci

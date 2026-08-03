@@ -53,12 +53,43 @@ api-up:
 api-down:
 	$(COMPOSE_LOCAL) stop api
 
-# Full B0 stack (explicit up of all services in docker/docker-compose.yml).
+# Full B0 stack (explicit up of all services in docker/docker-compose.yml),
+# including nginx SPA when `web` is defined (PPT-057 / #122).
 stack-up:
 	$(COMPOSE_LOCAL) up --build -d
 
 stack-down:
 	$(COMPOSE_LOCAL) down
+
+# nginx SPA packaging (PPT-057 / #122): multi-stage pnpm build → nginx:alpine.
+# Brings up `web` + depends_on (api, redis, postgres, migrate). Same-origin /api
+# proxy preserves BFF HttpOnly cookies (papita_sid Path=/api). Prefer this over
+# host Vite when validating Compose packaging; day-to-day DX remains `make web-dev`.
+web-up:
+	@docker info >/dev/null 2>&1 || { \
+		echo "Docker is not running. Start Docker Desktop, then retry: make web-up"; \
+		exit 1; \
+	}
+	$(COMPOSE_LOCAL) up --build -d web
+	@WEB_PORT=$$(grep -E '^WEB_PORT=' environments/local/.env 2>/dev/null | cut -d= -f2); \
+	WEB_PORT=$${WEB_PORT:-3000}; \
+	echo "Waiting for nginx SPA on :$${WEB_PORT}…"; \
+	i=0; \
+	while [ $$i -lt 90 ]; do \
+		if curl -sf "http://localhost:$${WEB_PORT}/" >/dev/null 2>&1 \
+			&& curl -sf "http://localhost:$${WEB_PORT}/api/v1/health/live" >/dev/null 2>&1; then \
+			echo "Web ready:     http://localhost:$${WEB_PORT}/"; \
+			echo "API via nginx: http://localhost:$${WEB_PORT}/api/v1/health"; \
+			exit 0; \
+		fi; \
+		i=$$((i + 1)); \
+		sleep 2; \
+	done; \
+	echo "Web did not become healthy in time. Try: $(COMPOSE_LOCAL) logs web api"; \
+	exit 1
+
+web-down:
+	$(COMPOSE_LOCAL) stop web
 
 # Bring up the entire API stack (Postgres + Redis + migrate + api), wait until healthy.
 # Prefer this for local SPA/BFF work when you want every API dependency running.

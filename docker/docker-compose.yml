@@ -1,13 +1,15 @@
 ---
-# Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API (B0)
+# Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API + nginx SPA (B0)
 #
 #   cp environments/local/.env.example environments/local/.env
-#   make api-all   # full stack + health wait (or: make api-up / make stack-up)
+#   make api-all   # API stack + health wait (or: make api-up / make stack-up)
+#   make web-up    # nginx SPA (:3000) + API deps; same-origin /api → BFF cookies (PPT-057)
 #   # uvicorn runs inside the api image (Dockerfile CMD) — not on the host
 #
-# API: http://localhost:8000/api/docs
-# Health: http://localhost:8000/api/v1/health/ready
-# Redis: enabled in the API container by default (redis://redis:6379/0)
+# API (direct): http://localhost:8000/api/docs
+# Web (nginx):  http://localhost:3000/  (WEB_PORT) — /api proxied to api:8000
+# Health: http://localhost:8000/api/v1/health/ready  (or via nginx :3000/api/v1/health/live)
+# Redis: required for durable BFF sessions (redis://redis:6379/0) — not memory fallback for SPA
 #
 # Database + Redis only (no API):
 #   docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml up -d
@@ -148,3 +150,26 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # nginx SPA (PPT-057 / #122). VITE_* baked at image build — not runtime on nginx.
+  # Redis stays in the stack so BFF cookie sessions are durable (PPT-059 / #124).
+  web:
+    build:
+      context: ..
+      dockerfile: docker/web/Dockerfile
+      args:
+        VITE_APP_TITLE: "${VITE_APP_TITLE:-Papita}"
+        VITE_PAPITA_BREAKING_CHANGES_ID: "${VITE_PAPITA_BREAKING_CHANGES_ID:-ppt-044}"
+        # Leave empty for same-origin /api through this nginx (do not bake :8000).
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-}"
+    container_name: "${COMPOSE_NAME:-papita-transactions}-web"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
