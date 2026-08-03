@@ -18,19 +18,231 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary:
 
-- [ ] [_**[#125](https://github.com/Elmorralito/save-ma-money/issues/125)**_] :: **feat/PPT-060: [web] Supabase auth edge-case MVP matrix for BFF** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:03+00:00</sub>_ :weary:
-
 - [ ] [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary:
 
 - [ ] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary:
 
 - [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
 
-- [ ] [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#125](https://github.com/Elmorralito/save-ma-money/issues/125)**_] :: **feat/PPT-060: [web] Supabase auth edge-case MVP matrix for BFF** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:03+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:09:37+00:00</sub>_
+
+  > **Closed by** [_**#150**](https://github.com/Elmorralito/save-ma-money/pull/150): **feat/PPT-060: [web] Lock Supabase auth edge-case MVP matrix for BFF**
+
+  > **Branch:** feat/PPT-060 (tracks origin/feat/PPT-060) · **Base:** main · **1 commit** · **9 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-060: [web] Lock Supabase auth edge-case MVP matrix for BFF
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Locks and ships the **MVP vs deferred** matrix for Supabase Auth edge cases behind the BFF (PPT-060 / #125): email+password remains the primary path, email-confirm product UX is deferred to #139 with local/staging posture documented, password reset / magic link / OAuth SPA are explicit deferrals, and auth **429** is proven non-silent on login/register. Operators and Playwright (#121) now have a written SSOT instead of issue-only decisions.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Check-email / resend / confirm-callback product UX ([#139](https://github.com/Elmorralito/save-ma-money/issues/139) PPT-068)
+
+  > - In-app password reset / forgot-password BFF routes
+
+  > - Magic link / OTP and OAuth/SSO SPA buttons
+
+  > - New X-Papita-Error-Code values for auth (still detail allowlist)
+
+  > - Unrelated WIP left unstaged: modules/web/src/forms/, formatDate.ts (likely #120)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Published matrix + Playwright confirmed-user assumptions in modules/web/README.md
+
+  > - SPA remaps "Email not confirmed" via formatApiError without building resend UI
+
+  > - Login/Register page tests assert 429 alerts include Retry-After
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Docs**
+
+  >
+
+  > - Web README: MVP/defer matrix, local Confirm email / AUTH_AUTO_CONFIRM_EMAIL posture, staging Confirm email ON, password-reset operator defer, Playwright assumptions for #121
+
+  > - API README Auth section: cross-link to web matrix; staging/prod auto-confirm guidance
+
+  >
+
+  > **Web (SPA)**
+
+  >
+
+  > - formatApiError: presentation remap for allowlisted "Email not confirmed" (429 path unchanged)
+
+  > - New LoginPage tests (429 + confirm-email); RegisterPage 429 + Retry-After test
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - Archived issue 20260803-03; updated project_state / ARCHIVE index (strict-mode pairing)
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (9 files)</summary>
+
+  >
+
+  >
+
+  > .../archive/20260803-03-ppt060-auth-edge-matrix.md | 14 +++
+
+  > .strata/issues/archive/ARCHIVE.md | 1 +
+
+  > .strata/memory/project_state.md | 15 ++--
+
+  > modules/api/README.md | 2 +
+
+  > modules/web/README.md | 21 ++++-
+
+  > modules/web/src/lib/formatApiError.test.ts | 10 +++
+
+  > modules/web/src/lib/formatApiError.ts | 13 +++
+
+  > modules/web/src/pages/LoginPage.test.tsx | 99 ++++++++++++++++++++++
+
+  > modules/web/src/pages/RegisterPage.test.tsx | 43 ++++++++++
+
+  > 9 files changed, 211 insertions(+), 7 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 9a8818c feat/PPT-060: [web] Lock Supabase auth edge-case MVP matrix for BFF
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Pre-commit on commit: strata validate, web eslint/prettier/tsc, web vitest related — **passed**
+
+  > - pnpm --filter @papita/web test -- src/lib/formatApiError.test.ts src/pages/LoginPage.test.tsx src/pages/RegisterPage.test.tsx — **13 passed** (earlier in session)
+
+  > - GitHub Actions / full Web CI on this PR — **not observed yet** (will run after open)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm matrix section renders correctly in modules/web/README.md (table + Playwright subsection)
+
+  > - [ ] Manual: trigger auth rate limit (or mock) and confirm login/register show a visible alert, not a silent failure
+
+  > - [ ] Manual (optional): unconfirmed user login shows confirm-email copy via formatApiError
+
+  > - [ ] Confirm Web CI green on the PR
+
+  > - [ ] No secrets / VITE_* credentials in the diff
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Staging/prod Confirm-email posture is **documented**, not enforced by this PR — operators must keep Supabase dashboard settings aligned
+
+  > > - Email-confirm happy path for real users still depends on follow-up [#139](https://github.com/Elmorralito/save-ma-money/issues/139); until then SPA only remaps the allowlisted detail string
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Password reset remains operator-only (Supabase Auth dashboard / recovery) — no in-app flow
+
+  > > - Playwright e2e is not added here; assumptions are docs-only for [#121](https://github.com/Elmorralito/save-ma-money/issues/121)
+
+  > > - Unrelated untracked forms/ + formatDate files were intentionally excluded from this PR
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#125](https://github.com/Elmorralito/save-ma-money/issues/125) (PPT-060)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on [#115](https://github.com/Elmorralito/save-ma-money/issues/115) (PPT-049 BFF cookies) — already landed
+
+  > - Follow-ups: [#139](https://github.com/Elmorralito/save-ma-money/issues/139) (PPT-068 email verification), [#121](https://github.com/Elmorralito/save-ma-money/issues/121) (PPT-056 Playwright)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#119](https://github.com/Elmorralito/save-ma-money/issues/119)**_] :: **feat/PPT-054: [web] Dashboard and reports UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:51+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 16:19:06+00:00</sub>_
 

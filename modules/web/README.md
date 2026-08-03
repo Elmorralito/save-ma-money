@@ -141,12 +141,12 @@ MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchan
 
 ## Design system + app shell (PPT-051 / #116)
 
-| Piece      | Location                  | Notes                                                                                                                                  |
-| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                  |
-| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                 |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                        |
-| Routes     | `src/App.tsx`             | Lazy routes: accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053); stubs for dashboard/reports + login/register |
+| Piece      | Location                  | Notes                                                                                                                                        |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                        |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                       |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                              |
+| Routes     | `src/App.tsx`             | Lazy routes: auth (login/register), accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053), dashboard/reports (PPT-054) |
 
 Add a component:
 
