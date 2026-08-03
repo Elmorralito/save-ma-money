@@ -30,6 +30,19 @@ export type CategoryResponse = ApiSchemas["CategoryResponse"];
 export type PaginatedCategories = ApiSchemas["PaginatedResponse_CategoryResponse_"];
 export type CategorySubcategoryResponse = ApiSchemas["CategorySubcategoryResponse"];
 
+export type TransactionCreate = ApiSchemas["TransactionCreate"];
+export type TransactionUpdate = ApiSchemas["TransactionUpdate"];
+export type TransactionResponse = ApiSchemas["TransactionResponse"];
+export type TransactionBulkCreate = ApiSchemas["TransactionBulkCreate"];
+export type TransactionBulkResponse = ApiSchemas["TransactionBulkResponse"];
+export type PaginatedTransactions = ApiSchemas["PaginatedResponse_TransactionResponse_"];
+
+export type MovementCreate = ApiSchemas["MovementCreate"];
+export type MovementUpdate = ApiSchemas["MovementUpdate"];
+export type MovementResponse = ApiSchemas["MovementResponse"];
+export type MovementExecuteResponse = ApiSchemas["MovementExecuteResponse"];
+export type PaginatedMovements = ApiSchemas["PaginatedResponse_MovementResponse_"];
+
 /**
  * Shape of ``GET /api/v1/meta/client-contract``.
  *

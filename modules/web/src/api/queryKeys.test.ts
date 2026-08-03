@@ -10,6 +10,8 @@ describe("queryKeys", () => {
     expect(queryKeys.health.all).toEqual(["papita", "health"]);
     expect(queryKeys.accounts.all).toEqual(["papita", "accounts"]);
     expect(queryKeys.categories.all).toEqual(["papita", "categories"]);
+    expect(queryKeys.transactions.all).toEqual(["papita", "transactions"]);
+    expect(queryKeys.movements.all).toEqual(["papita", "movements"]);
   });
 
   it("builds distinct leaf keys for meta, health, auth, and feature resources", () => {
@@ -30,6 +32,25 @@ describe("queryKeys", () => {
       "list",
       { skip: 0 },
     ]);
+    expect(queryKeys.transactions.list({ limit: 100 })).toEqual([
+      "papita",
+      "transactions",
+      "list",
+      { limit: 100 },
+    ]);
+    expect(queryKeys.transactions.detail("txn-1")).toEqual([
+      "papita",
+      "transactions",
+      "detail",
+      "txn-1",
+    ]);
+    expect(queryKeys.movements.list({ status: "pending" })).toEqual([
+      "papita",
+      "movements",
+      "list",
+      { status: "pending" },
+    ]);
+    expect(queryKeys.movements.detail("mov-1")).toEqual(["papita", "movements", "detail", "mov-1"]);
     expect(queryKeys.meta.clientContract()).not.toEqual(queryKeys.health.root());
   });
 });

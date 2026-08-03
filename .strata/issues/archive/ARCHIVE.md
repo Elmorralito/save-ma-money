@@ -10,4 +10,6 @@ Cold storage for **resolved** and **wont-fix** issue items. Not surfaced via `AC
 
 ## Files
 
-_No archived issue items yet._
+| Id          | Type    | Area        | What                                                             |
+| ----------- | ------- | ----------- | ---------------------------------------------------------------- |
+| 20260803-01 | feature | modules/web | PPT-053 [#118] transactions + movements UI (resolved 2026-08-03) |

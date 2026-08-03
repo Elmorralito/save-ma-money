@@ -11,3 +11,4 @@ Operation-keyed behavioral rules: one lesson per file, fired by trigger, origin 
 | before committing changes under modules/api/src               | modules/api/\*\*                                             | failure | [api-pre-commit-lint.md](api-pre-commit-lint.md)                   |
 | before git commit when modules/ or bin/ changed               | modules/\*\*, bin/\*\*                                       | success | [strata-strict-pairing.md](strata-strict-pairing.md)               |
 | before wiring or changing /reports endpoints or ReportService | modules/api/\*\*/reports\*, modules/model/\*\*/reports.py    | success | [report-tenant-scoping.md](report-tenant-scoping.md)               |
+| before adding transactions, movements, or bulk create UI      | modules/web/\*\*/transactions\*, movements\*; api/txns/movs  | success | [web-ledger-ui-no-domain.md](web-ledger-ui-no-domain.md)           |

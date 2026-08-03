@@ -35,4 +35,20 @@ export const queryKeys = {
     details: () => ["papita", "categories", "detail"] as const,
     detail: (categoryId: string) => ["papita", "categories", "detail", categoryId] as const,
   },
+  transactions: {
+    all: ["papita", "transactions"] as const,
+    lists: () => ["papita", "transactions", "list"] as const,
+    list: (filters: Record<string, string | number | boolean | undefined>) =>
+      ["papita", "transactions", "list", filters] as const,
+    details: () => ["papita", "transactions", "detail"] as const,
+    detail: (transactionId: string) => ["papita", "transactions", "detail", transactionId] as const,
+  },
+  movements: {
+    all: ["papita", "movements"] as const,
+    lists: () => ["papita", "movements", "list"] as const,
+    list: (filters: Record<string, string | number | boolean | undefined>) =>
+      ["papita", "movements", "list", filters] as const,
+    details: () => ["papita", "movements", "detail"] as const,
+    detail: (movementId: string) => ["papita", "movements", "detail", movementId] as const,
+  },
 } as const;

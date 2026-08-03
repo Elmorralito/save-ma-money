@@ -88,13 +88,13 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 
 ## BFF cookie auth (PPT-049 / #115)
 
-| Piece         | Location                                                    | Notes                                                                                   |
-| ------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| BFF routes    | `POST/GET /api/v1/bff/auth/*`                               | login, register, session, refresh, logout                                               |
-| Cookie        | `papita_sid`                                                | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
-| CSRF          | `X-Papita-CSRF`                                             | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
-| SPA routes    | `/login`, `/register`, `/dashboard` (+ stub feature routes) | `RequireAuth` + `AppLayout`; anonymous users redirect to login                          |
-| Session query | `queryKeys.auth.session()`                                  | Bootstrap via `GET /bff/auth/session`                                                   |
+| Piece         | Location                                                                | Notes                                                                                   |
+| ------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| BFF routes    | `POST/GET /api/v1/bff/auth/*`                                           | login, register, session, refresh, logout                                               |
+| Cookie        | `papita_sid`                                                            | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
+| CSRF          | `X-Papita-CSRF`                                                         | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
+| SPA routes    | `/login`, `/register`, `/dashboard`, accounts/categories/txns/movements | `RequireAuth` + `AppLayout`; anonymous users redirect to login                          |
+| Session query | `queryKeys.auth.session()`                                              | Bootstrap via `GET /bff/auth/session`                                                   |
 
 **Threat model (short):**
 
@@ -122,12 +122,12 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 
 ## Design system + app shell (PPT-051 / #116)
 
-| Piece      | Location                  | Notes                                                                                                                    |
-| ---------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                    |
-| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                   |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                          |
-| Routes     | `src/App.tsx`             | Lazy routes: accounts (+ detail), categories CRUD (PPT-052); stubs for dashboard/txns/movements/reports + login/register |
+| Piece      | Location                  | Notes                                                                                                                                  |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                  |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                 |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                        |
+| Routes     | `src/App.tsx`             | Lazy routes: accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053); stubs for dashboard/reports + login/register |
 
 Add a component:
 
@@ -149,14 +149,28 @@ Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex co
 
 Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms are controlled (Login-style) until Zod/RHF lands in [#120](https://github.com/Elmorralito/save-ma-money/issues/120). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
 
-| Detail          | Behavior                                                                           |
-| --------------- | ---------------------------------------------------------------------------------- |
-| List window     | First page only (`limit=100`); footer notes when `total > 100`                     |
-| Money display   | `src/lib/formatMoney.ts` (presentation only)                                       |
-| Update payloads | Omit empty optional fields so edits do not wipe server values                      |
-| Errors          | `formatApiError` — 502/503/504 → start API; 429 → server detail or generic backoff |
-| Auth UX         | Register confirm-password + show/hide; login banner after successful register      |
+| Detail          | Behavior                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| List window     | First page only (`limit=100`); footer notes when `total > 100`                                 |
+| Money display   | `src/lib/formatMoney.ts` (presentation only)                                                   |
+| Update payloads | Omit empty optional fields so edits do not wipe server values                                  |
+| Errors          | `formatApiError` — 502/503/504 → start API; 429 → server detail (+ `Retry-After` when present) |
+| Auth UX         | Register confirm-password + show/hide; login banner after successful register                  |
+
+## Ledger screens (PPT-053 / #118)
+
+Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` via `src/api/transactions.ts` / `movements.ts` + `queryOptions`. Presentation only — no TypeScript ports of ledger services. Forms remain controlled until [#120](https://github.com/Elmorralito/save-ma-money/issues/120).
+
+| Detail           | Behavior                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Default txn list | Omits `transaction_type` so the API excludes transfers                                            |
+| Idempotency      | `Idempotency-Key` always sent on create/bulk (`src/api/idempotency.ts`); replay needs Redis       |
+| Bulk             | Cap from `bulkMaxTransactions(client-contract)` (fallback 100); surfaces `bulk_too_large`         |
+| Movements        | Create immediate (`scheduled: false`) or pending; Execute / Cancel only when `status === pending` |
+| Invalidation     | After writes: txn/movement lists + account lists/details (API balances)                           |
+| Split            | API `POST .../split` returns 501 — **not** exposed in the SPA (deferred to v4)                    |
+| 429              | Mutations toast `formatApiError` including optional Retry-After seconds                           |
 
 ## Out of scope here
 
-Transactions/movements/dashboard UI (PPT-053/054), Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124), auth edge-case matrix (#125) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112).

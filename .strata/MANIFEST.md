@@ -29,7 +29,7 @@ save-ma-money/
 ├── README.md                      human front door
 ├── modules/model/                 papita-txnsmodel (SQLModel, Alembic, services)
 ├── modules/api/                   papita-txnsapi (FastAPI settings, security)
-├── modules/web/                   @papita/web (Vite React SPA + Tailwind/shadcn shell; PPT-047…051)
+├── modules/web/                   @papita/web (Vite React SPA; PPT-047…053 ledger screens)
 ├── docs/design/ · docs/issues/    human design program (pre-Strata)
 ├── environments/                  PAPITA_ENV profiles (local|staging|production)
 ├── bin/ · docker/database/        migrations, local Postgres, ops entrypoints

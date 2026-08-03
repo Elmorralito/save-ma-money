@@ -6,6 +6,8 @@ export class PapitaApiError extends Error {
   readonly code: string | null;
   readonly discovery: DiscoveryHeaders;
   readonly body: unknown;
+  /** Seconds from ``Retry-After`` when present (typically on HTTP 429). */
+  readonly retryAfter: number | null;
 
   constructor(options: {
     message: string;
@@ -13,6 +15,7 @@ export class PapitaApiError extends Error {
     code?: string | null;
     discovery: DiscoveryHeaders;
     body?: unknown;
+    retryAfter?: number | null;
   }) {
     super(options.message);
     this.name = "PapitaApiError";
@@ -20,6 +23,7 @@ export class PapitaApiError extends Error {
     this.code = options.code ?? options.discovery.errorCode;
     this.discovery = options.discovery;
     this.body = options.body;
+    this.retryAfter = options.retryAfter ?? null;
   }
 }
 
@@ -54,9 +58,27 @@ function extractErrorMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+function parseRetryAfterSeconds(headers: Headers): number | null {
+  const raw = headers.get("Retry-After");
+  if (raw === null || raw.trim() === "") {
+    return null;
+  }
+  const asInt = Number.parseInt(raw, 10);
+  if (Number.isFinite(asInt) && asInt >= 0) {
+    return asInt;
+  }
+  const asDate = Date.parse(raw);
+  if (Number.isFinite(asDate)) {
+    const seconds = Math.ceil((asDate - Date.now()) / 1000);
+    return seconds > 0 ? seconds : 0;
+  }
+  return null;
+}
+
 /** Build a {@link PapitaApiError} from a failed Fetch response. */
 export async function papitaApiErrorFromResponse(response: Response): Promise<PapitaApiError> {
   const discovery = parseDiscoveryHeaders(response.headers);
+  const retryAfter = parseRetryAfterSeconds(response.headers);
   let body: unknown;
   const contentType = response.headers.get("content-type") ?? "";
   try {
@@ -76,5 +98,6 @@ export async function papitaApiErrorFromResponse(response: Response): Promise<Pa
     code: discovery.errorCode,
     discovery,
     body,
+    retryAfter,
   });
 }

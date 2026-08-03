@@ -19,10 +19,14 @@ export function formatApiError(error: unknown, fallback = "Request failed"): str
 
   if (error.status === 429) {
     const detail = error.message.trim();
-    if (detail.length > 0 && detail.toLowerCase() !== "http 429") {
-      return detail;
+    const base =
+      detail.length > 0 && detail.toLowerCase() !== "http 429"
+        ? detail
+        : "Too many requests. Wait a moment and try again.";
+    if (error.retryAfter !== null && error.retryAfter > 0) {
+      return `${base} Retry after ${String(error.retryAfter)}s.`;
     }
-    return "Too many requests. Wait a moment and try again.";
+    return base;
   }
 
   let message = error.message;
