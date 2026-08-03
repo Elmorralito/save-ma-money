@@ -100,6 +100,20 @@ class TestBffSessionStoreMemory:
         store = BffSessionStore(None, default_ttl_seconds=120, fail_closed=True)
         with pytest.raises(BffSessionStoreUnavailableError, match="unavailable"):
             store.create(access_token="a", refresh_token=None, expires_in=30)
+        with pytest.raises(BffSessionStoreUnavailableError, match="unavailable"):
+            store.get("any-session-id")
+        with pytest.raises(BffSessionStoreUnavailableError, match="unavailable"):
+            store.delete("any-session-id")
+        with pytest.raises(BffSessionStoreUnavailableError, match="unavailable"):
+            store.update(
+                "any-session-id",
+                BffSessionRecord(
+                    access_token="a",
+                    refresh_token=None,
+                    csrf_token="c",
+                    access_expires_at=9_999_999_999.0,
+                ),
+            )
 
 
 class TestBffSessionStoreRedis:

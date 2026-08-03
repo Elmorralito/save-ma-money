@@ -18,6 +18,7 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 - **PPT-059 / #124:** BFF durability docs + fail-closed runtime; PR
   [#153](https://github.com/Elmorralito/save-ma-money/pull/153) (strata id
   remapped to `20260803-06` after merge conflict with PPT-061's `20260803-05`).
+  Autopilot: added fail-closed HTTP/unit tests for codecov/patch.
 - **PPT-054 / #119:** GH closed by #148 (spending). Carry-forward:
   CF/trends/export/dashboard.
 
