@@ -35,4 +35,5 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 - `modules/**` changes need a paired `.strata/` touch (strict mode) — updated this session
   (`project_state`, issue `20260803-02`, resolve `20260730-01`, ARCHITECTURE web note)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
-- Autopilot (#145): Dependabot npm-web group bump paired here for strata-check strict mode
+
+- Autopilot: prettier-formatted CHANGELOG.md after merge of main into feat/PPT-054 (#148)
