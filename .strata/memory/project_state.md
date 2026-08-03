@@ -8,42 +8,31 @@ description: Auth + user management owned by Supabase project; Compose injects S
 **Standing rule:** move / keep **user management and authentication in the Supabase
 project**. Papita API verifies JWTs + links `users` by `sub` — it is not the IdP.
 
+**Strata issues policy:** do **not** keep closed GitHub issues under `.strata/issues/`
+(including `archive/`) — they add agent context noise. History lives on GitHub / git.
+Capture with `/strata:capture` only for work in flight.
+
 ### Last completed (this session)
 
-- **PPT-062 / #127:** AppLayout session chip + logout closeout — `sessionUserLabel`
-  (`display_name` → `username` → `email`); pending/error chip; BFF logout clears
-  auth queries → `/login`. Vitest green. (strata: no archive; GH/git only)
-- **PPT-061 / #126:** E2E seed fixtures (strategy A — API HTTP script) on main.
-  `make web-e2e-seed` / `pnpm web:seed-e2e` → `modules/web/e2e/.auth/seed.json`.
-  Strata id `20260803-05` (handoff to #121 `globalSetup`).
-- **PPT-055 / #120:** forms + UX standards — closed/merged; strata item deleted.
-- **Strata cleanup:** no `issues/archive/`; closed work → GitHub / git only.
-- **PPT-059 / #124:** BFF durability docs + fail-closed runtime; PR
-  [#153](https://github.com/Elmorralito/save-ma-money/pull/153) (strata id
-  remapped to `20260803-06` after merge conflict with PPT-061's `20260803-05`).
-  Autopilot: added fail-closed HTTP/unit tests for codecov/patch.
-- **PPT-054 / #119:** GH closed by #148 (spending). Carry-forward:
-  CF/trends/export/dashboard.
-
-### In progress (ACTIVE)
-
-- **PPT-059 / #124** (`20260803-06`): PR #153 — merge then delete strata item
-
-### Open (backlog)
-
-- **PPT-061 / #126** (`20260803-05`): seed landed; #121 Playwright handoff
+- **PPT-062 / #127:** AppLayout session chip + logout — `sessionUserLabel`, pending/
+  error chip, BFF logout → `/login`. Vitest green. PR [#152](https://github.com/Elmorralito/save-ma-money/pull/152).
+  Strata live item `20260803-06` until merge + GitHub close.
+- **PPT-059 / #124:** BFF durability contract + fail-closed runtime — merged via
+  [#153](https://github.com/Elmorralito/save-ma-money/pull/153); strata item deleted.
+- **PPT-061 / #126:** E2E seed fixtures merged (PR #151). Handoff: #121 `globalSetup`.
+- **PPT-060 / #125:** Auth edge-case MVP matrix locked in web README.
+- **Closed on GitHub (no strata item):** #48, #50, #89, #117–#120, #124–#126 — see
+  GitHub / learnings (`web-forms-ux-kit`, `web-ledger-ui-no-domain`, etc.).
 
 ### Next action
 
-- Merge PR #153 / close #124; delete strata `20260803-06`
-- Merge PPT-062 PR; close GitHub #127
-- PPT-056 (#121) Playwright gate — call `make web-e2e-seed` from `globalSetup`
-- PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
-- PPT-068 (#139); PPT-057 (#122)
+- Merge PPT-062 PR (#152); close GitHub #127; drop strata item `20260803-06`
+- Next epic children from [#112](https://github.com/Elmorralito/save-ma-money/issues/112)
+  when starting work (e.g. #121 Playwright, #139 email verify) — capture then
+- Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
-- `modules/**` changes need a paired `.strata/` touch (strict mode) — PPT-062 paired
-  (`project_state` / MEMORY; no archive per main policy)
+- `modules/**` changes need a paired `.strata/` touch (strict mode)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
