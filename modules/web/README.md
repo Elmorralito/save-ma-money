@@ -102,7 +102,24 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 - **CSRF:** SameSite=Lax plus required `X-Papita-CSRF` on unsafe methods when the session cookie is present (Bearer token clients are exempt).
 - **Token clients:** `make auth-smoke` and direct `Authorization: Bearer` against `/api/v1/auth/*` still work; they coexist with BFF cookies.
 
-**Local smoke:** `make api-up` then `make web-dev` — open `/login`, sign in (local HS256 or Supabase), confirm `/` shows session + contract probes. Memory BFF sessions are process-local (document multi-worker limitation; Redis when `REDIS_ENABLED=true`).
+### BFF session durability vs Redis (PPT-059 / #124)
+
+Server-side cookie → token bindings live in API `BffSessionStore` (**not** the JWT denylist `SessionStore`). Redis foundation is PPT-043 ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)); this contract locks when memory is OK vs when Redis is required. Staging Compose / nginx packaging that must keep Redis for durable BFF sessions is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057). Full API matrix: [`modules/api/README.md`](../api/README.md) § Workers vs Redis and § Redis.
+
+| Mode                                              | `REDIS_ENABLED`   | Workers | BFF session store                                | Notes                                                                                  |
+| ------------------------------------------------- | ----------------- | ------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Local unit tests / solo host uvicorn              | `false`           | 1       | Process **memory**                               | OK for B0 DX; sessions die on process restart and are **not** shared across workers    |
+| Local Compose (`make api-up`)                     | `true` (default)  | 1       | Redis key `papita:{PAPITA_ENV}:bff:session:{id}` | Preferred local path; Compose wires `redis://redis:6379/0`                             |
+| Staging / production                              | `true` (required) | 1+      | Redis (same key shape)                           | **Fail-closed** when Redis is required/missing — do not rely on memory for SPA cookies |
+| Any env with `--workers N` (N>1) or multi-replica | Must be `true`    | N       | Redis **required**                               | Memory sessions are process-local → lost/sticky logins across workers                  |
+
+**Denylist ≠ BFF map:** logout/revocation uses `papita:{env}:jwt:denylist:{sha256(token)}`. BFF cookie bindings use `papita:{env}:bff:session:{session_id}`. Never reuse denylist helpers for browser sessions (or the reverse).
+
+**Fail policy:** when Redis is required (`REDIS_ENABLED=true`), `BffSessionStore` is **fail closed** (no silent process-memory fallback) → HTTP **503** `BFF session store unavailable`. Operators must run Redis for Compose and staging SPA cookies. Cache/rate-limit remain fail-open; JWT denylist also fails closed — see API Redis docs.
+
+**Local smoke:** `make api-up` then `make web-dev` — open `/login`, sign in (local HS256 or Supabase), confirm `/` shows session + contract probes. Compose defaults to Redis-backed BFF sessions; with `REDIS_ENABLED=false` (single worker only) memory is acceptable for solo local DX.
+
+**Auth smoke note:** `make auth-smoke` exercises **Bearer** `/auth/*` (JWT path), not the HttpOnly `papita_sid` map. It remains valid alongside BFF; it does **not** prove Redis BFF durability. For cookie durability, sign in via the SPA (or call `/api/v1/bff/auth/*`) against a Redis-enabled API.
 
 ## Supabase auth edge-case matrix (PPT-060 / #125)
 
@@ -221,4 +238,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx image, Redis session durability polish (#124) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx image (PPT-057 / #122) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).

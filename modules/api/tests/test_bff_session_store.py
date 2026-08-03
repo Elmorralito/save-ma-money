@@ -1,4 +1,4 @@
-"""Unit tests for BFF session store serialization and Redis fallbacks (PPT-049)."""
+"""Unit tests for BFF session store serialization and Redis fail policies (PPT-049 / PPT-059)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from redis.exceptions import RedisError
 from papita_txnsapi.core.bff_session import (
     BffSessionRecord,
     BffSessionStore,
+    BffSessionStoreUnavailableError,
     clear_memory_bff_sessions,
     parse_owner_id_hint,
 )
@@ -57,11 +58,12 @@ class TestBffSessionRecord:
 
 
 class TestBffSessionStoreMemory:
-    """Process-local map behavior."""
+    """Process-local map behavior (fail_closed=false)."""
 
     def test_create_get_update_delete(self) -> None:
         store = BffSessionStore(None, default_ttl_seconds=120)
         assert store.backend == "memory"
+        assert store.fail_closed is False
         sid, record = store.create(
             access_token="access",
             refresh_token=None,
@@ -94,15 +96,21 @@ class TestBffSessionStoreMemory:
             mod._memory_sessions[sid] = "{bad"
         assert store.get(sid) is None
 
+    def test_fail_closed_without_client_raises(self) -> None:
+        store = BffSessionStore(None, default_ttl_seconds=120, fail_closed=True)
+        with pytest.raises(BffSessionStoreUnavailableError, match="unavailable"):
+            store.create(access_token="a", refresh_token=None, expires_in=30)
+
 
 class TestBffSessionStoreRedis:
-    """Redis client success and RedisError fallbacks."""
+    """Redis client success and fail-open / fail-closed RedisError paths."""
 
     def test_redis_set_get_delete(self) -> None:
         client = MagicMock()
         client.get.return_value = None
-        store = BffSessionStore(client, default_ttl_seconds=120)
+        store = BffSessionStore(client, default_ttl_seconds=120, fail_closed=True)
         assert store.backend == "redis"
+        assert store.fail_closed is True
         sid, record = store.create(access_token="a", refresh_token="r", expires_in=30)
         client.setex.assert_called()
         client.get.return_value = record.to_json().encode("utf-8")
@@ -110,21 +118,34 @@ class TestBffSessionStoreRedis:
         store.delete(sid)
         client.delete.assert_called()
 
-    def test_redis_errors_fall_back_to_memory(self) -> None:
+    def test_redis_errors_fall_back_to_memory_when_open(self) -> None:
         client = MagicMock()
         client.setex.side_effect = RedisError("down")
         client.get.side_effect = RedisError("down")
         client.delete.side_effect = RedisError("down")
-        store = BffSessionStore(client, default_ttl_seconds=120)
+        store = BffSessionStore(client, default_ttl_seconds=120, fail_closed=False)
         sid, _ = store.create(access_token="a", refresh_token=None, expires_in=30)
         # setex failed → memory fallback; get Redis fails → memory hit.
         assert store.get(sid) is not None
         store.delete(sid)
 
-    def test_redis_miss_checks_memory(self) -> None:
+    def test_redis_errors_fail_closed(self) -> None:
+        client = MagicMock()
+        client.setex.side_effect = RedisError("down")
+        client.get.side_effect = RedisError("down")
+        client.delete.side_effect = RedisError("down")
+        store = BffSessionStore(client, default_ttl_seconds=120, fail_closed=True)
+        with pytest.raises(BffSessionStoreUnavailableError, match="write failed"):
+            store.create(access_token="a", refresh_token=None, expires_in=30)
+        with pytest.raises(BffSessionStoreUnavailableError, match="read failed"):
+            store.get("any-session-id")
+        with pytest.raises(BffSessionStoreUnavailableError, match="delete failed"):
+            store.delete("any-session-id")
+
+    def test_redis_miss_checks_memory_when_open(self) -> None:
         client = MagicMock()
         client.get.return_value = None
-        store = BffSessionStore(client, default_ttl_seconds=120)
+        store = BffSessionStore(client, default_ttl_seconds=120, fail_closed=False)
         from papita_txnsapi.core import bff_session as mod
 
         record = BffSessionRecord(
@@ -136,6 +157,22 @@ class TestBffSessionStoreRedis:
         with mod._memory_lock:
             mod._memory_sessions["sid-mem"] = record.to_json()
         assert store.get("sid-mem") is not None
+
+    def test_redis_miss_does_not_use_memory_when_fail_closed(self) -> None:
+        client = MagicMock()
+        client.get.return_value = None
+        store = BffSessionStore(client, default_ttl_seconds=120, fail_closed=True)
+        from papita_txnsapi.core import bff_session as mod
+
+        record = BffSessionRecord(
+            access_token="mem",
+            refresh_token=None,
+            csrf_token="c",
+            access_expires_at=9_999_999_999.0,
+        )
+        with mod._memory_lock:
+            mod._memory_sessions["sid-mem"] = record.to_json()
+        assert store.get("sid-mem") is None
 
 
 def test_parse_owner_id_hint() -> None:

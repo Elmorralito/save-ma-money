@@ -373,7 +373,9 @@ def bff_session(  # pylint: disable=too-many-positional-arguments
             bff_store=bff_store,
         )
     except HTTPException as exc:
-        if exc.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_503_SERVICE_UNAVAILABLE}:
+        # Anonymous bootstrap → 200 unauthenticated. Propagate 503 (denylist / BFF
+        # store fail-closed) so the SPA can retry instead of treating Redis as logout.
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
             return BffSessionResponse(authenticated=False, session_backend=bff_store.backend)
         raise
 

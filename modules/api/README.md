@@ -239,13 +239,15 @@ Database + Redis only (no API): `docker compose --env-file environments/local/.e
 
 ### Workers vs Redis (process packaging)
 
-B0 default is a **single** uvicorn worker inside the API container (no `--workers`). In-memory rate limiting is **process-local**; JWT denylist and distributed limits need Redis.
+B0 default is a **single** uvicorn worker inside the API container (no `--workers`). In-memory rate limiting and in-memory **BFF sessions** are **process-local**; JWT denylist, distributed limits, and durable BFF cookie bindings need Redis. PPT-043 ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)) landed the Redis foundation; PPT-059 ([#124](https://github.com/Elmorralito/save-ma-money/issues/124)) locks the BFF durability contract (staging Compose expectations that keep Redis for SPA cookies: [#122](https://github.com/Elmorralito/save-ma-money/issues/122)).
 
-| Mode                         | Guidance                                                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Default B0 (`make api-up`)   | Single process in the Compose image; no `--reload`                                                                                         |
-| Multi-worker / multi-replica | Set `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true` before `--workers N` (N>1). Denylist stays fail-closed when Redis is required |
-| Compose `CMD`                | Never add `--reload` or `--workers` without an explicit ops decision                                                                       |
+| Mode                         | Guidance                                                                                                                                                                                                                |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Default B0 (`make api-up`)   | Single process in the Compose image; no `--reload`. Compose sets `REDIS_ENABLED=true` → BFF sessions use Redis (`papita:{env}:bff:session:{id}`)                                                                        |
+| Local / tests without Redis  | `REDIS_ENABLED=false` + single worker: process-memory BFF map is OK for solo DX / unit tests only                                                                                                                       |
+| Staging / production         | Keep `REDIS_ENABLED=true` (and a reachable `REDIS_URL`). BFF store is **fail-closed** when Redis is required — do not run the SPA cookie path on memory-only API processes                                              |
+| Multi-worker / multi-replica | Set `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true` before `--workers N` (N>1). Denylist stays fail-closed when Redis is required; BFF sessions **must** be Redis-backed (memory is not shared across workers) |
+| Compose `CMD`                | Never add `--reload` or `--workers` without an explicit ops decision                                                                                                                                                    |
 
 Defer gunicorn + uvicorn worker fleets unless a short ADR justifies them.
 
@@ -1698,8 +1700,11 @@ Retry-After: 12   # on 429 only
 
 ## Redis (PPT-043)
 
-Optional shared infrastructure for cache-aside, distributed rate limits, and
-(session denylist / broker scaffolds). PostgreSQL remains the source of truth.
+Optional shared infrastructure for cache-aside, distributed rate limits, JWT
+denylist, BFF cookie session bindings (PPT-049 / PPT-059), and broker scaffolds.
+PostgreSQL remains the source of truth. Redis foundation: PPT-043
+([#83](https://github.com/Elmorralito/save-ma-money/issues/83)); BFF durability
+contract: PPT-059 ([#124](https://github.com/Elmorralito/save-ma-money/issues/124)).
 
 ```
 [ Client ] → [ API Server ] → [ Redis ]     (hit: fast return)
@@ -1725,15 +1730,25 @@ B0 deploy: `make api-up` (or `make stack-up`). Compose API always uses
 `make redis-smoke`. Checklist:
 [`docs/ops/redis-deploy-checklist.md`](../../docs/ops/redis-deploy-checklist.md).
 
-When `REDIS_ENABLED=false`, the API keeps in-memory rate limiting and skips
-caching/denylist; unit tests remain green without Redis.
+When `REDIS_ENABLED=false`, the API keeps in-memory rate limiting, skips
+caching/denylist, and uses a **process-local** BFF session map; unit tests remain
+green without Redis. Do not use that mode for staging SPA cookies or `--workers N` (N>1).
 
 **Key prefix:** all Redis keys are `papita:{PAPITA_ENV}:…` so local/staging/production
 do not collide on shared Redis.
 
+| Concern             | Redis key shape                             | Store               | Fail policy when `REDIS_ENABLED=true`                                                                                             |
+| ------------------- | ------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Cache / rate limits | route/limit keys under `papita:{env}:…`     | cache / Lua limiter | **Fail open** (miss / allow)                                                                                                      |
+| JWT denylist        | `papita:{env}:jwt:denylist:{sha256(token)}` | `SessionStore`      | **Fail closed** → HTTP 503 on protected routes (revoked tokens must not resurrect)                                                |
+| BFF browser session | `papita:{env}:bff:session:{session_id}`     | `BffSessionStore`   | **Fail closed** when `REDIS_ENABLED` (no silent memory fallback) → HTTP 503. Distinct from denylist — never share keys or helpers |
+
 **Fail policy:** cache and rate limits **fail open** (miss / allow) on Redis errors.
 JWT denylist **fails closed** when Redis is required (`REDIS_ENABLED=true`): Redis
 errors → HTTP 503 on protected routes so a blip cannot resurrect a revoked token.
+BFF sessions **fail closed** the same way (PPT-059): Redis errors / missing client →
+HTTP 503 `BFF session store unavailable`. SPA operators must keep Redis up for
+Compose and staging cookie auth.
 
 **Client model:** sync `redis` via lifespan; fine while most handlers are sync
 (threadpool). Prefer `redis.asyncio` when more routes are async-heavy.

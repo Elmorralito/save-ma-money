@@ -24,6 +24,7 @@ from papita_txnsapi.core.bff_session import (
     BFF_SESSION_COOKIE,
     DEFAULT_BFF_SESSION_MAX_AGE_SECONDS,
     BffSessionStore,
+    BffSessionStoreUnavailableError,
 )
 from papita_txnsapi.core.redis import get_redis_from_app
 
@@ -73,8 +74,15 @@ class BffCsrfMiddleware(BaseHTTPMiddleware):
             else DEFAULT_BFF_SESSION_MAX_AGE_SECONDS
         )
         client = get_redis_from_app(request.app) if redis_enabled else None
-        store = BffSessionStore(client, default_ttl_seconds=ttl)
-        record = store.get(session_id)
+        store = BffSessionStore(client, default_ttl_seconds=ttl, fail_closed=redis_enabled)
+        try:
+            record = store.get(session_id)
+        except BffSessionStoreUnavailableError:
+            logger.warning("BFF CSRF skipped: session store unavailable path=%s", request.url.path)
+            return JSONResponse(
+                status_code=503,
+                content={"detail": "BFF session store unavailable"},
+            )
         if record is None:
             return await call_next(request)
 

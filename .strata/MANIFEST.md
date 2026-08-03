@@ -43,8 +43,7 @@ save-ma-money/
     ├── inbox/                     transient capture scratch (git-ignored; promoted by capture/save)
     ├── issues/                    single backlog: findings + tasks + initiatives
     │   ├── ACTIVE.md / OPEN.md / PARKED.md    generated views (edit items, not views)
-    │   ├── <id>-<slug>.md         one item per file
-    │   └── archive/               resolved / wont-fix
+    │   └── <id>-<slug>.md         one item per file (delete when done — no issues archive)
     └── docs/                      WARM — on-demand depth (grow as needed)
         ├── ARCHITECTURE.md        codemap + index into architecture/
         ├── product/ · architecture/ · decisions/ · reference/ · ops/
@@ -69,15 +68,15 @@ _(Extend with project-specific directories as they develop.)_
 | A procedure / runbook / incident pattern | `.strata/docs/ops/` → human [`docs/design/README.md` § Ops](../docs/design/README.md#ops-redis--optional-b1-pooler) |
 
 | Did we send / post / complete X externally | `memory/archive/action_log.md` (grep) |
-| Old sessions, closed issues, provenance | `memory/archive/` · `issues/archive/` (grep) |
+| Old sessions / provenance | `memory/archive/` (grep); closed GitHub issues via `gh` / CHANGELOG |
 
 ## The three tiers
 
-| Tier     | Where                                 | When loaded                     |
-| -------- | ------------------------------------- | ------------------------------- |
-| **Hot**  | `memory/` + `issues/ACTIVE.md`        | Session start                   |
-| **Warm** | `docs/` + individual `issues/*.md`    | On demand, by task              |
-| **Cold** | `memory/archive/` + `issues/archive/` | Only on explicit history search |
+| Tier     | Where                              | When loaded                     |
+| -------- | ---------------------------------- | ------------------------------- |
+| **Hot**  | `memory/` + `issues/ACTIVE.md`     | Session start                   |
+| **Warm** | `docs/` + individual `issues/*.md` | On demand, by task              |
+| **Cold** | `memory/archive/`                  | Only on explicit history search |
 
 ## Routing — where new knowledge goes
 
@@ -116,4 +115,4 @@ Then on demand: `issues/OPEN.md` by area · matching `learnings/<slug>.md` at op
 - **Severity:** `high | med | low`
 - **Learning origin:** `success | failure`
 
-`parked` requires a concrete `revive-when:` trigger. `resolved`/`wont-fix` are terminal → `issues/archive/` at next `/strata:save`. Status changes are frontmatter edits, not file moves.
+`parked` requires a concrete `revive-when:` trigger. When an item is done, fill **Resolution** briefly then **delete** the file (GitHub + `git log` remain SSOT for closed work). Status changes are frontmatter edits while the item is alive.
