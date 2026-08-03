@@ -7,7 +7,7 @@ name: Publish model (dev)
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     paths:
       - "modules/model/**"
       - ".github/workflows/publish-model-dev.yml"
@@ -29,7 +29,8 @@ jobs:
     name: Wait for PR checks
     if: >-
       github.event.pull_request.draft == false &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-dev-release')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository

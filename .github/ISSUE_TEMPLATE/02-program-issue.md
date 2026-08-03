@@ -9,7 +9,7 @@ labels: ["enhancement"]
 Title: {semantic}/PPT-{NNN}: [{domain}] {Sentence case}
   semantic: feat | fix | ops | ci | docs | test | chore | refactor
   domain: [api] | [model] | [infra] | [EPIC][api] only on epics
-Labels: PPT-{NNN} + domain labels.
+Labels: durable domain labels; if parent epic is set, apply that epic’s `EPIC: PPT-*` (do not create a new epic track label).
 References: #52 (CI badge), #89 (hardening), #93 (uvicorn packaging).
 -->
 

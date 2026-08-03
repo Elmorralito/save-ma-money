@@ -17,6 +17,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 
 - [CI at a glance](#ci-at-a-glance)
 - [Which checks run on my PR?](#which-checks-run-on-my-pr)
+- [PR skip labels](#pr-skip-labels)
 - [Workflow overview](#workflow-overview)
 - [Run checks locally](#run-checks-locally)
 - [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi))
@@ -112,7 +113,32 @@ Use this matrix to predict required checks before opening a PR.
 
 **Always on PRs:** Secret Scan (Gitleaks) — no path filter, full history · Branch sync with main — fail if the PR head is behind `origin/main`.
 
-**Model TestPyPI (optional publish, not a merge gate):** PRs that touch `modules/model/**` also run [Publish model (dev)](#publish-model-dev--testpypi) after the other PR checks pass. It is path-filtered and must not be required for merge (it waits on the other checks).
+**Model TestPyPI (optional publish, not a merge gate):** PRs that touch `modules/model/**` also run [Publish model (dev)](#publish-model-dev--testpypi) after the other PR checks pass. It is path-filtered and must not be required for merge (it waits on the other checks). Opt out with [`skip-dev-release`](#pr-skip-labels).
+
+---
+
+## PR skip labels
+
+Durable **functional** labels (not `PPT-*`). Apply on a **PR** to skip the matching workflow job. Adding/removing the label re-triggers the workflow (`labeled` / `unlabeled`). **Push to `main`, schedules, and `workflow_dispatch` ignore these labels.**
+
+| Label              | Skips workflow                       | File                                                         |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------ |
+| `skip-dev-release` | Publish model (dev) TestPyPI preview | [`publish-model-dev.yml`](./workflows/publish-model-dev.yml) |
+| `skip-strata`      | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
+| `skip-web-ci`      | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
+| `skip-web-e2e`     | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
+| `skip-quality`     | Code Quality Control (Python gate)   | [`quality-control.yml`](./workflows/quality-control.yml)     |
+| `skip-migrations`  | Migration Check                      | [`migration-check.yml`](./workflows/migration-check.yml)     |
+| `skip-openapi`     | OpenAPI Web Contract                 | [`openapi-contract.yml`](./workflows/openapi-contract.yml)   |
+
+**Not skippable via label (by design):** Gitleaks, CodeQL, Trivy, Bash Security, Supply Chain, Branch sync — keep security and merge-hygiene gates honest.
+
+**Use sparingly.** Prefer path filters and focused PRs. `skip-quality` / `skip-migrations` / `skip-openapi` are for rare noise (e.g. docs-only false positives), not for shipping untested code. Skipped jobs still appear as **Skipped** in the checks list; if a check is **required** in branch protection, confirm skipped-as-success is acceptable for that repo setting.
+
+```bash
+# Example: skip TestPyPI preview on a model docs PR
+gh pr edit 123 --add-label skip-dev-release
+```
 
 ---
 

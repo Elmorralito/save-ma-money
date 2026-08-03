@@ -3,7 +3,7 @@ name: Code Quality Control
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths-ignore:
       - "docs/**"
       - "modules/web/**"
@@ -36,6 +36,9 @@ concurrency:
 
 jobs:
   quality-control:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-quality')
     runs-on: ubuntu-latest
     services:
       postgres:

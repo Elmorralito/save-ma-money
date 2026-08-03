@@ -37,14 +37,33 @@ fix/PPT-046: [infra] Badge workflow loops on docs-only pushes
 
 ## Labels
 
-Typical sets (adjust to what `gh label list` shows):
+**Epic track labels use `EPIC: PPT-{NNN}`** (one label per epic, shared by children).
 
-| Type    | Suggest                                                        |
-| ------- | -------------------------------------------------------------- |
-| epic    | `enhancement`, `PPT-{NNN}`, domain (`API`, …)                  |
-| program | `enhancement` or `CI/CD` / `documentation` as apt, `PPT-{NNN}` |
-| child   | `enhancement`, `PPT-{NNN}`, domain                             |
-| bug     | `bug`, `PPT-{NNN}` if mapped                                   |
+| Type    | Suggest                                                                                   |
+| ------- | ----------------------------------------------------------------------------------------- |
+| epic    | `enhancement` + domain + **create/apply `EPIC: PPT-{NNN}`**                               |
+| child   | `enhancement` + domain + **parent epic’s `EPIC: PPT-*`** (do not create a child-id label) |
+| program | `enhancement` / `CI/CD` / `documentation` as apt; + parent epic `EPIC: PPT-*` if linked   |
+| bug     | `bug` (+ parent epic `EPIC: PPT-*` only if under an epic)                                 |
+
+Child issues still use their own `PPT-{NNN}` in the **title/body**; the GitHub label is the epic’s `EPIC: PPT-*`.
+
+### PR skip labels (functional — CI reacts)
+
+Apply on **PRs** (not issues) when intentionally bypassing a gate. Catalog + behavior:
+[`.github/CI.md` § PR skip labels](../../../.github/CI.md#pr-skip-labels).
+
+| Label              | Skips                        |
+| ------------------ | ---------------------------- |
+| `skip-dev-release` | Publish model (dev) TestPyPI |
+| `skip-strata`      | Strata Check                 |
+| `skip-web-ci`      | Web CI                       |
+| `skip-web-e2e`     | Web E2E                      |
+| `skip-quality`     | Code Quality Control         |
+| `skip-migrations`  | Migration Check              |
+| `skip-openapi`     | OpenAPI Web Contract         |
+
+Do **not** create new `skip-*` labels without a matching workflow `if:`.
 
 ## `gh` tips
 
@@ -53,11 +72,20 @@ Typical sets (adjust to what `gh label list` shows):
 gh auth status
 gh auth login   # only when status fails / scopes missing
 
-# Dry-run style: print then create
-gh issue create --repo Elmorralito/save-ma-money --title "…" --body-file /tmp/body.md --label enhancement --label PPT-045
+# Epic: create track label once, then file the issue
+gh label create "EPIC: PPT-046" --repo Elmorralito/save-ma-money --color "0E8A16" \
+  --description "Epic track PPT-046" 2>/dev/null || true
+gh issue create --repo Elmorralito/save-ma-money --title "…" --body-file /tmp/body.md \
+  --label enhancement --label "EPIC: PPT-046"
 
-# List PPT labels
-gh label list --repo Elmorralito/save-ma-money --limit 200 | rg 'PPT-'
+# Child: reuse parent epic label (e.g. EPIC: PPT-046 from epic #112) — do not create EPIC: PPT-058
+gh issue view 112 --repo Elmorralito/save-ma-money --json labels --jq '[.labels[].name]'
+gh issue create --repo Elmorralito/save-ma-money --title "…" --body-file /tmp/body.md \
+  --label enhancement --label "EPIC: PPT-046"
+
+# List labels
+gh label list --repo Elmorralito/save-ma-money --limit 200
 ```
 
 Multiple labels: repeat `--label` (do not pass one comma-separated string unless your `gh` version accepts it).
+**Never** `gh label create` for a child’s own PPT id.

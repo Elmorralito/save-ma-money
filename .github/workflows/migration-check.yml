@@ -3,6 +3,7 @@ name: Migration Check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "modules/model/alembic/**"
       - "modules/model/src/papita_txnsmodel/model/**"
@@ -28,6 +29,9 @@ on:
 jobs:
   postgres-migrations:
     name: PostgreSQL migrations
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-migrations')
     runs-on: ubuntu-latest
     services:
       postgres:

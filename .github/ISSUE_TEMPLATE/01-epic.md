@@ -7,7 +7,7 @@ labels: ["enhancement"]
 
 <!--
 Title: feat|ops|fix/PPT-{NNN}: [EPIC][{domain}] {Sentence case}
-Labels: add matching PPT-{NNN} plus domain (API, data model, CI/CD, …).
+Labels: `enhancement` + domain + **create/apply `EPIC: PPT-{NNN}`** (children reuse this label).
 References: #42 (PPT-032 epic shape).
 -->
 

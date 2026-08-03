@@ -6,7 +6,7 @@ name: OpenAPI Web Contract
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       # API surface + model types that bleed into OpenAPI via API schemas/enums.
       - "modules/api/src/**"
@@ -35,6 +35,9 @@ concurrency:
 
 jobs:
   openapi-artifact:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-openapi')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
