@@ -5,7 +5,7 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 ## Live pointers
 
 - [Project state](project_state.md) — ACTIVE = PPT-056 on `test/PPT-056`; PPT-062/059/061/060 merged; PPT-054 carry-forward.
-- [Active issues](../issues/ACTIVE.md) — PPT-056 [#121] `20260803-06`.
+- [Active issues](../issues/ACTIVE.md) — PPT-056 [#121] `20260803-06`; PPT-064 [#129] `20260803-07`.
 - [Open backlog](../issues/OPEN.md) — empty (capture from GitHub epic #112 when starting work).
 - Closed work — GitHub issues + `git log` (no `.strata/issues/archive/`).
 

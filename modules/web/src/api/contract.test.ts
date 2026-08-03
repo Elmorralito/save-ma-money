@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   bulkMaxTransactions,
+  DEFAULT_BREAKING_CHANGES_ID,
+  evaluateBreakingChangesGuard,
+  observedBreakingChangesId,
   reportWindowMaxDays,
   reportsForeignAccountStatus,
+  resolveExpectedBreakingChangesId,
 } from "@/api/contract";
 import type { DiscoveryHeaders } from "@/api/headers";
 import type { ClientContract } from "@/types/domain";
@@ -61,5 +65,66 @@ describe("contract helpers", () => {
   it("returns null when neither body nor headers provide a value", () => {
     expect(bulkMaxTransactions(null, null)).toBeNull();
     expect(reportWindowMaxDays(null, null)).toBeNull();
+  });
+});
+
+describe("breaking-changes guard", () => {
+  it("defaults expected id to ppt-044 when env is unset or blank", () => {
+    expect(resolveExpectedBreakingChangesId(undefined)).toBe(DEFAULT_BREAKING_CHANGES_ID);
+    expect(resolveExpectedBreakingChangesId("")).toBe(DEFAULT_BREAKING_CHANGES_ID);
+    expect(resolveExpectedBreakingChangesId("  ")).toBe(DEFAULT_BREAKING_CHANGES_ID);
+  });
+
+  it("trims a configured expected id", () => {
+    expect(resolveExpectedBreakingChangesId(" ppt-099 ")).toBe("ppt-099");
+  });
+
+  it("prefers body breaking_changes over discovery header", () => {
+    const discovery: DiscoveryHeaders = { ...sampleDiscovery, breakingChanges: "ppt-header" };
+    expect(observedBreakingChangesId(sampleContract, discovery)).toBe("ppt-044");
+  });
+
+  it("falls back to discovery header when body is absent", () => {
+    expect(observedBreakingChangesId(null, sampleDiscovery)).toBe("ppt-044");
+  });
+
+  it("returns unknown when neither body nor header provides an id", () => {
+    expect(
+      evaluateBreakingChangesGuard({ contract: null, discovery: null, expected: "ppt-044" }),
+    ).toEqual({
+      status: "unknown",
+      expected: "ppt-044",
+      observed: null,
+    });
+  });
+
+  it("matches when expected equals observed body id", () => {
+    expect(
+      evaluateBreakingChangesGuard({
+        contract: sampleContract,
+        discovery: sampleDiscovery,
+        expected: "ppt-044",
+      }),
+    ).toEqual({ status: "match", expected: "ppt-044", observed: "ppt-044" });
+  });
+
+  it("mismatches when expected differs from observed", () => {
+    expect(
+      evaluateBreakingChangesGuard({
+        contract: sampleContract,
+        discovery: sampleDiscovery,
+        expected: "ppt-099",
+      }),
+    ).toEqual({ status: "mismatch", expected: "ppt-099", observed: "ppt-044" });
+  });
+
+  it("uses header when evaluating without a contract body", () => {
+    expect(
+      evaluateBreakingChangesGuard({
+        contract: null,
+        discovery: { ...sampleDiscovery, breakingChanges: "ppt-header" },
+        expected: "ppt-044",
+      }),
+    ).toEqual({ status: "mismatch", expected: "ppt-044", observed: "ppt-header" });
   });
 });

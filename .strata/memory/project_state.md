@@ -32,6 +32,9 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
+- **PPT-064 / #129** (`20260803-07` on `feat/PPT-064`): Breaking-changes client
+  guard — shared `evaluateBreakingChangesGuard`, app-root banner, public
+  `VITE_PAPITA_BREAKING_CHANGES_ID` (default `ppt-044`).
 - **PPT-056 / #121** (`20260803-06` on `test/PPT-056`): Vitest coverage gate in
   `web-ci`; Playwright critical path + axe (`globalSetup` → `make web-e2e-seed`);
   Lighthouse lab budgets (`lighthouserc.cjs`); `web-e2e.yml` nightly/dispatch;
@@ -54,8 +57,8 @@ not opened until asked.
 
 ### Next action
 
+- Land PPT-064 (#129) PR on `feat/PPT-064` (guard + tests + README)
 - Open PR for PPT-056 (#121); close after `web-ci` + agreed `web-e2e` gate green
-- Open/land PR for PPT-058 (#123) docs indexes (local patches ready)
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
 - PPT-068 (#139); PPT-057 (#122) CSP/nginx
 - Do not re-add closed GH issues into `.strata/issues/`
