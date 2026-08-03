@@ -10,6 +10,36 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.3 (2026-08-03)
+
+### Bug Fixes
+
+- **ci**: Disable PyPI attestations for reusable publish-model
+  ([`6875c85`](https://github.com/Elmorralito/save-ma-money/commit/6875c85927ebd60a62f3e4371c8cc9f7c230478e))
+
+- **ci**: Run TestPyPI publish when called from PR model-dev workflow
+  ([`6875c85`](https://github.com/Elmorralito/save-ma-money/commit/6875c85927ebd60a62f3e4371c8cc9f7c230478e))
+
+### Chores
+
+- Organizing.
+  ([`a3b4db4`](https://github.com/Elmorralito/save-ma-money/commit/a3b4db40f7f644e48bce653fb8efb5c63c636e96))
+
+### Continuous Integration
+
+- Automate TestPyPI PR previews and post-merge PyPI publish
+  ([#111](https://github.com/Elmorralito/save-ma-money/pull/111),
+  [`86dff72`](https://github.com/Elmorralito/save-ma-money/commit/86dff72b74ad17f3ac5e2df70c87b9b43d46cc24))
+
+- Update CI adoption badge [skip ci] ([#111](https://github.com/Elmorralito/save-ma-money/pull/111),
+  [`86dff72`](https://github.com/Elmorralito/save-ma-money/commit/86dff72b74ad17f3ac5e2df70c87b9b43d46cc24))
+
+### Testing
+
+- **api**: Raise Codecov patch coverage for local Supabase auth DX
+  ([`6875c85`](https://github.com/Elmorralito/save-ma-money/commit/6875c85927ebd60a62f3e4371c8cc9f7c230478e))
+
+
 ## v1.0.2 (2026-07-27)
 
 ### Code Style
