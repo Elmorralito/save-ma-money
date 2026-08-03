@@ -32,9 +32,277 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#119](https://github.com/Elmorralito/save-ma-money/issues/119)**_] :: **feat/PPT-054: [web] Dashboard and reports UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:51+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 16:02:54+00:00</sub>_
+
+  > **Closed by** [_**#147**](https://github.com/Elmorralito/save-ma-money/pull/147): **feat/PPT-053: [web] Transactions and movements UI on existing API**
+
+  > **Branch:** feat/PPT-053 · **Base:** main · **2 commits** · **44 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-053: [web] Transactions and movements UI on existing API
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Ships PPT-053 / #118 ledger screens for the React SPA: income/expense CRUD + bulk create, and transfer create/execute/cancel via existing FastAPI v1, using the BFF cookie client (credentials: 'include'). Also adds local pre-commit hooks for modules/web (ESLint, Prettier, tsc, related Vitest) so staged SPA changes get husky-equivalent gates without introducing husky. Presentation only — no TypeScript ports of papita_txnsmodel ledger rules.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Transaction split v4 UI (API POST .../split remains 501; not exposed in SPA)
+
+  > - Client-side balance math or transfer double-entry invention
+
+  > - Zod/RHF forms kit (#120), Playwright E2E (#121), dashboard/reports UI (#119)
+
+  > - JWT storage / Bearer from the browser
+
+  > - husky, commitlint, or Stylelint (PPT titles stay repo convention; Tailwind v4 has no SCSS pipeline)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Always sends Idempotency-Key on transaction create/bulk
+
+  > - Bulk row cap from client-contract (bulkMaxTransactions, fallback 100); surfaces bulk_too_large
+
+  > - Retry-After surfaced on HTTP 429 via PapitaApiError / formatApiError
+
+  > - Local web-eslint / web-prettier / web-tsc / web-vitest-related via pre_commit_web.sh
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web API client**
+
+  >
+
+  > - New api/transactions.ts / api/movements.ts + idempotency.ts + invalidateLedger.ts
+
+  > - Domain OpenAPI aliases; queryKeys / queryOptions for lists and details
+
+  > - Error layer parses Retry-After for rate-limit UX
+
+  >
+
+  > **UI**
+
+  >
+
+  > - TransactionsPage: filters, create/edit/delete dialogs, bulk dialog
+
+  > - MovementsPage: filters; edit/execute/cancel only when status === pending
+
+  > - Controlled forms (PPT-052 pattern); no Split action
+
+  >
+
+  > **Tooling / CI**
+
+  >
+
+  > - Local pre-commit web hooks (skipped in quality-control; web-ci.yml remains the merge gate)
+
+  > - Root mirrors-prettier excludes modules/web/ so package Prettier wins
+
+  >
+
+  > **Docs / strata**
+
+  >
+
+  > - modules/web/README.md PPT-053 + pre-commit notes
+
+  > - Archived issue 20260803-01, learning web-ledger-ui-no-domain, project state / ARCHITECTURE / MANIFEST updates
+
+  > - .github/CI.md / .cursor/AGENTS.md hook inventory
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - API helper unit tests; page/dialog mapper tests; 429 Retry-After coverage
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (44 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > .github/CI.md | 68 ++--
+
+  > .github/scripts/pre_commit_web.sh | 119 +++++++
+
+  > .github/workflows/quality-control.yml | 4 +-
+
+  > .pre-commit-config.yaml | 38 ++-
+
+  > .strata/MANIFEST.md | 2 +-
+
+  > .strata/docs/ARCHITECTURE.md | 2 +-
+
+  > ...20260803-01-ppt053-transactions-movements-ui.md | 14 +
+
+  > .strata/issues/archive/ARCHIVE.md | 4 +-
+
+  > .strata/memory/MEMORY.md | 6 +-
+
+  > .strata/memory/learnings/INDEX.md | 1 +
+
+  > .../memory/learnings/web-ledger-ui-no-domain.md | 13 +
+
+  > .strata/memory/project_state.md | 23 +-
+
+  > modules/web/README.md | 59 ++--
+
+  > modules/web/src/api/** | transactions/movements/idempotency/errors/queryKeys
+
+  > modules/web/src/components/{transactions,movements}/**
+
+  > modules/web/src/pages/{Transactions,Movements}Page*
+
+  > modules/web/src/types/domain.ts | Transaction*/Movement* aliases
+
+  > 44 files changed, 3520 insertions(+), 80 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - db34d84 feat(web): add transactions and movements UI for PPT-053
+
+  > - 2fa82fb ci(web): add local pre-commit hooks for TypeScript and React
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm lint / pnpm test -- --run / pnpm build (modules/web) — pass (earlier session; 60 tests)
+
+  > - poetry run pre-commit run web-{eslint,prettier,tsc,vitest-related} on sample web files — pass
+
+  > - Pre-commit hooks on both commits (incl. strata validate) — pass
+
+  > - GitHub Actions CI on this PR — not observed in this update
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] make api-all + make web-dev; BFF login
+
+  > - [ ] Create income + expense; confirm list refresh and account balance update
+
+  > - [ ] Bulk create within contract max; over-max blocked / bulk_too_large readable
+
+  > - [ ] Movement immediate transfer; scheduled → Execute; Cancel pending
+
+  > - [ ] Confirm no Split control in Transactions UI
+
+  > - [ ] Stage a modules/web TS change and confirm local web-* pre-commit hooks run (pnpm install required)
+
+  > - [ ] Web CI green on the PR
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Idempotency replay requires Redis (REDIS_ENABLED); header is still always sent (API bypasses when Redis off)
+
+  > > - Local web hooks fail closed if modules/web/node_modules is missing — run pnpm install first
+
+  > > - Bulk partial failures (failed > 0) only toast counts — no per-row retry UI
+
+  > > - List windows are first page only (limit=100), same as accounts/categories
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Forms remain controlled until #120 (Zod/RHF)
+
+  > > - Default transaction list omits transaction_type so API excludes transfers (use Movements for transfers)
+
+  > > - Web pre-commit hooks are local-only; quality-control skips them — web-ci.yml is the CI gate
+
+  > > - Manual B0 browser smoke not run in this session
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#118](https://github.com/Elmorralito/save-ma-money/issues/118) (PPT-053)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on closed [#117](https://github.com/Elmorralito/save-ma-money/issues/117) (PPT-052), [#115](https://github.com/Elmorralito/save-ma-money/issues/115) (PPT-049), [#114](https://github.com/Elmorralito/save-ma-money/issues/114) (PPT-048)
+
+  > - modules/web/README.md · .github/CI.md · .github/scripts/pre_commit_web.sh
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 15:01:45+00:00</sub>_
 
