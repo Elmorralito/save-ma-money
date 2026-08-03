@@ -14,11 +14,9 @@
 
 - [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
-- [ ] [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary:
-
-- [ ] [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary:
 
 - [ ] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary:
 
@@ -26,9 +24,469 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:40:24+00:00</sub>_
+
+  > **Closed by** [_**#151**](https://github.com/Elmorralito/save-ma-money/pull/151): **test/PPT-061: [web] E2E seed fixtures for Playwright critical path**
+
+  > **Branch:** test/PPT-061 · **Base:** main · **1 commit** · **11 files**
+
+  >
+
+  > **Suggested title:** test/PPT-061: [web] E2E seed fixtures for Playwright critical path
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Adds a deterministic B0 HTTP seed so Playwright critical journeys (auth → account → expense → transfer → report) can start from clean Compose without manual UI setup. Locks **strategy A** (API seed script): make web-e2e-seed / pnpm web:seed-e2e provision an owner-scoped fixture user, two accounts, expense/income categories, and a baseline expense, writing gitignored modules/web/e2e/.auth/seed.json for [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Playwright config / globalSetup / critical-path specs ([#121](https://github.com/Elmorralito/save-ma-money/issues/121))
+
+  > - Compose E2E CI workflow (documentedly separate/nightly under #121 — keep PR web-ci Node-only)
+
+  > - Extracting shared helpers from modules/api/tests live-DB suites
+
+  > - Fixing category soft-delete + same-name recreate API tombstone behavior
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Idempotent upsert + documented RESET=1 (baseline txns + E2E accounts; categories reused)
+
+  > - Create responses GET-verified; HTTP 429 retried with Retry-After
+
+  > - README locks strategy A vs Playwright-only / SQL fixtures; cites #126 as fixture SSOT for #121
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ops / seed**
+
+  >
+
+  > - bin/web_e2e_seed.py + bin/web_e2e_seed.sh: Bearer register/login against running API; stable E2E names; artifact under modules/web/e2e/.auth/
+
+  > - Makefile web-e2e-seed; root pnpm web:seed-e2e
+
+  > - .gitignore + modules/web/e2e/.gitignore: never commit seed credentials/artifact
+
+  >
+
+  > **Docs / memory**
+
+  >
+
+  > - modules/web/README.md + modules/web/e2e/README.md: strategy, contract, env knobs (E2E_*), CI placement
+
+  > - .strata issue 20260803-05 + project_state / MEMORY pointers for PPT-061 → #121 handoff
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~11 files)</summary>
+
+  >
+
+  >
+
+  > .gitignore | 2 +
+
+  > .../issues/20260803-05-ppt061-e2e-seed-fixtures.md | 23 +
+
+  > .strata/memory/MEMORY.md | 4 +-
+
+  > .strata/memory/project_state.md | 8 +-
+
+  > Makefile | 8 +
+
+  > bin/web_e2e_seed.py | 478 +++++++++++++++++++++
+
+  > bin/web_e2e_seed.sh | 77 ++++
+
+  > modules/web/README.md | 41 ++
+
+  > modules/web/e2e/.gitignore | 3 +
+
+  > modules/web/e2e/README.md | 12 +
+
+  > package.json | 3 +-
+
+  > 11 files changed, 654 insertions(+), 5 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - a31cf1b test/PPT-061: [web] Add E2E seed fixtures for Playwright critical path
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Pre-commit on commit: black, isort, flake8, pylint, mypy, ShellCheck, strata validate, web prettier — **pass**
+
+  > - Local against Compose API (make api-all already healthy): make web-e2e-seed (idempotent re-run) and make web-e2e-seed RESET=1 — **pass**
+
+  > - GitHub Actions / full CI on this PR — **not observed yet**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Fresh clone path: make api-all → make web-e2e-seed → confirm modules/web/e2e/.auth/seed.json exists and is gitignored
+
+  > - [ ] Re-run make web-e2e-seed without RESET keeps stable account/category IDs
+
+  > - [ ] make web-e2e-seed RESET=1 recreates accounts + baseline txn; categories reused
+
+  > - [ ] With AUTH_PROVIDER=local, register/login path succeeds without Supabase secrets
+
+  > - [ ] Confirm PR web-ci still Node-only (no Compose seed job introduced here)
+
+  > - [ ] After merge: update [#121](https://github.com/Elmorralito/save-ma-money/issues/121) to cite #126 as fixture SSOT; close [#126](https://github.com/Elmorralito/save-ma-money/issues/126)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Seed defaults assume a reachable API (E2E_API_BASE / Compose publish port). Operators must run make api-all first.
+
+  > > - Prefer AUTH_PROVIDER=local for B0/CI E2E. Supabase path needs a pre-confirmed user and E2E_SKIP_REGISTER=1 (or Confirm email OFF / auto-confirm).
+
+  > > - Override E2E_USER_PASSWORD via env in shared CI; do not commit seed.json.
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - RESET=1 does **not** soft-delete fixture categories — same-name recreate after soft-delete can return a phantom 201 against unique tombstones. Full wipe: new E2E_USER_EMAIL or Compose volume reset.
+
+  > > - Heavy RESET churn can hit API rate limits; the seed retries 429s but is not a load tool.
+
+  > > - Playwright wiring is intentionally deferred to #121 (globalSetup should only invoke this command).
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#126](https://github.com/Elmorralito/save-ma-money/issues/126) (PPT-061)
+
+  > - Parent epic: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Downstream: [#121](https://github.com/Elmorralito/save-ma-money/issues/121) (PPT-056 Playwright gate — fixture SSOT)
+
+  > - Related auth assumptions: [#125](https://github.com/Elmorralito/save-ma-money/issues/125) (PPT-060)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:22:43+00:00</sub>_
+
+  > **Closed by** [_**#149**](https://github.com/Elmorralito/save-ma-money/pull/149): **feat/PPT-055: [web] Forms validation and loading UX standards**
+
+  > **Branch:** feat/PPT-055 · **Base:** main · **1 commit** · **24 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-055: [web] Forms validation and loading UX standards
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-055 gap left after accounts/categories landed on ad-hoc controlled forms: install Zod + react-hook-form, ship a shared presentation kit under modules/web/src/forms/, and migrate account + category dialogs onto one validation and mutation-error pattern. OpenAPI write-model alignment stays UX-only — domain rules remain in papita_txnsmodel.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - New API endpoints or design-system primitives beyond PPT-051
+
+  > - Migrating login/register, transactions/movements/bulk, or report filters onto the kit (follow-on)
+
+  > - Dashboard/reports UI (PPT-054 / #119) — intentionally untouched
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Documented UX standard in modules/web/README.md
+
+  > - 422 field mapping from FastAPI loc + optional field maps; 429/network/5xx toast + root
+
+  > - Custom FormField (no new shadcn Form dependency)
+
+  > - formatDate / formatDateTime via Intl alongside existing formatMoney
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web forms kit**
+
+  >
+
+  > - Add zod, react-hook-form, @hookform/resolvers
+
+  > - src/forms/: schemas (account/category), mapServerErrors, applyMutationError, FormField / FormRootError, OpenAPI→flat field maps
+
+  > - src/lib/formatDate.ts: presentation date helpers
+
+  >
+
+  > **Feature migrations**
+
+  >
+
+  > - AccountFormDialog / AccountFormFields and CategoryFormDialog use RHF + zodResolver
+
+  > - Preserve global seed category 404 → read-only UX (inline + toast)
+
+  > - Mutation submit disabled while pending / submitting
+
+  >
+
+  > **Docs / agent memory**
+
+  >
+
+  > - README Forms & UX standards section; AGENTS.md note
+
+  > - Strata issue 20260803-03, learning web-forms-ux-kit, project_state update
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (24 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > .strata/issues/20260803-03-ppt055-forms-ux-standards.md | 28 ++
+
+  > .strata/issues/ACTIVE.md | 1 +
+
+  > .strata/memory/MEMORY.md | 7 +-
+
+  > .strata/memory/learnings/web-forms-ux-kit.md | 14 +
+
+  > .strata/memory/project_state.md | 22 +-
+
+  > modules/web/README.md | 34 +-
+
+  > modules/web/package.json | 5 +-
+
+  > modules/web/src/components/accounts/AccountFormDialog.tsx | 66 ++--
+
+  > modules/web/src/components/accounts/AccountFormFields.tsx | 382 +++++++++------------
+
+  > modules/web/src/components/categories/CategoryFormDialog.tsx | 163 ++++-----
+
+  > modules/web/src/forms/FormField.tsx | 41 +++
+
+  > modules/web/src/forms/applyMutationError.ts | 56 +++
+
+  > modules/web/src/forms/fieldMaps.ts | 37 ++
+
+  > modules/web/src/forms/index.ts | 12 +
+
+  > modules/web/src/forms/mapServerErrors.test.ts | 103 ++++++
+
+  > modules/web/src/forms/mapServerErrors.ts | 130 +++++++
+
+  > modules/web/src/forms/schemas/account.test.ts | 34 ++
+
+  > modules/web/src/forms/schemas/account.ts | 139 ++++++++
+
+  > modules/web/src/forms/schemas/category.test.ts | 25 ++
+
+  > modules/web/src/forms/schemas/category.ts | 21 ++
+
+  > modules/web/src/lib/formatDate.test.ts | 28 ++
+
+  > modules/web/src/lib/formatDate.ts | 27 ++
+
+  > pnpm-lock.yaml | 110 ++++++
+
+  > 24 files changed, 1116 insertions(+), 371 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 80725c9 feat/PPT-055: [web] Standardize forms with Zod and RHF
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm --filter @papita/web exec tsc -b — pass
+
+  > - pnpm --filter @papita/web test — pass (87 tests)
+
+  > - pnpm --filter @papita/web lint — pass
+
+  > - Pre-commit on commit (web-eslint, web-prettier, web-tsc, web-vitest-related, strata validate, etc.) — pass
+
+  > - GitHub Actions CI on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Create/edit an account (checking + one extension kind); confirm field validation and successful save
+
+  > - [ ] Trigger a 422 (e.g. invalid payload) and confirm inline field/root errors without toast spam
+
+  > - [ ] Confirm 429/unreachable API still toasts with retry guidance via formatApiError
+
+  > - [ ] Edit a global seed category and confirm read-only 404 UX (inline + toast) still works
+
+  > - [ ] Spot-check README Forms & UX standards section for accuracy
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Account/category form behavior changes from useState to RHF — regression risk on extension blocks and omit-empty update payloads (mappers unchanged, but wiring did)
+
+  > > - Ledger/auth forms remain on the old pattern until a follow-on; PPT-056 (#121) quality bar should treat kit adoption as incomplete outside accounts/categories
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Zod schemas validate form state only; they do not re-encode papita_txnsmodel rules
+
+  > > - Report/dashboard files intentionally left alone to avoid conflicting with PPT-054
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#120](https://github.com/Elmorralito/save-ma-money/issues/120) (PPT-055)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on closed PPT-051 [#116], PPT-048 [#114]
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#125](https://github.com/Elmorralito/save-ma-money/issues/125)**_] :: **feat/PPT-060: [web] Supabase auth edge-case MVP matrix for BFF** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:03+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:09:37+00:00</sub>_
 

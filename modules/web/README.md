@@ -37,6 +37,7 @@ make web-dev      # Vite on :5173
 | `make sync-openapi`   | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
 | `make check-openapi`  | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
 | `make web-openapi`    | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
+| `make web-e2e-seed`   | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)     |
 
 Package-local: `pnpm --filter @papita/web <script>`.
 
@@ -139,6 +140,46 @@ MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchan
 - Default E2E / B0 path uses a **confirmed** (or confirm-N/A) user: CI `AUTH_PROVIDER=local`, or local Supabase with Confirm email OFF / Admin auto-confirm so register → login succeeds without inbox access.
 - Unconfirmed-user journeys (pending screen, resend, SMTP) are **out of Playwright MVP until #139** — do not write e2e that depends on confirmation email delivery.
 - Auth **429** is covered at unit level (mapper + login/register pages); e2e rate-limit is optional later.
+- **Fixture SSOT:** [#126](https://github.com/Elmorralito/save-ma-money/issues/126) / PPT-061 — see [E2E fixtures](#e2e-fixtures-ppt-061--126) below. `globalSetup` must call `make web-e2e-seed` (do not invent a second SQL seed).
+
+## E2E fixtures (PPT-061 / #126)
+
+**Locked strategy: A — API seed script** (HTTP against running Compose API). Playwright `globalSetup` (#121) only invokes the seed; SQL dumps are out of scope.
+
+| Piece       | Location                                           | Notes                                                                 |
+| ----------- | -------------------------------------------------- | --------------------------------------------------------------------- |
+| Runner      | [`bin/web_e2e_seed.py`](../../bin/web_e2e_seed.py) | Bearer register/login → accounts → categories → optional baseline txn |
+| Wrapper     | [`bin/web_e2e_seed.sh`](../../bin/web_e2e_seed.sh) | Loads `environments/<env>/.env`; supports `RESET=1`                   |
+| Artifact    | `modules/web/e2e/.auth/seed.json`                  | **Gitignored** — email/password + IDs for #121                        |
+| Make / pnpm | `make web-e2e-seed` / `pnpm web:seed-e2e`          | Requires healthy API (`make api-all`)                                 |
+
+**Why not B/C:** Seed logic must not live only inside Playwright (harder to run standalone). SQL fixtures bypass API validation and do not create auth users correctly for local/Supabase.
+
+**Seed contract (owner-scoped, `E2E ` name prefix):**
+
+| Entity       | Stable name                                          | Purpose                                          |
+| ------------ | ---------------------------------------------------- | ------------------------------------------------ |
+| User         | `E2E_USER_EMAIL` (default `e2e.owner@example.local`) | Fixture tenant                                   |
+| Accounts     | `E2E Checking`, `E2E Savings`                        | Expense source + transfer destination            |
+| Categories   | `E2E Exp`, `E2E Inc`                                 | Ledger + report UX                               |
+| Baseline txn | description `E2E baseline expense`                   | Non-empty spending report before UI creates more |
+
+**Commands:**
+
+```bash
+make api-all
+make web-e2e-seed              # idempotent: create missing rows only
+make web-e2e-seed RESET=1      # soft-delete baseline txns + E2E accounts; recreate; categories reused
+pnpm web:seed-e2e              # same as make (honors RESET=1 env)
+```
+
+`RESET=1` does **not** soft-delete categories — same-name create after soft-delete can return a phantom 201 against the unique tombstone. Full wipe: new `E2E_USER_EMAIL` or Compose volume reset.
+
+**Env (optional):** `E2E_API_BASE`, `E2E_USER_EMAIL`, `E2E_USER_PASSWORD`, `E2E_USER_USERNAME`, `E2E_SEED_OUT`, `E2E_SKIP_REGISTER=1` (pre-provisioned Supabase user — skip register, login only).
+
+**Auth modes:** Prefer `AUTH_PROVIDER=local` for B0 / CI E2E (no Supabase secrets). Bearer path seeds domain data; Playwright still logs in via BFF cookies in the browser. Token clients (`make auth-smoke`) coexist unchanged.
+
+**CI placement:** Keep PR [`web-ci.yml`](../../.github/workflows/web-ci.yml) Node-only. Compose seed + Playwright belong in a separate / nightly `web-e2e` gate under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) — not on every path-filtered web PR.
 
 ## Vite `/api` proxy
 

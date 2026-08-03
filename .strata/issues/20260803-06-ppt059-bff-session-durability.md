@@ -1,5 +1,5 @@
 ---
-id: 20260803-05
+id: 20260803-06
 type: feature
 status: in-progress
 severity: med
@@ -19,5 +19,7 @@ created: 2026-08-03
 - [x] #122 handoff noted (no nginx work here)
 - [x] PR [#153](https://github.com/Elmorralito/save-ma-money/pull/153) opened
 - [ ] Merge + close GitHub #124; delete this strata item
+
+**Notes:** Remapped from `20260803-05` after main landed PPT-061 under that id.
 
 **Resolution:** (open — PR pending merge)

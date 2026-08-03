@@ -4,9 +4,9 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — ACTIVE = PPT-059; PPT-054 carry-forward noted.
-- [Active issues](../issues/ACTIVE.md) — PPT-059 [#124] `20260803-05`.
-- [Open backlog](../issues/OPEN.md) — empty.
+- [Project state](project_state.md) — ACTIVE = PPT-059 (PR #153); PPT-061 seed on OPEN; PPT-054 carry-forward.
+- [Active issues](../issues/ACTIVE.md) — PPT-059 [#124] `20260803-06`.
+- [Open backlog](../issues/OPEN.md) — PPT-061 [#126] `20260803-05` (E2E seed handoff to #121).
 - Closed work — GitHub issues + `git log` (no `.strata/issues/archive/`).
 
 ## Rules by trigger
