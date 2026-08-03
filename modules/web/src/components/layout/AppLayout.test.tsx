@@ -4,7 +4,9 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
+import type { BffSession, BffUser } from "@/api/auth";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { sessionUserLabel } from "@/components/layout/sessionUserLabel";
 import { AccountsPage } from "@/pages/AccountsPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { QueryTestProvider } from "@/test/queryWrapper";
@@ -71,26 +73,64 @@ vi.mock("@/api/meta", () => ({
   })),
 }));
 
+const fixtureUser: BffUser = {
+  id: "00000000-0000-0000-0000-000000000001",
+  username: "tester",
+  email: "tester@example.com",
+  display_name: null,
+  phone: null,
+  provider: "email",
+  auth_provider: "local",
+  created_at: "2026-07-29T00:00:00Z",
+};
+
+const authenticatedSession: BffSession = {
+  authenticated: true,
+  user: fixtureUser,
+  csrf_token: "csrf-test",
+  session_backend: "memory",
+};
+
+function renderShell(initialPath = "/dashboard") {
+  return render(
+    <QueryTestProvider>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/accounts" element={<AccountsPage />} />
+          </Route>
+          <Route path="/login" element={<h1>Login</h1>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryTestProvider>,
+  );
+}
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
 
 beforeEach(() => {
-  vi.mocked(authApi.getBffSession).mockResolvedValue({
-    authenticated: true,
-    user: {
-      id: "00000000-0000-0000-0000-000000000001",
-      username: "tester",
-      email: "tester@example.com",
-      display_name: null,
-      phone: null,
-      provider: "email",
-      auth_provider: "local",
-      created_at: "2026-07-29T00:00:00Z",
-    },
-    csrf_token: "csrf-test",
-    session_backend: "memory",
+  vi.mocked(authApi.getBffSession).mockResolvedValue(authenticatedSession);
+  vi.mocked(authApi.bffLogout).mockResolvedValue(undefined);
+});
+
+describe("sessionUserLabel", () => {
+  it("prefers display_name, then username, then email", () => {
+    expect(
+      sessionUserLabel({
+        ...fixtureUser,
+        display_name: "  Ada  ",
+        username: "ada",
+        email: "a@x.com",
+      }),
+    ).toBe("Ada");
+    expect(sessionUserLabel({ ...fixtureUser, display_name: null, username: "ada" })).toBe("ada");
+    expect(
+      sessionUserLabel({ ...fixtureUser, display_name: " ", username: "", email: "a@x.com" }),
+    ).toBe("a@x.com");
   });
 });
 
@@ -98,24 +138,13 @@ describe("AppLayout", () => {
   it("renders nav landmarks and navigates between stub routes", async () => {
     const user = userEvent.setup();
 
-    render(
-      <QueryTestProvider>
-        <MemoryRouter initialEntries={["/dashboard"]}>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/accounts" element={<AccountsPage />} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
-      </QueryTestProvider>,
-    );
+    renderShell();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
     });
     await waitFor(() => {
-      expect(screen.getAllByText("tester@example.com").length).toBeGreaterThan(0);
+      expect(screen.getByTestId("session-user-chip")).toHaveTextContent("tester");
     });
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
 
@@ -126,6 +155,71 @@ describe("AppLayout", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Accounts" })).toBeInTheDocument();
+    });
+  });
+
+  it("shows display_name on the session chip when present", async () => {
+    vi.mocked(authApi.getBffSession).mockResolvedValue({
+      ...authenticatedSession,
+      user: { ...fixtureUser, display_name: "Test User" },
+    });
+
+    renderShell();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-user-chip")).toHaveTextContent("Test User");
+    });
+  });
+
+  it("shows a pending session affordance before the probe resolves", async () => {
+    let resolveSession!: (value: BffSession) => void;
+    vi.mocked(authApi.getBffSession).mockImplementation(
+      () =>
+        new Promise<BffSession>((resolve) => {
+          resolveSession = resolve;
+        }),
+    );
+
+    renderShell();
+
+    expect(screen.getByTestId("session-user-chip")).toHaveTextContent("Session…");
+    expect(screen.queryByRole("button", { name: "Sign out" })).not.toBeInTheDocument();
+
+    resolveSession(authenticatedSession);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-user-chip")).toHaveTextContent("tester");
+    });
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("shows session unavailable when the probe fails", async () => {
+    vi.mocked(authApi.getBffSession).mockRejectedValue(new Error("network down"));
+
+    renderShell();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-user-chip")).toHaveTextContent("Session unavailable");
+    });
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  it("invokes BFF logout and returns to login", async () => {
+    const user = userEvent.setup();
+
+    renderShell();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Sign out" }));
+
+    await waitFor(() => {
+      expect(authApi.bffLogout).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { level: 1, name: "Login" })).toBeInTheDocument();
     });
   });
 });

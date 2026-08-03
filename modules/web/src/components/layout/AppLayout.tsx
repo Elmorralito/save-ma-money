@@ -6,6 +6,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { bffLogout } from "@/api/auth";
 import { queryKeys } from "@/api/queryKeys";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
+import { sessionUserLabel } from "@/components/layout/sessionUserLabel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
@@ -28,11 +29,13 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const sessionQuery = useQuery(bffSessionQueryOptions());
   const user = sessionQuery.data?.user;
+  const isSessionPending = sessionQuery.isPending;
+  const isSessionError = sessionQuery.isError;
 
   const logoutMutation = useMutation({
     mutationFn: bffLogout,
     onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
+      await queryClient.removeQueries({ queryKey: queryKeys.auth.all });
       setIsMobileNavOpen(false);
       await navigate("/login", { replace: true });
     },
@@ -41,6 +44,17 @@ export function AppLayout() {
   function closeMobileNav() {
     setIsMobileNavOpen(false);
   }
+
+  let sessionChip: string | null = null;
+  if (isSessionPending) {
+    sessionChip = "Session…";
+  } else if (isSessionError) {
+    sessionChip = "Session unavailable";
+  } else if (user) {
+    sessionChip = sessionUserLabel(user);
+  }
+
+  const canSignOut = !isSessionPending && (Boolean(user) || isSessionError);
 
   return (
     <div className="flex min-h-svh w-full max-w-full overflow-x-hidden bg-background">
@@ -108,23 +122,28 @@ export function AppLayout() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm text-muted-foreground md:hidden">{title}</p>
           </div>
-          <div className="flex min-w-0 items-center gap-2">
-            {user ? (
-              <span className="max-w-28 truncate text-sm text-muted-foreground sm:max-w-48">
-                {user.email}
+          <div className="flex min-w-0 items-center gap-2" aria-live="polite">
+            {sessionChip ? (
+              <span
+                className="max-w-28 truncate text-sm text-muted-foreground sm:max-w-48"
+                data-testid="session-user-chip"
+              >
+                {sessionChip}
               </span>
             ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={logoutMutation.isPending}
-              onClick={() => {
-                logoutMutation.mutate();
-              }}
-            >
-              {logoutMutation.isPending ? "Signing out…" : "Sign out"}
-            </Button>
+            {canSignOut ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={logoutMutation.isPending}
+                onClick={() => {
+                  logoutMutation.mutate();
+                }}
+              >
+                {logoutMutation.isPending ? "Signing out…" : "Sign out"}
+              </Button>
+            ) : null}
           </div>
         </header>
         <main className="min-w-0 flex-1 px-3 py-6 sm:px-6">

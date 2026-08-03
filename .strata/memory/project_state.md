@@ -10,6 +10,9 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- **PPT-062 / #127:** AppLayout session chip + logout closeout — `sessionUserLabel`
+  (`display_name` → `username` → `email`); pending/error chip; BFF logout clears
+  auth queries → `/login`. Vitest green. (strata: no archive; GH/git only)
 - **PPT-061 / #126:** E2E seed fixtures (strategy A — API HTTP script) on main.
   `make web-e2e-seed` / `pnpm web:seed-e2e` → `modules/web/e2e/.auth/seed.json`.
   Strata id `20260803-05` (handoff to #121 `globalSetup`).
@@ -33,6 +36,7 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 ### Next action
 
 - Merge PR #153 / close #124; delete strata `20260803-06`
+- Merge PPT-062 PR; close GitHub #127
 - PPT-056 (#121) Playwright gate — call `make web-e2e-seed` from `globalSetup`
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
 - PPT-068 (#139); PPT-057 (#122)
@@ -40,5 +44,6 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
-- `modules/**` changes need a paired `.strata/` touch (strict mode)
+- `modules/**` changes need a paired `.strata/` touch (strict mode) — PPT-062 paired
+  (`project_state` / MEMORY; no archive per main policy)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
