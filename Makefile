@@ -42,21 +42,50 @@ redis-up:
 redis-down:
 	docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml stop redis
 
+COMPOSE_LOCAL := docker compose --env-file environments/local/.env -f docker/docker-compose.yml
+
 # Canonical API runtime (PPT-045): uvicorn runs inside the Compose image — not on the host.
 # Brings up api + depends_on (Postgres, Redis, migrate). Bind: 0.0.0.0:8000 in-container;
 # host publish via API_PORT (environments/local/.env). No --reload / --workers in the container.
 api-up:
-	docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build -d api
+	$(COMPOSE_LOCAL) up --build -d api
 
 api-down:
-	docker compose --env-file environments/local/.env -f docker/docker-compose.yml stop api
+	$(COMPOSE_LOCAL) stop api
 
 # Full B0 stack (explicit up of all services in docker/docker-compose.yml).
 stack-up:
-	docker compose --env-file environments/local/.env -f docker/docker-compose.yml up --build -d
+	$(COMPOSE_LOCAL) up --build -d
 
 stack-down:
-	docker compose --env-file environments/local/.env -f docker/docker-compose.yml down
+	$(COMPOSE_LOCAL) down
+
+# Bring up the entire API stack (Postgres + Redis + migrate + api), wait until healthy.
+# Prefer this for local SPA/BFF work when you want every API dependency running.
+api-all:
+	@docker info >/dev/null 2>&1 || { \
+		echo "Docker is not running. Start Docker Desktop, then retry: make api-all"; \
+		exit 1; \
+	}
+	$(COMPOSE_LOCAL) up --build -d
+	@API_PORT=$$(grep -E '^API_PORT=' environments/local/.env 2>/dev/null | cut -d= -f2); \
+	API_PORT=$${API_PORT:-8000}; \
+	echo "Waiting for API on :$${API_PORT}…"; \
+	i=0; \
+	while [ $$i -lt 60 ]; do \
+		if curl -sf "http://localhost:$${API_PORT}/api/v1/health/live" >/dev/null 2>&1; then \
+			echo "API ready: http://localhost:$${API_PORT}/api/docs"; \
+			echo "Health:    http://localhost:$${API_PORT}/api/v1/health"; \
+			exit 0; \
+		fi; \
+		i=$$((i + 1)); \
+		sleep 2; \
+	done; \
+	echo "API did not become healthy in time. Try: $(COMPOSE_LOCAL) logs api"; \
+	exit 1
+
+# Tear down the full Compose project started by api-all / stack-up.
+api-all-down: stack-down
 
 # Redis readiness smoke against a running API container (make api-up / stack-up).
 redis-smoke:

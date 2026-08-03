@@ -205,10 +205,12 @@ export PAPITA_ENV=local
 
 **Canonical runtime (PPT-045):** uvicorn runs **inside Docker** via the Compose API image — not as a host Poetry process.
 
-| Path            | Command         | Notes                                                        |
-| --------------- | --------------- | ------------------------------------------------------------ |
-| API (canonical) | `make api-up`   | Builds/starts `api` + depends_on (Postgres, Redis, migrate)  |
-| Full stack      | `make stack-up` | Explicit `up` of all services in `docker/docker-compose.yml` |
+| Path            | Command             | Notes                                                        |
+| --------------- | ------------------- | ------------------------------------------------------------ |
+| API (canonical) | `make api-up`       | Builds/starts `api` + depends_on (Postgres, Redis, migrate)  |
+| Full stack      | `make stack-up`     | Explicit `up` of all services in `docker/docker-compose.yml` |
+| Full + health   | `make api-all`      | Same as `stack-up`, then waits for `/api/v1/health/live`     |
+| Tear down       | `make api-all-down` | Compose `down` for the local project                         |
 
 ```bash
 cp environments/local/.env.example environments/local/.env
@@ -284,6 +286,8 @@ Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `te
 **MVP:** Supabase Auth owns identity; the API verifies access JWTs (JWKS) and maps `sub` → `papita_transactions.users` / tenant `owner`. Prefer the Supabase client SDK for session lifecycle; API register/login are optional pass-through when `SUPABASE_ANON_KEY` is set. Full contract: [`ARCHITECTURE.md` Part VI](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e).
 
 `AUTH_PROVIDER=local` (HS256 + `JWT_SECRET_KEY`) is for **B0 pytest / CI only**.
+
+**Local Supabase DX (`AUTH_AUTO_CONFIRM_EMAIL`):** when `PAPITA_ENV=local` (or the env var is explicitly `true`) and `SUPABASE_SERVICE_ROLE_KEY` is set, register prefers Admin `create_user` with `email_confirm=true` (avoids SMTP confirmation emails / 429 rate limits). Login uses `supabase_sign_in_with_optional_auto_confirm`, which Admin-confirms only when Auth shows `email_confirmed_at` null — wrong passwords do not trigger confirm. Prefer turning off **Confirm email** in the Supabase dashboard for local smoke; see `environments/local/.env.example`.
 
 **Register** — returns **201**, no token; client must log in (or obtain a Supabase session) separately.
 

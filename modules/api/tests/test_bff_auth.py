@@ -299,7 +299,7 @@ class TestBffSupabaseCookieSession:
         auth_result.refresh_token = "sb-refresh"
         auth_result.expires_in = 3600
 
-        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=auth_result):
+        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
             client = TestClient(app)
             login = client.post(
                 "/api/v1/bff/auth/login",
@@ -334,7 +334,7 @@ class TestBffSupabaseCookieSession:
         app = create_app()
         app.dependency_overrides[get_users_service] = lambda: MagicMock()
         with patch(
-            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in",
+            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
             side_effect=AuthApiError("Invalid login credentials", 400, "invalid_credentials"),
         ):
             client = TestClient(app)
@@ -372,7 +372,7 @@ class TestBffSupabaseCookieSession:
         auth_result.access_token = "tok"
         auth_result.refresh_token = "ref"
         auth_result.expires_in = 3600
-        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=auth_result):
+        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
             client = TestClient(app)
             response = client.post(
                 "/api/v1/bff/auth/login",
@@ -386,7 +386,7 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_register_uses_supabase_sign_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_register_uses_supabase_register_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
         subject = uuid.uuid4()
         email = "new-bff@example.local"
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
@@ -407,7 +407,7 @@ class TestBffSupabaseCookieSession:
         auth_result.user_id = subject
         auth_result.email = email
         with patch(
-            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_up", return_value=auth_result
+            "papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result
         ) as mock_sign_up:
             client = TestClient(app)
             response = client.post(
@@ -438,7 +438,7 @@ class TestBffSupabaseCookieSession:
         app = create_app()
         app.dependency_overrides[get_users_service] = lambda: MagicMock()
         with patch(
-            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_up",
+            "papita_txnsapi.routers.v1.bff_auth.supabase_register_user",
             side_effect=AuthApiError("User already registered", 400, "email_exists"),
         ):
             client = TestClient(app)
@@ -475,7 +475,7 @@ class TestBffSupabaseCookieSession:
         auth_result.user_id = subject
         auth_result.email = "orphan@example.local"
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_up", return_value=auth_result),
+            patch("papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result),
             patch("papita_txnsapi.routers.v1.bff_auth._cleanup_orphan_auth_user") as mock_cleanup,
         ):
             client = TestClient(app)
@@ -539,7 +539,7 @@ class TestBffSupabaseCookieSession:
         refresh_result.expires_in = 1800
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=login_result),
+            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_refresh_session",
                 return_value=refresh_result,
@@ -663,7 +663,7 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=login_result),
+            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_refresh_session",
                 side_effect=AuthApiError("Invalid refresh token", 401, "invalid_grant"),
@@ -725,7 +725,7 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=login_result),
+            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
             patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_out") as mock_sign_out,
         ):
             client = TestClient(app)
@@ -786,7 +786,7 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in", return_value=login_result),
+            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_sign_out",
                 side_effect=AuthApiError("gone", 401, "session_not_found"),

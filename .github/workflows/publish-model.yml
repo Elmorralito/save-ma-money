@@ -144,9 +144,9 @@ jobs:
 
   publish-testpypi:
     needs: build
-    if: >-
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi') ||
-      (github.event_name == 'workflow_call' && inputs.target == 'testpypi')
+    # Key off inputs.target — inside a reusable workflow github.event_name is the
+    # *caller's* event (e.g. pull_request), never "workflow_call".
+    if: ${{ inputs.target == 'testpypi' }}
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -166,6 +166,10 @@ jobs:
           packages-dir: dist/
           skip-existing: true
           verbose: true
+          # Attestation Build Config URI is the *caller* workflow when this file is
+          # reused via workflow_call; PyPI checks it against the Trusted Publisher
+          # (this file). Disable until warehouse supports reusable-workflow attestations.
+          attestations: false
 
       - name: Summary
         run: |
@@ -177,10 +181,15 @@ jobs:
 
   publish-pypi:
     needs: build
+    # Tag pushes have no inputs.target. workflow_call/dispatch set inputs.target=pypi;
+    # manual dispatch still requires confirm_pypi=publish. Do not gate on
+    # event_name == workflow_call (never true in the called workflow).
     if: >-
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/model-v')) ||
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'pypi' && inputs.confirm_pypi == 'publish') ||
-      (github.event_name == 'workflow_call' && inputs.target == 'pypi')
+      (inputs.target == 'pypi' && (
+        github.event_name != 'workflow_dispatch' ||
+        inputs.confirm_pypi == 'publish'
+      ))
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -199,6 +208,8 @@ jobs:
           packages-dir: dist/
           skip-existing: true
           verbose: true
+          # Same reusable-workflow attestation mismatch as TestPyPI (see above).
+          attestations: false
 
       - name: Summary
         run: |

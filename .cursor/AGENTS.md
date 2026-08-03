@@ -70,13 +70,17 @@ save-ma-money/
 └── .github/workflows/          # CI (quality, security, migrations, strata, publish)
 ```
 
-Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX).
+Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).
 
 **Web OpenAPI types (PPT-065):** strategy **B** — committed `modules/web/openapi/openapi.json` + `openapi-typescript` → `modules/web/src/types/api.d.ts`. After API/model OpenAPI-affecting changes run `make web-openapi`. CI: `web-ci.yml` (`check-types`) + `openapi-contract.yml` (artifact vs offline `app.openapi()`; paths include API src + model `model/`/`access/`). Exporter normalizes `info.version`. See `modules/web/README.md`.
 
 **Web thin API client (PPT-048):** `modules/web/src/api/` — `apiFetch` (`credentials: 'include'`, no Bearer), `queryKeys` / `queryOptions`, `PapitaApiError` + discovery headers, health/meta probes only. Domain logic stays in Python.
 
 **Web BFF cookie auth (PPT-049):** API `/api/v1/bff/auth/*` + `BffSessionStore` (Redis or memory; **not** JWT denylist). Cookie `papita_sid` (HttpOnly); CSRF `X-Papita-CSRF`. SPA login/register + `RequireAuth`; `get_current_owner` accepts Bearer **or** BFF cookie. `make auth-smoke` (Bearer) still valid alongside BFF.
+
+**Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Controlled forms (Zod/RHF → #120). Global category write 404 → read-only UX.
+
+**Local Supabase email confirm:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`) + service role → Admin register without SMTP; login auto-confirm only when Auth email is unconfirmed (see `modules/api/README.md` Authentication).
 
 ---
 

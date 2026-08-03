@@ -28,9 +28,29 @@ export {
   type ApiFetchOptions,
   type ApiFetchResult,
 } from "@/api/http";
+export {
+  createAccount,
+  deleteAccount,
+  getAccount,
+  listAccounts,
+  updateAccount,
+  type ListAccountsParams,
+} from "@/api/accounts";
+export {
+  createCategory,
+  deleteCategory,
+  getCategory,
+  listCategories,
+  updateCategory,
+  type ListCategoriesParams,
+} from "@/api/categories";
 export { getHealth, getHealthLive } from "@/api/health";
 export { getClientContract } from "@/api/meta";
 export {
+  accountDetailQueryOptions,
+  accountsListQueryOptions,
+  categoriesListQueryOptions,
+  categoryDetailQueryOptions,
   clientContractQueryOptions,
   healthLiveQueryOptions,
   healthQueryOptions,

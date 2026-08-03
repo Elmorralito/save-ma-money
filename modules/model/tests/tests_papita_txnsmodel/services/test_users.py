@@ -106,6 +106,28 @@ class TestLookupByIdentifier:
         assert service._lookup_by_identifier("johndoe", require_active=True) is None
 
 
+class TestGetByEmail:
+    """Tests for email lookup used by local Supabase login subject resolution."""
+
+    def test_get_by_email_returns_none_for_blank(self, users_service):
+        """Blank emails short-circuit without a repository call."""
+        service, repo = users_service
+        assert service.get_by_email("") is None
+        assert service.get_by_email("   ") is None
+        repo.get_record_from_attributes.assert_not_called()
+
+    def test_get_by_email_normalizes_and_looks_up(self, users_service):
+        """Emails are lowercased before lookup."""
+        service, repo = users_service
+        stored = _stored_user(email="user@example.local")
+        repo.get_record_from_attributes.return_value = stored
+
+        result = service.get_by_email("User@Example.local")
+
+        assert result is stored
+        repo.get_record_from_attributes.assert_called_once()
+
+
 class TestVerifyCredentials:
     """Tests for credential verification."""
 

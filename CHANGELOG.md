@@ -32,11 +32,319 @@
 
 - [ ] [_**[#119](https://github.com/Elmorralito/save-ma-money/issues/119)**_] :: **feat/PPT-054: [web] Dashboard and reports UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:51+00:00</sub>_ :weary:
 
-- [ ] [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#117](https://github.com/Elmorralito/save-ma-money/issues/117)**_] :: **feat/PPT-052: [web] Accounts and categories UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 15:01:45+00:00</sub>_
+
+  > **Closed by** [_**#143**](https://github.com/Elmorralito/save-ma-money/pull/143): **feat/PPT-052: [web] Accounts and categories UI with local Supabase auth DX**
+
+  > **Branch:** feat/PPT-052 · **Base:** main · **1 commit** · **56 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-052: [web] Accounts and categories UI with local Supabase auth DX
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-052 / #117** accounts and categories presentation screens on the web SPA (OpenAPI-typed BFF calls, controlled forms, global-seed read-only mapping), plus local Supabase auth DX so BFF register/login works when Confirm email / SMTP rate limits would otherwise block smoke. Adds make api-all so operators can bring up the full Compose stack and wait for API health before make web-dev.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Zod/RHF forms kit ([#120](https://github.com/Elmorralito/save-ma-money/issues/120) / PPT-055)
+
+  > - Transactions / movements / dashboard UI (PPT-053/054)
+
+  > - Email verification product work ([#139](https://github.com/Elmorralito/save-ma-money/issues/139) / PPT-068)
+
+  > - OpenAPI artifact regen (no contract surface change requiring make web-openapi)
+
+  > - Splitting this into separate web-only vs auth-only PRs (kept together for end-to-end local SPA smoke)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Account list + detail soft-delete; category CRUD with global 404 → read-only
+
+  > - Update payloads omit empty optionals so edits do not wipe server fields
+
+  > - Admin create_user register path avoids SMTP 429; login auto-confirm only when Auth email is unconfirmed
+
+  > - make api-all / make api-all-down with Docker Desktop guard + /health/live wait
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web (PPT-052)**
+
+  >
+
+  > - Thin clients: src/api/accounts.ts, categories.ts + Query keys/options
+
+  > - Pages: Accounts list, Account detail, Categories; routes wired in App.tsx
+
+  > - Controlled form dialogs (accounts/categories); QueryState, formatMoney, formatApiError (502/429 messaging)
+
+  > - Auth UX: confirm password + show/hide; post-register login banner
+
+  > - Vitest coverage for create/detail/delete, category create/edit-404, register UX
+
+  >
+
+  > **API / model (local auth DX)**
+
+  >
+
+  > - AUTH_AUTO_CONFIRM_EMAIL (default on for PAPITA_ENV=local)
+
+  > - New supabase_auth_local.py: Admin register + supabase_sign_in_with_optional_auto_confirm
+
+  > - Routers (auth, bff_auth) prefer Admin create when gated; login uses guarded auto-confirm
+
+  > - UsersService.get_by_email for login subject lookup
+
+  > - Unit tests for Admin create, register preference, auto-confirm retry / skip-when-confirmed
+
+  >
+
+  > **Ops / docs / strata**
+
+  >
+
+  > - Makefile api-all / api-all-down; README + Compose comment; .env.example docs (env **names** only)
+
+  > - modules/web/README.md, modules/api/README.md, .cursor/AGENTS.md
+
+  > - .strata/ project state, active issue, learning local-supabase-email-confirm
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (56 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 6 +-
+
+  > .strata/issues/20260730-01-ppt052-accounts-categories-ui.md | 14 +
+
+  > .strata/issues/ACTIVE.md | 1 +
+
+  > .strata/memory/MEMORY.md | 7 +-
+
+  > .strata/memory/learnings/INDEX.md | 1 +
+
+  > .strata/memory/learnings/local-supabase-email-confirm.md | 7 +
+
+  > .strata/memory/project_state.md | 27 +-
+
+  > Makefile | 37 +-
+
+  > README.md | 4 +-
+
+  > docker/docker-compose.yml | 2 +-
+
+  > environments/local/.env.example | 5 +
+
+  > modules/api/README.md | 10 +-
+
+  > modules/api/src/papita_txnsapi/config/settings.py | 15 +
+
+  > modules/api/src/papita_txnsapi/core/auth_errors.py | 2 +
+
+  > modules/api/src/papita_txnsapi/core/supabase_auth.py | 116 +-
+
+  > modules/api/src/papita_txnsapi/core/supabase_auth_local.py | 283 +
+
+  > modules/api/src/papita_txnsapi/routers/v1/auth.py | 18 +-
+
+  > modules/api/src/papita_txnsapi/routers/v1/bff_auth.py | 18 +-
+
+  > modules/api/tests/test_auth_supabase.py | 10 +-
+
+  > modules/api/tests/test_bff_auth.py | 22 +-
+
+  > modules/api/tests/test_supabase_auth_client.py | 140 +
+
+  > modules/model/src/papita_txnsmodel/services/users.py | 15 +
+
+  > modules/web/README.md | 40 +-
+
+  > modules/web/src/App.tsx | 5 +
+
+  > modules/web/src/api/accounts.ts | 92 +
+
+  > modules/web/src/api/categories.ts | 90 +
+
+  > modules/web/src/api/index.ts | 20 +
+
+  > modules/web/src/api/queries.ts | 59 +
+
+  > modules/web/src/api/queryKeys.test.ts | 17 +-
+
+  > modules/web/src/api/queryKeys.ts | 16 +
+
+  > modules/web/src/components/QueryState.tsx | 61 +
+
+  > modules/web/src/components/accounts/* | ~828 +
+
+  > modules/web/src/components/categories/* | ~323 +
+
+  > modules/web/src/components/layout/navItems.ts | 2 +-
+
+  > modules/web/src/components/ui/native-select.tsx | 20 +
+
+  > modules/web/src/components/ui/password-input.tsx | 40 +
+
+  > modules/web/src/lib/* | ~230 +
+
+  > modules/web/src/pages/* | ~900 +-
+
+  > modules/web/src/types/domain.ts | 16 +
+
+  > 56 files changed, 3596 insertions(+), 88 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 70ff65d feat/PPT-052: [web] Add accounts/categories UI and local Supabase auth DX
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > Observed locally in this session (not claiming remote CI green):
+
+  >
+
+  > - [x] pnpm --filter @papita/web test — **36 passed**
+
+  > - [x] poetry run pytest modules/api/tests/test_supabase_auth_client.py — **20 passed**
+
+  > - [x] make api-all — API image rebuilt; /api/v1/health/live ready
+
+  > - [x] Pre-commit hooks on commit (black/isort/flake8/pylint/strata/interrogate/mypy) — **passed**
+
+  > - [ ] Full pre-commit run --all-files / GitHub Actions on the PR — **not verified here**
+
+  > - [ ] Browser E2E against a real Supabase project beyond prior manual register/login smoke — **not re-run in this pass**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] make api-all then make web-dev; register + login via BFF (session cookie)
+
+  > - [ ] Create / edit / soft-delete an account; open account detail
+
+  > - [ ] Create a tenant category; confirm global seed edit/delete shows read-only after 404
+
+  > - [ ] Confirm list footer notes “first 100 only” when total > 100 (or accept empty/small list)
+
+  > - [ ] With Confirm email ON + SUPABASE_SERVICE_ROLE_KEY set: register does not burn SMTP; login works for newly created users
+
+  > - [ ] Wrong password still fails (no Admin confirm on already-confirmed users)
+
+  > - [ ] Confirm environments/**/.env secrets are **not** in the PR
+
+  > - [ ] CI: web-ci + quality-control green on this branch
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Mixed concerns in one PR (web UI + auth DX + Makefile); harder to revert independently — consider a follow-up split if review prefers.
+
+  > > - Local Admin register / auto-confirm require SUPABASE_SERVICE_ROLE_KEY (server-only). Mis-set or missing key falls back to anon sign_up / no confirm and can hit SMTP 429 or unconfirmed-login confusion.
+
+  > > - AUTH_AUTO_CONFIRM_EMAIL defaults **true** only for PAPITA_ENV=local; staging/production must keep Confirm-email product behavior unless explicitly overridden.
+
+  > > - No Alembic migrations in this PR; model change is get_by_email only.
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Account/category lists are first-page only (limit=100); pagination UI deferred.
+
+  > > - Forms remain controlled (no Zod/RHF) until #120.
+
+  > > - Vite /api proxy 502 still means the API stack is down — use make api-all.
+
+  > > - Auto-confirm login path only helps when Papita already has the Auth users.id (e.g. after register); brand-new unconfirmed users without a linked row still need dashboard Confirm-email policy or Admin tooling.
+
+  >
+
+  > ## References
+
+  >
+
+  > - PPT-052 / [#117](https://github.com/Elmorralito/save-ma-money/issues/117) (child of epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112))
+
+  > - Related: [#120](https://github.com/Elmorralito/save-ma-money/issues/120) forms kit; Auth contract in docs/design/ARCHITECTURE.md Part VI
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#116](https://github.com/Elmorralito/save-ma-money/issues/116)**_] :: **feat/PPT-051: [web] Tailwind + shadcn design system and app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-07-30 18:02:53+00:00</sub>_
 

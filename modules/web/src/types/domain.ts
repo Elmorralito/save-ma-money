@@ -14,6 +14,22 @@ export type AuthHealthResponse = ApiSchemas["AuthHealthResponse"];
 export type DatabaseHealthResponse = ApiSchemas["DatabaseHealthResponse"];
 export type RedisHealthResponse = ApiSchemas["RedisHealthResponse"];
 
+export type AccountCreate = ApiSchemas["AccountCreate"];
+export type AccountUpdate = ApiSchemas["AccountUpdate"];
+export type AccountResponse = ApiSchemas["AccountResponse"];
+export type PaginatedAccounts = ApiSchemas["PaginatedResponse_AccountResponse_"];
+export type BankingDetailsSchema = ApiSchemas["BankingDetailsSchema"];
+export type TradingDetailsSchema = ApiSchemas["TradingDetailsSchema"];
+export type RealEstateDetailsSchema = ApiSchemas["RealEstateDetailsSchema"];
+export type CreditCardDetailsSchema = ApiSchemas["CreditCardDetailsSchema"];
+export type LoanDetailsSchema = ApiSchemas["LoanDetailsSchema"];
+
+export type CategoryCreate = ApiSchemas["CategoryCreate"];
+export type CategoryUpdate = ApiSchemas["CategoryUpdate"];
+export type CategoryResponse = ApiSchemas["CategoryResponse"];
+export type PaginatedCategories = ApiSchemas["PaginatedResponse_CategoryResponse_"];
+export type CategorySubcategoryResponse = ApiSchemas["CategorySubcategoryResponse"];
+
 /**
  * Shape of ``GET /api/v1/meta/client-contract``.
  *

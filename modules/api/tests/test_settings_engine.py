@@ -173,3 +173,63 @@ class TestSettingsEstablish:
                 DATABASE_URL=None,
             )
         assert settings.LOG_LEVEL == "INFO"
+
+
+class TestShouldAutoConfirmEmail:
+    """Local AUTH_AUTO_CONFIRM_EMAIL gate."""
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_explicit_false_wins(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(
+                JWT_SECRET_KEY=_JWT,
+                DATABASE_URL=None,
+                AUTH_AUTO_CONFIRM_EMAIL=False,
+            )
+        assert settings.should_auto_confirm_email() is False
+
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_explicit_true_wins(self, _mock_logger: MagicMock, mock_establish: MagicMock) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(
+                JWT_SECRET_KEY=_JWT,
+                DATABASE_URL=None,
+                AUTH_AUTO_CONFIRM_EMAIL=True,
+            )
+        assert settings.should_auto_confirm_email() is True
+
+    @patch("papita_txnsapi.config.settings.active_environment", return_value="local")
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_defaults_true_for_local(
+        self,
+        _mock_logger: MagicMock,
+        mock_establish: MagicMock,
+        _mock_env: MagicMock,
+    ) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(JWT_SECRET_KEY=_JWT, DATABASE_URL=None, AUTH_AUTO_CONFIRM_EMAIL=None)
+        assert settings.should_auto_confirm_email() is True
+
+    @patch("papita_txnsapi.config.settings.active_environment", return_value="staging")
+    @patch("papita_txnsapi.config.settings.SQLDatabaseConnector.establish")
+    @patch("papita_txnsapi.config.settings.configure_logger")
+    def test_defaults_false_for_non_local(
+        self,
+        _mock_logger: MagicMock,
+        mock_establish: MagicMock,
+        _mock_env: MagicMock,
+    ) -> None:
+        mock_establish.return_value = SQLDatabaseConnector
+        get_settings.cache_clear()
+        with pytest.warns(UserWarning, match="DATABASE_URL is None"):
+            settings = Settings(JWT_SECRET_KEY=_JWT, DATABASE_URL=None, AUTH_AUTO_CONFIRM_EMAIL=None)
+        assert settings.should_auto_confirm_email() is False

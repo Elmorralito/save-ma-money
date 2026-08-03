@@ -3,12 +3,13 @@ import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import { bffLogin } from "@/api/auth";
-import { isPapitaApiError } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
+import { bffSessionQueryOptions } from "@/auth/sessionQueries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { bffSessionQueryOptions } from "@/auth/sessionQueries";
+import { PasswordInput } from "@/components/ui/password-input";
+import { formatApiError } from "@/lib/formatApiError";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ export function LoginPage() {
       await navigate(from === "/" ? "/dashboard" : from, { replace: true });
     },
     onError: (err: unknown) => {
-      setError(isPapitaApiError(err) ? err.message : "Login failed");
+      setError(formatApiError(err, "Login failed"));
     },
   });
 
@@ -47,6 +48,12 @@ export function LoginPage() {
     loginMutation.mutate({ email: email.trim(), password });
   }
 
+  const justRegistered =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "registered" in location.state &&
+    Boolean((location.state as { registered?: unknown }).registered);
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -55,6 +62,11 @@ export function LoginPage() {
           Session cookies only — JWTs never touch the browser.
         </p>
       </div>
+      {justRegistered ? (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
+          Account created. Sign in with the same email and password.
+        </p>
+      ) : null}
       <form className="space-y-4" onSubmit={onSubmit}>
         <div className="space-y-2">
           <Label htmlFor="login-email">Email</Label>
@@ -72,9 +84,8 @@ export function LoginPage() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="login-password">Password</Label>
-          <Input
+          <PasswordInput
             id="login-password"
-            type="password"
             name="password"
             autoComplete="current-password"
             required
