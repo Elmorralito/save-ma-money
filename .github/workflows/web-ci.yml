@@ -59,8 +59,12 @@ jobs:
       - name: Lint
         run: pnpm web:lint
 
-      - name: Test
-        run: pnpm web:test
+      - name: Test with coverage
+        run: pnpm web:test:coverage
+
+      - name: Production dependency audit
+        run: pnpm web:audit
+        continue-on-error: true
 
       - name: Build
         run: pnpm web:build

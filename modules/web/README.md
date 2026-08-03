@@ -26,18 +26,22 @@ make web-dev      # Vite on :5173
 
 ## Scripts
 
-| Make (repo root)      | pnpm (repo root)          | Purpose                                                             |
-| --------------------- | ------------------------- | ------------------------------------------------------------------- |
-| `make web-dev`        | `pnpm web:dev`            | Vite dev server (default `:5173`)                                   |
-| `make web-lint`       | `pnpm web:lint`           | ESLint + Prettier check                                             |
-| `make web-test`       | `pnpm web:test`           | Vitest (jsdom)                                                      |
-| `make web-build`      | `pnpm web:build`          | `tsc -b` + production bundle                                        |
-| `make generate-types` | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact |
-| `make check-types`    | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                         |
-| `make sync-openapi`   | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
-| `make check-openapi`  | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
-| `make web-openapi`    | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
-| `make web-e2e-seed`   | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)     |
+| Make (repo root)         | pnpm (repo root)          | Purpose                                                             |
+| ------------------------ | ------------------------- | ------------------------------------------------------------------- |
+| `make web-dev`           | `pnpm web:dev`            | Vite dev server (default `:5173`)                                   |
+| `make web-lint`          | `pnpm web:lint`           | ESLint + Prettier check                                             |
+| `make web-test`          | `pnpm web:test`           | Vitest (jsdom)                                                      |
+| `make web-build`         | `pnpm web:build`          | `tsc -b` + production bundle                                        |
+| `make generate-types`    | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact |
+| `make check-types`       | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                         |
+| `make sync-openapi`      | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
+| `make check-openapi`     | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
+| `make web-openapi`       | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
+| `make web-e2e-seed`      | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)     |
+| `make web-test-coverage` | `pnpm web:test:coverage`  | Vitest + v8 coverage thresholds (PPT-056 / #121)                    |
+| `make web-e2e`           | `pnpm web:test:e2e`       | Playwright critical path + axe (needs `make api-all`)               |
+| `make web-lhci`          | `pnpm web:lhci`           | Lighthouse CI lab budgets against `vite preview`                    |
+| `make web-audit`         | `pnpm web:audit`          | `pnpm audit --prod` for `@papita/web`                               |
 
 Package-local: `pnpm --filter @papita/web <script>`.
 
@@ -179,7 +183,72 @@ pnpm web:seed-e2e              # same as make (honors RESET=1 env)
 
 **Auth modes:** Prefer `AUTH_PROVIDER=local` for B0 / CI E2E (no Supabase secrets). Bearer path seeds domain data; Playwright still logs in via BFF cookies in the browser. Token clients (`make auth-smoke`) coexist unchanged.
 
-**CI placement:** Keep PR [`web-ci.yml`](../../.github/workflows/web-ci.yml) Node-only. Compose seed + Playwright belong in a separate / nightly `web-e2e` gate under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) — not on every path-filtered web PR.
+**CI placement:** Keep PR [`web-ci.yml`](../../.github/workflows/web-ci.yml) Node-only (lint, Vitest+coverage, audit soft-gate, build). Compose seed + Playwright + Lighthouse run in [`web-e2e.yml`](../../.github/workflows/web-e2e.yml) (nightly / `workflow_dispatch` / PRs that touch `e2e/` or seed scripts) — see [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
+
+## Quality, a11y, CWV, security (PPT-056 / #121)
+
+Complements PPT-060 (#125) auth assumptions and PPT-061 (#126) seed SSOT above.
+
+### Vitest coverage
+
+- Gate: `make web-test-coverage` / `pnpm web:test:coverage` (also PR `web-ci`).
+- Thresholds in `vite.config.ts` (pragmatic floor **65%** lines/statements on gated `src/**`; excludes `components/ui/*`, form dialog shells, `main.tsx`, generated types). Stretch toward **~70%** as remaining ledger/auth forms adopt the PPT-055 kit; Playwright covers dialog mutation branches.
+- Security unit checks: CSRF memory-only (`src/api/csrf.test.ts`); no JWT persistence after BFF login (`src/api/auth.security.test.ts`).
+
+### Playwright + axe
+
+```bash
+make api-all
+# Local tip: set API_RATE_LIMIT_ENABLED=false (and auth rate limits off) in
+# environments/local/.env if burst e2e traffic hits 429 — CI already disables them.
+make web-e2e    # globalSetup → make web-e2e-seed; critical path + axe
+```
+
+| Spec                         | What                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| `e2e/critical-path.spec.ts`  | BFF login (seed) → create account → expense → transfer → spending report; no JWT in WebStorage |
+| `e2e/a11y.spec.ts`           | axe (`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`) on login/register + MVP authed routes            |
+| `e2e/register-login.spec.ts` | Optional SPA register; enable with `E2E_LIVE_REGISTER=1`                                       |
+
+Config: `playwright.config.ts` (Vite `webServer` on `:5173`, Chromium).
+
+### WCAG 2.1 AA intent (MVP)
+
+Documented as **met for MVP flows** when:
+
+- axe reports **no critical/serious** violations on `/login`, `/register`, `/dashboard`, `/accounts`, `/categories`, `/transactions`, `/movements`, `/reports`
+- Keyboard: native controls + Radix dialogs; global `:focus-visible` ring in `src/index.css`
+- Labels: form fields use `<Label htmlFor>` / dialog field ids; eslint `jsx-a11y` on PRs
+- Contrast: design tokens in `src/index.css` (light default); dark aliases available
+
+Deferred polish (not blockers): full screen-reader scripted journeys, mobile native a11y.
+
+### Lighthouse / Core Web Vitals (lab)
+
+`make web-lhci` after build — config `lighthouserc.cjs`:
+
+| Budget                        | Gate  | Notes                                                                 |
+| ----------------------------- | ----- | --------------------------------------------------------------------- |
+| Accessibility category ≥ 0.95 | error | Aligns with axe intent                                                |
+| Performance category ≥ 0.9    | warn  | Lab; may need waiver on cold CI runners                               |
+| LCP ≤ 2.5s                    | warn  | Lab                                                                   |
+| CLS ≤ 0.1                     | error | Lab                                                                   |
+| TBT ≤ 200ms                   | warn  | **INP proxy** — Lighthouse CI asserts TBT; true INP is field-oriented |
+
+**Waiver posture:** performance / LCP / TBT are `warn` so flaky lab noise does not block the nightly gate; a11y score + CLS remain hard. Record failing lab runs in the PR/issue with rationale if promoting to required checks later.
+
+### Security checklist (BFF / CSP / deps)
+
+| Check                     | Status / owner                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                               |
+| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                              |
+| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                                     |
+| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                                    |
+| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                                     |
+| CSP headers               | **Launch packaging** ([#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057) — SPA ships without CSP meta today; prefer proxy/nginx CSP at ship |
+
+PR template section **Web security checklist** must be signed off on web/auth PRs.
 
 ## Vite `/api` proxy
 
@@ -220,7 +289,8 @@ Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex co
 - TypeScript: `strict` + `noUncheckedIndexedAccess`; path alias `@/*` → `src/*`.
 - ESLint (flat) + Prettier + `eslint-plugin-react-hooks` + `eslint-plugin-jsx-a11y` + `@tanstack/eslint-plugin-query`.
 - OpenAPI types must stay in sync (`make check-types`); API PRs must refresh the artifact (`make check-openapi`).
-- **Local pre-commit (web):** when staging `modules/web/**`, [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) runs `web-eslint`, `web-prettier`, `web-tsc`, and `web-vitest-related` via [`.github/scripts/pre_commit_web.sh`](../../.github/scripts/pre_commit_web.sh) (same tools as husky+lint-staged, without husky). Requires `pnpm install`. Skipped in Python quality-control CI; [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml) remains the merge gate.
+- Vitest coverage thresholds (PPT-056) on PR via `web-ci`; Playwright/axe/Lighthouse via `web-e2e` (see [Quality section](#quality-a11y-cwv-security-ppt-056--121)).
+- **Local pre-commit (web):** when staging `modules/web/**`, [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) runs `web-eslint`, `web-prettier`, `web-tsc`, and `web-vitest-related` via [`.github/scripts/pre_commit_web.sh`](../../.github/scripts/pre_commit_web.sh) (same tools as husky+lint-staged, without husky). Requires `pnpm install`. Skipped in Python quality-control CI; [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml) remains the Node merge gate.
 - Not using husky/commitlint here — commit titles follow repo PPT notation (`feat/PPT-NNN: [web] …`); Stylelint omitted (Tailwind v4 + token CSS, no separate SCSS pipeline).
 
 ## Forms & UX standards (PPT-055 / #120)
@@ -279,4 +349,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx image (PPT-057 / #122) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx/CSP image packaging ([#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057), mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).

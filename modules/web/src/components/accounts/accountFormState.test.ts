@@ -30,6 +30,18 @@ describe("accountFormState", () => {
     });
   });
 
+  it("omits empty initial_value on AccountCreate", () => {
+    const payload = toAccountCreate(
+      emptyAccountFormState({
+        name: "Checking",
+        account_kind: "checking",
+        banking_entity: "Bank",
+        initial_value: "",
+      }),
+    );
+    expect(payload).not.toHaveProperty("initial_value");
+  });
+
   it("omits kind/ledger on AccountUpdate", () => {
     const payload = toAccountUpdate(
       emptyAccountFormState({

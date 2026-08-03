@@ -133,3 +133,19 @@ web-openapi: sync-openapi generate-types
 RESET ?= 0
 web-e2e-seed:
 	RESET=$(RESET) /bin/bash ./bin/web_e2e_seed.sh
+
+# Vitest coverage gate (PPT-056 / #121) — thresholds in modules/web/vite.config.ts.
+web-test-coverage:
+	pnpm web:test:coverage
+
+# Playwright critical path + axe (PPT-056). Requires: make api-all (seed via globalSetup).
+web-e2e:
+	pnpm web:test:e2e
+
+# Lighthouse CI lab budgets against vite preview (build first).
+web-lhci: web-build
+	pnpm web:lhci
+
+# Production dependency audit for @papita/web (Dependabot npm-web covers PRs).
+web-audit:
+	pnpm web:audit
