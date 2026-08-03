@@ -10,13 +10,231 @@
 
 - [ ] [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ops/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
 
-- [ ] [_**[#129](https://github.com/Elmorralito/save-ma-money/issues/129)**_] :: **feat/PPT-064: [web] Client guard for Papita breaking-changes contract** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:08+00:00</sub>_ :weary:
-
 - [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
 - [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#129](https://github.com/Elmorralito/save-ma-money/issues/129)**_] :: **feat/PPT-064: [web] Client guard for Papita breaking-changes contract** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:08+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 21:26:12+00:00</sub>_
+
+  > **Closed by** [_**#157**](https://github.com/Elmorralito/save-ma-money/pull/157): **feat/PPT-064: [web] Client guard for Papita breaking-changes contract**
+
+  > **Branch:** feat/PPT-064 · **Base:** main · **1 commit** · **15 files**
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Adds a shared SPA guard for PPT-044 discovery drift (#129 / PPT-064 under epic #112). Compares public VITE_PAPITA_BREAKING_CHANGES_ID (default ppt-044) against GET /api/v1/meta/client-contract / X-Papita-Breaking-Changes, logging once and showing a non-blocking banner on mismatch so silent API contract skew is visible without blocking CRUD.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Auto-migrating UI for future breaking-change ids
+
+  > - Reimplementing server contract logic
+
+  > - E2E coverage (unit tests only per issue AC)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Body breaking_changes preferred over header (same pattern as bulk/window helpers)
+
+  > - unknown (probe missing) stays silent to avoid false alarms offline
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web**
+
+  >
+
+  > - Shared helpers: evaluateBreakingChangesGuard, resolveExpectedBreakingChangesId, observedBreakingChangesId
+
+  > - App-root BreakingChangesGuard + banner; DEV console.error / prod console.warn (once per pair)
+
+  > - .env.example + vite-env.d.ts for VITE_PAPITA_BREAKING_CHANGES_ID
+
+  > - README § Breaking-changes guard
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - In-flight item 20260803-07 + ACTIVE / project_state pointers
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~15 files)</summary>
+
+  >
+
+  >
+
+  > .strata/issues/20260803-07-ppt064-breaking-changes-guard.md
+
+  > .strata/issues/ACTIVE.md
+
+  > .strata/memory/MEMORY.md
+
+  > .strata/memory/project_state.md
+
+  > modules/web/.env.example
+
+  > modules/web/README.md
+
+  > modules/web/src/App.tsx
+
+  > modules/web/src/api/contract.test.ts
+
+  > modules/web/src/api/contract.ts
+
+  > modules/web/src/api/index.ts
+
+  > modules/web/src/components/contract/BreakingChangesBanner.tsx
+
+  > modules/web/src/components/contract/BreakingChangesGuard.test.tsx
+
+  > modules/web/src/components/contract/BreakingChangesGuard.tsx
+
+  > modules/web/src/components/contract/breakingChangesLog.ts
+
+  > modules/web/src/vite-env.d.ts
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 87cbb79 feat/PPT-064: [web] Client guard for Papita breaking-changes contract
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make web-test — pass (113)
+
+  > - make web-lint — pass
+
+  > - Pre-commit (eslint, prettier, tsc, vitest related, strata validate) — pass on commit
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm match path: local API with breaking_changes: ppt-044 shows no banner
+
+  > - [ ] Confirm mismatch: temporarily set VITE_PAPITA_BREAKING_CHANGES_ID=ppt-099 → banner + console
+
+  > - [ ] Confirm feature pages still do not parse X-Papita-Breaking-Changes ad hoc
+
+  > - [ ] Web CI green on this PR
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Prod shows a non-blocking banner on mismatch (intentional degrade; not log-only)
+
+  > > - Guard probes client-contract on all routes (unauthenticated); failed probe stays silent (unknown)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Expected id is public VITE_* only — no secrets added
+
+  > > - Does not auto-update UI behavior when the server bumps the discovery id
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only)
+
+  > - [x] Cookie flags reviewed for the touched path (HttpOnly / Secure when not DEBUG / SameSite) — N/A (no cookie changes)
+
+  > - [x] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage) — N/A (no auth mutations)
+
+  > - [x] No secrets in VITE_* (public bundle only); gitleaks-aware for accidental embeds
+
+  > - [ ] pnpm web:audit considered (or Dependabot npm-web); no known high prod vulns left untracked — not run this PR
+
+  > - [x] CSP: documented posture OK for this PR (full CSP headers owned by launch packaging / #122)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #129
+
+  > - Parent epic #112
+
+  > - Depends on PPT-048 client-contract probe (#114)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 19:28:54+00:00</sub>_
 
