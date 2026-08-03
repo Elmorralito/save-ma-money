@@ -77,8 +77,8 @@ jobs:
       - name: "Run lint and format checks (pre-commit)"
         uses: "pre-commit/action@v3.0.1"
         env:
-          # Local-only hooks; Strata/MCP validation use dedicated workflows or git commit.
-          SKIP: strata-validate,mcp-config-validate
+          # Local-only hooks; Strata/MCP use dedicated workflows; web quality → web-ci.yml.
+          SKIP: strata-validate,mcp-config-validate,web-eslint,web-prettier,web-tsc,web-vitest-related
 
       - name: "Run database migrations (live integration tests)"
         env:

@@ -150,7 +150,7 @@ Coverage output: `docs/coverage.xml` from `--cov=modules/{model,api}/src` (Codec
 
 **Note:** `poetry.lock` is gitignored — CI resolves deps via `poetry install` at run time.
 
-**Local pre-commit hooks (not CI):** `strata-validate` and `mcp-config-validate` run on `git commit`; GitHub Actions skips them (`strata-check.yml` enforces Strata on PRs instead).
+**Local pre-commit hooks (not CI):** `strata-validate` and `mcp-config-validate` run on `git commit`; staging `modules/web/**` also runs `web-eslint` / `web-prettier` / `web-tsc` / `web-vitest-related` (requires `pnpm install`). GitHub Actions skips those local hooks (`strata-check.yml` / `web-ci.yml` are the CI gates).
 
 ---
 

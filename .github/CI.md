@@ -269,7 +269,7 @@ pip install \
 3. **pre-commit** ([`pre-commit/action@v3.0.0`](https://github.com/pre-commit/action)) — all hooks from [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) **except** local-only hooks:
 
    ```yaml
-   SKIP: strata-validate,mcp-config-validate
+   SKIP: strata-validate,mcp-config-validate,web-eslint,web-prettier,web-tsc,web-vitest-related
    ```
 
 4. **Pytest + coverage** via [`bin/test.sh`](../bin/test.sh)
@@ -572,38 +572,46 @@ Defined in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). CI runs all 
 
 ### Hook inventory
 
-| Hook                      | Source                          | Scope / notes                                               |
-| :------------------------ | :------------------------------ | :---------------------------------------------------------- |
-| `trailing-whitespace`     | pre-commit-hooks v6.0.0         | All files                                                   |
-| `end-of-file-fixer`       | pre-commit-hooks                | All files                                                   |
-| `check-yaml`              | pre-commit-hooks                | YAML                                                        |
-| `check-toml`              | pre-commit-hooks                | TOML                                                        |
-| `detect-private-key`      | pre-commit-hooks                | Blocks committed private keys                               |
-| `check-added-large-files` | pre-commit-hooks                | Max 1024 KB per file                                        |
-| `prettier`                | mirrors-prettier v4.0.0-alpha.8 | yaml, python, toml, json, markdown; excludes `*.svg`        |
-| `shellcheck`              | shellcheck-precommit v0.11.0    | Shell scripts                                               |
-| `isort`                   | isort 6.1.0                     | Python (black profile); excludes tests                      |
-| `black`                   | black 26.3.1                    | Python; excludes tests                                      |
-| `flake8`                  | flake8 7.3.0                    | Config from `pyproject.toml` (120 cols, complexity 18)      |
-| `pylint`                  | local                           | `poetry run pylint`; serial execution                       |
-| `mypy`                    | mirrors-mypy v1.18.2            | Gradual typing; excludes tests                              |
-| `interrogate`             | interrogate 1.7.0               | Docstring coverage ≥90% on `modules/*/src`; badge → `docs/` |
-| `markdownlint`            | markdownlint-cli v0.45.0        | `--fix`; MD013/033/041/024/025 disabled                     |
-| `yamllint`                | yamllint v1.37.1                | `*.yaml`, `*.yml`                                           |
-| `actionlint`              | actionlint v1.7.7               | GitHub Actions workflow syntax                              |
-| **`strata-validate`**     | **local only**                  | See [Strata validation](#strata-validation)                 |
-| **`mcp-config-validate`** | **local only**                  | See [MCP config](#mcp-config-local)                         |
-| **`ci-adoption-check`**   | **local pre-push, advisory**    | See [CI Adoption Badge](#ci-adoption-badge)                 |
+| Hook                      | Source                          | Scope / notes                                                      |
+| :------------------------ | :------------------------------ | :----------------------------------------------------------------- |
+| `trailing-whitespace`     | pre-commit-hooks v6.0.0         | All files                                                          |
+| `end-of-file-fixer`       | pre-commit-hooks                | All files                                                          |
+| `check-yaml`              | pre-commit-hooks                | YAML                                                               |
+| `check-toml`              | pre-commit-hooks                | TOML                                                               |
+| `detect-private-key`      | pre-commit-hooks                | Blocks committed private keys                                      |
+| `check-added-large-files` | pre-commit-hooks                | Max 1024 KB per file                                               |
+| `prettier`                | mirrors-prettier v4.0.0-alpha.8 | yaml, python, toml, json, markdown; excludes `*.svg`               |
+| `shellcheck`              | shellcheck-precommit v0.11.0    | Shell scripts                                                      |
+| `isort`                   | isort 6.1.0                     | Python (black profile); excludes tests                             |
+| `black`                   | black 26.3.1                    | Python; excludes tests                                             |
+| `flake8`                  | flake8 7.3.0                    | Config from `pyproject.toml` (120 cols, complexity 18)             |
+| `pylint`                  | local                           | `poetry run pylint`; serial execution                              |
+| `mypy`                    | mirrors-mypy v1.18.2            | Gradual typing; excludes tests                                     |
+| `interrogate`             | interrogate 1.7.0               | Docstring coverage ≥90% on `modules/*/src`; badge → `docs/`        |
+| `markdownlint`            | markdownlint-cli v0.45.0        | `--fix`; MD013/033/041/024/025 disabled                            |
+| `yamllint`                | yamllint v1.37.1                | `*.yaml`, `*.yml`                                                  |
+| `actionlint`              | actionlint v1.7.7               | GitHub Actions workflow syntax                                     |
+| **`strata-validate`**     | **local only**                  | See [Strata validation](#strata-validation)                        |
+| **`mcp-config-validate`** | **local only**                  | See [MCP config](#mcp-config-local)                                |
+| **`ci-adoption-check`**   | **local pre-push, advisory**    | See [CI Adoption Badge](#ci-adoption-badge)                        |
+| **`web-eslint`**          | **local only**                  | ESLint `--fix --max-warnings=0` on staged `modules/web` TS/JS      |
+| **`web-prettier`**        | **local only**                  | Prettier write via `modules/web` config on staged web files        |
+| **`web-tsc`**             | **local only**                  | `tsc -b --pretty false` when any `modules/web` `.ts`/`.tsx` staged |
+| **`web-vitest-related`**  | **local only**                  | `vitest related --run` for staged web TS files                     |
 
 ### Local-only hooks
 
-| Hook ID               | Wrapper                                                            | When it runs                                                                      |
-| :-------------------- | :----------------------------------------------------------------- | :-------------------------------------------------------------------------------- |
-| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | **Always runs** on commit; evaluates **all staged paths** via `git diff --cached` |
-| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                         |
-| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set                  |
+| Hook ID               | Wrapper                                                            | When it runs                                                                         |
+| :-------------------- | :----------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | **Always runs** on commit; evaluates **all staged paths** via `git diff --cached`    |
+| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                            |
+| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set                     |
+| `web-eslint`          | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `eslint`        | Staged `modules/web/**/*.{ts,tsx,js,jsx}`                                            |
+| `web-prettier`        | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `prettier`      | Staged web `ts/tsx/js/jsx/css/json/md` (uses package Prettier, not mirrors-prettier) |
+| `web-tsc`             | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `tsc`           | When any `modules/web` TypeScript file is staged                                     |
+| `web-vitest-related`  | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `test`          | Related Vitest files only (not the full suite)                                       |
 
-Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it.
+Wrappers for Strata/MCP/web **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it. Web CI remains [`.github/workflows/web-ci.yml`](./workflows/web-ci.yml).
 
 ---
 

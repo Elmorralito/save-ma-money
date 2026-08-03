@@ -10,12 +10,12 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- **PPT-053 / #118:** Transactions + movements UI in `modules/web` — typed client
-  (`api/transactions.ts`, `api/movements.ts`), `Idempotency-Key` on create/bulk,
-  bulk cap via client-contract, Movements create/execute/cancel (pending-only),
-  ledger invalidation + account balances, `Retry-After` on 429; no Split button
-  (API 501 deferred). Vitest / lint / build green. Strata: archived `20260803-01`,
-  learning `web-ledger-ui-no-domain.md`
+- **Web pre-commit hooks:** Local `web-eslint` / `web-prettier` / `web-tsc` /
+  `web-vitest-related` via `.github/scripts/pre_commit_web.sh` (husky-equivalent
+  tools through pre-commit SSOT; skipped in quality-control, gated by web-ci)
+- **PPT-053 / #118 / PR #147:** Transactions + movements UI in `modules/web` —
+  typed client, Idempotency-Key, bulk cap, movements execute/cancel, Retry-After
+  on 429; strata archived `20260803-01` + learning `web-ledger-ui-no-domain.md`
 - **PPT-052 / #117 (in progress toward PR):** Accounts + categories UI + local
   Supabase email-confirm DX (`AUTH_AUTO_CONFIRM_EMAIL`, Admin register)
 - **PPT-051 / #116:** Tailwind v4 + shadcn shell (prior)

@@ -143,7 +143,8 @@ Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex co
 - TypeScript: `strict` + `noUncheckedIndexedAccess`; path alias `@/*` → `src/*`.
 - ESLint (flat) + Prettier + `eslint-plugin-react-hooks` + `eslint-plugin-jsx-a11y` + `@tanstack/eslint-plugin-query`.
 - OpenAPI types must stay in sync (`make check-types`); API PRs must refresh the artifact (`make check-openapi`).
-- Python pre-commit remains for Python; web quality is enforced by [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml).
+- **Local pre-commit (web):** when staging `modules/web/**`, [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) runs `web-eslint`, `web-prettier`, `web-tsc`, and `web-vitest-related` via [`.github/scripts/pre_commit_web.sh`](../../.github/scripts/pre_commit_web.sh) (same tools as husky+lint-staged, without husky). Requires `pnpm install`. Skipped in Python quality-control CI; [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml) remains the merge gate.
+- Not using husky/commitlint here — commit titles follow repo PPT notation (`feat/PPT-NNN: [web] …`); Stylelint omitted (Tailwind v4 + token CSS, no separate SCSS pipeline).
 
 ## Feature screens (PPT-052)
 
