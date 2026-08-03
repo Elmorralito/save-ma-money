@@ -126,8 +126,8 @@ Use this matrix to predict required checks before opening a PR.
 | Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)       | PostgreSQL Alembic round-trip + drift check                                                   |
 | Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                | `poetry check`, version metadata, `pip-audit`                                                 |
 | Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                    | Full-history secret detection                                                                 |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC  | Python SAST (`security-extended`) — independent of JS/TS                                      |
-| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC    | JavaScript/TypeScript SAST (`security-extended`) — independent of Python                      |
+| CodeQL Python        | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC  | Python SAST (`security-extended`) — independent of JS/TS                                      |
+| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC    | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python          |
 | Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC              | Filesystem CVE + IaC misconfig (SARIF)                                                        |
 | Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                              | ShellCheck security codes + Semgrep bash rules                                                |
 | Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                          | `.strata/` layout + strict code/memory pairing                                                |
@@ -362,7 +362,7 @@ Findings appear in workflow logs, not the Security tab SARIF view.
 
 ---
 
-### CodeQL Analysis (Python)
+### CodeQL Python
 
 |                 |                                                                                      |
 | :-------------- | :----------------------------------------------------------------------------------- |
@@ -822,14 +822,14 @@ Re-stage and commit. Hooks like Black, prettier, and markdownlint `--fix` modify
 
 All times **UTC**, every **Monday**:
 
-| Workflow                 | Cron         | Local time hint (US Eastern, DST) |
-| :----------------------- | :----------- | :-------------------------------- |
-| Secret Scan              | `0 5 * * 1`  | ~01:00 EDT                        |
-| CI Adoption Badge        | `0 6 * * 1`  | ~02:00 EDT                        |
-| CodeQL Analysis (Python) | `0 6 * * 1`  | ~02:00 EDT                        |
-| CodeQL JS/TS             | `30 6 * * 1` | ~02:30 EDT                        |
-| Trivy Security Scan      | `0 7 * * 1`  | ~03:00 EDT                        |
-| Supply Chain Check       | `0 8 * * 1`  | ~04:00 EDT                        |
+| Workflow            | Cron         | Local time hint (US Eastern, DST) |
+| :------------------ | :----------- | :-------------------------------- |
+| Secret Scan         | `0 5 * * 1`  | ~01:00 EDT                        |
+| CI Adoption Badge   | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL Python       | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL JS/TS        | `30 6 * * 1` | ~02:30 EDT                        |
+| Trivy Security Scan | `0 7 * * 1`  | ~03:00 EDT                        |
+| Supply Chain Check  | `0 8 * * 1`  | ~04:00 EDT                        |
 
 Each scheduled workflow also supports **`workflow_dispatch`** from the Actions tab. Bash Security is **PR-only** (not scheduled).
 

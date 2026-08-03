@@ -1,6 +1,7 @@
 ---
 # Python-only CodeQL. JavaScript/TypeScript is a separate workflow: codeql-javascript.yml
-name: CodeQL Analysis
+# (PR checks name: "CodeQL Python" — do not confuse with "CodeQL JavaScript/TypeScript".)
+name: CodeQL Python
 
 on:
   pull_request:
