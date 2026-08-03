@@ -5,6 +5,9 @@
 # Always requires a core set of PR workflows to have appeared (avoids racing
 # ahead before Quality Control / Secret Scan / Branch sync register).
 #
+# Concurrent PR re-triggers (concurrency cancel-in-progress, labeled/unlabeled)
+# leave superseded runs as conclusion=cancelled — those are ignored, not failures.
+#
 # Usage:
 #   COMMIT_SHA=<sha> /bin/bash .github/scripts/wait_for_pr_checks.sh
 #
@@ -83,6 +86,7 @@ while ((SECONDS < deadline)); do
     pending=0
     failed=0
     considered=0
+    ignored_cancelled=0
     unset conclusions_by_name summaries 2>/dev/null || true
     declare -A conclusions_by_name
     declare -a summaries
@@ -100,6 +104,12 @@ while ((SECONDS < deadline)); do
 
         # Only gate on pull_request runs for this head SHA.
         if [[ "${event}" != "pull_request" && "${event}" != "pull_request_target" ]]; then
+            continue
+        fi
+
+        # Superseded by concurrency cancel-in-progress (or a newer labeled/synchronize run).
+        if [[ "${status}" == "completed" && "${conclusion}" == "cancelled" ]]; then
+            ignored_cancelled=$((ignored_cancelled + 1))
             continue
         fi
 
@@ -145,7 +155,7 @@ while ((SECONDS < deadline)); do
         esac
     done
 
-    log "INFO" "considered=${considered} pending=${pending} failed=${failed} missing_required=${missing_required}"
+    log "INFO" "considered=${considered} pending=${pending} failed=${failed} missing_required=${missing_required} ignored_cancelled=${ignored_cancelled}"
 
     if [[ "${failed}" -gt 0 ]]; then
         if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
@@ -171,7 +181,7 @@ while ((SECONDS < deadline)); do
                 echo "## PR checks gate (passed)"
                 echo ""
                 echo "All ${considered} pull_request workflow run(s) for \`${COMMIT_SHA}\` concluded successfully"
-                echo "(excluding \`${EXCLUDE_WORKFLOW_NAME}\`; required: \`${REQUIRED_WORKFLOWS}\`)."
+                echo "(excluding \`${EXCLUDE_WORKFLOW_NAME}\`; required: \`${REQUIRED_WORKFLOWS}\`; ignored cancelled=${ignored_cancelled})."
             } >>"${GITHUB_STEP_SUMMARY:-/dev/null}"
         fi
         exit 0
