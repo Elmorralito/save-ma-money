@@ -14,13 +14,533 @@
 
 - [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
-- [ ] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary:
-
 - [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 19:28:54+00:00</sub>_
+
+  > **Closed by** [_**#155**](https://github.com/Elmorralito/save-ma-money/pull/155): **docs/PPT-058: [web] Document modules/web in monorepo indexes**
+
+  > **Branch:** docs/PPT-058 · **Base:** main · **1 commit** · **8 files**
+
+  >
+
+  > **Suggested title:** docs/PPT-058: [web] Document modules/web in monorepo indexes
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-058 discoverability gap for epic PPT-046: monorepo human/agent indexes now surface modules/web, Node 22 + pnpm, make web-dev, and the **no JS domain logic** rule without duplicating modules/web/README.md. Also marks field RUM / Sentry as deferred post-MVP (lab Lighthouse/CWV stays with #121).
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Product features, budgets/splits, Vercel, browser JWTs, CODEOWNERS, SSO UI
+
+  > - nginx Compose packaging (owned by [#122](https://github.com/Elmorralito/save-ma-money/issues/122))
+
+  > - Full strata memory rewrite; field RUM/Sentry product work
+
+  > - Closing epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - New docs/issues **Part VII** epic index for PPT-046 / #112
+
+  > - Root README architecture mermaid now includes SPA → BFF
+
+  > - Explicit RUM/Sentry deferred note in modules/web/README.md
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Docs / indexes**
+
+  >
+
+  > - Root README.md: @papita/web package row, roadmap, repo map, quick-start §4, docs hub
+
+  > - docs/issues/README.md: TOC + Part VII (selected child map; link to live epic)
+
+  > - modules/web/README.md: RUM/Sentry deferred section (lab CWV = #121 only)
+
+  >
+
+  > **Agent ops**
+
+  >
+
+  > - .cursor/AGENTS.md: repo map + pnpm ≠ Poetry setup; docs sources Parts I–VII
+
+  > - .cursor/CLAUDE.md: thin adapter updated for Node/pnpm + web epic
+
+  > - .cursor/rules/gen-custom/project_structure.mdc: modules/web row + layout
+
+  > - .cursor/skills/pr-description/SKILL.md: issues index Parts I–VII
+
+  > - .strata/memory/project_state.md: PPT-058 hygiene note
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (8 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 53 ++++++++++------
+
+  > .cursor/CLAUDE.md | 21 ++++---
+
+  > .cursor/rules/gen-custom/project_structure.mdc | 19 +++++-
+
+  > .cursor/skills/pr-description/SKILL.md | 10 +--
+
+  > .strata/memory/project_state.md | 10 +++
+
+  > README.md | 87 +++++++++++++++++---------
+
+  > docs/issues/README.md | 75 +++++++++++++++++++---
+
+  > modules/web/README.md | 4 ++
+
+  > 8 files changed, 202 insertions(+), 77 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 3d00128 docs/PPT-058: [web] Document modules/web in monorepo indexes
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Local pre-commit on commit — **pass** (prettier auto-fix on first attempt, then clean)
+
+  > - Product/unit/e2e suites — **not run** (docs-only)
+
+  > - GitHub Actions on this PR — **not observed yet**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Spot-check anchors: root README → docs/issues Part VII; AGENTS → modules/web/README.md
+
+  > - [ ] Confirm a new contributor can find epic #112, Node 22 + pnpm + make web-dev, and “no JS domain logic” from README / AGENTS / issues index
+
+  > - [ ] Confirm RUM/Sentry deferred wording appears in modules/web/README.md (and root quick-start note)
+
+  > - [ ] Confirm no secrets / credentialed URLs in the diff
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - None identified (docs/agent-index only; no runtime or migration changes)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Part VII is an **index**, not a full copy of epic #112 (selected children only)
+
+  > > - nginx day-to-day Make target still deferred to #122; README points there explicitly
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#123](https://github.com/Elmorralito/save-ma-money/issues/123) (docs/PPT-058)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (feat/PPT-046)
+
+  > - Related: [#121](https://github.com/Elmorralito/save-ma-money/issues/121) (lab Lighthouse/CWV), [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (nginx packaging)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 18:29:14+00:00</sub>_
+
+  > **Closed by** [_**#154**](https://github.com/Elmorralito/save-ma-money/pull/154): **test/PPT-056: [web] Add Vitest coverage, Playwright a11y, and security hardening**
+
+  > **Branch:** test/PPT-056 (tracks origin/test/PPT-056, clean) · **Base:** main · **1 commit** · **35 files**
+
+  >
+
+  > **Suggested title:** test/PPT-056: [web] Add Vitest coverage, Playwright a11y, and security hardening
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Raises the web quality/security bar for [#121](https://github.com/Elmorralito/save-ma-money/issues/121) now that PPT-060 (#125) auth assumptions and PPT-061 (#126) E2E seed SSOT are on main. PR web-ci gains Vitest coverage thresholds plus a soft prod audit; Compose Playwright/axe (and lab Lighthouse) live in a separate web-e2e workflow. Also omits empty account initial_value on create so JSON null cannot poison /accounts list via NaN DataFrame→DTO paths.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Full CSP headers / nginx packaging ([#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057)
+
+  > - Unconfirmed-email / resend / SMTP journeys ([#139](https://github.com/Elmorralito/save-ma-money/issues/139) / PPT-068)
+
+  > - Making Lighthouse performance / LCP / TBT hard-required on every PR
+
+  > - Mobile native a11y; screen-reader scripted journeys beyond axe tags
+
+  > - PPT-054 dashboard/reports carry-forward; remaining ledger/auth form migrations onto PPT-055
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Playwright globalSetup calls make web-e2e-seed only (no second SQL seed)
+
+  > - Critical path: BFF cookie login → account → expense → transfer → spending report + no JWT in WebStorage
+
+  > - axe WCAG 2.1 AA intent on public auth + MVP authed routes
+
+  > - PR template **Web security checklist** for future web/auth PRs
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **CI / ops**
+
+  >
+
+  > - web-ci.yml: Vitest coverage gate + soft pnpm web:audit
+
+  > - New web-e2e.yml: nightly / workflow_dispatch / path-filtered PRs — Compose API (AUTH_PROVIDER=local), Playwright, Lighthouse lab (continue-on-error)
+
+  > - Makefile + root/@papita/web scripts: web-test-coverage, web-e2e, web-lhci, web-audit
+
+  > - Gitignore Playwright/Lighthouse artifacts
+
+  >
+
+  > **Web tests / a11y / CWV**
+
+  >
+
+  > - Playwright config + e2e/ critical path, axe, optional live register (E2E_LIVE_REGISTER)
+
+  > - Vitest v8 coverage thresholds in vite.config.ts (pragmatic floor on gated src/**)
+
+  > - Unit: CSRF memory-only; BFF login does not persist JWTs; applyMutationError 422 vs 429
+
+  > - lighthouserc.cjs lab budgets (a11y/CLS hard; perf/LCP/TBT warn)
+
+  >
+
+  > **SPA fix**
+
+  >
+
+  > - toAccountCreate omits empty initial_value (avoids SQL NULL → NaN list poison)
+
+  >
+
+  > **Docs / strata**
+
+  >
+
+  > - modules/web/README.md Quality section; .github/CI.md; AGENTS; PR template checklist
+
+  > - Strata ACTIVE/project_state/learning for PPT-056 (PPT-059 item removed after #153 merge)
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (35 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +
+
+  > .github/CI.md | 39 +-
+
+  > .github/PULL_REQUEST_TEMPLATE.md | 11 +
+
+  > .github/workflows/web-ci.yml | 8 +-
+
+  > .github/workflows/web-e2e.yml | 110 +
+
+  > .gitignore | 3 +
+
+  > .../20260803-06-ppt056-vitest-playwright-a11y.md | 20 +
+
+  > .../20260803-06-ppt059-bff-session-durability.md | 25 -
+
+  > .strata/issues/ACTIVE.md | 8 +-
+
+  > .strata/memory/MEMORY.md | 25 +-
+
+  > .strata/memory/learnings/web-e2e-ppt056.md | 13 +
+
+  > .strata/memory/project_state.md | 20 +-
+
+  > Makefile | 16 +
+
+  > modules/web/.prettierignore | 4 +
+
+  > modules/web/README.md | 100 +-
+
+  > modules/web/e2e/README.md | 31 +-
+
+  > modules/web/e2e/a11y.spec.ts | 49 +
+
+  > modules/web/e2e/critical-path.spec.ts | 118 +
+
+  > modules/web/e2e/fixtures.ts | 28 +
+
+  > modules/web/e2e/global-setup.ts | 39 +
+
+  > modules/web/e2e/helpers/auth.ts | 25 +
+
+  > modules/web/e2e/register-login.spec.ts | 39 +
+
+  > modules/web/eslint.config.js | 15 +-
+
+  > modules/web/lighthouserc.cjs | 36 +
+
+  > modules/web/package.json | 9 +
+
+  > modules/web/playwright.config.ts | 43 +
+
+  > modules/web/src/api/auth.security.test.ts | 82 +
+
+  > modules/web/src/api/csrf.test.ts | 29 +
+
+  > .../components/accounts/accountFormState.test.ts | 12 +
+
+  > .../src/components/accounts/accountFormState.ts | 10 +-
+
+  > modules/web/src/forms/applyMutationError.test.ts | 64 +
+
+  > modules/web/src/test/setup.ts | 41 +
+
+  > modules/web/vite.config.ts | 30 +
+
+  > package.json | 6 +-
+
+  > pnpm-lock.yaml | 2272 +++++++++++++++++++-
+
+  > 35 files changed, 3278 insertions(+), 104 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - d334709 test/PPT-056: [web] Add Vitest coverage, Playwright a11y, and security hardening
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - [ ] pnpm web:test:coverage / make web-test-coverage — **not re-run in this session** (after rebase onto main)
+
+  > - [ ] pnpm web:test:e2e / make web-e2e against Compose — **not re-run in this session**
+
+  > - [ ] GitHub Actions web-ci / web-e2e — **not verified green yet** (will run on this PR)
+
+  > - Rebase onto main (post–PPT-059 #153) completed; conflict resolution in strata + web README only
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] pnpm web:lint + pnpm web:test:coverage pass locally (thresholds in vite.config.ts)
+
+  > - [ ] make api-all then make web-e2e — critical path + axe green (AUTH_PROVIDER=local; rate limits off if local 429 flakes)
+
+  > - [ ] Confirm globalSetup only invokes make web-e2e-seed (no alternate SQL seed)
+
+  > - [ ] Optional: E2E_LIVE_REGISTER=1 pnpm web:test:e2e for SPA register path
+
+  > - [ ] make web-lhci — note warn vs error budgets; record any lab waiver rationale
+
+  > - [ ] make web-audit — soft-gate; track any high prod findings
+
+  > - [ ] Create account with empty initial balance → /accounts list still renders (no NaN poison)
+
+  > - [ ] Sign off **Web security checklist** below
+
+  > - [ ] CI: path-filtered PR should run web-ci; web-e2e should run because this PR touches modules/web/e2e/**
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Vitest coverage thresholds can fail web-ci if new ungated src/** code lands without tests — keep dialog shells excluded or raise coverage with the change.
+
+  > > - web-e2e.yml stands up full Compose; flaky local rate limits / cold runners can fail Playwright or Lighthouse (LHCI is continue-on-error; Playwright is not).
+
+  > > - Path filter means most web PRs skip E2E — regressions outside e2e//seed paths rely on nightly/workflow_dispatch until checks are required.
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Lighthouse perf / LCP / TBT are **warn** only (lab noise); a11y category + CLS remain hard in lighthouserc.cjs.
+
+  > > - Default E2E uses confirmed (or confirm-N/A) seed user; live SPA register is opt-in via E2E_LIVE_REGISTER.
+
+  > > - CSP headers remain deferred to launch packaging (#122); this PR documents posture only.
+
+  > > - Spending report UI asserts category **ids** (name resolution is a follow-on).
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [ ] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only)
+
+  > - [ ] Cookie flags reviewed for the touched path (HttpOnly / Secure when not DEBUG / SameSite)
+
+  > - [ ] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage)
+
+  > - [ ] No secrets in VITE_* (public bundle only); gitleaks-aware for accidental embeds
+
+  > - [ ] pnpm web:audit considered (or Dependabot npm-web); no known high prod vulns left untracked
+
+  > - [ ] CSP: documented posture OK for this PR (full CSP headers owned by launch packaging / #122)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#121](https://github.com/Elmorralito/save-ma-money/issues/121) (PPT-056)
+
+  > - Depends on merged [#125](https://github.com/Elmorralito/save-ma-money/issues/125) (PPT-060), [#126](https://github.com/Elmorralito/save-ma-money/issues/126) (PPT-061)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - CSP follow-up [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057)
+
+  > - modules/web/README.md § Quality, a11y, CWV, security
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 18:26:02+00:00</sub>_
 
