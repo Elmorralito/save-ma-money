@@ -36,4 +36,5 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
   (`project_state`, issue `20260803-02`, resolve `20260730-01`, ARCHITECTURE web note)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
 
-- Autopilot: prettier-formatted CHANGELOG.md after merge of main into feat/PPT-054 (#148)
+- Autopilot (#148): prettier table alignment in `.strata/issues/archive/ARCHIVE.md`
+  (quality-control was failing on trailing cell padding)
