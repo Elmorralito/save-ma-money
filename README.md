@@ -9,12 +9,13 @@
 [<img src="./docs/share1.png" width="23" style="border-radius: 50%; border: 1px solid #e1e4e8;" alt="Donated to the PSF."/>](https://www.python.org/psf/donations/)
 [<img src="./docs/share2.png" width="23" style="border-radius: 50%; border: 1px solid #e1e4e8;" alt="Donated to the PSF."/>](https://www.python.org/psf/donations/)
 
-I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ignorance**. This project is a Python monorepo for personal and (hopefully in the future) professional financial data: type-safe PostgreSQL persistence, Alembic migrations, and a FastAPI REST surface. The goal is auditable, tenant-isolated finance data with a tested model layer and a shippable API.
+I'm just trying to **save-ma-money** (also _save-ma-finances_) from my own **ignorance**. This project is a Poetry + pnpm monorepo for personal and (hopefully in the future) professional financial data: type-safe PostgreSQL persistence, Alembic migrations, a FastAPI REST surface, and a React SPA. The goal is auditable, tenant-isolated finance data with a tested model layer, a shippable API, and a presentation-only web client.
 
 | Package              | README                                                 | Role                                                                                                                                                                      |
 | :------------------- | :----------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **papita-txnsmodel** | [`modules/model/README.md`](./modules/model/README.md) | SQLModel schemas, repositories, services, handlers, migrations — PyPI: `papita-transactions-model` ([PPT-024](https://github.com/Elmorralito/save-ma-money/issues/11))    |
 | **papita-txnsapi**   | [`modules/api/README.md`](./modules/api/README.md)     | FastAPI REST surface; **unified API reference** (architecture, integration, 32 MVP endpoints) — routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| **@papita/web**      | [`modules/web/README.md`](./modules/web/README.md)     | Vite + React + TypeScript SPA (epic [PPT-046 / #112](https://github.com/Elmorralito/save-ma-money/issues/112)) — presentation + BFF cookies; **no JS domain logic**       |
 
 ---
 
@@ -38,17 +39,20 @@ The architecture separates **how data is stored** from **how it is exposed**:
 
 - **`papita-txnsmodel`** — The system of record: migrations, handlers for ingestion, and business logic API routers will call — not reimplement.
 - **`papita-txnsapi`** — A thin FastAPI layer: request/response schemas, auth, and routing over existing services. The full REST contract lives in endpoint catalog, integration guide, and target package layout in one place.
+- **`@papita/web`** — Presentation-only React SPA ([PPT-046 / #112](https://github.com/Elmorralito/save-ma-money/issues/112)): TanStack Query + BFF cookies; **no JS domain logic**. Setup: [`modules/web/README.md`](./modules/web/README.md).
 
-That split keeps ingestion pipelines and REST endpoints aligned on one tested model, makes balances and reports derivable from the same ledger, and lets the API ship incrementally without forking financial rules into duplicate code paths.
+That split keeps ingestion pipelines, REST endpoints, and the SPA aligned on one tested model, makes balances and reports derivable from the same ledger, and lets the API and UI ship without forking financial rules into TypeScript.
 
 ```mermaid
 flowchart TB
   subgraph clients [Clients]
+    SPA["@papita/web SPA"]
     HTTP[HTTP / SDK]
     ETL[Ingestion handlers]
   end
 
   subgraph api [papita-txnsapi]
+    BFF[BFF session]
     R[Routers]
     S[API schemas]
   end
@@ -62,18 +66,20 @@ flowchart TB
 
   DB[(PostgreSQL)]
 
+  SPA --> BFF --> R
   HTTP --> R --> S --> SV
   ETL --> SV
   SV --> RP --> DTO --> SM --> DB
 ```
 
-| Layer   | Location                     | Responsibility                                                                                                                                                                     |
-| :------ | :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Model   | `papita_txnsmodel/model/`    | Tables, relationships, soft delete (`active`, `deleted_at`) — see [`modules/model/README.md`](./modules/model/README.md)                                                           |
-| Access  | `papita_txnsmodel/access/`   | DTO validation, repository CRUD, pandas DataFrames                                                                                                                                 |
-| Service | `papita_txnsmodel/services/` | Business rules, transfers, reports, account extensions                                                                                                                             |
-| Handler | `papita_txnsmodel/handlers/` | Load/dump pipelines for bulk ingest                                                                                                                                                |
-| API     | `papita_txnsapi/`            | Settings, auth helpers, unified REST reference — see [`modules/api/README.md`](./modules/api/README.md); routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| Layer   | Location                       | Responsibility                                                                                                                                                                     |
+| :------ | :----------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Model   | `papita_txnsmodel/model/`      | Tables, relationships, soft delete (`active`, `deleted_at`) — see [`modules/model/README.md`](./modules/model/README.md)                                                           |
+| Access  | `papita_txnsmodel/access/`     | DTO validation, repository CRUD, pandas DataFrames                                                                                                                                 |
+| Service | `papita_txnsmodel/services/`   | Business rules, transfers, reports, account extensions                                                                                                                             |
+| Handler | `papita_txnsmodel/handlers/`   | Load/dump pipelines for bulk ingest                                                                                                                                                |
+| API     | `papita_txnsapi/`              | Settings, auth helpers, unified REST reference — see [`modules/api/README.md`](./modules/api/README.md); routers via [#42](https://github.com/Elmorralito/save-ma-money/issues/42) |
+| Web     | `modules/web/` (`@papita/web`) | Vite + React SPA — UI + BFF cookie session only; see [`modules/web/README.md`](./modules/web/README.md) · epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112)     |
 
 **Platform:** PostgreSQL only — Docker Postgres locally (B0), Supabase for hosted environments (B1). DuckDB is deprecated ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)).
 
@@ -81,15 +87,16 @@ flowchart TB
 
 ## Current status and roadmap
 
-| Area                          | Status                                                                                                                                                                                                                            |
-| :---------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **v3 schema & migrations**    | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI                                               |
-| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                             |
-| **Model hardening (PPT-041)** | **Closed** ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards, live-DB integration tests                                                                    |
-| **Design program (PPT-031)**  | **Closed** ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md) (v0 audit, v3 schema, API mapping, coverage matrix, auth, migrations)      |
-| **API documentation**         | Consolidated in [`modules/api/README.md`](./modules/api/README.md) (replaces legacy `API_*.md.md` specs). Issue briefs: [`docs/issues/README.md`](./docs/issues/README.md)                                                        |
-| **API implementation**        | Runnable FastAPI MVP — health, auth, accounts, categories, transactions, movements, reports; OpenAPI at `/api/openapi.json`                                                                                                       |
-| **API epic (PPT-032)**        | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Auth = Supabase only ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); B0 Postgres gate |
+| Area                          | Status                                                                                                                                                                                                                                                                                          |
+| :---------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **v3 schema & migrations**    | Delivered ([#32](https://github.com/Elmorralito/save-ma-money/issues/32), [#34](https://github.com/Elmorralito/save-ma-money/issues/34)); Alembic upgrade/downgrade validated in CI                                                                                                             |
+| **Model layer**               | Production-ready core: accounts, categories, transactions, users, materialized balance views; **351** unit/integration tests in `modules/model/tests`                                                                                                                                           |
+| **Model hardening (PPT-041)** | **Closed** ([#51](https://github.com/Elmorralito/save-ma-money/issues/51)) — transfers, reports, account extensions, tenancy guards, live-DB integration tests                                                                                                                                  |
+| **Design program (PPT-031)**  | **Closed** ([#28](https://github.com/Elmorralito/save-ma-money/issues/28)) — unified in [`docs/design/ARCHITECTURE.md`](./docs/design/ARCHITECTURE.md) (v0 audit, v3 schema, API mapping, coverage matrix, auth, migrations)                                                                    |
+| **API documentation**         | Consolidated in [`modules/api/README.md`](./modules/api/README.md) (replaces legacy `API_*.md.md` specs). Issue briefs: [`docs/issues/README.md`](./docs/issues/README.md)                                                                                                                      |
+| **API implementation**        | Runnable FastAPI MVP — health, auth, accounts, categories, transactions, movements, reports; OpenAPI at `/api/openapi.json`                                                                                                                                                                     |
+| **API epic (PPT-032)**        | Children **#43–#50 closed**; epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) open for formal close-out. Auth = Supabase only ([#49](https://github.com/Elmorralito/save-ma-money/issues/49)); B0 Postgres gate                                                               |
+| **Web SPA (PPT-046)**         | `modules/web` epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — Vite/React client on FastAPI v1 + BFF cookies; setup in [`modules/web/README.md`](./modules/web/README.md); index brief [docs/issues Part VII](./docs/issues/README.md#part-vii--ppt-046-web-spa-epic-112) |
 
 Post-MVP items (budgets, splits, recurrence) are documented in [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](./docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) and intentionally out of the v3 MVP scope.
 
@@ -99,23 +106,27 @@ Post-MVP items (budgets, splits, recurrence) are documented in [`docs/design/ARC
 
 ```
 save-ma-money/
-├── pyproject.toml              # workspace root (package-mode = false)
+├── pyproject.toml              # Poetry workspace root (package-mode = false)
+├── pnpm-workspace.yaml         # Node workspace → modules/web
 ├── modules/
 │   ├── model/                  # papita-txnsmodel — primary implementation
 │   │   ├── README.md           # schema, services, handlers, migrations, testing
 │   │   ├── src/papita_txnsmodel/
 │   │   ├── alembic/            # migrations
 │   │   └── tests/
-│   └── api/                    # papita-txnsapi — FastAPI REST surface
-│       ├── README.md           # REST contract, integration guide, endpoint catalog
-│       ├── tests/              # unit + B0 live-DB + Auth smoke helpers
-│       └── src/papita_txnsapi/ # main.py, routers/v1, schemas, deps
-├── bin/                     # alembic.sh, test.sh, utils.sh
+│   ├── api/                    # papita-txnsapi — FastAPI REST surface
+│   │   ├── README.md           # REST contract, integration guide, endpoint catalog
+│   │   ├── tests/              # unit + B0 live-DB + Auth smoke helpers
+│   │   └── src/papita_txnsapi/ # main.py, routers/v1, schemas, deps
+│   └── web/                    # @papita/web — Vite + React SPA (PPT-046)
+│       ├── README.md           # Node 22 + pnpm setup, BFF, OpenAPI types, quality
+│       └── src/
+├── bin/                        # alembic.sh, test.sh, utils.sh, web_e2e_seed.*
 ├── docker/database/            # local Postgres 15 Compose
 ├── docs/design/                # ARCHITECTURE.md (PPT-031) + README gates index
-├── docs/issues/                # consolidated issue briefs (README Parts I–V) + PPT-044/045
+├── docs/issues/                # consolidated issue briefs (incl. PPT-046 Part VII)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata)
+└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci)
 ```
 
 ---
@@ -168,18 +179,32 @@ make api-all     # Full stack (Postgres/Redis/migrate/api) + wait until healthy
 
 See [`modules/api/README.md`](./modules/api/README.md) for env setup, auth flows, v3 data shapes, and the full endpoint catalog.
 
+### 4. Web SPA (`modules/web`)
+
+Node **22 LTS** + pnpm **9** (separate from Poetry). Full setup: [`modules/web/README.md`](./modules/web/README.md). Epic: [PPT-046 / #112](https://github.com/Elmorralito/save-ma-money/issues/112).
+
+```bash
+corepack enable   # or: npm install -g pnpm@9
+pnpm install
+make api-all      # preferred before web-dev (Compose API on :8000)
+make web-dev      # Vite on :5173; /api proxied to the API
+```
+
+Production nginx static packaging is **[#122](https://github.com/Elmorralito/save-ma-money/issues/122)** (PPT-057) — not a day-to-day local target yet. Field RUM / Sentry are deferred post-MVP; lab Lighthouse/CWV lives under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) only.
+
 ---
 
 ## Documentation hub
 
 ### Module READMEs
 
-Each Poetry package has its own README with layer-specific setup, architecture, and reference material:
+Each package has its own README with layer-specific setup, architecture, and reference material:
 
-| Module README                                          | Scope                                                                           |
-| :----------------------------------------------------- | :------------------------------------------------------------------------------ |
-| [`modules/model/README.md`](./modules/model/README.md) | **papita-txnsmodel** — v3 schema, services, handlers, migrations, testing       |
-| [`modules/api/README.md`](./modules/api/README.md)     | **papita-txnsapi** — unified API reference, integration guide, 32 MVP endpoints |
+| Module README                                          | Scope                                                                                            |
+| :----------------------------------------------------- | :----------------------------------------------------------------------------------------------- |
+| [`modules/model/README.md`](./modules/model/README.md) | **papita-txnsmodel** — v3 schema, services, handlers, migrations, testing                        |
+| [`modules/api/README.md`](./modules/api/README.md)     | **papita-txnsapi** — unified API reference, integration guide, 32 MVP endpoints                  |
+| [`modules/web/README.md`](./modules/web/README.md)     | **@papita/web** — Vite/React SPA setup, BFF cookies, OpenAPI types, quality (no JS domain logic) |
 
 ### Design and operations
 

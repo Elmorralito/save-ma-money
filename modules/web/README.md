@@ -223,6 +223,10 @@ Documented as **met for MVP flows** when:
 
 Deferred polish (not blockers): full screen-reader scripted journeys, mobile native a11y.
 
+### RUM / Sentry (deferred)
+
+**Field RUM, Sentry, and production error-reporting SDKs are deferred post-MVP.** Do not add browser observability vendors for the PPT-046 MVP. Lab-only Lighthouse / Core Web Vitals budgets live under [PPT-056 / #121](https://github.com/Elmorralito/save-ma-money/issues/121) (`make web-lhci` / `web-e2e.yml`) — not a substitute for field RUM.
+
 ### Lighthouse / Core Web Vitals (lab)
 
 `make web-lhci` after build — config `lighthouserc.cjs`:
