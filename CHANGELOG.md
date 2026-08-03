@@ -14,8 +14,6 @@
 
 - [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary:
-
 - [ ] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary:
 
 - [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
@@ -23,6 +21,212 @@
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 18:26:02+00:00</sub>_
+
+  > **Closed by** [_**#152**](https://github.com/Elmorralito/save-ma-money/pull/152): **feat/PPT-062: [web] Minimal session user chip and logout in app shell**
+
+  > **Branch:** feat/PPT-062 · **Base:** main · **1 commit** · **7 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-062: [web] Minimal session user chip and logout in app shell
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-062 shell closeout so authenticated users see who they are and can leave the BFF session cleanly. The AppLayout header chip now prefers display_name → username → email, shows pending/error probe states, and Sign out clears auth client state then returns to login. Vitest covers the chip label, probe affordances, and logout path.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Full account settings, avatar, password-change UI (reset stays with PPT-060/#125 / PPT-068/#139)
+
+  > - Extra GET /auth/me round-trip when BFF session already carries user
+
+  > - SSO / admin / role UI
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Session probe loading (Session…) and failure (Session unavailable) are visible in the shell header
+
+  > - Logout removes auth queries (not just invalidates) before navigating to /login
+
+  > - Pure sessionUserLabel helper keeps AppLayout component-export-only for Fast Refresh
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web shell**
+
+  >
+
+  > - Header chip derived from BFF GET /bff/auth/session user payload
+
+  > - Sign out gated while session is pending; still available after probe error so a sticky cookie can be cleared
+
+  > - Logout uses POST /bff/auth/logout via existing client, then removeQueries on auth keys
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - Label preference unit cases; display_name chip; pending/error chip; logout invokes bffLogout and lands on login
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - Archived PPT-062 item 20260803-06 (avoids collision with active PPT-061 20260803-05); MEMORY + project_state pairing for strict mode
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~7 files)</summary>
+
+  >
+
+  >
+
+  > .../20260803-06-ppt062-session-user-chip.md | 14 ++
+
+  > .strata/issues/archive/ARCHIVE.md | 1 +
+
+  > .strata/memory/MEMORY.md | 4 +-
+
+  > .strata/memory/project_state.md | 8 +-
+
+  > .../web/src/components/layout/AppLayout.test.tsx | 148 +++++++++++++++++----
+
+  > modules/web/src/components/layout/AppLayout.tsx | 51 ++++---
+
+  > .../web/src/components/layout/sessionUserLabel.ts | 14 ++
+
+  > 7 files changed, 193 insertions(+), 47 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 5a0027b feat(web): harden AppLayout session chip and logout for PPT-062
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm exec vitest run src/components/layout/AppLayout.test.tsx — **pass** (6 tests)
+
+  > - pnpm exec eslint on layout files with --max-warnings 0 — **pass**
+
+  > - pnpm exec prettier --check on layout files — **pass**
+
+  > - Pre-commit on commit (strata-validate, web eslint/prettier/tsc/vitest related, etc.) — **pass**
+
+  > - GitHub Actions / CI on this PR — **not observed yet**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] make api-up + web dev: login → header shows identifier (display name or username/email)
+
+  > - [ ] While session loads, chip shows Session… and Sign out is hidden
+
+  > - [ ] Sign out → lands on /login; subsequent authenticated navigation requires login again
+
+  > - [ ] Confirm no access/refresh JWT in JS-readable storage after login/logout
+
+  > - [ ] CI green on this PR
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Logout uses onSettled, so navigation to /login still happens if the BFF logout HTTP call fails (cookie may remain until the next successful probe/logout)
+
+  > > - None other identified (no migrations, no env var changes)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Chip identifier prefers username over email when display_name is empty (common for local/derived handles)
+
+  > > - Probe-error Sign out is intentionally available to attempt cookie cleanup; if logout also fails, user may need a hard refresh / cookie clear
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#127](https://github.com/Elmorralito/save-ma-money/issues/127) (PPT-062)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on closed [#115](https://github.com/Elmorralito/save-ma-money/issues/115) (PPT-049), [#116](https://github.com/Elmorralito/save-ma-money/issues/116) (PPT-051)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 18:13:42+00:00</sub>_
 
