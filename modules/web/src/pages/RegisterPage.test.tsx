@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
+import { PapitaApiError } from "@/api/errors";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { QueryTestProvider } from "@/test/queryWrapper";
@@ -15,6 +16,16 @@ vi.mock("@/api/auth", () => ({
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
 }));
+
+const emptyDiscovery = {
+  breakingChanges: null,
+  bulkMax: null,
+  reportWindowMaxDays: null,
+  cashFlowRefreshDefault: null,
+  reportsForeignAccountStatus: null,
+  errorCode: null,
+  compatActive: [] as string[],
+};
 
 afterEach(() => {
   cleanup();
@@ -88,5 +99,37 @@ describe("RegisterPage", () => {
       expect(authApi.bffRegister).toHaveBeenCalled();
     });
     expect(await screen.findByRole("status")).toHaveTextContent(/Account created/i);
+  });
+
+  it("surfaces auth 429 with Retry-After in an alert (not silent)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authApi.bffRegister).mockRejectedValue(
+      new PapitaApiError({
+        message: "Email rate limit exceeded. Wait a few minutes, or use local Admin register.",
+        status: 429,
+        discovery: emptyDiscovery,
+        retryAfter: 60,
+      }),
+    );
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <RegisterPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Email"), "a@example.com");
+    await user.type(screen.getByLabelText("Password"), "SecurePass1!");
+    await user.type(screen.getByLabelText("Confirm password"), "SecurePass1!");
+    await user.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(() => {
+      expect(authApi.bffRegister).toHaveBeenCalled();
+    });
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/rate limit/i);
+    expect(alert).toHaveTextContent(/Retry after 60s/);
   });
 });
