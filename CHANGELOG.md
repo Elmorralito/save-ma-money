@@ -26,9 +26,255 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:22:43+00:00</sub>_
+
+  > **Closed by** [_**#149**](https://github.com/Elmorralito/save-ma-money/pull/149): **feat/PPT-055: [web] Forms validation and loading UX standards**
+
+  > **Branch:** feat/PPT-055 · **Base:** main · **1 commit** · **24 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-055: [web] Forms validation and loading UX standards
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-055 gap left after accounts/categories landed on ad-hoc controlled forms: install Zod + react-hook-form, ship a shared presentation kit under modules/web/src/forms/, and migrate account + category dialogs onto one validation and mutation-error pattern. OpenAPI write-model alignment stays UX-only — domain rules remain in papita_txnsmodel.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - New API endpoints or design-system primitives beyond PPT-051
+
+  > - Migrating login/register, transactions/movements/bulk, or report filters onto the kit (follow-on)
+
+  > - Dashboard/reports UI (PPT-054 / #119) — intentionally untouched
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Documented UX standard in modules/web/README.md
+
+  > - 422 field mapping from FastAPI loc + optional field maps; 429/network/5xx toast + root
+
+  > - Custom FormField (no new shadcn Form dependency)
+
+  > - formatDate / formatDateTime via Intl alongside existing formatMoney
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web forms kit**
+
+  >
+
+  > - Add zod, react-hook-form, @hookform/resolvers
+
+  > - src/forms/: schemas (account/category), mapServerErrors, applyMutationError, FormField / FormRootError, OpenAPI→flat field maps
+
+  > - src/lib/formatDate.ts: presentation date helpers
+
+  >
+
+  > **Feature migrations**
+
+  >
+
+  > - AccountFormDialog / AccountFormFields and CategoryFormDialog use RHF + zodResolver
+
+  > - Preserve global seed category 404 → read-only UX (inline + toast)
+
+  > - Mutation submit disabled while pending / submitting
+
+  >
+
+  > **Docs / agent memory**
+
+  >
+
+  > - README Forms & UX standards section; AGENTS.md note
+
+  > - Strata issue 20260803-03, learning web-forms-ux-kit, project_state update
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (24 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > .strata/issues/20260803-03-ppt055-forms-ux-standards.md | 28 ++
+
+  > .strata/issues/ACTIVE.md | 1 +
+
+  > .strata/memory/MEMORY.md | 7 +-
+
+  > .strata/memory/learnings/web-forms-ux-kit.md | 14 +
+
+  > .strata/memory/project_state.md | 22 +-
+
+  > modules/web/README.md | 34 +-
+
+  > modules/web/package.json | 5 +-
+
+  > modules/web/src/components/accounts/AccountFormDialog.tsx | 66 ++--
+
+  > modules/web/src/components/accounts/AccountFormFields.tsx | 382 +++++++++------------
+
+  > modules/web/src/components/categories/CategoryFormDialog.tsx | 163 ++++-----
+
+  > modules/web/src/forms/FormField.tsx | 41 +++
+
+  > modules/web/src/forms/applyMutationError.ts | 56 +++
+
+  > modules/web/src/forms/fieldMaps.ts | 37 ++
+
+  > modules/web/src/forms/index.ts | 12 +
+
+  > modules/web/src/forms/mapServerErrors.test.ts | 103 ++++++
+
+  > modules/web/src/forms/mapServerErrors.ts | 130 +++++++
+
+  > modules/web/src/forms/schemas/account.test.ts | 34 ++
+
+  > modules/web/src/forms/schemas/account.ts | 139 ++++++++
+
+  > modules/web/src/forms/schemas/category.test.ts | 25 ++
+
+  > modules/web/src/forms/schemas/category.ts | 21 ++
+
+  > modules/web/src/lib/formatDate.test.ts | 28 ++
+
+  > modules/web/src/lib/formatDate.ts | 27 ++
+
+  > pnpm-lock.yaml | 110 ++++++
+
+  > 24 files changed, 1116 insertions(+), 371 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 80725c9 feat/PPT-055: [web] Standardize forms with Zod and RHF
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - pnpm --filter @papita/web exec tsc -b — pass
+
+  > - pnpm --filter @papita/web test — pass (87 tests)
+
+  > - pnpm --filter @papita/web lint — pass
+
+  > - Pre-commit on commit (web-eslint, web-prettier, web-tsc, web-vitest-related, strata validate, etc.) — pass
+
+  > - GitHub Actions CI on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Create/edit an account (checking + one extension kind); confirm field validation and successful save
+
+  > - [ ] Trigger a 422 (e.g. invalid payload) and confirm inline field/root errors without toast spam
+
+  > - [ ] Confirm 429/unreachable API still toasts with retry guidance via formatApiError
+
+  > - [ ] Edit a global seed category and confirm read-only 404 UX (inline + toast) still works
+
+  > - [ ] Spot-check README Forms & UX standards section for accuracy
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Account/category form behavior changes from useState to RHF — regression risk on extension blocks and omit-empty update payloads (mappers unchanged, but wiring did)
+
+  > > - Ledger/auth forms remain on the old pattern until a follow-on; PPT-056 (#121) quality bar should treat kit adoption as incomplete outside accounts/categories
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Zod schemas validate form state only; they do not re-encode papita_txnsmodel rules
+
+  > > - Report/dashboard files intentionally left alone to avoid conflicting with PPT-054
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#120](https://github.com/Elmorralito/save-ma-money/issues/120) (PPT-055)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Depends on closed PPT-051 [#116], PPT-048 [#114]
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#125](https://github.com/Elmorralito/save-ma-money/issues/125)**_] :: **feat/PPT-060: [web] Supabase auth edge-case MVP matrix for BFF** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:03+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:09:37+00:00</sub>_
 
