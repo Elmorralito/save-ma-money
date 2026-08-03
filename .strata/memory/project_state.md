@@ -10,6 +10,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- **CodeQL JS/TS:** Independent workflow `.github/workflows/codeql-javascript.yml`
+  (separate from Python `codeql.yml`; own path filters + concurrency)
 - **Web pre-commit hooks:** Local `web-eslint` / `web-prettier` / `web-tsc` /
   `web-vitest-related` via `.github/scripts/pre_commit_web.sh` (husky-equivalent
   tools through pre-commit SSOT; skipped in quality-control, gated by web-ci)
