@@ -75,6 +75,17 @@ Base the description on ALL commits + full diff vs the PR base (not tip-only).
 > - <!-- limitations, deferred behavior, “works if…” notes -->
 > - <!-- or: None identified -->
 
+## Web security checklist (PPT-056 / #121)
+
+<!-- Fill when the PR touches `modules/web/**` or BFF cookie/auth paths. Otherwise delete this section. -->
+
+- [ ] No JWTs / access tokens in `localStorage` / `sessionStorage` (BFF HttpOnly `papita_sid` only)
+- [ ] Cookie flags reviewed for the touched path (`HttpOnly` / `Secure` when not DEBUG / `SameSite`)
+- [ ] CSRF: mutations send `X-Papita-CSRF`; token stays in memory (not WebStorage)
+- [ ] No secrets in `VITE_*` (public bundle only); gitleaks-aware for accidental embeds
+- [ ] `pnpm web:audit` considered (or Dependabot `npm-web`); no known high prod vulns left untracked
+- [ ] CSP: documented posture OK for this PR (full CSP headers owned by launch packaging / #122)
+
 ## References
 
 - <!-- issue IDs, design docs, parent epic — only if known -->

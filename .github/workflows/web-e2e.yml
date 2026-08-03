@@ -1,0 +1,110 @@
+name: Web E2E
+
+# PPT-056 / #121 — Compose + Playwright + axe (+ optional Lighthouse).
+# Kept out of path-filtered web-ci.yml (Node-only PR gate). Nightly + manual.
+
+on:
+  schedule:
+    - cron: "30 7 * * 1"
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "modules/web/e2e/**"
+      - "modules/web/playwright.config.ts"
+      - "modules/web/lighthouserc.cjs"
+      - "bin/web_e2e_seed.py"
+      - "bin/web_e2e_seed.sh"
+      - ".github/workflows/web-e2e.yml"
+
+concurrency:
+  group: web-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v6.0.9
+        with:
+          version: 9.15.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @papita/web exec playwright install --with-deps chromium
+
+      - name: Prepare B0 local env for Compose (AUTH_PROVIDER=local)
+        run: |
+          mkdir -p environments/local
+          cat > environments/local/.env <<'EOF'
+          PAPITA_ENV=local
+          AUTH_PROVIDER=local
+          JWT_SECRET_KEY=ci-jwt-secret-key-minimum-32-characters-long
+          AUTH_RATE_LIMIT_ENABLED=false
+          API_RATE_LIMIT_ENABLED=false
+          REDIS_RATE_LIMIT_ENABLED=false
+          DEBUG=true
+          DOCS_ENABLED=true
+          AUTH_COOKIE_SECURE=false
+          LOG_LEVEL=INFO
+          DATABASE_POOL_SIZE=5
+          ALLOWED_ORIGINS=["http://localhost:5173","http://127.0.0.1:5173","http://localhost:3000"]
+          COMPOSE_NAME=papita-transactions-e2e
+          DB_USER=admin
+          DB_PASSWORD=admin
+          DB_NAME=papita
+          DB_PORT=5435
+          API_PORT=8000
+          REDIS_ENABLED=true
+          REDIS_PORT=6379
+          DATABASE_URL=postgresql+psycopg2://admin:admin@localhost:5435/papita
+          EOF
+          python3 -c "
+          from pathlib import Path
+          p = Path('environments/local/.env')
+          p.write_text('\n'.join(line.lstrip() for line in p.read_text().splitlines()) + '\n')
+          "
+
+      - name: Start Compose API stack
+        run: make api-all
+
+      - name: Run Playwright (seed via globalSetup)
+        run: pnpm web:test:e2e
+        env:
+          CI: "true"
+          # Confirmed-user path (PPT-060); live SPA register is optional.
+          E2E_LIVE_REGISTER: "0"
+
+      - name: Build + Lighthouse CI (lab budgets)
+        run: |
+          pnpm web:build
+          pnpm web:lhci
+        continue-on-error: true
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            modules/web/playwright-report
+            modules/web/test-results
+          if-no-files-found: ignore
+
+      - name: Tear down Compose
+        if: always()
+        run: make api-all-down

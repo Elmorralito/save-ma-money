@@ -16,6 +16,9 @@ modules/web/dist/
 modules/web/coverage/
 # Playwright E2E seed artifact + credentials (PPT-061 / #126)
 modules/web/e2e/.auth/
+modules/web/playwright-report/
+modules/web/test-results/
+modules/web/.lighthouseci/
 .mypy_cache/
 .pytest_cache/
 .venv/

@@ -194,15 +194,21 @@ function buildExtensionBlocks(
 
 /** Map form state → OpenAPI ``AccountCreate`` (no client-invented fields). */
 export function toAccountCreate(state: AccountFormState): AccountCreate {
-  return {
+  // Omit empty initial_value — sending JSON null can persist SQL NULL that later
+  // surfaces as NaN through DataFrame→DTO list paths (breaks /accounts).
+  const create: AccountCreate = {
     name: state.name.trim(),
     description: state.description,
     account_kind: state.account_kind,
     ledger_side: state.ledger_side,
     currency: state.currency.trim().toUpperCase() || "USD",
-    initial_value: parseOptionalNumber(state.initial_value),
     ...buildExtensionBlocks(state),
   };
+  const initialValue = parseOptionalNumber(state.initial_value);
+  if (initialValue !== null) {
+    create.initial_value = initialValue;
+  }
+  return create;
 }
 
 /** Map form state → OpenAPI ``AccountUpdate`` (kind/ledger immutable on wire). */

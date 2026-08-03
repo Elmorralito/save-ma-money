@@ -4,3 +4,7 @@ node_modules
 pnpm-lock.yaml
 openapi/openapi.json
 src/types/api.d.ts
+playwright-report
+test-results
+.lighthouseci
+e2e/.auth

@@ -8,7 +8,20 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "coverage", "node_modules", "openapi/**", "src/types/api.d.ts"] },
+  {
+    ignores: [
+      "dist",
+      "coverage",
+      "node_modules",
+      "openapi/**",
+      "src/types/api.d.ts",
+      "playwright-report/**",
+      "test-results/**",
+      ".lighthouseci/**",
+      "lighthouserc.cjs",
+      "coverage/**",
+    ],
+  },
   {
     extends: [
       js.configs.recommended,
