@@ -81,7 +81,6 @@ done
 for rel in \
     memory/learnings \
     memory/archive \
-    issues/archive \
     docs/product \
     docs/architecture \
     docs/decisions \

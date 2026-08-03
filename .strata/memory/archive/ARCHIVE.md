@@ -1,6 +1,6 @@
 # Archive Index — save-ma-money Memory
 
-Cold storage. **Not surfaced via `MEMORY.md`.** Files here are preserved for history and explicit searches, not auto-loaded. Skim this index when investigating older sessions or provenance; open individual files only when needed. (Closed issues have their own cold store: `../../issues/archive/`.)
+Cold storage. **Not surfaced via `MEMORY.md`.** Files here are preserved for history and explicit searches, not auto-loaded. Skim this index when investigating older sessions or provenance; open individual files only when needed. Closed GitHub program issues are not duplicated under `.strata/issues/`.
 
 ## How to access
 

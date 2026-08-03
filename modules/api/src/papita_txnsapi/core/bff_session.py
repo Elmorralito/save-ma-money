@@ -1,16 +1,19 @@
-"""BFF browser session binding store (PPT-049).
+"""BFF browser session binding store (PPT-049 / PPT-059).
 
 Maps an opaque session id (HttpOnly cookie) to server-side access/refresh tokens.
 This is **not** the JWT denylist (:class:`~papita_txnsapi.core.session_store.SessionStore`).
 
 When Redis is unavailable/disabled, an in-memory map is used (B0/dev only — not
-shared across uvicorn workers).
+shared across uvicorn workers). When Redis is required (``fail_closed=True`` /
+``REDIS_ENABLED``), Redis errors and a missing client **fail closed** — no silent
+process-memory fallback (PPT-059).
 
 Key exports:
     BFF_SESSION_COOKIE: Cookie name for the opaque session id.
     BFF_CSRF_HEADER: Required header on cookie-authenticated mutations.
     BffSessionRecord: Stored binding (tokens + CSRF + access expiry).
     BffSessionStore: Redis or memory session map.
+    BffSessionStoreUnavailableError: Raised when fail-closed store cannot use Redis.
     clear_memory_bff_sessions: Test helper to reset the process-local map.
 """
 
@@ -41,6 +44,10 @@ DEFAULT_BFF_SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 _memory_lock = threading.RLock()
 _memory_sessions: dict[str, str] = {}
+
+
+class BffSessionStoreUnavailableError(RuntimeError):
+    """Raised when a fail-closed BFF session store cannot consult Redis."""
 
 
 def clear_memory_bff_sessions() -> None:
@@ -122,18 +129,33 @@ class BffSessionStore:
     """Session-id → token binding store (Redis when available, else memory).
 
     Args:
-        client: Optional Redis client. When ``None``, uses process memory.
+        client: Optional Redis client. When ``None`` and not fail-closed, uses process memory.
         default_ttl_seconds: TTL applied to new/updated session keys.
+        fail_closed: When ``True``, missing Redis or Redis errors raise
+            :class:`BffSessionStoreUnavailableError` instead of falling back to memory
+            (PPT-059; wire from ``REDIS_ENABLED``).
     """
 
-    def __init__(self, client: Redis | None, *, default_ttl_seconds: int) -> None:
+    def __init__(
+        self,
+        client: Redis | None,
+        *,
+        default_ttl_seconds: int,
+        fail_closed: bool = False,
+    ) -> None:
         self._client = client
         self._default_ttl_seconds = max(60, default_ttl_seconds)
+        self._fail_closed = fail_closed
 
     @property
     def backend(self) -> str:
         """``redis`` or ``memory``."""
         return "redis" if self._client is not None else "memory"
+
+    @property
+    def fail_closed(self) -> bool:
+        """Whether Redis is required (no process-memory fallback)."""
+        return self._fail_closed
 
     def create(
         self,
@@ -148,6 +170,9 @@ class BffSessionStore:
 
         Returns:
             ``(session_id, record)`` including a fresh CSRF token.
+
+        Raises:
+            BffSessionStoreUnavailableError: When fail-closed and Redis cannot persist.
         """
         session_id = new_session_id()
         record = BffSessionRecord(
@@ -161,7 +186,11 @@ class BffSessionStore:
         return session_id, record
 
     def get(self, session_id: str) -> BffSessionRecord | None:
-        """Load a session by id, or ``None`` when missing/invalid."""
+        """Load a session by id, or ``None`` when missing/invalid.
+
+        Raises:
+            BffSessionStoreUnavailableError: When fail-closed and Redis cannot be read.
+        """
         if not session_id:
             return None
         raw = self._get_raw(session_id)
@@ -177,54 +206,78 @@ class BffSessionStore:
             return None
 
     def update(self, session_id: str, record: BffSessionRecord, *, ttl_seconds: int | None = None) -> None:
-        """Overwrite an existing session binding (e.g. after refresh)."""
+        """Overwrite an existing session binding (e.g. after refresh).
+
+        Raises:
+            BffSessionStoreUnavailableError: When fail-closed and Redis cannot persist.
+        """
         if not session_id:
             return
         self._set(session_id, record, ttl_seconds=ttl_seconds)
 
     def delete(self, session_id: str) -> None:
-        """Remove a session binding (best-effort)."""
+        """Remove a session binding.
+
+        Raises:
+            BffSessionStoreUnavailableError: When fail-closed and Redis delete fails
+                or the Redis client is missing.
+        """
         if not session_id:
             return
         if self._client is None:
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis client unavailable")
             with _memory_lock:
                 _memory_sessions.pop(session_id, None)
             return
         key = redis_key("bff", "session", session_id)
         try:
             self._client.delete(key)
-        except RedisError:
+        except RedisError as exc:
             logger.exception("Failed to delete BFF session from Redis")
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis delete failed") from exc
 
     def _set(self, session_id: str, record: BffSessionRecord, *, ttl_seconds: int | None) -> None:
-        """Persist ``record`` under ``session_id`` (Redis preferred, memory fallback)."""
+        """Persist ``record`` under ``session_id`` (Redis preferred; memory only when open)."""
         ttl = self._default_ttl_seconds if ttl_seconds is None else max(60, ttl_seconds)
         payload = record.to_json()
         if self._client is None:
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis client unavailable")
             with _memory_lock:
                 _memory_sessions[session_id] = payload
             return
         key = redis_key("bff", "session", session_id)
         try:
             self._client.setex(key, ttl, payload)
-        except RedisError:
-            logger.exception("Failed to persist BFF session to Redis; falling back to memory")
+        except RedisError as exc:
+            logger.exception("Failed to persist BFF session to Redis")
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis write failed") from exc
+            logger.warning("Falling back to memory BFF session (fail_closed=false)")
             with _memory_lock:
                 _memory_sessions[session_id] = payload
 
     def _get_raw(self, session_id: str) -> str | None:
         """Return the raw JSON payload for ``session_id``, or ``None``."""
         if self._client is None:
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis client unavailable")
             with _memory_lock:
                 return _memory_sessions.get(session_id)
         key = redis_key("bff", "session", session_id)
         try:
             value = self._client.get(key)
-        except RedisError:
-            logger.exception("Failed to read BFF session from Redis; trying memory")
+        except RedisError as exc:
+            logger.exception("Failed to read BFF session from Redis")
+            if self._fail_closed:
+                raise BffSessionStoreUnavailableError("BFF session Redis read failed") from exc
             with _memory_lock:
                 return _memory_sessions.get(session_id)
         if value is None:
+            if self._fail_closed:
+                return None
             with _memory_lock:
                 return _memory_sessions.get(session_id)
         if isinstance(value, bytes):

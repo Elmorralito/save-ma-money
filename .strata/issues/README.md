@@ -9,7 +9,7 @@ The single backlog: findings, tasks, and initiatives, one file per item. Any too
 - **Types:** `bug | improvement | debt | task | feature | initiative` · **Statuses:** `open | in-progress | parked | resolved | wont-fix` · **Severity:** `high | med | low`
 - **Status changes are frontmatter edits** — items don't move between folders while alive.
 - **`parked` requires `revive-when:`** — a concrete trigger ("next time the dispatcher misroutes"), not "someday".
-- **Closing** fills **Resolution** (link the ADR or learning if the close produced durable knowledge); the file moves to `archive/` at the next `/strata:save`.
+- **Closing** fills **Resolution** briefly (link ADR/learning if useful), then **delete** the item file. No `issues/archive/` — closed GitHub issues + `git log` are enough.
 - **`ACTIVE.md` / `OPEN.md` / `PARKED.md` are generated** at `/strata:save` from item frontmatter. Edit items, never the views.
 
 ## Querying

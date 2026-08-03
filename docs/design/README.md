@@ -103,13 +103,15 @@ make api-up && make redis-smoke
 1. Provision Redis 7 with TLS (Upstash / ElastiCache / compatible).
 2. Set in `environments/staging/.env` or `production/.env` (never commit): `REDIS_URL=rediss://…`, `REDIS_ENABLED=true`, `REDIS_RATE_LIMIT_ENABLED=true`, cache TTLs as needed; keys are `papita:{PAPITA_ENV}:…`.
 3. Restart API; confirm `GET /api/v1/health/redis` → healthy.
-4. Postgres remains source of truth; Redis is additive (cache, rate limits, JWT denylist).
+4. Postgres remains source of truth; Redis is additive (cache, rate limits, JWT denylist, BFF sessions).
+5. SPA cookie durability contract: PPT-059 ([#124](https://github.com/Elmorralito/save-ma-money/issues/124)) — see [`modules/api/README.md`](../../modules/api/README.md) § Redis / Workers.
 
-| Concern                            | Policy                                               |
-| ---------------------------------- | ---------------------------------------------------- |
-| Cache / tenant API RL Redis errors | Fail open                                            |
-| Auth IP RL Redis errors            | Optional fail-closed (`AUTH_RATE_LIMIT_FAIL_CLOSED`) |
-| JWT denylist Redis errors          | Fail closed (503) when `REDIS_ENABLED`               |
+| Concern                            | Policy                                                  |
+| ---------------------------------- | ------------------------------------------------------- |
+| Cache / tenant API RL Redis errors | Fail open                                               |
+| Auth IP RL Redis errors            | Optional fail-closed (`AUTH_RATE_LIMIT_FAIL_CLOSED`)    |
+| JWT denylist Redis errors          | Fail closed (503) when `REDIS_ENABLED`                  |
+| BFF session Redis (PPT-059)        | Fail closed (503) when `REDIS_ENABLED`; keys ≠ denylist |
 
 ### Optional B1 hosted Postgres pooler
 

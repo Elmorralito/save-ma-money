@@ -643,7 +643,7 @@ Wrappers for Strata/MCP/web **exit 0 immediately** when `CI` or `GITHUB_ACTIONS`
 
 **Required files:** `MANIFEST.md`, `memory/MEMORY.md`, `memory/project_state.md`, learnings index/template, archive files, issue views (`ACTIVE.md`, `OPEN.md`, `PARKED.md`), `docs/ARCHITECTURE.md`, `inbox/.gitignore`, plus `.agents/AGENTS.md` and `.agents/CLAUDE.md`.
 
-**Required directories:** `memory/learnings`, `memory/archive`, `issues/archive`, `docs/{product,architecture,decisions,reference,ops}`, `inbox`.
+**Required directories:** `memory/learnings`, `memory/archive`, `docs/{product,architecture,decisions,reference,ops}`, `inbox`. (Closed issues are deleted from `.strata/issues/` — no `issues/archive/`.)
 
 ### Content rules
 

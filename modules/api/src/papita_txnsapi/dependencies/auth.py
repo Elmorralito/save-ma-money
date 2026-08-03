@@ -24,7 +24,12 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 
 from papita_txnsapi.config.settings import Settings, get_settings
-from papita_txnsapi.core.bff_session import BFF_SESSION_COOKIE, BffSessionRecord, BffSessionStore
+from papita_txnsapi.core.bff_session import (
+    BFF_SESSION_COOKIE,
+    BffSessionRecord,
+    BffSessionStore,
+    BffSessionStoreUnavailableError,
+)
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.core.session_store import SessionStore, SessionStoreUnavailableError
 from papita_txnsapi.core.supabase_auth import AuthApiError, AuthError, supabase_refresh_session
@@ -163,10 +168,17 @@ def get_current_owner(  # pylint: disable=too-many-positional-arguments
 
     Raises:
         HTTPException: 401 when the token is missing, invalid, revoked, or the
-            owner is not active; 503 when Redis denylist is required but unavailable.
+            owner is not active; 503 when Redis denylist or BFF session store is
+            required but unavailable (PPT-043 / PPT-059).
     """
-    if not token:
-        token = _resolve_access_token_from_bff(request, settings, bff_store)
+    try:
+        if not token:
+            token = _resolve_access_token_from_bff(request, settings, bff_store)
+    except BffSessionStoreUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="BFF session store unavailable",
+        ) from exc
 
     if not token:
         raise HTTPException(

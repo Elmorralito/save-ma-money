@@ -76,7 +76,7 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web thin API client (PPT-048):** `modules/web/src/api/` — `apiFetch` (`credentials: 'include'`, no Bearer), `queryKeys` / `queryOptions`, `PapitaApiError` + discovery headers, health/meta probes only. Domain logic stays in Python.
 
-**Web BFF cookie auth (PPT-049):** API `/api/v1/bff/auth/*` + `BffSessionStore` (Redis or memory; **not** JWT denylist). Cookie `papita_sid` (HttpOnly); CSRF `X-Papita-CSRF`. SPA login/register + `RequireAuth`; `get_current_owner` accepts Bearer **or** BFF cookie. `make auth-smoke` (Bearer) still valid alongside BFF.
+**Web BFF cookie auth (PPT-049 / PPT-059):** API `/api/v1/bff/auth/*` + `BffSessionStore` (Redis or memory; **not** JWT denylist). Cookie `papita_sid` (HttpOnly); CSRF `X-Papita-CSRF`. SPA login/register + `RequireAuth`; `get_current_owner` accepts Bearer **or** BFF cookie. `make auth-smoke` (Bearer) still valid alongside BFF — it does **not** prove Redis BFF durability. B0 single-worker may use memory when `REDIS_ENABLED=false`; Compose/staging/multi-worker require Redis (`papita:{env}:bff:session:{id}`). When `REDIS_ENABLED`, BFF store is **fail-closed** (503, no memory fallback). Matrix: `modules/web/README.md` + `modules/api/README.md` § Workers/Redis.
 
 **Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Forms use Zod + RHF (`src/forms/`, PPT-055 / #120). Global category write 404 → read-only UX.
 

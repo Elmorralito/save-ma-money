@@ -12,6 +12,8 @@ Fail policy (by concern):
     * Cache / rate-limit — **fail open** (miss / allow) on Redis errors.
     * JWT denylist — **fail closed** when Redis is required (503), so revoked
       tokens cannot be resurrected during a Redis blip.
+    * BFF session map — **fail closed** when Redis is required (PPT-059); no
+      silent process-memory fallback (``BffSessionStoreUnavailableError`` → 503).
 
 Key exports:
     init_redis: Create a pooled client when Redis is enabled.

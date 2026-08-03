@@ -16,7 +16,8 @@ make redis-smoke
 
 **Workers:** keep a single uvicorn process in the API container on B0. Do not enable
 `--workers N` (N>1) unless `REDIS_ENABLED=true` and `REDIS_RATE_LIMIT_ENABLED=true`
-(in-memory limits are process-local; JWT denylist fails closed when Redis is required).
+(in-memory limits and in-memory BFF sessions are process-local; JWT denylist fails
+closed when Redis is required; BFF cookie durability requires Redis — PPT-059 / #124).
 Compose `CMD` must not use `--reload`.
 
 | Piece                          | Path                                                               |
@@ -43,23 +44,26 @@ REDIS_MAX_CONNECTIONS="10"
 ```
 
 3. Restart API; confirm `GET /api/v1/health/redis` → `api-redis link healthy`.
-4. Postgres remains source of truth; Redis is additive (cache, rate limits, JWT denylist).
+4. Postgres remains source of truth; Redis is additive (cache, rate limits, JWT denylist, BFF sessions).
+5. SPA cookie auth (PPT-049): keep Redis for staging/prod BFF durability (PPT-059 / #124). Staging Compose / nginx packaging that must list Redis: PPT-057 / #122.
 
 ## Hardening notes
 
-| Concern                   | Policy                                         |
-| ------------------------- | ---------------------------------------------- |
-| Key prefix                | `papita:{PAPITA_ENV}:…` (isolate shared Redis) |
-| Rate limit                | Atomic Lua ZSET (no multi-pipeline race)       |
-| Cache / rate-limit errors | Fail open                                      |
-| JWT denylist errors       | Fail closed (503) when `REDIS_ENABLED`         |
-| Client                    | Sync `redis` for now; `redis.asyncio` later    |
+| Concern                   | Policy                                                            |
+| ------------------------- | ----------------------------------------------------------------- |
+| Key prefix                | `papita:{PAPITA_ENV}:…` (isolate shared Redis)                    |
+| Rate limit                | Atomic Lua ZSET (no multi-pipeline race)                          |
+| Cache / rate-limit errors | Fail open                                                         |
+| JWT denylist errors       | Fail closed (503) when `REDIS_ENABLED`                            |
+| BFF session errors        | Fail closed (503) when `REDIS_ENABLED` (PPT-059); keys ≠ denylist |
+| Client                    | Sync `redis` for now; `redis.asyncio` later                       |
 
 ## App wiring
 
-| Capability                                | Flag / path                                   |
-| ----------------------------------------- | --------------------------------------------- |
-| Connection pool                           | `REDIS_ENABLED` + lifespan `init_redis`       |
-| Distributed auth/API rate limits          | `REDIS_RATE_LIMIT_ENABLED` + Lua limiter      |
-| Cache-aside (per-route TTL)               | automatic when Redis enabled                  |
-| JWT denylist on logout / protected routes | `SessionStore` fail-closed when Redis enabled |
+| Capability                                | Flag / path                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------- |
+| Connection pool                           | `REDIS_ENABLED` + lifespan `init_redis`                              |
+| Distributed auth/API rate limits          | `REDIS_RATE_LIMIT_ENABLED` + Lua limiter                             |
+| Cache-aside (per-route TTL)               | automatic when Redis enabled                                         |
+| JWT denylist on logout / protected routes | `SessionStore` — `papita:{env}:jwt:denylist:{digest}`; fail-closed   |
+| BFF cookie → token bindings               | `BffSessionStore` — `papita:{env}:bff:session:{id}` (PPT-049 / #124) |

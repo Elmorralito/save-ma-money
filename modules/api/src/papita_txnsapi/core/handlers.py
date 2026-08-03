@@ -21,6 +21,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from papita_txnsapi.config.settings import Settings
+from papita_txnsapi.core.bff_session import BffSessionStoreUnavailableError
 from papita_txnsapi.core.client_contract import (
     COMPAT_SUNSET_DATE,
     ERROR_INVALID_REQUEST,
@@ -81,8 +82,9 @@ def _with_error_code(headers: dict[str, str] | None, code: str | None) -> dict[s
 def register_exception_handlers(app: FastAPI) -> None:
     """Register global exception handlers on the FastAPI application.
 
-    Installs handlers for ``HTTPException``, ``RequestValidationError``, ``ValueError``,
-    and a catch-all ``Exception`` handler that logs stack traces before returning 500.
+    Installs handlers for ``BffSessionStoreUnavailableError`` (503), ``HTTPException``,
+    ``RequestValidationError``, ``ValueError``, and a catch-all ``Exception`` handler
+    that logs stack traces before returning 500.
 
     Args:
         app: FastAPI application to mutate in place.
@@ -90,6 +92,18 @@ def register_exception_handlers(app: FastAPI) -> None:
     Returns:
         None. Handlers are registered as side effects on ``app``.
     """
+
+    @app.exception_handler(BffSessionStoreUnavailableError)
+    async def bff_session_store_unavailable_handler(
+        _request: Request,
+        exc: BffSessionStoreUnavailableError,
+    ) -> JSONResponse:
+        """Map fail-closed BFF Redis failures to HTTP 503 (PPT-059)."""
+        logger.warning("BFF session store unavailable: %s", exc)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={"detail": "BFF session store unavailable"},
+        )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(_request: Request, exc: StarletteHTTPException) -> JSONResponse:

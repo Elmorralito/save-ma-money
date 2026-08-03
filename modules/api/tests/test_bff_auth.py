@@ -930,3 +930,71 @@ class TestBffSupabaseCookieSession:
         monkeypatch.setenv("AUTH_PROVIDER", "local")
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+
+class TestBffSessionFailClosedHttp:
+    """PPT-059: Redis-required BFF store surfaces HTTP 503 (no memory fallback)."""
+
+    def test_login_returns_503_when_redis_required_but_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        owner = make_user(email="bff-fc@example.com")
+        mock_users = MagicMock()
+        mock_users.verify_credentials.return_value = owner
+
+        with patch("papita_txnsapi.main.init_redis", return_value=None):
+            app = create_app()
+            app.state.redis = None
+            app.dependency_overrides[get_users_service] = lambda: mock_users
+            with TestClient(app) as client:
+                login = client.post(
+                    "/api/v1/bff/auth/login",
+                    json={"email": "bff-fc@example.com", "password": "password12"},
+                )
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        clear_memory_bff_sessions()
+
+        assert login.status_code == 503
+        assert "session store unavailable" in login.json()["detail"].lower()
+
+    def test_cookie_me_and_session_return_503_when_redis_required_but_missing(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        with patch("papita_txnsapi.main.init_redis", return_value=None):
+            app = create_app()
+            app.state.redis = None
+            with TestClient(app) as client:
+                client.cookies.set(BFF_SESSION_COOKIE, "opaque-session-id-abcdefghij")
+                me = client.get("/api/v1/auth/me")
+                session = client.get("/api/v1/bff/auth/session")
+                # Cookie mutation hits CSRF middleware before the route.
+                csrf_blocked = client.post("/api/v1/bff/auth/logout")
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        clear_memory_bff_sessions()
+
+        assert me.status_code == 503
+        assert "session store unavailable" in me.json()["detail"].lower()
+        assert session.status_code == 503
+        assert csrf_blocked.status_code == 503
