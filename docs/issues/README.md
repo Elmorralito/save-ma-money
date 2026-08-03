@@ -1,6 +1,6 @@
-# Issue briefs — PPT-031 / PPT-032 program
+# Issue briefs — PPT-031 / PPT-032 / PPT-046 program
 
-Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papita simplify + API MVP program.
+Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papita simplify + API MVP program, plus the web SPA epic index (PPT-046).
 
 **New GitHub issues:** use the chooser templates under [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — epic (`01-epic.md`), program issue (`02-program-issue.md`), child under epic (`03-child-issue.md`), bug (`04-bug-report.md`). Shape references: [#42](https://github.com/Elmorralito/save-ma-money/issues/42), [#52](https://github.com/Elmorralito/save-ma-money/issues/52), [#89](https://github.com/Elmorralito/save-ma-money/issues/89), [#93](https://github.com/Elmorralito/save-ma-money/issues/93), children of #42.
 
@@ -11,20 +11,22 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 | Doc                                                        | Role                                                   |
 | ---------------------------------------------------------- | ------------------------------------------------------ |
 | [`modules/api/README.md`](../../modules/api/README.md)     | API reference, setup, endpoint catalog                 |
+| [`modules/web/README.md`](../../modules/web/README.md)     | Web SPA setup (Node 22 + pnpm; no JS domain logic)     |
 | [`docs/design/ARCHITECTURE.md`](../design/ARCHITECTURE.md) | Design body (schema, mapping, auth Part VI, migration) |
 | [`docs/design/README.md`](../design/README.md)             | Design program index + gates                           |
 | [`environments/README.md`](../../environments/README.md)   | `PAPITA_ENV` / secrets layout                          |
 
 ## Table of contents
 
-| Part                                                    | Topic                                       | Issue                                                         | Status                         |
-| ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------- | ------------------------------ |
-| [I](#part-i--ppt-031-simplify-requirements-28)          | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28) | Closed                         |
-| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31) | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31) | Complete (G7 superseded)       |
-| [III](#part-iii--ppt-032-api-epic-42)                   | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42) | Open (children #43–#50 closed) |
-| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)        | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49) | Closed                         |
-| [V](#part-v--ppt-043-redis-integration-83)              | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) | Open (post-MVP)                |
-| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)    | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93) | Closed                         |
+| Part                                                    | Topic                                       | Issue                                                           | Status                         |
+| ------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------- | ------------------------------ |
+| [I](#part-i--ppt-031-simplify-requirements-28)          | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)   | Closed                         |
+| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31) | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)   | Complete (G7 superseded)       |
+| [III](#part-iii--ppt-032-api-epic-42)                   | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42)   | Open (children #43–#50 closed) |
+| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)        | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                         |
+| [V](#part-v--ppt-043-redis-integration-83)              | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                |
+| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)    | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                         |
+| [VII](#part-vii--ppt-046-web-spa-epic-112)              | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Open (post-MVP web)            |
 
 **Merged sources (removed):** `PPT-031-simplify-requirements.md`, `PPT-031-C-supabase-decision-brief.md`, `_gh_body_PPT-032-epic.md`, `_gh_body_PPT-039.md`, `PPT-039-supabase-auth-reissue.md`, `PPT-043-redis-integration-brief.md`, `PPT-045-uvicorn-process-packaging-brief.md` — content lives in this README only.
 
@@ -2007,3 +2009,56 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 - [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043 Redis
 - [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044 hardening
 - Epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42) PPT-032
+
+---
+
+## Part VII — PPT-046 web SPA epic (#112)
+
+> Post-MVP React SPA epic. Live body: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046).
+> Operator SSOT: [`modules/web/README.md`](../../modules/web/README.md) · agent ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+> Docs index hygiene for this epic: [#123](https://github.com/Elmorralito/save-ma-money/issues/123) (PPT-058).
+
+**Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **PPT-046** · **Step:** Post-MVP web client (after PPT-032 API MVP)
+
+### Summary
+
+Ship a **React + TypeScript SPA** under `modules/web/` that consumes the existing FastAPI surface (`papita_txnsapi` v1). The frontend must **not** reimplement domain/business logic in JavaScript — accounts, categories, transactions, movements, reports, and tenancy stay in `papita_txnsmodel`.
+
+**Locked decisions (cite epic; do not re-litigate):**
+
+- Deploy: Compose + nginx static hosting (`docker/web/`) — packaging owned by [#122](https://github.com/Elmorralito/save-ma-money/issues/122)
+- UI: Tailwind CSS + shadcn/ui
+- Auth: BFF + HttpOnly session cookies from day one (SPA never holds JWTs in JS storage) — [#115](https://github.com/Elmorralito/save-ma-money/issues/115)
+- Stack: Vite, React 19, TypeScript strict, TanStack Query v5, `openapi-typescript`, Vitest + Playwright
+
+### Where to start
+
+| Need                         | Where                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Setup (Node 22 + pnpm 9)     | [`modules/web/README.md`](../../modules/web/README.md)                                               |
+| Local run                    | `make api-all` then `make web-dev`                                                                   |
+| Epic + children              | [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                      |
+| OpenAPI typegen (strategy B) | PPT-065 / [#130](https://github.com/Elmorralito/save-ma-money/issues/130) — committed `openapi.json` |
+| Quality / a11y / lab CWV     | PPT-056 / [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                            |
+| Field RUM / Sentry           | **Deferred post-MVP** — lab Lighthouse/CWV only in #121; no production RUM in MVP                    |
+
+### Child-issue map (selected)
+
+| Step | PPT         | Issue                                                                                                                           | Topic                                    |
+| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 0    | PPT-047     | [#113](https://github.com/Elmorralito/save-ma-money/issues/113)                                                                 | Scaffold + pnpm + Web CI                 |
+| 0d   | PPT-058     | [#123](https://github.com/Elmorralito/save-ma-money/issues/123)                                                                 | Document modules/web in monorepo indexes |
+| 1a   | PPT-048     | [#114](https://github.com/Elmorralito/save-ma-money/issues/114)                                                                 | OpenAPI types + thin client              |
+| 1b   | PPT-049     | [#115](https://github.com/Elmorralito/save-ma-money/issues/115)                                                                 | BFF cookie auth                          |
+| 1c   | PPT-051     | [#116](https://github.com/Elmorralito/save-ma-money/issues/116)                                                                 | Design system + AppLayout                |
+| 2a–c | PPT-052…054 | [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119) | Feature screens                          |
+| 3    | PPT-056     | [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                                                                 | Vitest + Playwright + a11y + security    |
+| 4    | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             |
+
+Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT.
+
+### Out of scope (epic-level)
+
+- Reimplementing `papita_txnsmodel` services in TypeScript
+- Field RUM / Sentry / production error reporting (post-MVP)
+- Mobile native apps, public marketing SSR

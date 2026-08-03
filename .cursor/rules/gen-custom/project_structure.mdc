@@ -13,14 +13,17 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 
 ### Monorepo Organization
 
-Poetry workspace (`package-mode = false` at root) with active packages:
+Poetry workspace (`package-mode = false` at root) for Python packages, plus a pnpm workspace for the web SPA:
 
 | Tree path | Distribution name | Import root | Status |
 | --------- | ----------------- | ----------- | ------ |
 | `modules/model/` | `papita-transactions-model` | `papita_txnsmodel` | Active; published to PyPI / TestPyPI |
 | `modules/api/` | `papita-transactions-api` | `papita_txnsapi` | Active FastAPI MVP (PPT-032) |
+| `modules/web/` | `@papita/web` | (Vite/React app; `@/*` alias) | Active SPA (PPT-046 / #112); presentation only — **no JS domain logic** |
 
 **Database:** PostgreSQL only. Schema: `papita_transactions`.
+
+**Web toolchain:** Node 22 + pnpm 9 (`pnpm-workspace.yaml` at repo root). Separate from Poetry — `pnpm install` / `make web-dev`. Setup SSOT: `modules/web/README.md`.
 
 ### Model module layout
 
@@ -55,6 +58,19 @@ modules/api/
 ```
 
 **API layer rule:** routers validate auth, map schemas, and delegate to `papita_txnsmodel` services — no business logic in routers.
+
+### Web module layout
+
+```
+modules/web/
+├── src/                 # React app (pages, components, api/, forms/)
+├── openapi/             # committed openapi.json (typegen strategy B)
+├── e2e/                 # Playwright + seed helpers
+├── package.json         # @papita/web
+└── README.md            # Node/pnpm setup, BFF, quality
+```
+
+**Web layer rule:** UI + TanStack Query + BFF cookie session only. Do not reimplement `papita_txnsmodel` services in TypeScript. nginx Compose packaging is PPT-057 / #122.
 
 ### Import Paths
 
@@ -93,6 +109,7 @@ Canonical B0 API start: `make api-up` (uvicorn in-container). See `ARCHITECTURE.
 | ---- | ----- |
 | Human front door | Root `README.md` |
 | API reference | `modules/api/README.md` |
+| Web SPA | `modules/web/README.md` (epic PPT-046 / #112; issues index Part VII) |
 | Design program | `docs/design/` (`ARCHITECTURE.md`, `README.md`) |
 | Issue briefs | `docs/issues/README.md` (merged SSOT; no separate PPT-044/045 brief files) |
 | Agent ops | `.cursor/AGENTS.md` |

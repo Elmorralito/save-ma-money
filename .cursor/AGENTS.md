@@ -25,14 +25,15 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 
 ## What this repo is
 
-**save-ma-money** (also referred to as _save-ma-finances_ in README copy) is a Poetry monorepo for Papita financial transaction data: type-safe persistence, migrations, and a FastAPI REST surface.
+**save-ma-money** (also referred to as _save-ma-finances_ in README copy) is a Poetry + pnpm monorepo for Papita financial transaction data: type-safe persistence, migrations, a FastAPI REST surface, and a presentation-only React SPA.
 
 | Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer and shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25))                                                                                                                                                                                                                                                                |
-| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`)                                                                                                                                                                                                                                                                |
+| Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer, shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25)), and web client ([#112](https://github.com/Elmorralito/save-ma-money/issues/112))                                                                                                                                                                                 |
+| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**)                                                                                                                                                                                                  |
 | Database        | **PostgreSQL only** ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)). Do not add DuckDB URLs or dialect work.                                                                                                                                                                                                                                                                                        |
 | Auth direction  | **Supabase project owns user management + Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)): register/login via Supabase Auth; API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`). Compose must inject `SUPABASE_*`. See `docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49` and learning `supabase-auth-ownership`. |
+| Web epic        | PPT-046 / [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — index in [`docs/issues/README.md` Part VII](../docs/issues/README.md#part-vii--ppt-046-web-spa-epic-112); setup SSOT [`modules/web/README.md`](../modules/web/README.md)                                                                                                                                                                |
 
 ---
 
@@ -40,7 +41,8 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 
 ```
 save-ma-money/
-├── pyproject.toml              # workspace root (package-mode = false)
+├── pyproject.toml              # Poetry workspace root (package-mode = false)
+├── pnpm-workspace.yaml         # Node workspace → modules/web
 ├── modules/
 │   ├── model/                  # papita_txnsmodel — domain + Alembic
 │   │   ├── src/papita_txnsmodel/
@@ -51,26 +53,32 @@ save-ma-money/
 │   │   │   └── database/       # SQLDatabaseConnector, upsert helpers
 │   │   ├── alembic/            # migrations (alembic.ini in module root)
 │   │   └── tests/
-│   └── api/                    # papita_txnsapi — FastAPI MVP (PPT-032 epic)
-│       └── src/papita_txnsapi/
-│           ├── main.py         # create_app, lifespan, ASGI app
-│           ├── config/         # settings, environment, logger
-│           ├── core/           # security, redis, rate_limit, db_health, …
-│           ├── dependencies/   # auth, pagination, services, redis
-│           ├── routers/v1/     # health, auth, accounts, categories, txns, movements, reports, budgets
-│           ├── schemas/        # request/response, query_params, converters
-│           └── middleware/
+│   ├── api/                    # papita_txnsapi — FastAPI MVP (PPT-032 epic)
+│   │   └── src/papita_txnsapi/
+│   │       ├── main.py         # create_app, lifespan, ASGI app
+│   │       ├── config/         # settings, environment, logger
+│   │       ├── core/           # security, redis, rate_limit, db_health, …
+│   │       ├── dependencies/   # auth, pagination, services, redis
+│   │       ├── routers/v1/     # health, auth, accounts, categories, txns, movements, reports, budgets
+│   │       ├── schemas/        # request/response, query_params, converters
+│   │       └── middleware/
+│   └── web/                    # @papita/web — Vite + React SPA (PPT-046 / #112)
+│       ├── README.md           # Node 22 + pnpm setup SSOT
+│       ├── openapi/            # committed OpenAPI artifact (strategy B)
+│       └── src/                # presentation only — no domain logic
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
-├── bin/                        # alembic.sh, test.sh, smokes, utils.sh
+├── bin/                        # alembic.sh, test.sh, smokes, utils.sh, web_e2e_seed.*
 ├── docker/                     # database/, api/, redis/, docker-compose.yml
-├── docs/design/ · docs/issues/ # human design program (PPT-031)
+├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
 ├── .cursor/                    # adapters, gen-custom rules, skills
 ├── .agents/                    # symlinks to .cursor/ adapters (Codex)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata, publish)
+└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, publish)
 ```
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).
+
+**Web setup (pnpm ≠ Poetry):** Node **22** + pnpm **9** via root `pnpm-workspace.yaml` / `packageManager`. Install with `pnpm install` (not `poetry install`). Day-to-day: `make web-dev` / `web-lint` / `web-test` / `web-build`. Do **not** port `papita_txnsmodel` rules into TypeScript — UI + TanStack Query + BFF session only. SSOT: [`modules/web/README.md`](../modules/web/README.md). Field RUM / Sentry deferred post-MVP; lab Lighthouse/CWV only in PPT-056 / [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
 
 **Web OpenAPI types (PPT-065):** strategy **B** — committed `modules/web/openapi/openapi.json` + `openapi-typescript` → `modules/web/src/types/api.d.ts`. After API/model OpenAPI-affecting changes run `make web-openapi`. CI: `web-ci.yml` (`check-types`) + `openapi-contract.yml` (artifact vs offline `app.openapi()`; paths include API src + model `model/`/`access/`). Exporter normalizes `info.version`. See `modules/web/README.md`.
 
@@ -130,16 +138,20 @@ Always set `DATABASE_URL` to a PostgreSQL URL.
 
 ## Setup, test, and quality
 
-Python **3.12** recommended. Poetry **2.1.3** (matches CI).
+Python **3.12** recommended. Poetry **2.1.3** (matches CI). Web: Node **22** + pnpm **9** (separate toolchain; see above).
 
 ```bash
-# Install workspace (path deps: model + api)
+# Install Python workspace (path deps: model + api)
 poetry install --no-interaction
+
+# Install web workspace (modules/web) — does not replace Poetry
+pnpm install
 
 # Full local gate (mirrors CI quality-control)
 pre-commit run --all-files
 poetry run pytest
 /bin/bash ./bin/test.sh
+make web-lint && make web-test   # Node gate locally; web-ci.yml in Actions
 
 # Supply chain (poetry check, version metadata, pip-audit)
 /bin/bash .github/scripts/supply_chain_check.sh
@@ -150,7 +162,7 @@ poetry run pytest
 
 Coverage output: `docs/coverage.xml` from `--cov=modules/{model,api}/src` (Codecov-aligned). B0 CI uses `AUTH_PROVIDER=local` against Docker Postgres. **Supabase is Auth-only** (users/tokens) — validate with `make auth-smoke`; do not treat Supabase PG/pooler as an epic or PPT-040 gate. Pre-commit: [`.pre-commit-config.yaml`](../.pre-commit-config.yaml).
 
-**Note:** `poetry.lock` is gitignored — CI resolves deps via `poetry install` at run time.
+**Note:** `poetry.lock` is gitignored — CI resolves deps via `poetry install` at run time. Web `pnpm-lock.yaml` **is** committed.
 
 **Local pre-commit hooks (not CI):** `strata-validate` and `mcp-config-validate` run on `git commit`; staging `modules/web/**` also runs `web-eslint` / `web-prettier` / `web-tsc` / `web-vitest-related` (requires `pnpm install`). GitHub Actions skips those local hooks (`strata-check.yml` / `web-ci.yml` are the CI gates).
 
@@ -211,7 +223,8 @@ Use the right tier for the question:
 | Auth contract                | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                                                        |
 | API ↔ model mapping          | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                                                    |
 | Target REST contract         | [`modules/api/README.md`](../modules/api/README.md)                                                                                                                                                  |
-| Issue briefs                 | [`docs/issues/README.md`](../docs/issues/README.md) (merged SSOT; Parts I–VI)                                                                                                                        |
+| Issue briefs                 | [`docs/issues/README.md`](../docs/issues/README.md) (merged SSOT; Parts I–VII incl. PPT-046 web epic)                                                                                                |
+| Web SPA setup / no domain JS | [`modules/web/README.md`](../modules/web/README.md) · epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                                                           |
 | Post-MVP hardening / uvicorn | [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) · [Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
 | Human README                 | [`README.md`](../README.md)                                                                                                                                                                          |
 | CI workflows & scripts       | [`.github/CI.md`](../.github/CI.md)                                                                                                                                                                  |

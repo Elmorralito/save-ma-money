@@ -43,9 +43,19 @@ Capture with `/strata:capture` only for work in flight.
 _Nothing open in strata._ Capture next epic children from
 [#112](https://github.com/Elmorralito/save-ma-money/issues/112) when starting work.
 
+### Docs hygiene (PPT-058 / #123)
+
+Monorepo indexes now point at `modules/web` + PPT-046: root `README.md` (package
+table, architecture mermaid/layer, quick-start §4), `docs/issues/README.md`
+Part VII, `.cursor/AGENTS.md` + thin `CLAUDE.md`,
+`.cursor/rules/gen-custom/project_structure.mdc`. RUM/Sentry marked deferred in
+`modules/web/README.md` (lab Lighthouse stays #121). Local patches ready — PR
+not opened until asked.
+
 ### Next action
 
 - Open PR for PPT-056 (#121); close after `web-ci` + agreed `web-e2e` gate green
+- Open/land PR for PPT-058 (#123) docs indexes (local patches ready)
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
 - PPT-068 (#139); PPT-057 (#122) CSP/nginx
 - Do not re-add closed GH issues into `.strata/issues/`
