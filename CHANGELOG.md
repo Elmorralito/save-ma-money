@@ -16,8 +16,6 @@
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#127](https://github.com/Elmorralito/save-ma-money/issues/127)**_] :: **feat/PPT-062: [web] Minimal session user chip and logout in app shell** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:06+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary:
-
 - [ ] [_**[#123](https://github.com/Elmorralito/save-ma-money/issues/123)**_] :: **docs/PPT-058: [web] Document modules/web in monorepo indexes** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:00+00:00</sub>_ :weary:
 
 - [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
@@ -25,6 +23,262 @@
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#121](https://github.com/Elmorralito/save-ma-money/issues/121)**_] :: **test/PPT-056: [web] Vitest Playwright a11y and security hardening** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:53+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#124](https://github.com/Elmorralito/save-ma-money/issues/124)**_] :: **ops/PPT-059: [web] BFF session durability vs Redis PPT-043** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:01+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 18:13:42+00:00</sub>_
+
+  > **Closed by** [_**#153**](https://github.com/Elmorralito/save-ma-money/pull/153): **ops/PPT-059: [api] Lock BFF session durability contract vs Redis**
+
+  > **Branch:** ops/PPT-059 · **Base:** main · **1 commit** · **35 files**
+
+  >
+
+  > **Suggested title:** ops/PPT-059: [api] Lock BFF session durability contract vs Redis
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Locks **PPT-059 / #124** BFF cookie-session durability relative to Redis (PPT-043): when REDIS_ENABLED=true, BffSessionStore is **fail-closed** (no silent process-memory fallback) and surfaces HTTP **503** instead of sticky/lost SPA logins across workers. Documents the operator matrix (B0 memory OK vs staging/multi-worker Redis) and that BFF keys are distinct from the JWT denylist. Also drops the unused .strata/issues/archive/ cold store so closed work stays on GitHub / git history.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Completing remaining PPT-043 rate-limit/cache work beyond existing foundation
+
+  > - Separate BFF microservice or browser JWT storage
+
+  > - nginx / staging Compose packaging (PPT-057 / #122) — handoff notes only
+
+  > - PPT-054 carry-forward UI (cash-flow/trends/export/dashboard)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Fail-closed BFF store mirrors denylist posture when Redis is required
+
+  > - Clear bff:session vs jwt:denylist key/docs distinction
+
+  > - make auth-smoke documented as Bearer-only (does not prove BFF durability)
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **API**
+
+  >
+
+  > - BffSessionStore.fail_closed wired from REDIS_ENABLED; Redis errors/missing client raise BffSessionStoreUnavailableError
+
+  > - Map unavailable store → **503** via exception handler, CSRF middleware, and get_current_owner
+
+  > - GET /bff/auth/session no longer treats 503 as unauthenticated (propagates for SPA retry)
+
+  >
+
+  > **Docs / ops / env**
+
+  >
+
+  > - Durability matrix in modules/web/README.md + modules/api/README.md (Workers/Redis)
+
+  > - Ops checklist + design README Ops row for BFF fail-closed
+
+  > - environments/{local,staging,production}/.env.example comments (names only; optional BFF_SESSION_MAX_AGE_SECONDS)
+
+  > - AGENTS note for PPT-059
+
+  >
+
+  > **Strata / CI**
+
+  >
+
+  > - Remove .strata/issues/archive/ and strata_check requirement for it
+
+  > - ACTIVE tracks PPT-059 only; closed issues deleted per new close rule
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - Unit coverage for fail-closed RedisError paths and no memory hit on Redis miss
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (35 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > .github/CI.md | 2 +-
+
+  > .github/scripts/strata_check.sh | 1 -
+
+  > .strata/MANIFEST.md | 17 +++--
+
+  > .strata/issues/… (delete closed items + archive/) | …
+
+  > .strata/issues/20260803-05-ppt059-….md | 22 ++++++
+
+  > .strata/issues/ACTIVE.md / OPEN.md / README.md | …
+
+  > .strata/memory/MEMORY.md / project_state.md | …
+
+  > docs/design/README.md | 16 +++--
+
+  > docs/ops/redis-deploy-checklist.md | 34 ++++++----
+
+  > environments/{local,staging,production}/.env.example | …
+
+  > modules/api/README.md | 35 +++++++---
+
+  > modules/api/src/papita_txnsapi/core/bff_session.py | 79 ++++++++++++++++++----
+
+  > modules/api/src/papita_txnsapi/core/handlers.py | 18 ++++-
+
+  > modules/api/src/papita_txnsapi/core/redis.py | 2 +
+
+  > modules/api/src/papita_txnsapi/dependencies/auth.py | 20 ++++--
+
+  > modules/api/src/papita_txnsapi/dependencies/bff_session.py | 10 ++-
+
+  > modules/api/src/papita_txnsapi/middleware/bff_csrf.py | 12 +++-
+
+  > modules/api/src/papita_txnsapi/routers/v1/bff_auth.py | 4 +-
+
+  > modules/api/tests/test_bff_session_store.py | 53 ++++++++++++---
+
+  > modules/web/README.md | 21 +++++-
+
+  > 35 files changed, 313 insertions(+), 291 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 66de473 ops(api): fail-closed BFF sessions when Redis is required
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - poetry run pytest modules/api/tests/test_bff_session_store.py modules/api/tests/test_bff_auth.py modules/api/tests/test_auth_denylist.py -q — **41 passed** (this session)
+
+  > - Pre-commit on commit (prettier, black, flake8, pylint, mypy, interrogate, strata validate, markdownlint, etc.) — **passed**
+
+  > - GitHub Actions on this PR — **not observed yet**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] With Compose REDIS_ENABLED=true, BFF login + GET /bff/auth/session succeeds (session_backend redis)
+
+  > - [ ] Simulate Redis down while REDIS_ENABLED=true → BFF login/session/CSRF mutations return **503** (not silent memory session)
+
+  > - [ ] REDIS_ENABLED=false single-worker local still allows memory BFF sessions (unit path / solo DX)
+
+  > - [ ] make auth-smoke Bearer path still works (orthogonal to BFF durability)
+
+  > - [ ] Confirm docs matrix matches intended staging posture for #122
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - **Behavior change:** SPA cookie auth previously could fall back to process memory when Redis errored; now returns **503**. Clients/UI should retry or show a temporary outage, not treat it as logout.
+
+  > > - Staging/prod must keep REDIS_ENABLED=true + reachable REDIS_URL for BFF cookies (documented; Compose B0 already defaults Redis on).
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Memory BFF sessions remain valid only for REDIS_ENABLED=false + single worker (tests / solo local DX).
+
+  > > - PPT-057 / #122 still owns nginx/staging Compose packaging that must keep Redis listed.
+
+  > > - Fail-open memory fallback remains available only when fail_closed=false (Redis disabled).
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#124](https://github.com/Elmorralito/save-ma-money/issues/124) (PPT-059)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Soft-align [#83](https://github.com/Elmorralito/save-ma-money/issues/83) (PPT-043 Redis foundation)
+
+  > - Downstream [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057)
+
+  > - Docs: modules/api/README.md § Workers/Redis · modules/web/README.md § BFF session durability · docs/ops/redis-deploy-checklist.md
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#126](https://github.com/Elmorralito/save-ma-money/issues/126)**_] :: **test/PPT-061: [web] E2E seed fixtures for Playwright critical path** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:04+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 17:40:24+00:00</sub>_
 
