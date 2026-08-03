@@ -17,6 +17,7 @@ created: 2026-08-03
 - [x] `BffSessionStore.fail_closed` when `REDIS_ENABLED`; CSRF/auth/handlers → 503
 - [x] Unit tests (fail-closed RedisError + no memory on miss)
 - [x] #122 handoff noted (no nginx work here)
-- [ ] PR + close GitHub #124
+- [x] PR [#153](https://github.com/Elmorralito/save-ma-money/pull/153) opened
+- [ ] Merge + close GitHub #124; delete this strata item
 
-**Resolution:** (open)
+**Resolution:** (open — PR pending merge)

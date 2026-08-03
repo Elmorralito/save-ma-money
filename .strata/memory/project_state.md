@@ -12,18 +12,18 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - **PPT-055 / #120:** forms + UX standards — closed/merged; strata item deleted.
 - **Strata cleanup:** no `issues/archive/`; closed work → GitHub / git only.
-- **PPT-059 / #124:** BFF durability docs + fail-closed runtime shipped; strata
-  `20260803-05`; PR + GitHub close still open.
+- **PPT-059 / #124:** BFF durability docs + fail-closed runtime shipped; PR
+  [#153](https://github.com/Elmorralito/save-ma-money/pull/153) opened (`66de473`).
 - **PPT-054 / #119:** GH closed by #148 (spending). Carry-forward below:
   CF/trends/export/dashboard.
 
 ### In progress (ACTIVE)
 
-- **PPT-059 / #124** (`20260803-05`): implementation done; PR pending
+- **PPT-059 / #124** (`20260803-05`): PR #153 open — merge then delete strata item
 
 ### Next action
 
-- Open PR / close GitHub for #124
+- Merge PR #153 / close #124; delete strata `20260803-05`
 - PPT-054 carry-forward: cash-flow + trends tabs → export + 501 UX → dashboard compose
 - Then PPT-056 (#121) E2E; PPT-068 (#139); PPT-057 (#122)
 
