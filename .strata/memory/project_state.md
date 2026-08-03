@@ -14,10 +14,10 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
   assumptions; API Auth cross-link; `formatApiError` confirm-email remap; Login/
   Register 429 page tests. Strata archived `20260803-03`. Password reset deferred;
   email-confirm product UX remains PPT-068 (#139).
-- **PPT-054 / #119 (in progress):** Dashboard + reports UI — PR1 spending slice in
-  `modules/web`: `lib/reportWindow.ts` (mirrors API window delta), `api/reports.ts`,
-  `ReportFilters` + `SpendingReportView`, `ReportsPage` (stub replaced), error-code
-  copy for `report_window_too_large` / `report_account_not_found`. Vitest + lint green.
+- **PPT-054 / #119 / PR #148:** Dashboard + reports UI merged on `main`
+- **PPT-053 / #118 post-merge audit:** AC→artifact map confirmed (shipped `#147` /
+  `2d3e309`); `make web-lint|test|build` green; B0 ledger via BFF+Vite proxy;
+  `modules/web/README.md` routes/out-of-scope no longer call dashboard/reports stubs
 - **PPT-053 / #118 / PR #147:** Transactions + movements UI — typed client,
   Idempotency-Key, bulk cap, movements execute/cancel, Retry-After on 429; strata
   archived `20260803-01` + learning `web-ledger-ui-no-domain.md`
@@ -29,10 +29,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Next action
 
-- Finish #119: cash-flow + trends tabs → export download + 501 UX → dashboard compose
-  (balances from `listAccounts`; recent activity via `GET /transactions` from #118)
-- Then PPT-056 (#121) E2E (use PPT-060 confirmed-user assumptions); PPT-055 forms
-  (#120); PPT-068 (#139) check-email/resend; PPT-069 (#140)
+- PPT-056 (#121) E2E (use PPT-060 confirmed-user assumptions; incl. ledger + report
+  flows); PPT-055 forms (#120); PPT-068 (#139) check-email/resend; PPT-069 (#140)
 
 ### Uncommitted / staging notes
 

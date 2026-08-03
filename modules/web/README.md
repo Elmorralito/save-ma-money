@@ -141,12 +141,12 @@ MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchan
 
 ## Design system + app shell (PPT-051 / #116)
 
-| Piece      | Location                  | Notes                                                                                                                                  |
-| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                  |
-| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                 |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                        |
-| Routes     | `src/App.tsx`             | Lazy routes: accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053); stubs for dashboard/reports + login/register |
+| Piece      | Location                  | Notes                                                                                                                                        |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                        |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                       |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                              |
+| Routes     | `src/App.tsx`             | Lazy routes: auth (login/register), accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053), dashboard/reports (PPT-054) |
 
 Add a component:
 
@@ -193,4 +193,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Transaction split v4 UI, Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Dashboard/reports UI shipped as PPT-054. Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
