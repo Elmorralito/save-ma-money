@@ -1,7 +1,13 @@
 export {
   bulkMaxTransactions,
+  DEFAULT_BREAKING_CHANGES_ID,
+  evaluateBreakingChangesGuard,
+  observedBreakingChangesId,
   reportWindowMaxDays,
   reportsForeignAccountStatus,
+  resolveExpectedBreakingChangesId,
+  type BreakingChangesGuardResult,
+  type BreakingChangesGuardStatus,
 } from "@/api/contract";
 export { buildApiUrl, resolveApiBaseUrl } from "@/api/config";
 export { isClientHttpError, isPapitaApiError, PapitaApiError } from "@/api/errors";

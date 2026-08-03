@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AuthRedirectBridge } from "@/auth/AuthRedirectBridge";
 import { RequireAuth } from "@/auth/RequireAuth";
+import { BreakingChangesGuard } from "@/components/contract/BreakingChangesGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 
@@ -54,6 +55,7 @@ function RouteFallback() {
 function App() {
   return (
     <BrowserRouter>
+      <BreakingChangesGuard />
       <AuthRedirectBridge />
       <Suspense fallback={<RouteFallback />}>
         <Routes>

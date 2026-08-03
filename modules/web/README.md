@@ -80,16 +80,32 @@ Thin schema aliases live in `src/types/domain.ts`.
 
 Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business logic in TypeScript — typed HTTP + Query wiring only.
 
-| Piece            | Location                                       | Notes                                                                        |
-| ---------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| `apiFetch`       | `src/api/http.ts`                              | `credentials: 'include'`; `AbortSignal`; no `Authorization` header           |
-| Base URL         | `src/api/config.ts`                            | Default same-origin (`""`) → Vite `/api` proxy; optional `VITE_API_BASE_URL` |
-| Errors           | `src/api/errors.ts`                            | `PapitaApiError` maps `X-Papita-Error-Code` + discovery headers              |
-| Contract helpers | `src/api/contract.ts`                          | `bulkMaxTransactions` / `reportWindowMaxDays` from body (prefer) or headers  |
-| Probes           | `src/api/meta.ts`, `health.ts`                 | Unauthenticated health + `GET /api/v1/meta/client-contract`                  |
-| Query            | `queryKeys.ts`, `queries.ts`, `queryClient.ts` | `queryOptions()`; `staleTime` 60s; **no 4xx retries**                        |
+| Piece            | Location                                       | Notes                                                                                                       |
+| ---------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `apiFetch`       | `src/api/http.ts`                              | `credentials: 'include'`; `AbortSignal`; no `Authorization` header                                          |
+| Base URL         | `src/api/config.ts`                            | Default same-origin (`""`) → Vite `/api` proxy; optional `VITE_API_BASE_URL`                                |
+| Errors           | `src/api/errors.ts`                            | `PapitaApiError` maps `X-Papita-Error-Code` + discovery headers                                             |
+| Contract helpers | `src/api/contract.ts`                          | `bulkMaxTransactions` / `reportWindowMaxDays` from body (prefer) or headers; breaking-changes guard helpers |
+| Probes           | `src/api/meta.ts`, `health.ts`                 | Unauthenticated health + `GET /api/v1/meta/client-contract`                                                 |
+| Query            | `queryKeys.ts`, `queries.ts`, `queryClient.ts` | `queryOptions()`; `staleTime` 60s; **no 4xx retries**                                                       |
+| Breaking guard   | `BreakingChangesGuard` (app root)              | PPT-064 / #129 — see § Breaking-changes guard below                                                         |
 
 **Credentials policy:** always send cookies (`credentials: 'include'`) for BFF HttpOnly sessions (PPT-049 / #115). Do **not** store JWTs in `localStorage` / JS-readable storage or attach Bearer tokens from the SPA (PDF Axios interceptor pattern is superseded).
+
+### Breaking-changes guard (PPT-064 / #129)
+
+The SPA expects a stable PPT-044 discovery id (default `ppt-044`) via public env `VITE_PAPITA_BREAKING_CHANGES_ID`. On bootstrap, `BreakingChangesGuard` loads `GET /api/v1/meta/client-contract` (shared `clientContractQueryOptions`) and compares:
+
+1. Body `breaking_changes` (preferred), else
+2. Response header `X-Papita-Breaking-Changes` (via shared helpers — **do not** parse that header in feature pages).
+
+| Result       | Behavior                                                                                           |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| **match**    | Silent                                                                                             |
+| **mismatch** | Non-blocking banner for all routes; `console.error` once in DEV, `console.warn` once in production |
+| **unknown**  | No banner (probe missing / offline) — avoids false alarms                                          |
+
+Helpers: `evaluateBreakingChangesGuard`, `resolveExpectedBreakingChangesId`, `observedBreakingChangesId` in `src/api/contract.ts`. Feature code must use these instead of ad-hoc header reads.
 
 ## BFF cookie auth (PPT-049 / #115)
 
