@@ -22,6 +22,10 @@ const AccountsPage = lazy(async () => {
   const mod = await import("@/pages/AccountsPage");
   return { default: mod.AccountsPage };
 });
+const AccountDetailPage = lazy(async () => {
+  const mod = await import("@/pages/AccountDetailPage");
+  return { default: mod.AccountDetailPage };
+});
 const CategoriesPage = lazy(async () => {
   const mod = await import("@/pages/CategoriesPage");
   return { default: mod.CategoriesPage };
@@ -68,6 +72,7 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
+            <Route path="/accounts/:accountId" element={<AccountDetailPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/movements" element={<MovementsPage />} />

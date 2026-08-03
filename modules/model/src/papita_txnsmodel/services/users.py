@@ -238,6 +238,21 @@ class UsersService(BaseService):
         )
         return self.create(obj=user, owner=None)
 
+    def get_by_email(self, email: str, *, require_active: bool = True) -> UsersDTO | None:
+        """Resolve a tenant user by email (local or Supabase-linked rows).
+
+        Args:
+            email: Login email (normalized to lowercase).
+            require_active: When True, soft-deleted / inactive rows are ignored.
+
+        Returns:
+            Matching ``UsersDTO`` or ``None``.
+        """
+        normalized = (email or "").strip().lower()
+        if not normalized:
+            return None
+        return self._lookup_by_identifier(normalized, require_active=require_active)
+
     def get_owner(self, owner_id: uuid.UUID | str) -> UsersDTO | None:
         """Resolve an owner id to a UsersDTO for use as owner= in other services.
 

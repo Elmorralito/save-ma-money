@@ -252,7 +252,7 @@ class TestSupabaseProtectedRoute:
 class TestSupabaseAuthRoutes:
     """Register/login delegate to Supabase Auth client helpers."""
 
-    def test_register_uses_supabase_sign_up(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_register_uses_supabase_register_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
         subject = uuid.uuid4()
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
@@ -281,7 +281,7 @@ class TestSupabaseAuthRoutes:
         auth_result.user_id = subject
         auth_result.email = "john@example.local"
 
-        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_up", return_value=auth_result) as mock_sign_up:
+        with patch("papita_txnsapi.routers.v1.auth.supabase_register_user", return_value=auth_result) as mock_sign_up:
             client = TestClient(app)
             response = client.post(
                 "/api/v1/auth/register",
@@ -322,7 +322,7 @@ class TestSupabaseAuthRoutes:
         auth_result.email = ""
 
         with (
-            patch("papita_txnsapi.routers.v1.auth.supabase_sign_up", return_value=auth_result),
+            patch("papita_txnsapi.routers.v1.auth.supabase_register_user", return_value=auth_result),
             patch("papita_txnsapi.routers.v1.auth.supabase_admin_delete_user") as mock_delete,
         ):
             client = TestClient(app)
@@ -368,7 +368,7 @@ class TestSupabaseAuthRoutes:
         auth_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.auth.supabase_sign_in", return_value=auth_result),
+            patch("papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result),
             patch("papita_txnsapi.routers.v1.auth.supabase_auth_user_created_recently", return_value=True),
             patch("papita_txnsapi.routers.v1.auth.supabase_admin_delete_user") as mock_delete,
         ):
@@ -420,7 +420,7 @@ class TestSupabaseAuthRoutes:
         auth_result.refresh_token = "supabase-refresh-token"
         auth_result.expires_in = 3600
 
-        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_in", return_value=auth_result):
+        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
             client = TestClient(app)
             response = client.post(
                 "/api/v1/auth/login",

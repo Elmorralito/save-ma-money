@@ -162,8 +162,8 @@ Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](.
 Start the API (PPT-045) — uvicorn runs **inside Docker**:
 
 ```bash
-make api-up      # Compose api + Postgres/Redis/migrate
-# or: make stack-up
+make api-all     # Full stack (Postgres/Redis/migrate/api) + wait until healthy
+# or: make api-up / make stack-up
 ```
 
 See [`modules/api/README.md`](./modules/api/README.md) for env setup, auth flows, v3 data shapes, and the full endpoint catalog.

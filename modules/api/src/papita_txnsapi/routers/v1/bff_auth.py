@@ -34,9 +34,11 @@ from papita_txnsapi.core.supabase_auth import (
     SupabaseSignUpProfile,
     classify_supabase_auth_error,
     supabase_refresh_session,
-    supabase_sign_in,
     supabase_sign_out,
-    supabase_sign_up,
+)
+from papita_txnsapi.core.supabase_auth_local import (
+    supabase_register_user,
+    supabase_sign_in_with_optional_auto_confirm,
 )
 from papita_txnsapi.dependencies.auth import get_auth_manager, get_current_owner, oauth2_scheme
 from papita_txnsapi.dependencies.bff_session import get_bff_session_store
@@ -142,11 +144,15 @@ def _issue_supabase_tokens(
     _require_supabase_auth_settings(settings)
     auth_result = None
     try:
-        auth_result = supabase_sign_in(
+        existing = users_service.get_by_email(email)
+        auth_result = supabase_sign_in_with_optional_auto_confirm(
             supabase_url=settings.SUPABASE_URL or "",
             anon_key=settings.SUPABASE_ANON_KEY or "",
             email=email,
             password=password,
+            service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
+            auth_user_id=existing.id if existing is not None else None,
+            auto_confirm=settings.should_auto_confirm_email(),
         )
         user = users_service.ensure_from_auth_subject(
             subject=auth_result.user_id,
@@ -161,7 +167,7 @@ def _issue_supabase_tokens(
         return token.access_token, token.refresh_token, token.expires_in, user
     except (AuthApiError, AuthError) as exc:
         http_status, detail = classify_supabase_auth_error(exc, fallback="login failed")
-        if http_status == 401:
+        if http_status == 401 and detail != "Email not confirmed":
             detail = "Incorrect username or password"
         raise HTTPException(
             status_code=http_status if http_status in {401, 429} else status.HTTP_401_UNAUTHORIZED,
@@ -291,7 +297,7 @@ def bff_register(
         _require_supabase_auth_settings(settings)
         auth_result = None
         try:
-            auth_result = supabase_sign_up(
+            auth_result = supabase_register_user(
                 supabase_url=settings.SUPABASE_URL or "",
                 anon_key=settings.SUPABASE_ANON_KEY or "",
                 email=body.email,
@@ -302,6 +308,8 @@ def bff_register(
                     phone=body.phone,
                     provider=body.provider_type,
                 ),
+                service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
+                prefer_admin_create=settings.should_auto_confirm_email(),
             )
             user = users_service.ensure_from_auth_subject(
                 subject=auth_result.user_id,

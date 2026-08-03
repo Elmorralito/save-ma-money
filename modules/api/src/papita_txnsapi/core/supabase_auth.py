@@ -195,7 +195,9 @@ def classify_supabase_auth_error(exc: Exception, *, fallback: str) -> tuple[int,
     if any(hint in lower for hint in _CONFLICT_HINTS) or code in {"email_exists", "user_already_exists"}:
         return 409, "Email already registered"
     if auth_status == 429 or code == "over_email_send_rate_limit":
-        return 429, "Too many authentication attempts. Try again later."
+        return 429, "Email rate limit exceeded. Wait a few minutes, or use local Admin register."
+    if code == "email_not_confirmed" or "email not confirmed" in lower:
+        return 401, "Email not confirmed"
     if auth_status in {401, 403} or code in {"invalid_credentials", "invalid_grant"}:
         return 401, "Incorrect username or password"
     # Do not pass through raw Auth/provider text (may leak internals).
@@ -203,6 +205,99 @@ def classify_supabase_auth_error(exc: Exception, *, fallback: str) -> tuple[int,
         mapped_status = int(auth_status) if int(auth_status) != 422 else 400
         return mapped_status, "Authentication request failed"
     return 502, fallback
+
+
+def is_email_not_confirmed_error(exc: Exception) -> bool:
+    """Return whether ``exc`` indicates the Auth user email is unconfirmed."""
+    code = str(getattr(exc, "code", "") or "").lower()
+    message = str(getattr(exc, "message", None) or exc or "").lower()
+    return code == "email_not_confirmed" or "email not confirmed" in message
+
+
+def is_invalid_credentials_error(exc: Exception) -> bool:
+    """Return whether ``exc`` is a Supabase invalid-credentials Auth failure."""
+    if is_email_not_confirmed_error(exc):
+        return True
+    code = str(getattr(exc, "code", "") or "").lower()
+    status = getattr(exc, "status", None)
+    message = str(getattr(exc, "message", None) or exc or "").lower()
+    if code in {"invalid_credentials", "invalid_grant"}:
+        return True
+    return status in {401, 403} and "invalid" in message
+
+
+def supabase_admin_confirm_email(
+    *,
+    supabase_url: str,
+    service_role_key: str,
+    user_id: uuid.UUID | str,
+    client: Client | None = None,
+) -> None:
+    """Mark an Auth user's email confirmed via the Admin API.
+
+    Used for local DX when Supabase "Confirm email" is enabled and signup does
+    not issue a session. Requires the service-role key (never expose to browsers).
+
+    Args:
+        supabase_url: Project URL.
+        service_role_key: Service role key.
+        user_id: Auth subject to confirm.
+        client: Optional pre-built admin client (tests).
+
+    Raises:
+        ValueError: Missing service role key or empty ``user_id``.
+        AuthApiError: Admin update rejected by GoTrue.
+        AuthError: Non-API Auth failure from the SDK.
+    """
+    if not service_role_key or not str(service_role_key).strip():
+        raise ValueError("SUPABASE_SERVICE_ROLE_KEY is required to confirm Auth emails")
+    subject = str(user_id).strip()
+    if not subject:
+        raise ValueError("user_id is required")
+    admin_client = client or create_supabase_admin_client(
+        supabase_url=supabase_url, service_role_key=service_role_key.strip()
+    )
+    admin_client.auth.admin.update_user_by_id(subject, {"email_confirm": True})
+    logger.info("Confirmed Supabase Auth email user_id=%s (auto-confirm)", subject)
+
+
+def maybe_auto_confirm_auth_email(
+    *,
+    supabase_url: str,
+    service_role_key: str | None,
+    user_id: uuid.UUID | str,
+    enabled: bool,
+) -> bool:
+    """Best-effort Admin email confirm when ``enabled`` and a service role exist.
+
+    Args:
+        supabase_url: Project URL.
+        service_role_key: Service role key (or ``None`` / empty to skip).
+        user_id: Auth subject.
+        enabled: Gate from settings (``should_auto_confirm_email``).
+
+    Returns:
+        ``True`` when confirm succeeded; ``False`` when skipped or failed.
+    """
+    if not enabled:
+        return False
+    if not service_role_key or not str(service_role_key).strip():
+        logger.warning(
+            "Auth user %s has no session (email confirmation likely required) but "
+            "SUPABASE_SERVICE_ROLE_KEY is unset — cannot auto-confirm",
+            user_id,
+        )
+        return False
+    try:
+        supabase_admin_confirm_email(
+            supabase_url=supabase_url,
+            service_role_key=service_role_key,
+            user_id=user_id,
+        )
+        return True
+    except (AuthApiError, AuthError, ValueError) as exc:
+        logger.warning("Auto-confirm Auth email failed for user_id=%s: %s", user_id, exc)
+        return False
 
 
 def supabase_admin_delete_user(
@@ -708,6 +803,10 @@ __all__ = [
     "clear_supabase_client_cache",
     "create_supabase_admin_client",
     "create_supabase_auth_client",
+    "is_email_not_confirmed_error",
+    "is_invalid_credentials_error",
+    "maybe_auto_confirm_auth_email",
+    "supabase_admin_confirm_email",
     "supabase_admin_delete_user",
     "supabase_auth_user_created_recently",
     "supabase_establish_session",

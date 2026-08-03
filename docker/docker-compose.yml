@@ -2,7 +2,7 @@
 # Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API (B0)
 #
 #   cp environments/local/.env.example environments/local/.env
-#   make api-up    # or: make stack-up
+#   make api-all   # full stack + health wait (or: make api-up / make stack-up)
 #   # uvicorn runs inside the api image (Dockerfile CMD) — not on the host
 #
 # API: http://localhost:8000/api/docs
