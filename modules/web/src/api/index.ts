@@ -76,8 +76,10 @@ export {
   healthQueryOptions,
   movementDetailQueryOptions,
   movementsListQueryOptions,
+  spendingReportQueryOptions,
   transactionDetailQueryOptions,
   transactionsListQueryOptions,
 } from "@/api/queries";
 export { createAppQueryClient } from "@/api/queryClient";
 export { queryKeys } from "@/api/queryKeys";
+export { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";

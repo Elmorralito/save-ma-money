@@ -1,10 +1,11 @@
-# Active issues — save-ma-money
+# Active
 
 Everything `status: in-progress`. Loaded at `/strata:load`.
 
 <!-- GENERATED at /strata:save from issue frontmatter — do not hand-edit; edit item files instead -->
+<!-- Hand-refreshed 2026-08-03 for PPT-054 pairing (full regenerate via /strata:save). -->
 
-| Id          | Type    | Sev  | Area        | What                                                     |
-| ----------- | ------- | ---- | ----------- | -------------------------------------------------------- |
-| 20260730-01 | feature | high | modules/web | PPT-052 [#117] accounts/categories UI + local auth DX    |
-| 20260713-01 | feature | high | modules/api | PPT-038 [#48] tenant-scoped `/reports/*` on feat/PPT-038 |
+| Id          | Type    | Sev  | Area        | What                                                                                         |
+| ----------- | ------- | ---- | ----------- | -------------------------------------------------------------------------------------------- |
+| 20260803-02 | feature | high | modules/web | PPT-054 [#119] dashboard + reports UI (spending slice done; CF/trends/export/dashboard open) |
+| 20260713-01 | feature | high | modules/api | PPT-038 [#48] tenant-scoped `/reports/*` on feat/PPT-038                                     |

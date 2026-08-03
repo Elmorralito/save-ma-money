@@ -51,4 +51,9 @@ export const queryKeys = {
     details: () => ["papita", "movements", "detail"] as const,
     detail: (movementId: string) => ["papita", "movements", "detail", movementId] as const,
   },
+  reports: {
+    all: ["papita", "reports"] as const,
+    spending: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "reports", "spending", filters] as const,
+  },
 } as const;

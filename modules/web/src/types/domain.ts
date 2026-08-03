@@ -43,6 +43,12 @@ export type MovementResponse = ApiSchemas["MovementResponse"];
 export type MovementExecuteResponse = ApiSchemas["MovementExecuteResponse"];
 export type PaginatedMovements = ApiSchemas["PaginatedResponse_MovementResponse_"];
 
+export type ReportPeriod = ApiSchemas["ReportPeriod"];
+export type SpendingBreakdownItem = ApiSchemas["SpendingBreakdownItem"];
+export type SpendingReportResponse = ApiSchemas["SpendingReportResponse"];
+export type CashFlowReportResponse = ApiSchemas["CashFlowReportResponse"];
+export type TrendsReportResponse = ApiSchemas["TrendsReportResponse"];
+
 /**
  * Shape of ``GET /api/v1/meta/client-contract``.
  *

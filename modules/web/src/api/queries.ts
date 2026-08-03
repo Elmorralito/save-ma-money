@@ -6,6 +6,7 @@ import { getHealth, getHealthLive } from "@/api/health";
 import { getClientContract } from "@/api/meta";
 import { getMovement, listMovements, type ListMovementsParams } from "@/api/movements";
 import { queryKeys } from "@/api/queryKeys";
+import { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";
 import { getTransaction, listTransactions, type ListTransactionsParams } from "@/api/transactions";
 
 /** Shared query definition for PPT-044 client-contract discovery. */
@@ -121,6 +122,17 @@ function movementsListFilters(
   };
 }
 
+function spendingReportFilters(
+  params: Omit<SpendingReportParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    start_date: params.start_date,
+    end_date: params.end_date,
+    group_by: params.group_by,
+    account_id: params.account_id ?? null,
+  };
+}
+
 /** Shared query definition for paginated transactions list. */
 export function transactionsListQueryOptions(params: Omit<ListTransactionsParams, "signal"> = {}) {
   return queryOptions({
@@ -152,5 +164,15 @@ export function movementDetailQueryOptions(movementId: string) {
     queryKey: queryKeys.movements.detail(movementId),
     queryFn: ({ signal }) => getMovement(movementId, signal),
     enabled: movementId.length > 0,
+  });
+}
+
+/** Shared query definition for ``GET /reports/spending``. */
+export function spendingReportQueryOptions(
+  params: Omit<SpendingReportParams, "signal"> & { group_by?: SpendingGroupBy },
+) {
+  return queryOptions({
+    queryKey: queryKeys.reports.spending(spendingReportFilters(params)),
+    queryFn: ({ signal }) => getSpendingReport({ ...params, signal }),
   });
 }

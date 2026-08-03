@@ -1,7 +1,7 @@
 ---
 id: 20260730-01
 type: feature
-status: in-progress
+status: resolved
 severity: high
 area: modules/web
 created: 2026-07-30
@@ -11,4 +11,4 @@ created: 2026-07-30
 
 **Why:** Unblocks epic PPT-046 feature screens after the design shell (PPT-051). Auth DX is required for local smoke of those screens against Compose + hosted Auth.
 
-**Resolution:** (open) Implementation in `modules/web` + `AUTH_AUTO_CONFIRM_EMAIL` / Admin register path in `modules/api`; expand tests and docs before PR split (UI vs auth).
+**Resolution:** Shipped via [#143](https://github.com/Elmorralito/save-ma-money/pull/143); GitHub issue #117 closed. Accounts/categories UI + local `AUTH_AUTO_CONFIRM_EMAIL` / Admin register DX. Follow-on reports work is PPT-054 [#119](https://github.com/Elmorralito/save-ma-money/issues/119) (`20260803-02`).

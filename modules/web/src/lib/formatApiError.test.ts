@@ -52,6 +52,18 @@ describe("formatApiError", () => {
     expect(formatApiError(error)).toBe("validation failed [validation_error]");
   });
 
+  it("maps report_window_too_large to a friendly message", () => {
+    const error = new PapitaApiError({
+      message: "report window must be at most 366 days",
+      status: 400,
+      code: "report_window_too_large",
+      discovery: { ...emptyDiscovery, errorCode: "report_window_too_large" },
+    });
+    expect(formatApiError(error)).toBe(
+      "Report date range exceeds the allowed maximum. Shorten the window and try again. [report_window_too_large]",
+    );
+  });
+
   it("flattens FastAPI 422 detail arrays", () => {
     const error = new PapitaApiError({
       message: "Request validation failed",
