@@ -125,3 +125,11 @@ check-types:
 
 # Full local contract refresh used after API OpenAPI-affecting changes.
 web-openapi: sync-openapi generate-types
+
+# E2E fixtures (PPT-061 / #126): HTTP seed against a running Compose API.
+# Requires: make api-all (AUTH_PROVIDER=local recommended for B0 CI).
+# Idempotent upsert; RESET=1 soft-deletes baseline txns + E2E accounts (categories reused).
+# Artifact: modules/web/e2e/.auth/seed.json (gitignored) for Playwright #121.
+RESET ?= 0
+web-e2e-seed:
+	RESET=$(RESET) /bin/bash ./bin/web_e2e_seed.sh
