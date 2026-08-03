@@ -10,22 +10,25 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- **PPT-052 / #117 (in progress):** Accounts + categories UI in `modules/web` — list/detail,
-  controlled form dialogs, `formatMoney`, list “first 100” note, global category 404 →
-  read-only; update payloads omit empty optionals; Vitest coverage for create/detail/delete
-  - auth register UX
-- **Local Supabase auth DX:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`);
-  Admin register (`email_confirm`) avoids SMTP 429; login auto-confirm only when Auth email
-  is unconfirmed (`supabase_sign_in_with_optional_auto_confirm`)
-- **Ops:** `make api-all` / `make api-all-down`; web error copy points at `api-all` for 502/proxy
+- **CodeQL JS/TS:** Independent workflow `.github/workflows/codeql-javascript.yml`
+  (separate from Python `codeql.yml`; own path filters + concurrency)
+- **Web pre-commit hooks:** Local `web-eslint` / `web-prettier` / `web-tsc` /
+  `web-vitest-related` via `.github/scripts/pre_commit_web.sh` (husky-equivalent
+  tools through pre-commit SSOT; skipped in quality-control, gated by web-ci)
+- **PPT-053 / #118 / PR #147:** Transactions + movements UI in `modules/web` —
+  typed client, Idempotency-Key, bulk cap, movements execute/cancel, Retry-After
+  on 429; strata archived `20260803-01` + learning `web-ledger-ui-no-domain.md`
+- **PPT-052 / #117 (in progress toward PR):** Accounts + categories UI + local
+  Supabase email-confirm DX (`AUTH_AUTO_CONFIRM_EMAIL`, Admin register)
 - **PPT-051 / #116:** Tailwind v4 + shadcn shell (prior)
 - **PPT-049 / #115 / PR #141:** BFF HttpOnly session (merged)
 
 ### Next action
 
-- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) — also fixes TestPyPI
-  publish skip (`publish-model.yml` must gate on `inputs.target`, not `event_name == workflow_call`)
-- PPT-055 forms kit (#120); PPT-068 email verification (#139); PPT-069 non-goals (#140)
+- Open/land PR for PPT-053 (#118) if not yet filed; keep pairing `.strata/` on commit
+- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) (PPT-052) — also
+  fixes TestPyPI publish skip (`publish-model.yml` must gate on `inputs.target`)
+- PPT-054 dashboard/reports UI (#119); PPT-055 forms kit (#120); PPT-056 E2E (#121)
 
 ### Uncommitted / staging notes
 

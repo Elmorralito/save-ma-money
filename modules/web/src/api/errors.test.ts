@@ -63,4 +63,18 @@ describe("PapitaApiError", () => {
     expect(error.code).toBe("bulk_too_large");
     expect(error.discovery.bulkMax).toBe(100);
   });
+
+  it("parses Retry-After seconds on 429 responses", async () => {
+    const response = new Response(JSON.stringify({ detail: "API rate limit exceeded" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "Retry-After": "30",
+      },
+    });
+
+    const error = await papitaApiErrorFromResponse(response);
+    expect(error.status).toBe(429);
+    expect(error.retryAfter).toBe(30);
+  });
 });

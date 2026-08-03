@@ -1,0 +1,74 @@
+---
+# Independent from CodeQL Analysis (Python) — separate workflow, concurrency, and path filters.
+name: CodeQL JavaScript/TypeScript
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/codeql-javascript.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "modules/web/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
+      - ".nvmrc"
+      - ".node-version"
+      - ".github/workflows/codeql-javascript.yml"
+  schedule:
+    # Stagger vs Python CodeQL (Mon 06:00 UTC) so runners are not contended.
+    - cron: "30 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-javascript-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze JavaScript/TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Enable pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v3
+        with:
+          category: /language:javascript-typescript

@@ -3,7 +3,7 @@ export type AppNavItem = {
   label: string;
 };
 
-/** Primary authenticated navigation (accounts/categories: PPT-052; other screens stubbed). */
+/** Primary authenticated navigation (accounts/categories: PPT-052; txns/movements: PPT-053). */
 export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/accounts", label: "Accounts" },

@@ -44,7 +44,8 @@ flowchart TB
         GL[Secret Scan]
         SC[Supply Chain Check]
         MC[Migration Check]
-        CQ[CodeQL Analysis]
+        CQ[CodeQL Python]
+        CQJS[CodeQL JS/TS]
         TR[Trivy Security Scan]
         BS[Bash Security]
         ST[Strata Check]
@@ -65,6 +66,7 @@ flowchart TB
     SC --> |poetry check + pip-audit| Pass3[Gate]
     MC --> |Alembic round-trip| Pass4[Gate]
     CQ --> |Python SAST| Pass5[Gate]
+    CQJS --> |JS/TS SAST| Pass5b[Gate]
     TR --> |CVE + misconfig SARIF| Pass6[Gate]
     BS --> |ShellCheck security + Semgrep| Pass7[Gate]
     ST --> |.strata/ layout + pairing| Pass8[Gate]
@@ -90,21 +92,21 @@ flowchart TB
 
 Use this matrix to predict required checks before opening a PR.
 
-| Change type                                 | Quality Control | Web CI | OpenAPI contract | Gitleaks | Supply Chain | Migration | CodeQL | Trivy | Bash Sec | Strata | Branch sync |
-| :------------------------------------------ | :-------------: | :----: | :--------------: | :------: | :----------: | :-------: | :----: | :---: | :------: | :----: | :---------: |
-| `docs/**` only                              |        —        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
-| `modules/web/**` only                       |        —        |   ✓    |       —\*        |    ✓     |      —       |     —     |   ✓†   |   —   |    —     |   ✓    |      ✓      |
-| `modules/api/src/**` or model OpenAPI bleed |        ✓        |   —    |        ✓         |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
-| `modules/**` code                           |        ✓        |  —\*   |       —\*        |    ✓     |     —\*      |    —\*    |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
-| `pyproject.toml` / module deps              |        ✓        |  —\*   |        —         |    ✓     |      ✓       |     —     |   ✓†   |   ✓   |    —     |   ✓‡   |      ✓      |
-| Model / Alembic / `docker/database/**`      |        ✓        |   —    |        —         |    ✓     |     —\*      |     ✓     |   ✓†   |  —\*  |    —     |   ✓    |      ✓      |
-| `bin/**` or `.github/scripts/**`            |        ✓        |   —    |       —\*        |    ✓     |     —\*      |    —\*    |   —    |   —   |    ✓     |  —\*   |      ✓      |
-| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —§   |      ✓      |
-| `.github/workflows/**`                      |        ✓        |  —\*   |       —\*        |    ✓     |      ✓       |    —\*    |  —\*   |  —\*  |   —\*    |  —\*   |      ✓      |
-| `.cursor/mcp.json`                          |        ✓        |   —    |        —         |    ✓     |      —       |     —     |   —    |   —   |    —     |   —    |      ✓      |
+| Change type                                 | Quality Control | Web CI | OpenAPI contract | Gitleaks | Supply Chain | Migration | CodeQL Py | CodeQL JS | Trivy | Bash Sec | Strata | Branch sync |
+| :------------------------------------------ | :-------------: | :----: | :--------------: | :------: | :----------: | :-------: | :-------: | :-------: | :---: | :------: | :----: | :---------: |
+| `docs/**` only                              |        —        |   —    |        —         |    ✓     |      —       |     —     |     —     |     —     |   —   |    —     |   —    |      ✓      |
+| `modules/web/**` only                       |        —        |   ✓    |       —\*        |    ✓     |      —       |     —     |     —     |    ✓†     |   —   |    —     |   ✓    |      ✓      |
+| `modules/api/src/**` or model OpenAPI bleed |        ✓        |   —    |        ✓         |    ✓     |     —\*      |    —\*    |    ✓†     |     —     |  —\*  |    —     |   ✓    |      ✓      |
+| `modules/model/**` or `modules/api/**`      |        ✓        |  —\*   |       —\*        |    ✓     |     —\*      |    —\*    |    ✓†     |     —     |  —\*  |    —     |   ✓    |      ✓      |
+| `pyproject.toml` / module deps              |        ✓        |  —\*   |        —         |    ✓     |      ✓       |     —     |    ✓†     |     —     |   ✓   |    —     |   ✓‡   |      ✓      |
+| Model / Alembic / `docker/database/**`      |        ✓        |   —    |        —         |    ✓     |     —\*      |     ✓     |    ✓†     |     —     |  —\*  |    —     |   ✓    |      ✓      |
+| `bin/**` or `.github/scripts/**`            |        ✓        |   —    |       —\*        |    ✓     |     —\*      |    —\*    |     —     |     —     |   —   |    ✓     |  —\*   |      ✓      |
+| `.strata/**` only (no `modules/` or `bin/`) |        ✓        |   —    |        —         |    ✓     |      —       |     —     |     —     |     —     |   —   |    —     |   —§   |      ✓      |
+| `.github/workflows/**`                      |        ✓        |  —\*   |       —\*        |    ✓     |      ✓       |    —\*    |    —\*    |    —\*    |  —\*  |   —\*    |  —\*   |      ✓      |
+| `.cursor/mcp.json`                          |        ✓        |   —    |        —         |    ✓     |      —       |     —     |     —     |     —     |   —   |    —     |   —    |      ✓      |
 
 \* Runs only when matching [path filters](#workflow-overview) apply.
-† CodeQL runs on PRs **targeting `main`** only.
+† CodeQL workflows run on PRs **targeting `main`** only (Python and JS/TS are separate workflows).
 ‡ Strata Check runs when root `pyproject.toml` changes (listed in its path filter).
 § Strata Check path filters do **not** include `.strata/**` — layout validation for memory-only edits is enforced locally via pre-commit, not this workflow.
 
@@ -124,7 +126,8 @@ Use this matrix to predict required checks before opening a PR.
 | Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)       | PostgreSQL Alembic round-trip + drift check                                                   |
 | Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                | `poetry check`, version metadata, `pip-audit`                                                 |
 | Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                    | Full-history secret detection                                                                 |
-| CodeQL Analysis      | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push to `main` (`modules/**`); Mon 06:00 UTC    | Python SAST (`security-extended`)                                                             |
+| CodeQL Python        | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC  | Python SAST (`security-extended`) — independent of JS/TS                                      |
+| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC    | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python          |
 | Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC              | Filesystem CVE + IaC misconfig (SARIF)                                                        |
 | Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                              | ShellCheck security codes + Semgrep bash rules                                                |
 | Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                          | `.strata/` layout + strict code/memory pairing                                                |
@@ -269,7 +272,7 @@ pip install \
 3. **pre-commit** ([`pre-commit/action@v3.0.0`](https://github.com/pre-commit/action)) — all hooks from [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) **except** local-only hooks:
 
    ```yaml
-   SKIP: strata-validate,mcp-config-validate
+   SKIP: strata-validate,mcp-config-validate,web-eslint,web-prettier,web-tsc,web-vitest-related
    ```
 
 4. **Pytest + coverage** via [`bin/test.sh`](../bin/test.sh)
@@ -359,18 +362,35 @@ Findings appear in workflow logs, not the Security tab SARIF view.
 
 ---
 
-### CodeQL Analysis
+### CodeQL Python
 
-|                 |                                                                              |
-| :-------------- | :--------------------------------------------------------------------------- |
-| **Trigger**     | PRs **targeting `main`**; push to `main`; Mon 06:00 UTC; `workflow_dispatch` |
-| **Paths**       | `modules/**`, root `pyproject.toml`, workflow file                           |
-| **Timeout**     | 30 minutes                                                                   |
-| **Permissions** | `security-events: write` (Security tab)                                      |
+|                 |                                                                                      |
+| :-------------- | :----------------------------------------------------------------------------------- |
+| **Trigger**     | PRs **targeting `main`**; push to `main`; Mon 06:00 UTC; `workflow_dispatch`         |
+| **Paths**       | `modules/model/**`, `modules/api/**`, root/`modules/*/pyproject.toml`, workflow file |
+| **Timeout**     | 30 minutes                                                                           |
+| **Permissions** | `security-events: write` (Security tab)                                              |
+| **Concurrency** | `codeql-python-${{ github.ref }}` (does **not** share a group with JS/TS CodeQL)     |
 
-- **Language:** Python
+- **Language:** Python only (no JS/TS matrix)
 - **Queries:** `security-extended`
 - **Build:** `poetry install` before analysis so imports resolve
+- **Independence:** JavaScript/TypeScript uses a separate workflow ([`codeql-javascript.yml`](./workflows/codeql-javascript.yml))
+
+### CodeQL JavaScript/TypeScript
+
+|                 |                                                                                     |
+| :-------------- | :---------------------------------------------------------------------------------- |
+| **Trigger**     | PRs **targeting `main`**; push to `main`; Mon 06:30 UTC; `workflow_dispatch`        |
+| **Paths**       | `modules/web/**`, pnpm lock/workspace, root `package.json`, `.nvmrc`, workflow file |
+| **Timeout**     | 30 minutes                                                                          |
+| **Permissions** | `security-events: write` (Security tab)                                             |
+| **Concurrency** | `codeql-javascript-${{ github.ref }}`                                               |
+
+- **Language:** `javascript-typescript`
+- **Queries:** `security-extended`
+- **Build:** `pnpm install --frozen-lockfile` (Node from `.nvmrc`, pnpm 9.15.9) before analysis
+- **Independence:** Does not install Poetry or run the Python CodeQL job; SARIF category `/language:javascript-typescript`
 
 ---
 
@@ -572,38 +592,46 @@ Defined in [`.pre-commit-config.yaml`](../.pre-commit-config.yaml). CI runs all 
 
 ### Hook inventory
 
-| Hook                      | Source                          | Scope / notes                                               |
-| :------------------------ | :------------------------------ | :---------------------------------------------------------- |
-| `trailing-whitespace`     | pre-commit-hooks v6.0.0         | All files                                                   |
-| `end-of-file-fixer`       | pre-commit-hooks                | All files                                                   |
-| `check-yaml`              | pre-commit-hooks                | YAML                                                        |
-| `check-toml`              | pre-commit-hooks                | TOML                                                        |
-| `detect-private-key`      | pre-commit-hooks                | Blocks committed private keys                               |
-| `check-added-large-files` | pre-commit-hooks                | Max 1024 KB per file                                        |
-| `prettier`                | mirrors-prettier v4.0.0-alpha.8 | yaml, python, toml, json, markdown; excludes `*.svg`        |
-| `shellcheck`              | shellcheck-precommit v0.11.0    | Shell scripts                                               |
-| `isort`                   | isort 6.1.0                     | Python (black profile); excludes tests                      |
-| `black`                   | black 26.3.1                    | Python; excludes tests                                      |
-| `flake8`                  | flake8 7.3.0                    | Config from `pyproject.toml` (120 cols, complexity 18)      |
-| `pylint`                  | local                           | `poetry run pylint`; serial execution                       |
-| `mypy`                    | mirrors-mypy v1.18.2            | Gradual typing; excludes tests                              |
-| `interrogate`             | interrogate 1.7.0               | Docstring coverage ≥90% on `modules/*/src`; badge → `docs/` |
-| `markdownlint`            | markdownlint-cli v0.45.0        | `--fix`; MD013/033/041/024/025 disabled                     |
-| `yamllint`                | yamllint v1.37.1                | `*.yaml`, `*.yml`                                           |
-| `actionlint`              | actionlint v1.7.7               | GitHub Actions workflow syntax                              |
-| **`strata-validate`**     | **local only**                  | See [Strata validation](#strata-validation)                 |
-| **`mcp-config-validate`** | **local only**                  | See [MCP config](#mcp-config-local)                         |
-| **`ci-adoption-check`**   | **local pre-push, advisory**    | See [CI Adoption Badge](#ci-adoption-badge)                 |
+| Hook                      | Source                          | Scope / notes                                                      |
+| :------------------------ | :------------------------------ | :----------------------------------------------------------------- |
+| `trailing-whitespace`     | pre-commit-hooks v6.0.0         | All files                                                          |
+| `end-of-file-fixer`       | pre-commit-hooks                | All files                                                          |
+| `check-yaml`              | pre-commit-hooks                | YAML                                                               |
+| `check-toml`              | pre-commit-hooks                | TOML                                                               |
+| `detect-private-key`      | pre-commit-hooks                | Blocks committed private keys                                      |
+| `check-added-large-files` | pre-commit-hooks                | Max 1024 KB per file                                               |
+| `prettier`                | mirrors-prettier v4.0.0-alpha.8 | yaml, python, toml, json, markdown; excludes `*.svg`               |
+| `shellcheck`              | shellcheck-precommit v0.11.0    | Shell scripts                                                      |
+| `isort`                   | isort 6.1.0                     | Python (black profile); excludes tests                             |
+| `black`                   | black 26.3.1                    | Python; excludes tests                                             |
+| `flake8`                  | flake8 7.3.0                    | Config from `pyproject.toml` (120 cols, complexity 18)             |
+| `pylint`                  | local                           | `poetry run pylint`; serial execution                              |
+| `mypy`                    | mirrors-mypy v1.18.2            | Gradual typing; excludes tests                                     |
+| `interrogate`             | interrogate 1.7.0               | Docstring coverage ≥90% on `modules/*/src`; badge → `docs/`        |
+| `markdownlint`            | markdownlint-cli v0.45.0        | `--fix`; MD013/033/041/024/025 disabled                            |
+| `yamllint`                | yamllint v1.37.1                | `*.yaml`, `*.yml`                                                  |
+| `actionlint`              | actionlint v1.7.7               | GitHub Actions workflow syntax                                     |
+| **`strata-validate`**     | **local only**                  | See [Strata validation](#strata-validation)                        |
+| **`mcp-config-validate`** | **local only**                  | See [MCP config](#mcp-config-local)                                |
+| **`ci-adoption-check`**   | **local pre-push, advisory**    | See [CI Adoption Badge](#ci-adoption-badge)                        |
+| **`web-eslint`**          | **local only**                  | ESLint `--fix --max-warnings=0` on staged `modules/web` TS/JS      |
+| **`web-prettier`**        | **local only**                  | Prettier write via `modules/web` config on staged web files        |
+| **`web-tsc`**             | **local only**                  | `tsc -b --pretty false` when any `modules/web` `.ts`/`.tsx` staged |
+| **`web-vitest-related`**  | **local only**                  | `vitest related --run` for staged web TS files                     |
 
 ### Local-only hooks
 
-| Hook ID               | Wrapper                                                            | When it runs                                                                      |
-| :-------------------- | :----------------------------------------------------------------- | :-------------------------------------------------------------------------------- |
-| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | **Always runs** on commit; evaluates **all staged paths** via `git diff --cached` |
-| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                         |
-| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set                  |
+| Hook ID               | Wrapper                                                            | When it runs                                                                         |
+| :-------------------- | :----------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `strata-validate`     | [`pre_commit_strata.sh`](./scripts/pre_commit_strata.sh)           | **Always runs** on commit; evaluates **all staged paths** via `git diff --cached`    |
+| `mcp-config-validate` | [`pre_commit_mcp.sh`](./scripts/pre_commit_mcp.sh)                 | Staged `.cursor/mcp.json`                                                            |
+| `ci-adoption-check`   | [`pre_commit_ci_adoption.sh`](./scripts/pre_commit_ci_adoption.sh) | `git push` when `pre-commit install --hook-type pre-push` is set                     |
+| `web-eslint`          | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `eslint`        | Staged `modules/web/**/*.{ts,tsx,js,jsx}`                                            |
+| `web-prettier`        | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `prettier`      | Staged web `ts/tsx/js/jsx/css/json/md` (uses package Prettier, not mirrors-prettier) |
+| `web-tsc`             | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `tsc`           | When any `modules/web` TypeScript file is staged                                     |
+| `web-vitest-related`  | [`pre_commit_web.sh`](./scripts/pre_commit_web.sh) `test`          | Related Vitest files only (not the full suite)                                       |
 
-Both wrappers **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it.
+Wrappers for Strata/MCP/web **exit 0 immediately** when `CI` or `GITHUB_ACTIONS` is set (belt-and-suspenders alongside `SKIP` in quality-control). `ci-adoption-check` uses `stages: [pre-push]` only, so CI pre-commit never invokes it. Web CI remains [`.github/workflows/web-ci.yml`](./workflows/web-ci.yml).
 
 ---
 
@@ -794,13 +822,14 @@ Re-stage and commit. Hooks like Black, prettier, and markdownlint `--fix` modify
 
 All times **UTC**, every **Monday**:
 
-| Workflow            | Cron        | Local time hint (US Eastern, DST) |
-| :------------------ | :---------- | :-------------------------------- |
-| Secret Scan         | `0 5 * * 1` | ~01:00 EDT                        |
-| CI Adoption Badge   | `0 6 * * 1` | ~02:00 EDT                        |
-| CodeQL Analysis     | `0 6 * * 1` | ~02:00 EDT                        |
-| Trivy Security Scan | `0 7 * * 1` | ~03:00 EDT                        |
-| Supply Chain Check  | `0 8 * * 1` | ~04:00 EDT                        |
+| Workflow            | Cron         | Local time hint (US Eastern, DST) |
+| :------------------ | :----------- | :-------------------------------- |
+| Secret Scan         | `0 5 * * 1`  | ~01:00 EDT                        |
+| CI Adoption Badge   | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL Python       | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL JS/TS        | `30 6 * * 1` | ~02:30 EDT                        |
+| Trivy Security Scan | `0 7 * * 1`  | ~03:00 EDT                        |
+| Supply Chain Check  | `0 8 * * 1`  | ~04:00 EDT                        |
 
 Each scheduled workflow also supports **`workflow_dispatch`** from the Actions tab. Bash Security is **PR-only** (not scheduled).
 
@@ -808,14 +837,14 @@ Each scheduled workflow also supports **`workflow_dispatch`** from the Actions t
 
 ## Security tab integration
 
-| Source                             | Location                        | Format                            |
-| :--------------------------------- | :------------------------------ | :-------------------------------- |
-| CodeQL                             | Security → Code scanning alerts | Native CodeQL                     |
-| Trivy                              | Security → Code scanning alerts | SARIF (`trivy-filesystem`)        |
-| Gitleaks                           | Workflow job logs               | Inline findings                   |
-| Bash Security (ShellCheck/Semgrep) | Workflow job logs               | Inline findings (fails the job)   |
-| pip-audit                          | Supply Chain Check logs         | Text report with CVE descriptions |
-| pre-commit `detect-private-key`    | Local / Quality Control logs    | Blocks commit/CI                  |
+| Source                             | Location                        | Format                              |
+| :--------------------------------- | :------------------------------ | :---------------------------------- |
+| CodeQL (Python + JS/TS workflows)  | Security → Code scanning alerts | Native CodeQL (separate categories) |
+| Trivy                              | Security → Code scanning alerts | SARIF (`trivy-filesystem`)          |
+| Gitleaks                           | Workflow job logs               | Inline findings                     |
+| Bash Security (ShellCheck/Semgrep) | Workflow job logs               | Inline findings (fails the job)     |
+| pip-audit                          | Supply Chain Check logs         | Text report with CVE descriptions   |
+| pre-commit `detect-private-key`    | Local / Quality Control logs    | Blocks commit/CI                    |
 
 ---
 

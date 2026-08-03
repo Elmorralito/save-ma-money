@@ -32,6 +32,16 @@ describe("formatApiError", () => {
     expect(formatApiError(error)).toMatch(/rate limit/i);
   });
 
+  it("appends Retry-After seconds on 429 when present", () => {
+    const error = new PapitaApiError({
+      message: "API rate limit exceeded for your plan. Try again later.",
+      status: 429,
+      discovery: emptyDiscovery,
+      retryAfter: 45,
+    });
+    expect(formatApiError(error)).toMatch(/Retry after 45s/);
+  });
+
   it("includes X-Papita-Error-Code when present", () => {
     const error = new PapitaApiError({
       message: "validation failed",

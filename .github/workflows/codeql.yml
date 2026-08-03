@@ -1,19 +1,27 @@
 ---
-name: CodeQL Analysis
+# Python-only CodeQL. JavaScript/TypeScript is a separate workflow: codeql-javascript.yml
+# (PR checks name: "CodeQL Python" — do not confuse with "CodeQL JavaScript/TypeScript".)
+name: CodeQL Python
 
 on:
   pull_request:
     branches:
       - main
     paths:
-      - "modules/**"
+      - "modules/model/**"
+      - "modules/api/**"
+      - "modules/model/pyproject.toml"
+      - "modules/api/pyproject.toml"
       - "pyproject.toml"
       - ".github/workflows/codeql.yml"
   push:
     branches:
       - main
     paths:
-      - "modules/**"
+      - "modules/model/**"
+      - "modules/api/**"
+      - "modules/model/pyproject.toml"
+      - "modules/api/pyproject.toml"
       - "pyproject.toml"
       - ".github/workflows/codeql.yml"
   schedule:
@@ -21,7 +29,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: codeql-${{ github.ref }}
+  group: codeql-python-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -34,11 +42,6 @@ jobs:
       contents: read
       security-events: write
 
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python]
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -46,7 +49,7 @@ jobs:
       - name: Initialize CodeQL
         uses: github/codeql-action/init@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v3
         with:
-          languages: ${{ matrix.language }}
+          languages: python
           queries: security-extended
 
       - name: Set up Python
@@ -68,4 +71,4 @@ jobs:
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v3
         with:
-          category: /language:${{ matrix.language }}
+          category: /language:python

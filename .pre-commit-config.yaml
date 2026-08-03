@@ -15,9 +15,11 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
+        name: prettier (repo — non-web)
         types_or: [yaml, python, toml, json, markdown]
         # pnpm-lock.yaml is machine-generated; prettier/yamllint must not rewrite it.
-        exclude: '(\.svg$|@docs/coverage\.xml$|^pnpm-lock\.yaml$)'
+        # modules/web uses the local web-prettier hook (package Prettier + .prettierrc).
+        exclude: '(\.svg$|@docs/coverage\.xml$|^pnpm-lock\.yaml$|^modules/web/)'
         args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml", "*.json"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
@@ -95,6 +97,40 @@ repos:
         always_run: true
         stages: [pre-push]
         # Runs on `git push` when pre-push hook is installed locally; never blocks; skipped in CI.
+
+      # --- modules/web (TypeScript / React) — local only; web-ci.yml is the CI gate ---
+      # Mirrors the husky+lint-staged stack (ESLint, Prettier, tsc, related Vitest) via
+      # pre-commit instead of husky. Requires Node 22+ / pnpm 9+ and `pnpm install`.
+      - id: web-eslint
+        name: web eslint (modules/web)
+        entry: /bin/bash .github/scripts/pre_commit_web.sh eslint
+        language: system
+        files: ^modules/web/.*\.(ts|tsx|js|jsx)$
+        exclude: ^modules/web/(dist|coverage|node_modules|openapi)/
+        require_serial: true
+        # Excluded in CI via SKIP in quality-control.yml (no Node in that job).
+      - id: web-prettier
+        name: web prettier (modules/web)
+        entry: /bin/bash .github/scripts/pre_commit_web.sh prettier
+        language: system
+        files: ^modules/web/.*\.(ts|tsx|js|jsx|css|json|md)$
+        exclude: (^modules/web/(dist|coverage|node_modules|openapi)/|^modules/web/src/types/api\.d\.ts$|^modules/web/package\.json$)
+        require_serial: true
+      - id: web-tsc
+        name: web tsc (modules/web)
+        entry: /bin/bash .github/scripts/pre_commit_web.sh tsc
+        language: system
+        files: ^modules/web/.*\.(ts|tsx)$
+        exclude: ^modules/web/(dist|coverage|node_modules|openapi)/
+        pass_filenames: false
+        require_serial: true
+      - id: web-vitest-related
+        name: web vitest related (modules/web)
+        entry: /bin/bash .github/scripts/pre_commit_web.sh test
+        language: system
+        files: ^modules/web/.*\.(ts|tsx)$
+        exclude: ^modules/web/(dist|coverage|node_modules|openapi)/
+        require_serial: true
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.0
