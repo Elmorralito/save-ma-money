@@ -39,7 +39,6 @@ This file is **not** the monorepo issue tracker changelog. Root
 - **api**: Raise Codecov patch coverage for local Supabase auth DX
   ([`6875c85`](https://github.com/Elmorralito/save-ma-money/commit/6875c85927ebd60a62f3e4371c8cc9f7c230478e))
 
-
 ## v1.0.2 (2026-07-27)
 
 ### Code Style

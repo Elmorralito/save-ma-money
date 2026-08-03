@@ -32,3 +32,4 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
 - `modules/**` changes need a paired `.strata/` touch (strict mode) — updated this session
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
+- Autopilot (#145): Dependabot npm-web group bump paired here for strata-check strict mode
