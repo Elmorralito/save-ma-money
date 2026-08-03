@@ -1,5 +1,6 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { createCategory, updateCategory } from "@/api/categories";
@@ -21,10 +22,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { applyMutationError } from "@/forms/applyMutationError";
+import { CATEGORY_SERVER_FIELD_MAP } from "@/forms/fieldMaps";
+import { FormField, FormRootError } from "@/forms/FormField";
+import { categoryFormSchema } from "@/forms/schemas/category";
 import { CATEGORY_TYPE_SLUGS } from "@/lib/categoryTypes";
-import { formatApiError, isGlobalOrMissingCategoryError } from "@/lib/formatApiError";
+import { isGlobalOrMissingCategoryError } from "@/lib/formatApiError";
 import type { CategoryResponse } from "@/types/domain";
 
 type CategoryFormDialogProps = {
@@ -53,20 +57,21 @@ function CategoryFormBody({
   onGlobalMutationBlocked,
 }: CategoryFormBodyProps) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<CategoryFormState>(() =>
-    mode === "edit" && category ? categoryFormFromResponse(category) : emptyCategoryFormState(),
-  );
-  const [error, setError] = useState<string | null>(null);
+  const form = useForm<CategoryFormState>({
+    resolver: zodResolver(categoryFormSchema),
+    defaultValues:
+      mode === "edit" && category ? categoryFormFromResponse(category) : emptyCategoryFormState(),
+  });
 
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: CategoryFormState) => {
       if (mode === "create") {
-        return createCategory(toCategoryCreate(form));
+        return createCategory(toCategoryCreate(values));
       }
       if (!category) {
         throw new Error("Missing category");
       }
-      return updateCategory(category.id, toCategoryUpdate(form));
+      return updateCategory(category.id, toCategoryUpdate(values));
     },
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories.lists() });
@@ -77,80 +82,60 @@ function CategoryFormBody({
     onError: (err: unknown) => {
       if (mode === "edit" && category && isGlobalOrMissingCategoryError(err)) {
         const message = "This category cannot be modified (global seed or not found).";
-        setError(message);
+        form.setError("root", { type: "server", message });
         onGlobalMutationBlocked?.(category.id);
         toast.error(message);
         return;
       }
-      setError(formatApiError(err));
+      applyMutationError(err, {
+        setError: form.setError,
+        fieldMap: CATEGORY_SERVER_FIELD_MAP,
+      });
     },
   });
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    mutation.mutate();
-  }
-
-  function patch(partial: Partial<CategoryFormState>) {
-    setForm((prev) => ({ ...prev, ...partial }));
-  }
-
   const idPrefix = mode === "create" ? "cat-create" : "cat-edit";
+  const {
+    register,
+    formState: { errors },
+  } = form;
+  const isPending = mutation.isPending || form.formState.isSubmitting;
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-name`}>Name</Label>
-        <Input
-          id={`${idPrefix}-name`}
-          required
-          maxLength={255}
-          value={form.name}
-          onChange={(event) => {
-            patch({ name: event.target.value });
-          }}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-description`}>Description</Label>
-        <Input
-          id={`${idPrefix}-description`}
-          value={form.description}
-          onChange={(event) => {
-            patch({ description: event.target.value });
-          }}
-        />
-      </div>
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        void form.handleSubmit((values) => {
+          mutation.mutate(values);
+        })(event);
+      }}
+    >
+      <FormField label="Name" htmlFor={`${idPrefix}-name`} error={errors.name?.message}>
+        <Input id={`${idPrefix}-name`} maxLength={255} {...register("name")} />
+      </FormField>
+      <FormField
+        label="Description"
+        htmlFor={`${idPrefix}-description`}
+        error={errors.description?.message}
+      >
+        <Input id={`${idPrefix}-description`} {...register("description")} />
+      </FormField>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-type`}>Category type</Label>
-          <NativeSelect
-            id={`${idPrefix}-type`}
-            required
-            value={form.category_type}
-            onChange={(event) => {
-              patch({
-                category_type: event.target.value as CategoryFormState["category_type"],
-              });
-            }}
-          >
+        <FormField
+          label="Category type"
+          htmlFor={`${idPrefix}-type`}
+          error={errors.category_type?.message}
+        >
+          <NativeSelect id={`${idPrefix}-type`} {...register("category_type")}>
             {CATEGORY_TYPE_SLUGS.map((type) => (
               <option key={type} value={type}>
                 {type}
               </option>
             ))}
           </NativeSelect>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-parent`}>Parent</Label>
-          <NativeSelect
-            id={`${idPrefix}-parent`}
-            value={form.parent_id}
-            onChange={(event) => {
-              patch({ parent_id: event.target.value });
-            }}
-          >
+        </FormField>
+        <FormField label="Parent" htmlFor={`${idPrefix}-parent`} error={errors.parent_id?.message}>
+          <NativeSelect id={`${idPrefix}-parent`} {...register("parent_id")}>
             <option value="">None</option>
             {parentOptions
               .filter((option) => option.id !== category?.id)
@@ -160,50 +145,28 @@ function CategoryFormBody({
                 </option>
               ))}
           </NativeSelect>
-        </div>
+        </FormField>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-icon`}>Icon</Label>
-          <Input
-            id={`${idPrefix}-icon`}
-            maxLength={64}
-            value={form.icon}
-            onChange={(event) => {
-              patch({ icon: event.target.value });
-            }}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-color`}>Color</Label>
+        <FormField label="Icon" htmlFor={`${idPrefix}-icon`} error={errors.icon?.message}>
+          <Input id={`${idPrefix}-icon`} maxLength={64} {...register("icon")} />
+        </FormField>
+        <FormField label="Color" htmlFor={`${idPrefix}-color`} error={errors.color?.message}>
           <Input
             id={`${idPrefix}-color`}
             maxLength={7}
             placeholder="#RRGGBB"
-            value={form.color}
-            onChange={(event) => {
-              patch({ color: event.target.value });
-            }}
+            {...register("color")}
           />
-        </div>
+        </FormField>
       </div>
       {mode === "edit" ? (
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.is_active}
-            onChange={(event) => {
-              patch({ is_active: event.target.checked });
-            }}
-          />
+          <input type="checkbox" {...register("is_active")} />
           Active
         </label>
       ) : null}
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormRootError message={errors.root?.message} />
       <DialogFooter>
         <Button
           type="button"
@@ -214,8 +177,8 @@ function CategoryFormBody({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save"}
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </form>

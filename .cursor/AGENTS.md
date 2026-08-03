@@ -78,7 +78,7 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web BFF cookie auth (PPT-049):** API `/api/v1/bff/auth/*` + `BffSessionStore` (Redis or memory; **not** JWT denylist). Cookie `papita_sid` (HttpOnly); CSRF `X-Papita-CSRF`. SPA login/register + `RequireAuth`; `get_current_owner` accepts Bearer **or** BFF cookie. `make auth-smoke` (Bearer) still valid alongside BFF.
 
-**Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Controlled forms (Zod/RHF → #120). Global category write 404 → read-only UX.
+**Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Forms use Zod + RHF (`src/forms/`, PPT-055 / #120). Global category write 404 → read-only UX.
 
 **Local Supabase email confirm:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`) + service role → Admin register without SMTP; login auto-confirm only when Auth email is unconfirmed (see `modules/api/README.md` Authentication).
 

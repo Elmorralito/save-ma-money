@@ -7,5 +7,6 @@ Everything `status: in-progress`. Loaded at `/strata:load`.
 
 | Id          | Type    | Sev  | Area        | What                                                                                         |
 | ----------- | ------- | ---- | ----------- | -------------------------------------------------------------------------------------------- |
+| 20260803-04 | feature | med  | modules/web | PPT-055 [#120] forms + UX standards (kit + accounts/categories migrated; PR pending)         |
 | 20260803-02 | feature | high | modules/web | PPT-054 [#119] dashboard + reports UI (spending slice done; CF/trends/export/dashboard open) |
 | 20260713-01 | feature | high | modules/api | PPT-038 [#48] tenant-scoped `/reports/*` on feat/PPT-038                                     |

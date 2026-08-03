@@ -1,71 +1,66 @@
+import type { UseFormReturn } from "react-hook-form";
+
+import type { AccountFormState } from "@/components/accounts/accountFormState";
+import { FormField } from "@/forms/FormField";
 import {
   ACCOUNT_KIND_SLUGS,
   AREA_UNIT_SLUGS,
+  defaultLedgerSideForKind,
   extensionFieldForAccountKind,
   LEDGER_SIDE_SLUGS,
   OWNERSHIP_SLUGS,
   type AccountKindSlug,
 } from "@/lib/accountKinds";
-import {
-  applyAccountKindChange,
-  type AccountFormState,
-} from "@/components/accounts/accountFormState";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 
 type AccountFormFieldsProps = {
-  value: AccountFormState;
-  onChange: (next: AccountFormState) => void;
+  form: UseFormReturn<AccountFormState>;
   /** When editing, account_kind / ledger_side are immutable on the API. */
   mode: "create" | "edit";
   idPrefix: string;
 };
 
-export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFormFieldsProps) {
-  const extension = extensionFieldForAccountKind(value.account_kind);
-
-  function patch(partial: Partial<AccountFormState>) {
-    onChange({ ...value, ...partial });
-  }
+export function AccountFormFields({ form, mode, idPrefix }: AccountFormFieldsProps) {
+  const {
+    register,
+    watch,
+    setValue,
+    formState: { errors },
+  } = form;
+  const accountKind = watch("account_kind");
+  const extension = extensionFieldForAccountKind(accountKind);
 
   return (
     <div className="grid max-h-[60vh] gap-3 overflow-y-auto pr-1">
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-name`}>Name</Label>
-        <Input
-          id={`${idPrefix}-name`}
-          required
-          maxLength={255}
-          value={value.name}
-          onChange={(event) => {
-            patch({ name: event.target.value });
-          }}
-        />
-      </div>
+      <FormField label="Name" htmlFor={`${idPrefix}-name`} error={errors.name?.message}>
+        <Input id={`${idPrefix}-name`} maxLength={255} {...register("name")} />
+      </FormField>
 
-      <div className="space-y-2">
-        <Label htmlFor={`${idPrefix}-description`}>Description</Label>
-        <Input
-          id={`${idPrefix}-description`}
-          value={value.description}
-          onChange={(event) => {
-            patch({ description: event.target.value });
-          }}
-        />
-      </div>
+      <FormField
+        label="Description"
+        htmlFor={`${idPrefix}-description`}
+        error={errors.description?.message}
+      >
+        <Input id={`${idPrefix}-description`} {...register("description")} />
+      </FormField>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-kind`}>Account kind</Label>
+        <FormField
+          label="Account kind"
+          htmlFor={`${idPrefix}-kind`}
+          error={errors.account_kind?.message}
+        >
           <NativeSelect
             id={`${idPrefix}-kind`}
-            required
             disabled={mode === "edit"}
-            value={value.account_kind}
-            onChange={(event) => {
-              onChange(applyAccountKindChange(value, event.target.value as AccountKindSlug));
-            }}
+            {...register("account_kind", {
+              onChange: (event) => {
+                const kind = event.target.value as AccountKindSlug;
+                setValue("account_kind", kind);
+                setValue("ledger_side", defaultLedgerSideForKind(kind));
+              },
+            })}
           >
             {ACCOUNT_KIND_SLUGS.map((kind) => (
               <option key={kind} value={kind}>
@@ -73,17 +68,16 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
               </option>
             ))}
           </NativeSelect>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-ledger`}>Ledger side</Label>
+        </FormField>
+        <FormField
+          label="Ledger side"
+          htmlFor={`${idPrefix}-ledger`}
+          error={errors.ledger_side?.message}
+        >
           <NativeSelect
             id={`${idPrefix}-ledger`}
-            required
             disabled={mode === "edit"}
-            value={value.ledger_side}
-            onChange={(event) => {
-              patch({ ledger_side: event.target.value as AccountFormState["ledger_side"] });
-            }}
+            {...register("ledger_side")}
           >
             {LEDGER_SIDE_SLUGS.map((side) => (
               <option key={side} value={side}>
@@ -91,47 +85,44 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
               </option>
             ))}
           </NativeSelect>
-        </div>
+        </FormField>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-currency`}>Currency</Label>
+        <FormField
+          label="Currency"
+          htmlFor={`${idPrefix}-currency`}
+          error={errors.currency?.message}
+        >
           <Input
             id={`${idPrefix}-currency`}
-            required
             minLength={3}
             maxLength={3}
-            value={value.currency}
-            onChange={(event) => {
-              patch({ currency: event.target.value.toUpperCase() });
-            }}
+            {...register("currency", {
+              onChange: (event) => {
+                setValue("currency", event.target.value.toUpperCase());
+              },
+            })}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-initial`}>Initial value</Label>
+        </FormField>
+        <FormField
+          label="Initial value"
+          htmlFor={`${idPrefix}-initial`}
+          error={errors.initial_value?.message}
+        >
           <Input
             id={`${idPrefix}-initial`}
             type="number"
             min={0}
             step="any"
-            value={value.initial_value}
-            onChange={(event) => {
-              patch({ initial_value: event.target.value });
-            }}
+            {...register("initial_value")}
           />
-        </div>
+        </FormField>
       </div>
 
       {mode === "edit" ? (
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={value.is_active}
-            onChange={(event) => {
-              patch({ is_active: event.target.checked });
-            }}
-          />
+          <input type="checkbox" {...register("is_active")} />
           Active
         </label>
       ) : null}
@@ -139,27 +130,20 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
       {extension === "banking_details" ? (
         <fieldset className="space-y-3 rounded-md border border-border p-3">
           <legend className="px-1 text-sm font-medium">Banking details</legend>
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-entity`}>Entity</Label>
-            <Input
-              id={`${idPrefix}-entity`}
-              required
-              value={value.banking_entity}
-              onChange={(event) => {
-                patch({ banking_entity: event.target.value });
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-acct-num`}>Account number</Label>
-            <Input
-              id={`${idPrefix}-acct-num`}
-              value={value.banking_account_number}
-              onChange={(event) => {
-                patch({ banking_account_number: event.target.value });
-              }}
-            />
-          </div>
+          <FormField
+            label="Entity"
+            htmlFor={`${idPrefix}-entity`}
+            error={errors.banking_entity?.message}
+          >
+            <Input id={`${idPrefix}-entity`} {...register("banking_entity")} />
+          </FormField>
+          <FormField
+            label="Account number"
+            htmlFor={`${idPrefix}-acct-num`}
+            error={errors.banking_account_number?.message}
+          >
+            <Input id={`${idPrefix}-acct-num`} {...register("banking_account_number")} />
+          </FormField>
         </fieldset>
       ) : null}
 
@@ -167,34 +151,32 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
         <fieldset className="space-y-3 rounded-md border border-border p-3">
           <legend className="px-1 text-sm font-medium">Trading details</legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-buy`}>Buy value</Label>
+            <FormField
+              label="Buy value"
+              htmlFor={`${idPrefix}-buy`}
+              error={errors.trading_buy_value?.message}
+            >
               <Input
                 id={`${idPrefix}-buy`}
                 type="number"
                 min={0}
                 step="any"
-                required
-                value={value.trading_buy_value}
-                onChange={(event) => {
-                  patch({ trading_buy_value: event.target.value });
-                }}
+                {...register("trading_buy_value")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-units`}>Units</Label>
+            </FormField>
+            <FormField
+              label="Units"
+              htmlFor={`${idPrefix}-units`}
+              error={errors.trading_units?.message}
+            >
               <Input
                 id={`${idPrefix}-units`}
                 type="number"
                 min={1}
                 step={1}
-                required
-                value={value.trading_units}
-                onChange={(event) => {
-                  patch({ trading_units: event.target.value });
-                }}
+                {...register("trading_units")}
               />
-            </div>
+            </FormField>
           </div>
         </fieldset>
       ) : null}
@@ -202,20 +184,19 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
       {extension === "credit_card_details" ? (
         <fieldset className="space-y-3 rounded-md border border-border p-3">
           <legend className="px-1 text-sm font-medium">Credit card details</legend>
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-limit`}>Credit limit</Label>
+          <FormField
+            label="Credit limit"
+            htmlFor={`${idPrefix}-limit`}
+            error={errors.credit_limit?.message}
+          >
             <Input
               id={`${idPrefix}-limit`}
               type="number"
               min={0}
               step="any"
-              required
-              value={value.credit_limit}
-              onChange={(event) => {
-                patch({ credit_limit: event.target.value });
-              }}
+              {...register("credit_limit")}
             />
-          </div>
+          </FormField>
         </fieldset>
       ) : null}
 
@@ -223,42 +204,36 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
         <fieldset className="space-y-3 rounded-md border border-border p-3">
           <legend className="px-1 text-sm font-medium">Loan details</legend>
           <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={value.loan_is_paid_off}
-              onChange={(event) => {
-                patch({ loan_is_paid_off: event.target.checked });
-              }}
-            />
+            <input type="checkbox" {...register("loan_is_paid_off")} />
             Paid off
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-ins`}>Insurance payment</Label>
+            <FormField
+              label="Insurance payment"
+              htmlFor={`${idPrefix}-ins`}
+              error={errors.loan_insurance_payment?.message}
+            >
               <Input
                 id={`${idPrefix}-ins`}
                 type="number"
                 min={0}
                 step="any"
-                value={value.loan_insurance_payment}
-                onChange={(event) => {
-                  patch({ loan_insurance_payment: event.target.value });
-                }}
+                {...register("loan_insurance_payment")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-extras`}>Extras payment</Label>
+            </FormField>
+            <FormField
+              label="Extras payment"
+              htmlFor={`${idPrefix}-extras`}
+              error={errors.loan_extras_payment?.message}
+            >
               <Input
                 id={`${idPrefix}-extras`}
                 type="number"
                 min={0}
                 step="any"
-                value={value.loan_extras_payment}
-                onChange={(event) => {
-                  patch({ loan_extras_payment: event.target.value });
-                }}
+                {...register("loan_extras_payment")}
               />
-            </div>
+            </FormField>
           </div>
         </fieldset>
       ) : null}
@@ -266,119 +241,94 @@ export function AccountFormFields({ value, onChange, mode, idPrefix }: AccountFo
       {extension === "real_estate_details" ? (
         <fieldset className="space-y-3 rounded-md border border-border p-3">
           <legend className="px-1 text-sm font-medium">Real estate details</legend>
-          <div className="space-y-2">
-            <Label htmlFor={`${idPrefix}-address`}>Address</Label>
-            <Input
-              id={`${idPrefix}-address`}
-              required
-              value={value.re_address}
-              onChange={(event) => {
-                patch({ re_address: event.target.value });
-              }}
-            />
+          <FormField
+            label="Address"
+            htmlFor={`${idPrefix}-address`}
+            error={errors.re_address?.message}
+          >
+            <Input id={`${idPrefix}-address`} {...register("re_address")} />
+          </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="City" htmlFor={`${idPrefix}-city`} error={errors.re_city?.message}>
+              <Input id={`${idPrefix}-city`} {...register("re_city")} />
+            </FormField>
+            <FormField
+              label="Country"
+              htmlFor={`${idPrefix}-country`}
+              error={errors.re_country?.message}
+            >
+              <Input id={`${idPrefix}-country`} {...register("re_country")} />
+            </FormField>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-city`}>City</Label>
-              <Input
-                id={`${idPrefix}-city`}
-                required
-                value={value.re_city}
-                onChange={(event) => {
-                  patch({ re_city: event.target.value });
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-country`}>Country</Label>
-              <Input
-                id={`${idPrefix}-country`}
-                required
-                value={value.re_country}
-                onChange={(event) => {
-                  patch({ re_country: event.target.value });
-                }}
-              />
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-total`}>Total area</Label>
+            <FormField
+              label="Total area"
+              htmlFor={`${idPrefix}-total`}
+              error={errors.re_total_area?.message}
+            >
               <Input
                 id={`${idPrefix}-total`}
                 type="number"
                 min={0}
                 step="any"
-                required
-                value={value.re_total_area}
-                onChange={(event) => {
-                  patch({ re_total_area: event.target.value });
-                }}
+                {...register("re_total_area")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-built`}>Built area</Label>
+            </FormField>
+            <FormField
+              label="Built area"
+              htmlFor={`${idPrefix}-built`}
+              error={errors.re_built_area?.message}
+            >
               <Input
                 id={`${idPrefix}-built`}
                 type="number"
                 min={0}
                 step="any"
-                required
-                value={value.re_built_area}
-                onChange={(event) => {
-                  patch({ re_built_area: event.target.value });
-                }}
+                {...register("re_built_area")}
               />
-            </div>
+            </FormField>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-unit`}>Area unit</Label>
-              <NativeSelect
-                id={`${idPrefix}-unit`}
-                value={value.re_area_unit}
-                onChange={(event) => {
-                  patch({ re_area_unit: event.target.value });
-                }}
-              >
+            <FormField
+              label="Area unit"
+              htmlFor={`${idPrefix}-unit`}
+              error={errors.re_area_unit?.message}
+            >
+              <NativeSelect id={`${idPrefix}-unit`} {...register("re_area_unit")}>
                 {AREA_UNIT_SLUGS.map((unit) => (
                   <option key={unit} value={unit}>
                     {unit}
                   </option>
                 ))}
               </NativeSelect>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-own`}>Ownership</Label>
-              <NativeSelect
-                id={`${idPrefix}-own`}
-                value={value.re_ownership}
-                onChange={(event) => {
-                  patch({ re_ownership: event.target.value });
-                }}
-              >
+            </FormField>
+            <FormField
+              label="Ownership"
+              htmlFor={`${idPrefix}-own`}
+              error={errors.re_ownership?.message}
+            >
+              <NativeSelect id={`${idPrefix}-own`} {...register("re_ownership")}>
                 {OWNERSHIP_SLUGS.map((ownership) => (
                   <option key={ownership} value={ownership}>
                     {ownership}
                   </option>
                 ))}
               </NativeSelect>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`${idPrefix}-part`}>Participation</Label>
+            </FormField>
+            <FormField
+              label="Participation"
+              htmlFor={`${idPrefix}-part`}
+              error={errors.re_participation?.message}
+            >
               <Input
                 id={`${idPrefix}-part`}
                 type="number"
                 min={0}
                 max={1}
                 step="any"
-                required
-                value={value.re_participation}
-                onChange={(event) => {
-                  patch({ re_participation: event.target.value });
-                }}
+                {...register("re_participation")}
               />
-            </div>
+            </FormField>
           </div>
         </fieldset>
       ) : null}
