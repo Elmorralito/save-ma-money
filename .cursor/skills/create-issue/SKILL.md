@@ -68,20 +68,20 @@ Strip YAML frontmatter for the body; use frontmatter `labels` as defaults.
 
 **All types**
 
-| Field        | Notes                                                                         |
-| ------------ | ----------------------------------------------------------------------------- |
-| `semantic`   | `feat` \| `fix` \| `ops` \| `ci` \| `docs` \| `test` \| `chore` \| `refactor` |
-| `PPT-NNN`    | e.g. `PPT-046` — must match intended program id / label                       |
-| `domain`     | `api` \| `model` \| `infra` \| … (epic title uses `[EPIC][domain]`)           |
-| `title_text` | Sentence case short title (no semantic/PPT prefix)                            |
+| Field        | Notes                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `semantic`   | `feat` \| `fix` \| `ops` \| `ci` \| `docs` \| `test` \| `chore` \| `refactor`                                     |
+| `PPT-NNN`    | e.g. `PPT-046` — in **title/body** always; epic GitHub label is **`EPIC: PPT-{NNN}`** (children reuse that label) |
+| `domain`     | `api` \| `model` \| `infra` \| … (epic title uses `[EPIC][domain]`)                                               |
+| `title_text` | Sentence case short title (no semantic/PPT prefix)                                                                |
 
-**epic** — also: step/phase name; parent program (default `#28` PPT-031); summary; out of scope (can be short); blocked-by if known.
+**epic** — also: step/phase name; parent program (default `#28` PPT-031); summary; out of scope (can be short); blocked-by if known. **Creates** the durable track label `EPIC: PPT-{NNN}` if missing.
 
-**program** — also: parent program (default `#28`); parent epic if any (often `#42`); step; summary; depends/blocks (may be “none”); platform rule note; at least one acceptance criterion.
+**program** — also: parent program (default `#28`); parent epic if any (often `#42`); step; summary; depends/blocks (may be “none”); platform rule note; at least one acceptance criterion. **Do not** create a new epic track label; if linked to a parent epic, apply that epic’s existing `EPIC: PPT-*` label.
 
-**child** — also: **parent epic** (required, e.g. `#42`); program (default `#28`); step number; goal; depends on; blocks (siblings); acceptance criteria.
+**child** — also: **parent epic** (required, e.g. `#42`); program (default `#28`); step number; goal; depends on; blocks (siblings); acceptance criteria. Child has its own `PPT-{NNN}` in the **title/body** only. **Apply the parent epic’s `EPIC: PPT-*` label** (never create a new one for the child id).
 
-**bug** — also: summary; reproduce steps; expected; actual; environment row(s); acceptance (“bug no longer reproduces”).
+**bug** — also: summary; reproduce steps; expected; actual; environment row(s); acceptance (“bug no longer reproduces”). No new epic track label unless the bug is filed as a child of an epic (then reuse `EPIC: PPT-*`).
 
 ### Step 3 — Optional additional context
 
@@ -102,9 +102,34 @@ Merge into the best sections (`Summary` / `Goal`, `Current state`, `Tasks`, `Ref
    - other: `{semantic}/PPT-{NNN}: [{domain}] {title_text}`
    - bug without PPT only if user insists: `fix: [{domain}] {title_text}` (prefer PPT when it maps to a track)
 
-5. Labels: template defaults + `PPT-{NNN}` when that label exists on the repo. Check with
-   `gh label list --limit 200` **after** auth (step 5). Create missing `PPT-{NNN}` only if the user asks.
-   If labels were not checked yet, do that check in step 5 once `gh` is authenticated.
+5. Labels (track labels are **epic-scoped**, format **`EPIC: PPT-{NNN}`**):
+
+   | Type        | Labels                                                                                                                                                |
+   | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | **epic**    | Template defaults + domain + **`EPIC: PPT-{NNN}`**. **Create** the label if missing (`gh label create`) — **only** when type is epic.                 |
+   | **child**   | Template defaults + domain + **parent epic’s `EPIC: PPT-*` label** (resolve from parent issue). Do **not** create a label for the child’s own PPT id. |
+   | **program** | Template defaults + domain; if a parent epic is set, also apply that epic’s existing `EPIC: PPT-*`. Do **not** create epic track labels.              |
+   | **bug**     | `bug` (+ parent epic `EPIC: PPT-*` only if filed under an epic). Do **not** create epic track labels.                                                 |
+
+   Also use existing durable domain labels (`API`, `frontend`, `documentation`, `CI/CD`, …).
+   Do **not** also apply a bare `PPT-{NNN}` or a separate `EPIC` label for the track — the
+   combined `EPIC: PPT-{NNN}` **is** the epic tag. **Never** create one-off labels for every child
+   PPT id — that flooded the repo. Functional PR skips (`skip-strata`, …) are documented in
+   [`.github/CI.md`](../../../.github/CI.md#pr-skip-labels); do not invent new skip labels without
+   wiring workflow `if:` conditions.
+
+   Resolve parent epic label (child / program with epic):
+
+   ```bash
+   gh issue view {EPIC_NUMBER} --repo Elmorralito/save-ma-money --json title,labels \
+     --jq '{title: .title, labels: [.labels[].name]}'
+   ```
+
+   Prefer an existing label matching `^EPIC: PPT-[0-9]+$` on the epic; else parse `PPT-{NNN}` from
+   the epic title and use `EPIC: PPT-{NNN}` **only if that label already exists** (create it only
+   when filing a **new** epic). If the parent still has a legacy bare `PPT-*` label, reuse that for
+   children until remediated; prefer `EPIC: PPT-*` for new epics. If none exists, ask the user
+   whether to create `EPIC: PPT-{NNN}` once — do not invent a child-only label.
 
 ### Step 5 — `gh` auth (login if necessary)
 
@@ -125,7 +150,8 @@ Prefer GitHub.com + HTTPS (or the host this repo’s `gh` remote uses, e.g. if `
 
 Re-run `gh auth status` until it succeeds. If the user declines login, **stop** — do not pretend the issue was filed.
 
-Optional after auth: `gh label list --repo Elmorralito/save-ma-money --limit 200` to finalize labels for the draft.
+Optional after auth: `gh label list --repo Elmorralito/save-ma-money --limit 200` to confirm
+domain labels and whether `EPIC: PPT-*` already exists.
 
 ### Step 6 — Confirm
 
@@ -138,8 +164,20 @@ Ask: create on origin now? **Yes / edit / cancel**.
 
 ### Step 7 — Create on origin
 
+**Epic only — ensure track label exists before create:**
+
 ```bash
-# Write body to a temp file (no secrets). Example:
+# Create once per epic track (idempotent if already present)
+gh label create "EPIC: PPT-{NNN}" \
+  --repo Elmorralito/save-ma-money \
+  --color "0E8A16" \
+  --description "Epic track PPT-{NNN}" \
+  2>/dev/null || true
+```
+
+**All types — create the issue:**
+
+```bash
 BODY_FILE="$(mktemp)"
 # ... write drafted markdown to $BODY_FILE ...
 
@@ -147,10 +185,14 @@ gh issue create \
   --repo Elmorralito/save-ma-money \
   --title "{TITLE}" \
   --body-file "$BODY_FILE" \
-  --label "{labels comma-separated as separate --label flags}"
+  --label enhancement \
+  --label "EPIC: PPT-{EPIC_NNN}"   # epic: this epic's id; child/program: parent epic's id only
 
 rm -f "$BODY_FILE"
 ```
+
+Repeat `--label` for each label (domain, `bug`, etc.). For **child** / linked **program**,
+`EPIC: PPT-{EPIC_NNN}` is the **parent epic** track label — not the child’s title PPT id.
 
 Prefer `--repo Elmorralito/save-ma-money` (or the current `gh` remote) so the issue lands on **origin**, not a fork.
 
@@ -162,6 +204,9 @@ Return the issue **URL** and number. Do not close or edit other issues unless as
 - Template structure is SSOT; fill it, don’t replace it.
 - Never invent green CI, fake issue numbers, or PPT ids the user didn’t approve.
 - Never paste secrets or `gh` tokens.
+- **Epic track GitHub labels use `EPIC: PPT-{NNN}`:** create with `gh label create` **only** when
+  filing an **epic**. Children and programs under that epic **reuse** that label; never create a
+  new track label for each child id. Child PPT ids stay in the title/body.
 - If `gh` auth fails or the user skips login, stop and report — do not pretend the issue was filed.
 - Optional: offer a matching brief under `docs/issues/` only when the user asks.
 

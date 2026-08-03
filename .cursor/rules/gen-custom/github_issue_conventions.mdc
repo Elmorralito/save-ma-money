@@ -21,7 +21,7 @@ NOTE: Follow this rule when creating or editing GitHub issues via `gh issue crea
 | Part | Values | Example |
 |------|--------|---------|
 | `semantic` | Prefer Conventional Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore` (+ repo extras `ops`, `ci` when apt) | `feat/PPT-034` |
-| `PPT-{NNN}` | Next program ID; label must match (`PPT-032`) | `PPT-041` |
+| `PPT-{NNN}` | Next program ID in title/body; epic GitHub label is **`EPIC: PPT-{NNN}`** (children reuse it) | `PPT-041` / label `EPIC: PPT-041` |
 | `domain` | `[api]`, `[model]`, `[EPIC][api]` for epics only | `[model]` |
 | Epic | Prefix domain with `[EPIC]` | `feat/PPT-032: [EPIC][api] …` |
 
@@ -50,7 +50,27 @@ Issue/PR/commit type should track [Semantic Commit Messages](https://gist.github
 
 ## Labels
 
-Apply the matching `PPT-{NNN}` label plus domain labels (`API`, `data model`, `CI/CD`, `documentation`, etc.).
+Apply durable domain labels (`API`, `frontend`, `CI/CD`, `documentation`, `enhancement`, `bug`, etc.).
+
+**`EPIC: PPT-{NNN}` track labels (epic-scoped):**
+
+- **Epic:** create (if missing) and apply `EPIC: PPT-{NNN}` for that epic only (not bare `PPT-{NNN}`).
+- **Child / program under epic:** apply the **parent epic’s** `EPIC: PPT-*` label — do **not** create a new label for the child’s own PPT id (title/body still carry the child id).
+- Agents using `/create-issue` must not `gh label create` for non-epic track labels.
+
+**PR functional skips** (apply on pull requests; CI reacts — see [`.github/CI.md` § PR skip labels](../../.github/CI.md#pr-skip-labels)):
+
+| Label | CI reaction |
+| ----- | ----------- |
+| `skip-dev-release` | Skip Publish model (dev) |
+| `skip-strata` | Skip Strata Check |
+| `skip-web-ci` | Skip Web CI |
+| `skip-web-e2e` | Skip Web E2E |
+| `skip-quality` | Skip Code Quality Control |
+| `skip-migrations` | Skip Migration Check |
+| `skip-openapi` | Skip OpenAPI Web Contract |
+
+Do not invent new skip labels without wiring a matching `if:` in the workflow.
 
 ## Code paths (feat / fix / docs / test / ops)
 

@@ -9,6 +9,7 @@ labels: ["enhancement"]
 Title: {semantic}/PPT-{NNN}: [{domain}] {Sentence case}
 Must link Parent epic. Keep scope to one step in the epic implementation order.
 Business logic stays in papita_txnsmodel; API children wire routers/schemas/deps only.
+Labels: apply the **parent epic’s** `EPIC: PPT-*` track label (do not create a label for this child’s PPT id).
 References: #42 children (#43–#50), e.g. #45 scaffold.
 -->
 

@@ -3,6 +3,7 @@ name: Strata Check
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "modules/**"
       - "pyproject.toml"
@@ -26,8 +27,10 @@ concurrency:
 
 jobs:
   strata-check:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-strata')
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7

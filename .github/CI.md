@@ -17,6 +17,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 
 - [CI at a glance](#ci-at-a-glance)
 - [Which checks run on my PR?](#which-checks-run-on-my-pr)
+- [PR skip labels](#pr-skip-labels)
 - [Workflow overview](#workflow-overview)
 - [Run checks locally](#run-checks-locally)
 - [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi))
@@ -112,7 +113,32 @@ Use this matrix to predict required checks before opening a PR.
 
 **Always on PRs:** Secret Scan (Gitleaks) — no path filter, full history · Branch sync with main — fail if the PR head is behind `origin/main`.
 
-**Model TestPyPI (optional publish, not a merge gate):** PRs that touch `modules/model/**` also run [Publish model (dev)](#publish-model-dev--testpypi) after the other PR checks pass. It is path-filtered and must not be required for merge (it waits on the other checks).
+**Model TestPyPI (optional publish, not a merge gate):** PRs that touch `modules/model/**` also run [Publish model (dev)](#publish-model-dev--testpypi) after the other PR checks pass. It is path-filtered and must not be required for merge (it waits on the other checks). Opt out with [`skip-dev-release`](#pr-skip-labels).
+
+---
+
+## PR skip labels
+
+Durable **functional** labels (not `PPT-*`). Apply on a **PR** to skip the matching workflow job. Adding/removing the label re-triggers the workflow (`labeled` / `unlabeled`). **Push to `main`, schedules, and `workflow_dispatch` ignore these labels.**
+
+| Label              | Skips workflow                       | File                                                         |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------ |
+| `skip-dev-release` | Publish model (dev) TestPyPI preview | [`publish-model-dev.yml`](./workflows/publish-model-dev.yml) |
+| `skip-strata`      | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
+| `skip-web-ci`      | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
+| `skip-web-e2e`     | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
+| `skip-quality`     | Code Quality Control (Python gate)   | [`quality-control.yml`](./workflows/quality-control.yml)     |
+| `skip-migrations`  | Migration Check                      | [`migration-check.yml`](./workflows/migration-check.yml)     |
+| `skip-openapi`     | OpenAPI Web Contract                 | [`openapi-contract.yml`](./workflows/openapi-contract.yml)   |
+
+**Not skippable via label (by design):** Gitleaks, CodeQL, Trivy, Bash Security, Supply Chain, Branch sync — keep security and merge-hygiene gates honest.
+
+**Use sparingly.** Prefer path filters and focused PRs. `skip-quality` / `skip-migrations` / `skip-openapi` are for rare noise (e.g. docs-only false positives), not for shipping untested code. Skipped jobs still appear as **Skipped** in the checks list; if a check is **required** in branch protection, confirm skipped-as-success is acceptable for that repo setting.
+
+```bash
+# Example: skip TestPyPI preview on a model docs PR
+gh pr edit 123 --add-label skip-dev-release
+```
 
 ---
 
@@ -235,14 +261,14 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 
 ### Publish model (dev) → TestPyPI
 
-|             |                                                                                                                                                                                                                                                              |
-| :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Trigger** | Pull request (non-draft, same-repo) with paths under `modules/model/**` (or the publish/dev scripts/workflows listed in the YAML)                                                                                                                            |
-| **Gate**    | [`wait_for_pr_checks.sh`](./scripts/wait_for_pr_checks.sh) — all other `pull_request` workflow runs for the head SHA must succeed; always requires **Secret Scan**, **Branch sync with main**, and **Code Quality Control**                                  |
-| **Version** | Ephemeral stamp `{pyproject_version}.dev{github.run_id}` (PEP 440; not committed) via [`stamp_model_dev_version.py`](./scripts/stamp_model_dev_version.py)                                                                                                   |
-| **Publish** | Reuses `publish-model.yml` (`workflow_call`, `target=testpypi`, `stamp_dev_version=true`). Publish jobs key off `inputs.target` — not `github.event_name == workflow_call` (inside a called workflow that name is the **caller** event, e.g. `pull_request`) |
-| **Cadence** | Every qualifying PR push (`synchronize`); concurrency cancels in-progress runs for the same PR                                                                                                                                                               |
-| **Skipped** | Draft PRs; fork PRs; PRs with no `modules/model/**` (path filter); `publish-pypi` on this path (TestPyPI only)                                                                                                                                               |
+|             |                                                                                                                                                                                                                                                                                                    |
+| :---------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger** | Pull request (non-draft, same-repo) with paths under `modules/model/**` (or the publish/dev scripts/workflows listed in the YAML)                                                                                                                                                                  |
+| **Gate**    | [`wait_for_pr_checks.sh`](./scripts/wait_for_pr_checks.sh) — all other `pull_request` workflow runs for the head SHA must succeed (**`cancelled` runs ignored** — concurrency / re-trigger supersession); always requires **Secret Scan**, **Branch sync with main**, and **Code Quality Control** |
+| **Version** | Ephemeral stamp `{pyproject_version}.dev{github.run_id}` (PEP 440; not committed) via [`stamp_model_dev_version.py`](./scripts/stamp_model_dev_version.py)                                                                                                                                         |
+| **Publish** | Reuses `publish-model.yml` (`workflow_call`, `target=testpypi`, `stamp_dev_version=true`). Publish jobs key off `inputs.target` — not `github.event_name == workflow_call` (inside a called workflow that name is the **caller** event, e.g. `pull_request`)                                       |
+| **Cadence** | Every qualifying PR push (`synchronize`); concurrency cancels in-progress runs for the same PR                                                                                                                                                                                                     |
+| **Skipped** | Draft PRs; fork PRs; PRs with no `modules/model/**` (path filter); `publish-pypi` on this path (TestPyPI only)                                                                                                                                                                                     |
 
 ```bash
 # Install a PR preview build from TestPyPI (pin the stamped version from the Actions summary)

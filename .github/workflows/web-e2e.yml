@@ -8,7 +8,7 @@ on:
     - cron: "30 7 * * 1"
   workflow_dispatch:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       - "modules/web/e2e/**"
       - "modules/web/playwright.config.ts"
@@ -23,6 +23,9 @@ concurrency:
 
 jobs:
   playwright:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-web-e2e')
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
