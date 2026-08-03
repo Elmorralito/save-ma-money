@@ -30,7 +30,7 @@
 
 - [ ] [_**[#120](https://github.com/Elmorralito/save-ma-money/issues/120)**_] :: **feat/PPT-055: [web] Forms validation and loading UX standards** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:52+00:00</sub>_ :weary:
 
-- [ ] [_**[#119](https://github.com/Elmorralito/save-ma-money/issues/119)**_] :: **feat/PPT-054: [web] Dashboard and reports UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:51+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#119](https://github.com/Elmorralito/save-ma-money/issues/119)**_] :: **feat/PPT-054: [web] Dashboard and reports UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:51+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#118](https://github.com/Elmorralito/save-ma-money/issues/118)**_] :: **feat/PPT-053: [web] Transactions and movements UI on existing API** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:50+00:00</sub>_ :weary:
 
