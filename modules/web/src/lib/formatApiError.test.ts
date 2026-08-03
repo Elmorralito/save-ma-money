@@ -75,6 +75,16 @@ describe("formatApiError", () => {
     });
     expect(formatApiError(error)).toContain("body.name: Field required");
   });
+
+  it("remaps Email not confirmed to clearer sign-in copy", () => {
+    const error = new PapitaApiError({
+      message: "Email not confirmed",
+      status: 401,
+      discovery: emptyDiscovery,
+    });
+    expect(formatApiError(error)).toMatch(/Confirm your email/i);
+    expect(formatApiError(error)).toMatch(/inbox/i);
+  });
 });
 
 describe("isGlobalOrMissingCategoryError", () => {

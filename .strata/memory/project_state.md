@@ -10,6 +10,10 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- **PPT-060 / #125:** Auth edge-case MVP matrix — web README matrix + Playwright
+  assumptions; API Auth cross-link; `formatApiError` confirm-email remap; Login/
+  Register 429 page tests. Strata archived `20260803-03`. Password reset deferred;
+  email-confirm product UX remains PPT-068 (#139).
 - **PPT-054 / #119 (in progress):** Dashboard + reports UI — PR1 spending slice in
   `modules/web`: `lib/reportWindow.ts` (mirrors API window delta), `api/reports.ts`,
   `ReportFilters` + `SpendingReportView`, `ReportsPage` (stub replaced), error-code
@@ -27,14 +31,13 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 - Finish #119: cash-flow + trends tabs → export download + 501 UX → dashboard compose
   (balances from `listAccounts`; recent activity via `GET /transactions` from #118)
-- Then PPT-056 (#121) E2E report flow; PPT-055 forms (#120); PPT-068 (#139); PPT-069 (#140)
+- Then PPT-056 (#121) E2E (use PPT-060 confirmed-user assumptions); PPT-055 forms
+  (#120); PPT-068 (#139) check-email/resend; PPT-069 (#140)
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
-- `modules/**` changes need a paired `.strata/` touch (strict mode) — updated this session
-  (`project_state`, issue `20260803-02`, resolve `20260730-01`, ARCHITECTURE web note)
+- `modules/**` changes need a paired `.strata/` touch (strict mode) — PPT-060 paired
+  (`project_state`, archive `20260803-03`)
+- Unrelated WIP left unstaged: `modules/web/src/forms/`, `formatDate.ts` (likely #120)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
-
-- Autopilot (#148): prettier ARCHIVE.md table padding; merge `origin/main`
-  CHANGELOG auto-update + prettier so Not behind main / quality-control pass

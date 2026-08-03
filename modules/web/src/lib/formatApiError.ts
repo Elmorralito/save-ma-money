@@ -9,6 +9,15 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Presentation remaps for allowlisted Auth ``detail`` strings (PPT-060).
+ * Does not invent new API contracts — check-email / resend UX is PPT-068 / #139.
+ */
+const AUTH_DETAIL_MESSAGES: Record<string, string> = {
+  "Email not confirmed":
+    "Confirm your email before signing in. Check your inbox for the confirmation link.",
+};
+
+/**
  * User-facing message from a failed API call (422 / X-Papita-Error-Code aware).
  *
  * Does not interpret domain rules — only surfaces server ``detail`` and discovery codes.
@@ -67,6 +76,10 @@ export function formatApiError(error: unknown, fallback = "Request failed"): str
         message = parts.join("; ");
       }
     }
+  }
+
+  if (message in AUTH_DETAIL_MESSAGES) {
+    message = AUTH_DETAIL_MESSAGES[message]!;
   }
 
   if (error.code) {

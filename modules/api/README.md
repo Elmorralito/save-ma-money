@@ -289,6 +289,8 @@ Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `te
 
 **Local Supabase DX (`AUTH_AUTO_CONFIRM_EMAIL`):** when `PAPITA_ENV=local` (or the env var is explicitly `true`) and `SUPABASE_SERVICE_ROLE_KEY` is set, register prefers Admin `create_user` with `email_confirm=true` (avoids SMTP confirmation emails / 429 rate limits). Login uses `supabase_sign_in_with_optional_auto_confirm`, which Admin-confirms only when Auth shows `email_confirmed_at` null — wrong passwords do not trigger confirm. Prefer turning off **Confirm email** in the Supabase dashboard for local smoke; see `environments/local/.env.example`.
 
+**Web auth edge-case matrix (PPT-060 / #125):** MVP vs deferred (confirm-email product UX → #139, password reset deferred, auth 429 via shared SPA mapper) lives in [`modules/web/README.md`](../web/README.md#supabase-auth-edge-case-matrix-ppt-060--125). Staging/prod: expect Confirm email ON; do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
+
 **Register** — returns **201**, no token; client must log in (or obtain a Supabase session) separately.
 
 ```bash
