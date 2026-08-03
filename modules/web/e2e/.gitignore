@@ -1,0 +1,3 @@
+# Seed credentials / IDs written by `make web-e2e-seed` (PPT-061 / #126).
+# Never commit passwords or seed.json.
+.auth/

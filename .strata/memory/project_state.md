@@ -10,6 +10,10 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
+- **PPT-061 / #126:** E2E seed fixtures (strategy A — API HTTP script).
+  `make web-e2e-seed` / `pnpm web:seed-e2e` → `modules/web/e2e/.auth/seed.json`.
+  RESET soft-deletes baseline txns + E2E accounts (categories reused). Docs in
+  `modules/web/README.md`. Handoff: #121 `globalSetup` invokes seed only.
 - **PPT-060 / #125:** Auth edge-case MVP matrix — web README matrix + Playwright
   assumptions; API Auth cross-link; `formatApiError` confirm-email remap; Login/
   Register 429 page tests. Strata archived `20260803-03`. Password reset deferred;
@@ -33,8 +37,8 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 - Finish #120: open PR, close GitHub issue after merge
 - Finish #119: cash-flow + trends tabs → export download + 501 UX → dashboard compose
   (balances from `listAccounts`; recent activity via `GET /transactions` from #118)
-- Then PPT-056 (#121) E2E (use PPT-060 confirmed-user assumptions); PPT-068 (#139)
-  check-email/resend; PPT-069 (#140)
+- PPT-056 (#121) Playwright gate — call `make web-e2e-seed` from `globalSetup`
+  (fixture SSOT #126 / PPT-061); PPT-068 (#139) check-email/resend; PPT-069 (#140)
 
 ### Uncommitted / staging notes
 

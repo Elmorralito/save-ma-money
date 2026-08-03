@@ -14,6 +14,8 @@ __pycache__/
 node_modules/
 modules/web/dist/
 modules/web/coverage/
+# Playwright E2E seed artifact + credentials (PPT-061 / #126)
+modules/web/e2e/.auth/
 .mypy_cache/
 .pytest_cache/
 .venv/
