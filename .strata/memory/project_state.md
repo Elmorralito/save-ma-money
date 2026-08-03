@@ -10,29 +10,29 @@ project**. Papita API verifies JWTs + links `users` by `sub` — it is not the I
 
 ### Last completed (this session)
 
-- **CodeQL JS/TS:** Independent workflow `.github/workflows/codeql-javascript.yml`
-  (separate from Python `codeql.yml`; own path filters + concurrency)
-- **Web pre-commit hooks:** Local `web-eslint` / `web-prettier` / `web-tsc` /
-  `web-vitest-related` via `.github/scripts/pre_commit_web.sh` (husky-equivalent
-  tools through pre-commit SSOT; skipped in quality-control, gated by web-ci)
-- **PPT-053 / #118 / PR #147:** Transactions + movements UI in `modules/web` —
-  typed client, Idempotency-Key, bulk cap, movements execute/cancel, Retry-After
-  on 429; strata archived `20260803-01` + learning `web-ledger-ui-no-domain.md`
-- **PPT-052 / #117 (in progress toward PR):** Accounts + categories UI + local
-  Supabase email-confirm DX (`AUTH_AUTO_CONFIRM_EMAIL`, Admin register)
-- **PPT-051 / #116:** Tailwind v4 + shadcn shell (prior)
-- **PPT-049 / #115 / PR #141:** BFF HttpOnly session (merged)
+- **PPT-054 / #119 (in progress):** Dashboard + reports UI — PR1 spending slice in
+  `modules/web`: `lib/reportWindow.ts` (mirrors API window delta), `api/reports.ts`,
+  `ReportFilters` + `SpendingReportView`, `ReportsPage` (stub replaced), error-code
+  copy for `report_window_too_large` / `report_account_not_found`. Vitest + lint green.
+- **PPT-053 / #118 / PR #147:** Transactions + movements UI — typed client,
+  Idempotency-Key, bulk cap, movements execute/cancel, Retry-After on 429; strata
+  archived `20260803-01` + learning `web-ledger-ui-no-domain.md`
+- **PPT-052 / #117:** Closed — accounts/categories UI + local auth DX via PR #143
+- **CodeQL JS/TS + web pre-commit:** Independent `codeql-javascript.yml`; local
+  `web-eslint` / `web-prettier` / `web-tsc` / `web-vitest-related` via
+  `.github/scripts/pre_commit_web.sh`
+- **PPT-051 / #116 · PPT-049 / #115 · PPT-048 / #114:** Prior web epic foundations (merged)
 
 ### Next action
 
-- Open/land PR for PPT-053 (#118) if not yet filed; keep pairing `.strata/` on commit
-- Land [#143](https://github.com/Elmorralito/save-ma-money/pull/143) (PPT-052) — also
-  fixes TestPyPI publish skip (`publish-model.yml` must gate on `inputs.target`)
-- PPT-054 dashboard/reports UI (#119); PPT-055 forms kit (#120); PPT-056 E2E (#121)
+- Finish #119: cash-flow + trends tabs → export download + 501 UX → dashboard compose
+  (balances from `listAccounts`; recent activity via `GET /transactions` from #118)
+- Then PPT-056 (#121) E2E report flow; PPT-055 forms (#120); PPT-068 (#139); PPT-069 (#140)
 
 ### Uncommitted / staging notes
 
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
 - `modules/**` changes need a paired `.strata/` touch (strict mode) — updated this session
+  (`project_state`, issue `20260803-02`, resolve `20260730-01`, ARCHITECTURE web note)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
 - Autopilot (#145): Dependabot npm-web group bump paired here for strata-check strict mode

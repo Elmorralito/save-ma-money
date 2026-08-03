@@ -1,5 +1,13 @@
 import { isPapitaApiError } from "@/api/errors";
 
+/** Friendly copy for known PPT-044 report discovery codes (presentation only). */
+const REPORT_ERROR_MESSAGES: Record<string, string> = {
+  report_window_too_large:
+    "Report date range exceeds the allowed maximum. Shorten the window and try again.",
+  report_account_not_found:
+    "That account was not found for your tenant. Pick another account or clear the filter.",
+};
+
 /**
  * User-facing message from a failed API call (422 / X-Papita-Error-Code aware).
  *
@@ -27,6 +35,10 @@ export function formatApiError(error: unknown, fallback = "Request failed"): str
       return `${base} Retry after ${String(error.retryAfter)}s.`;
     }
     return base;
+  }
+
+  if (error.code && error.code in REPORT_ERROR_MESSAGES) {
+    return `${REPORT_ERROR_MESSAGES[error.code]} [${error.code}]`;
   }
 
   let message = error.message;
