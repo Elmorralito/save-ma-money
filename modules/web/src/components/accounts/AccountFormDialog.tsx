@@ -1,5 +1,6 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { createAccount, updateAccount } from "@/api/accounts";
@@ -21,7 +22,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { formatApiError } from "@/lib/formatApiError";
+import { applyMutationError } from "@/forms/applyMutationError";
+import { ACCOUNT_SERVER_FIELD_MAP } from "@/forms/fieldMaps";
+import { FormRootError } from "@/forms/FormField";
+import { accountFormSchema } from "@/forms/schemas/account";
 import type { AccountResponse } from "@/types/domain";
 
 type AccountFormDialogProps = {
@@ -39,20 +43,21 @@ type AccountFormBodyProps = {
 
 function AccountFormBody({ mode, account, onOpenChange }: AccountFormBodyProps) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<AccountFormState>(() =>
-    mode === "edit" && account ? accountFormFromResponse(account) : emptyAccountFormState(),
-  );
-  const [error, setError] = useState<string | null>(null);
+  const form = useForm<AccountFormState>({
+    resolver: zodResolver(accountFormSchema),
+    defaultValues:
+      mode === "edit" && account ? accountFormFromResponse(account) : emptyAccountFormState(),
+  });
 
   const mutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: AccountFormState) => {
       if (mode === "create") {
-        return createAccount(toAccountCreate(form));
+        return createAccount(toAccountCreate(values));
       }
       if (!account) {
         throw new Error("Missing account");
       }
-      return updateAccount(account.id, toAccountUpdate(form));
+      return updateAccount(account.id, toAccountUpdate(values));
     },
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.lists() });
@@ -61,39 +66,30 @@ function AccountFormBody({ mode, account, onOpenChange }: AccountFormBodyProps) 
       onOpenChange(false);
     },
     onError: (err: unknown) => {
-      setError(formatApiError(err));
+      applyMutationError(err, {
+        setError: form.setError,
+        fieldMap: ACCOUNT_SERVER_FIELD_MAP,
+      });
     },
   });
 
-  function onSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    try {
-      if (mode === "create") {
-        toAccountCreate(form);
-      } else {
-        toAccountUpdate(form);
-      }
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Invalid form");
-      return;
-    }
-    mutation.mutate();
-  }
+  const isPending = mutation.isPending || form.formState.isSubmitting;
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        void form.handleSubmit((values) => {
+          mutation.mutate(values);
+        })(event);
+      }}
+    >
       <AccountFormFields
+        form={form}
         idPrefix={mode === "create" ? "acct-create" : "acct-edit"}
         mode={mode}
-        value={form}
-        onChange={setForm}
       />
-      {error ? (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      <FormRootError message={form.formState.errors.root?.message} />
       <DialogFooter>
         <Button
           type="button"
@@ -104,8 +100,8 @@ function AccountFormBody({ mode, account, onOpenChange }: AccountFormBodyProps) 
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save"}
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Saving…" : "Save"}
         </Button>
       </DialogFooter>
     </form>

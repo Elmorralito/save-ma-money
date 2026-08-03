@@ -165,9 +165,37 @@ Feature pages should consume tokens / `ui/*` primitives — avoid one-off hex co
 - **Local pre-commit (web):** when staging `modules/web/**`, [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) runs `web-eslint`, `web-prettier`, `web-tsc`, and `web-vitest-related` via [`.github/scripts/pre_commit_web.sh`](../../.github/scripts/pre_commit_web.sh) (same tools as husky+lint-staged, without husky). Requires `pnpm install`. Skipped in Python quality-control CI; [`.github/workflows/web-ci.yml`](../../.github/workflows/web-ci.yml) remains the merge gate.
 - Not using husky/commitlint here — commit titles follow repo PPT notation (`feat/PPT-NNN: [web] …`); Stylelint omitted (Tailwind v4 + token CSS, no separate SCSS pipeline).
 
+## Forms & UX standards (PPT-055 / #120)
+
+Shared validation and mutation error UX live under `src/forms/`. Feature screens should use this kit instead of ad-hoc `useState` + throw validation.
+
+| Piece           | Location                                          | Notes                                                                           |
+| --------------- | ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Deps            | `zod`, `react-hook-form`, `@hookform/resolvers`   | Owned by PPT-055                                                                |
+| Schemas         | `src/forms/schemas/*`                             | UX shape checks aligned to OpenAPI write models — **not** a second domain layer |
+| Field chrome    | `src/forms/FormField.tsx`                         | Label + control + inline `role="alert"` error                                   |
+| Server → fields | `src/forms/mapServerErrors.ts`                    | FastAPI 422 `loc` + optional `fieldMap` → RHF paths                             |
+| Mutation policy | `src/forms/applyMutationError.ts`                 | See error table below                                                           |
+| Money / dates   | `src/lib/formatMoney.ts`, `src/lib/formatDate.ts` | `Intl` presentation helpers only                                                |
+| Query chrome    | `src/components/QueryState.tsx`                   | Pending / empty / error for list-detail fetches                                 |
+
+**Mutation error policy**
+
+| Class                        | UX                                                                                |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| Zod client validation        | Inline field errors only                                                          |
+| HTTP 422 with mappable `loc` | Inline `setError` (field / root); **no** toast                                    |
+| 429 / network / 502–504      | Toast via `formatApiError` (+ `Retry-After` when present) **and** root form error |
+| Other 4xx/5xx                | Toast + root form error                                                           |
+| Global category 404          | Inline + toast (read-only seed signal; unchanged)                                 |
+
+**Pending:** disable submit while `mutation.isPending` or `formState.isSubmitting`; button label `Saving…`.
+
+Reference migrations: `AccountFormDialog` + `CategoryFormDialog`. Ledger/auth forms may adopt the same kit later.
+
 ## Feature screens (PPT-052)
 
-Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms are controlled (Login-style) until Zod/RHF lands in [#120](https://github.com/Elmorralito/save-ma-money/issues/120). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
+Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms use Zod + RHF (`src/forms/`, PPT-055 / [#120](https://github.com/Elmorralito/save-ma-money/issues/120)). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
 
 | Detail          | Behavior                                                                                       |
 | --------------- | ---------------------------------------------------------------------------------------------- |
@@ -179,7 +207,7 @@ Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `sr
 
 ## Ledger screens (PPT-053 / #118)
 
-Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` via `src/api/transactions.ts` / `movements.ts` + `queryOptions`. Presentation only — no TypeScript ports of ledger services. Forms remain controlled until [#120](https://github.com/Elmorralito/save-ma-money/issues/120).
+Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` via `src/api/transactions.ts` / `movements.ts` + `queryOptions`. Presentation only — no TypeScript ports of ledger services. Forms are still controlled `useState` (optional follow-on onto the PPT-055 kit).
 
 | Detail           | Behavior                                                                                          |
 | ---------------- | ------------------------------------------------------------------------------------------------- |
@@ -193,4 +221,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Transaction split v4 UI, Zod/RHF forms kit (#120), nginx image, Redis session durability polish (#124) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Dashboard/reports UI shipped as PPT-054. Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, nginx image, Redis session durability polish (#124) — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
