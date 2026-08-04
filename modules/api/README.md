@@ -291,7 +291,13 @@ Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `te
 
 **Local Supabase DX (`AUTH_AUTO_CONFIRM_EMAIL`):** when `PAPITA_ENV=local` (or the env var is explicitly `true`) and `SUPABASE_SERVICE_ROLE_KEY` is set, register prefers Admin `create_user` with `email_confirm=true` (avoids SMTP confirmation emails / 429 rate limits). Login uses `supabase_sign_in_with_optional_auto_confirm`, which Admin-confirms only when Auth shows `email_confirmed_at` null — wrong passwords do not trigger confirm. Prefer turning off **Confirm email** in the Supabase dashboard for local smoke; see `environments/local/.env.example`.
 
-**Web auth edge-case matrix (PPT-060 / #125):** MVP vs deferred (confirm-email product UX → #139, password reset deferred, auth 429 via shared SPA mapper) lives in [`modules/web/README.md`](../web/README.md#supabase-auth-edge-case-matrix-ppt-060--125). Staging/prod: expect Confirm email ON; do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
+**Email confirmation product UX (PPT-068 / #139):** staging/prod expect Confirm email ON. Register responses include `email_confirmation_required` when Auth issued no session and auto-confirm is off; BFF register never sets `papita_sid`. Unconfirmed login returns HTTP 401 with detail `Email not confirmed` and `X-Papita-Error-Code: email_not_confirmed`. SPA `/check-email` is the pending screen; `/auth/confirm` is the email-link landing (no JWT storage). Resend: `POST /api/v1/bff/auth/resend-confirmation` and Bearer twin (register rate-limit; soft-success except SMTP/Auth **429**; optional `email_redirect_to` must match `ALLOWED_ORIGINS`).
+
+**`make auth-smoke` when Confirm email is ON:** use a confirmed Supabase fixture user, or `AUTH_PROVIDER=local` (confirm-N/A). Auth-smoke exercises Bearer `/auth/*` only — it does not cover `/check-email` / resend / `/auth/confirm`. Do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
+
+**OAuth IdP email trust:** Google/GitHub channels (API Bearer OAuth) are IdP-email-verified; no duplicate confirm gate is required for MVP when those buttons ship later.
+
+**Web auth edge-case matrix (PPT-060 / #125):** MVP vs deferred (password reset deferred, auth 429 via shared SPA mapper; confirm-email product UX → #139) lives in [`modules/web/README.md`](../web/README.md#supabase-auth-edge-case-matrix-ppt-060--125). Staging/prod: expect Confirm email ON; do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
 
 **Register** — returns **201**, no token; client must log in (or obtain a Supabase session) separately.
 

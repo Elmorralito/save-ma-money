@@ -23,6 +23,10 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
+- **PPT-068 / #139** ([PR #160](https://github.com/Elmorralito/save-ma-money/pull/160)):
+  Email verification under BFF cookies on `feat/PPT-068`. Autopilot: pin
+  `ALLOWED_ORIGINS` in resend success test (conftest uses `testserver`); digest
+  email/redirect in resend logs (CodeQL `py/log-injection`).
 - **PPT-057 / #122** (`ops/PPT-057`, PR #158): nginx Compose packaging. Autopilot
   follow-up: explicit `USER nginx` + `nginxinc/nginx-unprivileged` (DS-0002), listen 8080,
   Docker DNS runtime upstream resolve, cryptography >=50 (CVE-2026-69247).
@@ -39,9 +43,9 @@ Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
 
 ### Next action
 
+- Land PPT-068 / #139 via PR #160 (CI green + AC); close issue after merge
 - Open PR for PPT-063 / #128 (nginx CSP + SPA security headers) when ready
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
-- PPT-068 (#139)
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes
@@ -49,4 +53,3 @@ Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
 - `modules/**` changes need a paired `.strata/` touch (strict mode)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
-- PPT-063: `docker/web/spa-security-headers.conf` staged; web-ci uses docker tar export + load (not `load:true`+cache-to)

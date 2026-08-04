@@ -4,8 +4,9 @@ When a request carries the BFF session cookie and **no** ``Authorization: Bearer
 header, unsafe methods must include ``X-Papita-CSRF`` matching the server-side
 session CSRF token. SameSite cookies alone are not enough for all browsers/tools.
 
-Login/register are exempt so a stale cookie cannot block a new sign-in.
-Token-path clients (``make auth-smoke``, Bearer) skip this middleware path.
+Login/register/resend-confirmation are exempt so a stale cookie cannot block a
+new sign-in or pending-confirm resend. Token-path clients (``make auth-smoke``,
+Bearer) skip this middleware path.
 """
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ _CSRF_EXEMPT_PATHS = frozenset(
     {
         "/api/v1/bff/auth/login",
         "/api/v1/bff/auth/register",
+        "/api/v1/bff/auth/resend-confirmation",
     }
 )
 

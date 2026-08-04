@@ -437,13 +437,37 @@ export interface paths {
          *         users_service: Creates or links the tenant ``users`` row.
          *
          *     Returns:
-         *         Public ``UserResponse`` for the new or already-linked tenant user.
+         *         Public ``RegisterResponse`` for the new or already-linked tenant user,
+         *         including ``email_confirmation_required`` when Confirm email is on.
          *
          *     Raises:
          *         HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,
          *             429 rate limit, 503 misconfigured Supabase, etc.).
          */
         post: operations["register_user_api_v1_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/resend-confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Confirmation
+         * @description Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).
+         *
+         *     Always returns 204 on soft success (including unknown emails). Rate-limited
+         *     with the register bucket because both trigger Auth SMTP.
+         */
+        post: operations["resend_confirmation_api_v1_auth_resend_confirmation_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -560,9 +584,33 @@ export interface paths {
          * Bff Register
          * @description Register via the same Auth/UsersService path as ``POST /auth/register``.
          *
-         *     Does not create a BFF session — clients should call ``POST /bff/auth/login`` next.
+         *     Does not create a BFF session — clients should call ``POST /bff/auth/login``
+         *     after email confirmation when required (PPT-068). Never sets ``papita_sid``.
          */
         post: operations["bff_register_api_v1_bff_auth_register_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/resend-confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bff Resend Confirmation
+         * @description Resend signup confirmation email for pending SPA users (PPT-068).
+         *
+         *     Anonymous-friendly (CSRF-exempt). Does not set ``papita_sid``. Soft-succeeds
+         *     for unknown emails; 429 when Auth/SMTP rate limits fire.
+         */
+        post: operations["bff_resend_confirmation_api_v1_bff_auth_resend_confirmation_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1845,6 +1893,16 @@ export interface components {
             username?: string | null;
         };
         /**
+         * BffResendConfirmationRequest
+         * @description JSON body for ``POST /bff/auth/resend-confirmation`` (same fields as Bearer twin).
+         */
+        BffResendConfirmationRequest: {
+            /** Email */
+            email: string;
+            /** Email Redirect To */
+            email_redirect_to?: string | null;
+        };
+        /**
          * BffSessionResponse
          * @description Public BFF session probe / login response (no JWTs).
          *
@@ -2652,6 +2710,48 @@ export interface components {
             username?: string | null;
         };
         /**
+         * RegisterResponse
+         * @description Public register result with optional email-confirmation pending signal (PPT-068).
+         *
+         *     When Supabase Confirm email is on and Admin auto-confirm is off, Auth may
+         *     create the user without issuing a session. ``email_confirmation_required``
+         *     tells the SPA to show check-email UX instead of prompting an immediate login.
+         *     Local Auth and Admin auto-confirm paths leave the flag ``False``.
+         */
+        RegisterResponse: {
+            /**
+             * Auth Provider
+             * @default supabase
+             * @enum {string}
+             */
+            auth_provider: "supabase" | "local";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email: string;
+            /**
+             * Email Confirmation Required
+             * @default false
+             */
+            email_confirmation_required: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phone */
+            phone?: string | null;
+            /** @default email */
+            provider: components["schemas"]["ProviderType"];
+            /** Username */
+            username: string;
+        };
+        /**
          * ReportPeriod
          * @description Inclusive report date window.
          */
@@ -2666,6 +2766,20 @@ export interface components {
              * Format: date
              */
             start_date: string;
+        };
+        /**
+         * ResendConfirmationRequest
+         * @description JSON body for ``POST /auth/resend-confirmation`` and BFF twin (PPT-068).
+         *
+         *     Attributes:
+         *         email: Address that may still need signup confirmation.
+         *         email_redirect_to: Optional same-origin confirm landing URL (allowlisted).
+         */
+        ResendConfirmationRequest: {
+            /** Email */
+            email: string;
+            /** Email Redirect To */
+            email_redirect_to?: string | null;
         };
         /**
          * SpendingBreakdownItem
@@ -3473,8 +3587,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": components["schemas"]["RegisterResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_confirmation_api_v1_auth_resend_confirmation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendConfirmationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -3610,8 +3755,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UserResponse"];
+                    "application/json": components["schemas"]["RegisterResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bff_resend_confirmation_api_v1_bff_auth_resend_confirmation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BffResendConfirmationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

@@ -9,11 +9,16 @@ const REPORT_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Presentation remaps for allowlisted Auth ``detail`` strings (PPT-060).
- * Does not invent new API contracts — check-email / resend UX is PPT-068 / #139.
+ * Presentation remaps for allowlisted Auth ``detail`` strings (PPT-060 / PPT-068).
+ * Prefer ``X-Papita-Error-Code: email_not_confirmed`` when present; resend UX is phase 2.
  */
 const AUTH_DETAIL_MESSAGES: Record<string, string> = {
   "Email not confirmed":
+    "Confirm your email before signing in. Check your inbox for the confirmation link.",
+};
+
+const AUTH_ERROR_CODE_MESSAGES: Record<string, string> = {
+  email_not_confirmed:
     "Confirm your email before signing in. Check your inbox for the confirmation link.",
 };
 
@@ -48,6 +53,10 @@ export function formatApiError(error: unknown, fallback = "Request failed"): str
 
   if (error.code && error.code in REPORT_ERROR_MESSAGES) {
     return `${REPORT_ERROR_MESSAGES[error.code]} [${error.code}]`;
+  }
+
+  if (error.code && error.code in AUTH_ERROR_CODE_MESSAGES) {
+    return AUTH_ERROR_CODE_MESSAGES[error.code]!;
   }
 
   let message = error.message;

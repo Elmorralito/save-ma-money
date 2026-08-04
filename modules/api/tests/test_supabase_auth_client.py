@@ -32,6 +32,8 @@ from papita_txnsapi.core.supabase_auth_local import (
     _email_from_auth_user,
     _result_from_admin_user_response,
     _user_id_from_auth_user,
+    elevate_unconfirmed_login_detail,
+    register_requires_email_confirmation,
     supabase_admin_create_user,
     supabase_register_user,
     supabase_sign_in_with_optional_auto_confirm,
@@ -655,3 +657,79 @@ def test_supabase_sign_in_with_optional_auto_confirm_raises_when_confirm_fails()
                 auto_confirm=True,
                 client=client,
             )
+
+
+def test_register_requires_email_confirmation() -> None:
+    assert register_requires_email_confirmation(access_token=None, auto_confirm_enabled=False) is True
+    assert register_requires_email_confirmation(access_token=None, auto_confirm_enabled=True) is False
+    assert register_requires_email_confirmation(access_token="tok", auto_confirm_enabled=False) is False
+
+
+def test_elevate_unconfirmed_login_detail_short_circuits() -> None:
+    status, detail = elevate_unconfirmed_login_detail(
+        supabase_url="https://example.supabase.co",
+        service_role_key="role",
+        auth_user_id=uuid.uuid4(),
+        auto_confirm=False,
+        http_status=401,
+        detail="Email not confirmed",
+    )
+    assert (status, detail) == (401, "Email not confirmed")
+
+    status, detail = elevate_unconfirmed_login_detail(
+        supabase_url="https://example.supabase.co",
+        service_role_key="role",
+        auth_user_id=uuid.uuid4(),
+        auto_confirm=True,
+        http_status=401,
+        detail="Incorrect username or password",
+    )
+    assert detail == "Incorrect username or password"
+
+
+def test_elevate_unconfirmed_login_detail_probes_admin() -> None:
+    subject = uuid.uuid4()
+    with patch(
+        "papita_txnsapi.core.supabase_auth_local._auth_user_email_unconfirmed",
+        return_value=True,
+    ) as mock_probe:
+        status, detail = elevate_unconfirmed_login_detail(
+            supabase_url="https://example.supabase.co",
+            service_role_key="role",
+            auth_user_id=subject,
+            auto_confirm=False,
+            http_status=401,
+            detail="Incorrect username or password",
+        )
+    assert (status, detail) == (401, "Email not confirmed")
+    mock_probe.assert_called_once()
+
+
+def test_supabase_resend_signup_confirmation() -> None:
+    from papita_txnsapi.core.supabase_auth import supabase_resend_signup_confirmation
+
+    client = MagicMock()
+    supabase_resend_signup_confirmation(
+        supabase_url="https://example.supabase.co",
+        anon_key="anon",
+        email="A@Example.Local",
+        email_redirect_to="http://localhost:5173/auth/confirm",
+        client=client,
+    )
+    client.auth.resend.assert_called_once()
+    payload = client.auth.resend.call_args.args[0]
+    assert payload["type"] == "signup"
+    assert payload["email"] == "a@example.local"
+    assert payload["options"]["email_redirect_to"] == "http://localhost:5173/auth/confirm"
+
+
+def test_supabase_resend_signup_confirmation_requires_email() -> None:
+    from papita_txnsapi.core.supabase_auth import supabase_resend_signup_confirmation
+
+    with pytest.raises(ValueError, match="email"):
+        supabase_resend_signup_confirmation(
+            supabase_url="https://example.supabase.co",
+            anon_key="anon",
+            email="  ",
+            client=MagicMock(),
+        )

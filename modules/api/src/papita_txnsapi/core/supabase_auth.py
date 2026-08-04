@@ -30,6 +30,7 @@ Key exports:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import uuid
@@ -793,6 +794,45 @@ def supabase_establish_session(
     return result
 
 
+def supabase_resend_signup_confirmation(
+    *,
+    supabase_url: str,
+    anon_key: str,
+    email: str,
+    email_redirect_to: str | None = None,
+    client: Client | None = None,
+) -> None:
+    """Resend the signup confirmation email via Supabase Auth ``resend``.
+
+    Thin wrap of GoTrue ``auth.resend`` with ``type=signup``. Does not create
+    Papita users or open sessions. Callers should treat Auth "user not found" /
+    already-confirmed style errors as soft success to avoid email enumeration.
+
+    Args:
+        supabase_url: Project URL.
+        anon_key: Anon (publishable) key.
+        email: Address that previously signed up and still needs confirmation.
+        email_redirect_to: Optional same-origin URL for the confirm link.
+        client: Optional pre-built anon client (tests).
+
+    Raises:
+        AuthApiError: Supabase Auth rejected the resend (including SMTP 429).
+        AuthError: Non-API Auth failure from the SDK.
+        ValueError: Empty ``email``.
+    """
+    normalized = (email or "").strip().lower()
+    if not normalized:
+        raise ValueError("email is required")
+    auth_client = client or create_supabase_auth_client(supabase_url=supabase_url, anon_key=anon_key)
+    payload: dict[str, Any] = {"type": "signup", "email": normalized}
+    if email_redirect_to and str(email_redirect_to).strip():
+        payload["options"] = {"email_redirect_to": str(email_redirect_to).strip()}
+    auth_client.auth.resend(cast(Any, payload))
+    # Digest only — never log the raw email (log injection / PII).
+    email_digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+    logger.info("Supabase signup confirmation resend requested email_digest=%s", email_digest)
+
+
 __all__ = [
     "AuthApiError",
     "AuthError",
@@ -813,6 +853,7 @@ __all__ = [
     "supabase_exchange_code_for_session",
     "supabase_oauth_authorize_url",
     "supabase_refresh_session",
+    "supabase_resend_signup_confirmation",
     "supabase_sign_in",
     "supabase_sign_out",
     "supabase_sign_up",

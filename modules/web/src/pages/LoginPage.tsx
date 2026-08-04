@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 
-import { bffLogin } from "@/api/auth";
+import { bffLogin, bffResendConfirmation } from "@/api/auth";
+import { isPapitaApiError } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { formatApiError } from "@/lib/formatApiError";
+
+function isEmailNotConfirmedError(error: unknown): boolean {
+  return (
+    isPapitaApiError(error) &&
+    (error.code === "email_not_confirmed" ||
+      error.message === "Email not confirmed" ||
+      /confirm your email/i.test(error.message))
+  );
+}
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -19,6 +29,8 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
+  const [showResend, setShowResend] = useState(false);
 
   const loginMutation = useMutation({
     mutationFn: bffLogin,
@@ -34,7 +46,23 @@ export function LoginPage() {
       await navigate(from === "/" ? "/dashboard" : from, { replace: true });
     },
     onError: (err: unknown) => {
+      setResendStatus(null);
       setError(formatApiError(err, "Login failed"));
+      setShowResend(isEmailNotConfirmedError(err));
+    },
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: bffResendConfirmation,
+    onSuccess: () => {
+      setError(null);
+      setResendStatus(
+        "If that address still needs confirmation, we sent another email. Check your inbox.",
+      );
+    },
+    onError: (err: unknown) => {
+      setResendStatus(null);
+      setError(formatApiError(err, "Could not resend confirmation email"));
     },
   });
 
@@ -45,7 +73,19 @@ export function LoginPage() {
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setResendStatus(null);
+    setShowResend(false);
     loginMutation.mutate({ email: email.trim(), password });
+  }
+
+  function onResend() {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("Enter your email, then resend the confirmation link.");
+      return;
+    }
+    setError(null);
+    resendMutation.mutate({ email: trimmed });
   }
 
   const justRegistered =
@@ -53,6 +93,12 @@ export function LoginPage() {
     location.state !== null &&
     "registered" in location.state &&
     Boolean((location.state as { registered?: unknown }).registered);
+
+  const emailConfirmed =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "emailConfirmed" in location.state &&
+    Boolean((location.state as { emailConfirmed?: unknown }).emailConfirmed);
 
   return (
     <div className="space-y-6">
@@ -62,9 +108,19 @@ export function LoginPage() {
           Session cookies only — JWTs never touch the browser.
         </p>
       </div>
+      {emailConfirmed ? (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
+          Email confirmed. Sign in with your email and password to open a session.
+        </p>
+      ) : null}
       {justRegistered ? (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
           Account created. Sign in with the same email and password.
+        </p>
+      ) : null}
+      {resendStatus ? (
+        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
+          {resendStatus}
         </p>
       ) : null}
       <form className="space-y-4" onSubmit={onSubmit}>
@@ -105,6 +161,17 @@ export function LoginPage() {
           {loginMutation.isPending ? "Signing in…" : "Sign in"}
         </Button>
       </form>
+      {showResend ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={resendMutation.isPending}
+          onClick={onResend}
+        >
+          {resendMutation.isPending ? "Sending…" : "Resend confirmation email"}
+        </Button>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         No account?{" "}
         <Link

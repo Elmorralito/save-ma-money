@@ -276,8 +276,74 @@ def supabase_sign_in_with_optional_auto_confirm(
         )
 
 
+def register_requires_email_confirmation(
+    *,
+    access_token: str | None,
+    auto_confirm_enabled: bool,
+) -> bool:
+    """Return whether register should signal pending email confirmation (PPT-068).
+
+    Admin auto-confirm / local DX creates confirmed users without a session; those
+    must not flip the SPA into check-email UX. Confirm-required anon ``sign_up``
+    (no access token, auto-confirm off) must.
+
+    Args:
+        access_token: Session access token from Auth, if any.
+        auto_confirm_enabled: ``settings.should_auto_confirm_email()``.
+
+    Returns:
+        True when the client should show pending confirmation UX.
+    """
+    return access_token is None and not auto_confirm_enabled
+
+
+def elevate_unconfirmed_login_detail(
+    *,
+    supabase_url: str,
+    service_role_key: str | None,
+    auth_user_id: uuid.UUID | str | None,
+    auto_confirm: bool,
+    http_status: int,
+    detail: str,
+) -> tuple[int, str]:
+    """Map opaque Auth login failures to ``Email not confirmed`` when apt (PPT-068).
+
+    Supabase often returns ``invalid_credentials`` for unconfirmed users. When
+    auto-confirm is off (staging/prod) and Admin Auth shows ``email_confirmed_at``
+    null for a known subject, elevate to the allowlisted confirm detail.
+
+    Args:
+        supabase_url: Project URL.
+        service_role_key: Service role for Admin lookup (optional).
+        auth_user_id: Known Auth subject (Papita row id) when available.
+        auto_confirm: Whether local Admin auto-confirm is enabled.
+        http_status: Status from :func:`classify_supabase_auth_error`.
+        detail: Detail from classification.
+
+    Returns:
+        Possibly updated ``(http_status, detail)``.
+    """
+    if detail == "Email not confirmed":
+        return http_status, detail
+    if auto_confirm or auth_user_id is None:
+        return http_status, detail
+    if http_status not in {400, 401}:
+        return http_status, detail
+    if not service_role_key or not str(service_role_key).strip():
+        return http_status, detail
+    if _auth_user_email_unconfirmed(
+        supabase_url=supabase_url,
+        service_role_key=service_role_key,
+        user_id=auth_user_id,
+    ):
+        return 401, "Email not confirmed"
+    return http_status, detail
+
+
 __all__ = [
     "SupabaseClientOverrides",
+    "elevate_unconfirmed_login_detail",
+    "register_requires_email_confirmation",
     "supabase_admin_create_user",
     "supabase_register_user",
     "supabase_sign_in_with_optional_auto_confirm",

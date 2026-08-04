@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from papita_txnsapi.schemas.auth import RegisterRequest, UserResponse
+from papita_txnsapi.schemas.auth import RegisterRequest, ResendConfirmationRequest, UserResponse
 
 
 class BffLoginRequest(BaseModel):
@@ -28,6 +28,10 @@ class BffLoginRequest(BaseModel):
 
 class BffRegisterRequest(RegisterRequest):
     """JSON body for ``POST /bff/auth/register`` (same fields as ``/auth/register``)."""
+
+
+class BffResendConfirmationRequest(ResendConfirmationRequest):
+    """JSON body for ``POST /bff/auth/resend-confirmation`` (same fields as Bearer twin)."""
 
 
 class BffSessionResponse(BaseModel):

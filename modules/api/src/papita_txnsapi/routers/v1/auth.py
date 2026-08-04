@@ -9,6 +9,7 @@ Business logic stays in ``papita_txnsmodel`` / ``core.supabase_auth``.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from typing import Annotated
@@ -19,6 +20,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2Pas
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.auth_errors import auth_error_detail, public_value_error_detail
+from papita_txnsapi.core.client_contract import ERROR_EMAIL_NOT_CONFIRMED, HEADER_ERROR_CODE
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.core.session_store import SessionStore
 from papita_txnsapi.core.supabase_auth import (
@@ -32,9 +34,12 @@ from papita_txnsapi.core.supabase_auth import (
     supabase_exchange_code_for_session,
     supabase_oauth_authorize_url,
     supabase_refresh_session,
+    supabase_resend_signup_confirmation,
     supabase_sign_out,
 )
 from papita_txnsapi.core.supabase_auth_local import (
+    elevate_unconfirmed_login_detail,
+    register_requires_email_confirmation,
     supabase_register_user,
     supabase_sign_in_with_optional_auto_confirm,
 )
@@ -53,6 +58,8 @@ from papita_txnsapi.schemas.auth import (
     OAuthStartResponse,
     RefreshRequest,
     RegisterRequest,
+    RegisterResponse,
+    ResendConfirmationRequest,
     SsoSessionRequest,
     TokenResponse,
     UserResponse,
@@ -70,6 +77,10 @@ _AUTH_DEFERRED = DeferredResponse(
     deferred_reason="FR-11 refresh/logout require AUTH_PROVIDER=supabase (Supabase Auth sessions)"
 )
 _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
+_EMAIL_NOT_CONFIRMED_HEADERS = {
+    "WWW-Authenticate": "Bearer",
+    HEADER_ERROR_CODE: ERROR_EMAIL_NOT_CONFIRMED,
+}
 _SUPABASE_AUTH_REQUIRED = "AUTH_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_ANON_KEY for auth session APIs"
 _optional_bearer = HTTPBearer(auto_error=False)
 _OAUTH_VERIFIER_COOKIE = "papita_oauth_cv"
@@ -252,6 +263,67 @@ def _http_status_for_provision_error(exc: ValueError) -> int:
     return status.HTTP_502_BAD_GATEWAY
 
 
+def soft_resend_signup_confirmation(
+    *,
+    settings: Settings,
+    email: str,
+    email_redirect_to: str | None = None,
+) -> None:
+    """Resend signup confirmation with anti-enumeration soft success (PPT-068).
+
+    Local Auth is confirm-N/A (no-op). Supabase SMTP/Auth rate limits still raise
+    HTTP 429. Other Auth errors are logged and swallowed so clients cannot probe
+    whether an email is registered.
+
+    Args:
+        settings: Active API settings (provider + Supabase credentials).
+        email: Candidate address from the client.
+        email_redirect_to: Optional confirm landing URL; only forwarded when it
+            matches an ``ALLOWED_ORIGINS`` prefix (open-redirect guard).
+
+    Raises:
+        HTTPException: 503 when Supabase is misconfigured; 429 on email rate limit.
+    """
+    if settings.AUTH_PROVIDER != "supabase":
+        logger.debug("Resend confirmation no-op for AUTH_PROVIDER=%s", settings.AUTH_PROVIDER)
+        return
+    _require_supabase_auth_settings(settings)
+    redirect = _allowlisted_email_redirect(settings, email_redirect_to)
+    try:
+        supabase_resend_signup_confirmation(
+            supabase_url=settings.SUPABASE_URL or "",
+            anon_key=settings.SUPABASE_ANON_KEY or "",
+            email=email,
+            email_redirect_to=redirect,
+        )
+    except ValueError as exc:
+        logger.info("Resend confirmation ignored invalid email: %s", exc)
+    except (AuthApiError, AuthError) as exc:
+        http_status, detail = classify_supabase_auth_error(exc, fallback="Confirmation email resend failed")
+        if http_status == 429:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail) from exc
+        logger.info("Resend confirmation soft-success detail=%s", detail)
+
+
+def _allowlisted_email_redirect(settings: Settings, redirect: str | None) -> str | None:
+    """Return ``redirect`` when it matches an allowlisted SPA origin; else ``None``."""
+    if redirect is None:
+        return None
+    trimmed = str(redirect).strip()
+    if not trimmed:
+        return None
+    for origin in settings.ALLOWED_ORIGINS:
+        if not origin or origin == "*":
+            continue
+        base = origin.rstrip("/")
+        if trimmed == base or trimmed.startswith(f"{base}/"):
+            return trimmed
+    # Digest only — never log the raw user-controlled redirect (log injection).
+    redirect_digest = hashlib.sha256(trimmed.encode("utf-8")).hexdigest()[:12]
+    logger.info("Ignoring non-allowlisted email_redirect_to digest=%s", redirect_digest)
+    return None
+
+
 def _cleanup_orphan_auth_user(
     *,
     settings: Settings,
@@ -360,13 +432,13 @@ def _complete_oauth_provision(
     )
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)
 def register_user(
     body: RegisterRequest,
     _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
-) -> UserResponse:
+) -> RegisterResponse:
     """Register a new user via Supabase Auth (or local ``UsersService``).
 
     Email is the canonical login identity. A schema ``username`` handle is
@@ -381,7 +453,8 @@ def register_user(
         users_service: Creates or links the tenant ``users`` row.
 
     Returns:
-        Public ``UserResponse`` for the new or already-linked tenant user.
+        Public ``RegisterResponse`` for the new or already-linked tenant user,
+        including ``email_confirmation_required`` when Confirm email is on.
 
     Raises:
         HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,
@@ -434,7 +507,11 @@ def register_user(
                 detail=public_value_error_detail(exc, fallback="Registration failed"),
                 headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
             ) from exc
-        return UserResponse.from_dto(user)
+        pending = register_requires_email_confirmation(
+            access_token=auth_result.access_token,
+            auto_confirm_enabled=settings.should_auto_confirm_email(),
+        )
+        return RegisterResponse.from_dto(user, email_confirmation_required=pending)
 
     user = users_service.register(
         email=body.email,
@@ -444,7 +521,26 @@ def register_user(
         phone=body.phone,
         provider_type=body.provider_type,
     )
-    return UserResponse.from_dto(user)
+    return RegisterResponse.from_dto(user, email_confirmation_required=False)
+
+
+@router.post("/resend-confirmation", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+def resend_confirmation(
+    body: ResendConfirmationRequest,
+    _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    """Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).
+
+    Always returns 204 on soft success (including unknown emails). Rate-limited
+    with the register bucket because both trigger Auth SMTP.
+    """
+    soft_resend_signup_confirmation(
+        settings=settings,
+        email=body.email,
+        email_redirect_to=body.email_redirect_to,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -486,6 +582,7 @@ def login(
                 headers=_UNAUTHORIZED_HEADERS,
             )
         auth_result = None
+        existing = None
         try:
             existing = users_service.get_by_email(email)
             auth_result = supabase_sign_in_with_optional_auto_confirm(
@@ -510,13 +607,22 @@ def login(
             )
         except (AuthApiError, AuthError) as exc:
             http_status, detail = classify_supabase_auth_error(exc, fallback="login failed")
+            http_status, detail = elevate_unconfirmed_login_detail(
+                supabase_url=settings.SUPABASE_URL or "",
+                service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
+                auth_user_id=existing.id if existing is not None else None,
+                auto_confirm=settings.should_auto_confirm_email(),
+                http_status=http_status,
+                detail=detail,
+            )
             if http_status == 401 and detail != "Email not confirmed":
                 detail = "Incorrect username or password"
             logger.info("Supabase sign_in failed: %s", detail)
+            headers = _EMAIL_NOT_CONFIRMED_HEADERS if detail == "Email not confirmed" else _UNAUTHORIZED_HEADERS
             raise HTTPException(
                 status_code=http_status if http_status in {401, 429} else status.HTTP_401_UNAUTHORIZED,
                 detail=detail if http_status in {401, 429} else "Incorrect username or password",
-                headers=_UNAUTHORIZED_HEADERS,
+                headers=headers,
             ) from exc
         except ValueError as exc:
             logger.exception("Supabase login provision error")
