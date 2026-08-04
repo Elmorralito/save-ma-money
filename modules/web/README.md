@@ -279,14 +279,14 @@ PR template section **Web security checklist** must be signed off on web/auth PR
 
 ## nginx Compose packaging (PPT-057 / #122)
 
-Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage image: pnpm build → `nginx:alpine` with SPA fallback and `/api` reverse-proxy to the `api` service.
+Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage image: pnpm build → `nginxinc/nginx-unprivileged` (non-root, port 8080) with SPA fallback and `/api` reverse-proxy to the `api` service.
 
-| Piece      | Location                          | Notes                                                                                                 |
-| ---------- | --------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Dockerfile | `docker/web/Dockerfile`           | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`            |
-| nginx      | `docker/web/nginx.conf`           | `try_files` SPA shell; proxy `/api` → `api:8000`; preserves `Set-Cookie` (`papita_sid` `Path=/api`)   |
-| Compose    | `docker/docker-compose.yml` `web` | Publishes `WEB_PORT` (default `3000`); `depends_on` healthy `api` + `redis` (BFF durability, PPT-059) |
-| Make       | `make web-up` / `web-down`        | Builds/starts `web` + deps; smokes `/` + `/api/v1/health/live`. `make stack-up` includes `web`        |
+| Piece      | Location                          | Notes                                                                                                          |
+| ---------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Dockerfile | `docker/web/Dockerfile`           | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`; non-root (DS-0002) |
+| nginx      | `docker/web/nginx.conf`           | Listen `8080`; `try_files` SPA shell; proxy `/api` → `api:8000`; preserves `Set-Cookie` (`papita_sid`)         |
+| Compose    | `docker/docker-compose.yml` `web` | Publishes `WEB_PORT`→`8080` (default host `3000`); `depends_on` healthy `api` + `redis` (PPT-059)              |
+| Make       | `make web-up` / `web-down`        | Builds/starts `web` + deps; smokes `/` + `/api/v1/health/live`. `make stack-up` includes `web`                 |
 
 **Local Vite vs Compose nginx**
 

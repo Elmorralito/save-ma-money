@@ -167,7 +167,8 @@ services:
     networks:
       - papita-local-net
     ports:
-      - "${WEB_PORT:-3000}:80"
+      # nginx-unprivileged listens on 8080 (Trivy DS-0002 / non-root)
+      - "${WEB_PORT:-3000}:8080"
     depends_on:
       api:
         condition: service_healthy

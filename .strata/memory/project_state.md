@@ -23,12 +23,10 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-057 / #122** (`ops/PPT-057`): nginx Compose packaging — `docker/web/`
-  Dockerfile + nginx.conf, Compose `web` service (Redis required), `make web-up`,
-  env origin docs, `web-ci` image build job. CSP stays PPT-063 / #128.
-- **PPT-056 / #121** (`20260803-06` on `test/PPT-056`): quality gate (may already
-  be landing / merged — verify). Complements #125/#126.
-- **PPT-064 / #129**: Breaking-changes client guard — verify merge status on main.
+- **PPT-057 / #122** (`ops/PPT-057`, PR #158): nginx Compose packaging. Autopilot
+  follow-up: `nginxinc/nginx-unprivileged` (non-root / DS-0002), listen 8080,
+  Docker DNS runtime upstream resolve, cryptography >=50 (CVE-2026-69247).
+- **PPT-056 / #121** / **PPT-064 / #129**: verify merge status on main.
 
 ### Open (backlog)
 

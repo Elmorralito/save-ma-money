@@ -1,8 +1,9 @@
-# Papita web SPA — multi-stage: pnpm build → nginx:alpine (PPT-057 / #122)
+# Papita web SPA - multi-stage: pnpm build -> nginx (PPT-057 / #122)
 # Build context: repository root
 #   docker build -f docker/web/Dockerfile --build-arg VITE_APP_TITLE=Papita .
 #
 # Public VITE_* values are baked at image build time (not runtime env on nginx).
+# Final stage runs as non-root (Trivy DS-0002) on port 8080.
 
 # -----------------------------------------------------------------------------
 # Stage 1: production bundle
@@ -34,14 +35,15 @@ ENV VITE_APP_TITLE=${VITE_APP_TITLE} \
 RUN pnpm --filter @papita/web build
 
 # -----------------------------------------------------------------------------
-# Stage 2: static nginx
+# Stage 2: static nginx (non-root)
 # -----------------------------------------------------------------------------
-FROM nginx:1.27-alpine
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 
 COPY docker/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/modules/web/dist /usr/share/nginx/html
 
-EXPOSE 80
+# Image already sets USER nginx and listens on 8080
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://127.0.0.1/ >/dev/null || exit 1
+    CMD wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1
