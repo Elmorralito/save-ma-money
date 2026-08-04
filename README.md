@@ -191,7 +191,7 @@ make web-dev      # Vite on :5173; /api proxied to the API
 # Packaging smoke (PPT-057 / #122): make web-up → nginx on :3000 (WEB_PORT), same-origin /api
 ```
 
-nginx Compose packaging: `docker/web/` + `make web-up` — see [`modules/web/README.md`](./modules/web/README.md) § nginx Compose packaging. Field RUM / Sentry are deferred post-MVP; lab Lighthouse/CWV lives under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) only. CSP headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128).
+nginx Compose packaging: `docker/web/` + `make web-up` — see [`modules/web/README.md`](./modules/web/README.md) § nginx Compose packaging. Field RUM / Sentry are deferred post-MVP; lab Lighthouse/CWV lives under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) only. CSP / SPA security headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (nginx static locations; see web README § CSP).
 
 ---
 

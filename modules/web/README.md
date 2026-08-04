@@ -261,15 +261,15 @@ Deferred polish (not blockers): full screen-reader scripted journeys, mobile nat
 
 ### Security checklist (BFF / CSP / deps)
 
-| Check                     | Status / owner                                                                                                                                        |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                 |
-| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                |
-| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                       |
-| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                      |
-| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                       |
-| CSP headers               | **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)** — may share a PR with nginx packaging; SPA ships without CSP meta today |
-| nginx Compose packaging   | **PPT-057 / [#122](https://github.com/Elmorralito/save-ma-money/issues/122)** — `docker/web/` + `make web-up` (same-origin `/api`)                    |
+| Check                     | Status / owner                                                                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                      |
+| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                     |
+| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                            |
+| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                           |
+| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                            |
+| CSP headers               | **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)** — nginx SPA locations only (see [CSP (nginx)](#csp-nginx)); no Vite meta CSP |
+| nginx Compose packaging   | **PPT-057 / [#122](https://github.com/Elmorralito/save-ma-money/issues/122)** — `docker/web/` + `make web-up` (same-origin `/api`)                         |
 
 PR template section **Web security checklist** must be signed off on web/auth PRs.
 
@@ -281,12 +281,12 @@ PR template section **Web security checklist** must be signed off on web/auth PR
 
 Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage image: pnpm build → `nginxinc/nginx-unprivileged` (non-root, port 8080) with SPA fallback and `/api` reverse-proxy to the `api` service.
 
-| Piece      | Location                          | Notes                                                                                                          |
-| ---------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Dockerfile | `docker/web/Dockerfile`           | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`; non-root (DS-0002) |
-| nginx      | `docker/web/nginx.conf`           | Listen `8080`; `try_files` SPA shell; proxy `/api` → `api:8000`; preserves `Set-Cookie` (`papita_sid`)         |
-| Compose    | `docker/docker-compose.yml` `web` | Publishes `WEB_PORT`→`8080` (default host `3000`); `depends_on` healthy `api` + `redis` (PPT-059)              |
-| Make       | `make web-up` / `web-down`        | Builds/starts `web` + deps; smokes `/` + `/api/v1/health/live`. `make stack-up` includes `web`                 |
+| Piece      | Location                                              | Notes                                                                                                          |
+| ---------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Dockerfile | `docker/web/Dockerfile`                               | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`; non-root (DS-0002) |
+| nginx      | `docker/web/nginx.conf` + `spa-security-headers.conf` | Listen `8080`; SPA shell; `/api` → `api:8000`; CSP + baseline headers on static locations only (PPT-063)       |
+| Compose    | `docker/docker-compose.yml` `web`                     | Publishes `WEB_PORT`→`8080` (default host `3000`); `depends_on` healthy `api` + `redis` (PPT-059)              |
+| Make       | `make web-up` / `web-down`                            | Builds/starts `web` + deps; smokes `/` + health + CSP headers. `make stack-up` includes `web`                  |
 
 **Local Vite vs Compose nginx**
 
@@ -300,11 +300,28 @@ Cookie notes (aligned with [BFF section](#bff-cookie-auth-ppt-049--115)):
 - Browser talks only to nginx; `/api` is same-origin → no brittle cross-site cookie CORS.
 - `papita_sid` remains HttpOnly, `SameSite=Lax`, `Path=/api`; nginx must not rewrite cookie Path.
 - Staging/prod: set `ALLOWED_ORIGINS` to the **web** origin(s); never `*` with credentials. Redis required in the stack (no memory BFF fallback).
-- CSP / extra SPA security headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (PPT-063).
+
+### CSP (nginx)
+
+Production-shaped headers are set by nginx on **static SPA locations only** (`/`, `/index.html`, `/assets/`). The `/api` proxy does **not** attach SPA CSP — API responses keep [`SecurityHeadersMiddleware`](../api/src/papita_txnsapi/middleware/security_headers.py) (nosniff / no-referrer / DENY; no API CSP so Swagger can work when docs are on). Owned by **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)**.
+
+| Header                    | Value (summary)                                                                                                                                                                                                                        |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Content-Security-Policy` | `default-src 'self'`; `script-src 'self'`; `style-src 'self' 'unsafe-inline'`; `img-src 'self' data:`; `font-src 'self'`; `connect-src 'self'`; `object-src 'none'`; `base-uri 'self'`; `form-action 'self'`; `frame-ancestors 'none'` |
+| `X-Content-Type-Options`  | `nosniff`                                                                                                                                                                                                                              |
+| `Referrer-Policy`         | `no-referrer`                                                                                                                                                                                                                          |
+| `X-Frame-Options`         | `DENY`                                                                                                                                                                                                                                 |
+
+**Residual risk:** `style-src 'unsafe-inline'` is required today for Radix/shadcn inline positioning styles. Scripts stay strict (`'self'` only — no `'unsafe-inline'` / `'unsafe-eval'`). A nonce/`'unsafe-hashes'` pipeline is deferred post-MVP.
+
+**`connect-src 'self'`:** Compose bake must keep `VITE_API_BASE_URL` empty so the browser calls same-origin `/api`. Baking an absolute cross-origin API URL would be blocked by CSP (and fights the BFF cookie same-origin design).
+
+**DX vs packaging:** Vite (`make web-dev` / Playwright `:5173`) does **not** emit these headers. Assert CSP via `make web-up` or Web CI `web-docker` smoke — not the Vite critical-path e2e.
 
 ```bash
 make web-up
 # open http://localhost:3000/ → login via BFF; cookies scoped to Path=/api on the web origin
+# curl -sI http://localhost:3000/ | grep -i content-security-policy
 ```
 
 ## CORS / `ALLOWED_ORIGINS`
@@ -403,4 +420,4 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, CSP headers ([#128](https://github.com/Elmorralito/save-ma-money/issues/128) / PPT-063), mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). nginx Compose packaging is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057 (`make web-up`). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). nginx Compose packaging is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057 (`make web-up`); CSP headers are [#128](https://github.com/Elmorralito/save-ma-money/issues/128) / PPT-063 (above). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).

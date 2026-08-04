@@ -39,10 +39,9 @@ Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
 
 ### Next action
 
-- Finish PPT-057 / #122 on `ops/PPT-057`: verify `docker build` + `make web-up` smoke
-- Open PR `ops/PPT-057: [web] nginx Compose packaging and prod origins`
+- Open PR for PPT-063 / #128 (nginx CSP + SPA security headers) when ready
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
-- PPT-068 (#139); PPT-063 (#128) CSP after nginx lands
+- PPT-068 (#139)
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes
@@ -50,3 +49,4 @@ Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
 - Do not commit `environments/**/.env` or `modules/web` secrets (`VITE_*` public only)
 - `modules/**` changes need a paired `.strata/` touch (strict mode)
 - PSR → `modules/model/CHANGELOG.md` only; root CHANGELOG = auto-updates.yml
+- PPT-063: `docker/web/spa-security-headers.conf` staged; web-ci uses docker tar export + load (not `load:true`+cache-to)

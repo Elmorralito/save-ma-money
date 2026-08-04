@@ -151,7 +151,7 @@ services:
       migrate:
         condition: service_completed_successfully
 
-  # nginx SPA (PPT-057 / #122). VITE_* baked at image build — not runtime on nginx.
+  # nginx SPA (PPT-057 / #122 + PPT-063 / #128). VITE_* baked at image build — not runtime on nginx.
   # Redis stays in the stack so BFF cookie sessions are durable (PPT-059 / #124).
   web:
     build:
