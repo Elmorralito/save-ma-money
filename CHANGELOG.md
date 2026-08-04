@@ -4,17 +4,271 @@
 
 - [ ] [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary:
 
-- [ ] [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary:
 
 - [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
 
-- [ ] [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ops/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
 
-- [ ] [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
-
-- [ ] [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 14:31:24+00:00</sub>_
+
+  > **Closed by** [_**#158**](https://github.com/Elmorralito/save-ma-money/pull/158): **ops/PPT-057: [web] nginx Compose packaging and prod origins**
+
+  > **Branch:** ops/PPT-057 · **Base:** main · **1 commit** · **16 files**
+
+  >
+
+  > **Suggested title:** ops/PPT-057: [web] nginx Compose packaging and prod origins
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-057 / #122**: package @papita/web as a multi-stage **nginx** image in Compose so the SPA and /api are same-origin, preserving BFF HttpOnly cookies (papita_sid, Path=/api, SameSite=Lax) without cross-site cookie CORS. Adds make web-up smoke, documents prod-oriented ALLOWED_ORIGINS / bake-time VITE_*, and teaches Web CI to build the image.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - CSP / extra SPA security headers ([#128](https://github.com/Elmorralito/save-ma-money/issues/128) / PPT-063) — may share a later PR
+
+  > - Kubernetes / CDN cutover; recreating the API in the Node/nginx image
+
+  > - Changing BFF session store semantics (already Redis-backed in Compose per PPT-059)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - make web-up waits for / + /api/v1/health/live through nginx
+
+  > - Redis stays required in the web dependency chain (no memory BFF fallback for packaging path)
+
+  > - Day-to-day DX unchanged: make web-dev + Vite proxy
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ops / Docker**
+
+  >
+
+  > - docker/web/Dockerfile: Node 22 + pnpm → nginx:1.27-alpine; bake public VITE_* at build time (empty VITE_API_BASE_URL for same-origin /api)
+
+  > - docker/web/nginx.conf: SPA try_files; proxy /api → api:8000; pass Set-Cookie; client_max_body_size 1m
+
+  > - Compose web service on WEB_PORT (default 3000); depends_on healthy api + redis
+
+  > - .dockerignore: leaner web build context
+
+  >
+
+  > **Make / env**
+
+  >
+
+  > - make web-up / web-down; stack-up includes web
+
+  > - environments/{local,staging,production}/.env.example: WEB_PORT, VITE_* bake-arg notes, explicit web origins (never * with credentials)
+
+  >
+
+  > **CI / docs / agent**
+
+  >
+
+  > - web-ci.yml: path-filter docker/web/** + web-docker Buildx job (push: false)
+
+  > - modules/web/README.md nginx runbook; root README / AGENTS / project_structure / CI.md / strata
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (16 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 6 +-
+
+  > .cursor/rules/gen-custom/project_structure.mdc | 6 +-
+
+  > .dockerignore | 8 +++
+
+  > .github/CI.md | 42 +++++++------
+
+  > .github/workflows/web-ci.yml | 33 ++++++++++
+
+  > .strata/docs/ARCHITECTURE.md | 4 +-
+
+  > .strata/memory/project_state.md | 46 +++++---------
+
+  > Makefile | 33 +++++++++-
+
+  > README.md | 3 +-
+
+  > docker/docker-compose.yml | 35 +++++++++--
+
+  > docker/web/Dockerfile | 47 ++++++++++++++
+
+  > docker/web/nginx.conf | 57 +++++++++++++++++
+
+  > environments/local/.env.example | 14 ++++-
+
+  > environments/production/.env.example | 12 +++-
+
+  > environments/staging/.env.example | 13 +++-
+
+  > modules/web/README.md | 86 ++++++++++++++++++--------
+
+  > 16 files changed, 348 insertions(+), 97 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 6ddb1eb ops/PPT-057: [web] Add nginx Compose packaging and prod origins
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - docker build -f docker/web/Dockerfile … -t papita-web:local — **pass**
+
+  > - make web-up — **pass** (http://localhost:3000/ + /api/v1/health/live via nginx)
+
+  > - Pre-commit on commit (prettier, markdownlint, yamllint, actionlint, strata) — **pass**
+
+  > - GitHub Actions on this PR — **not observed yet** (will run after create)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm Web CI web + web-docker jobs green on this PR
+
+  > - [ ] make web-up → open http://localhost:3000/login, register/login via BFF; confirm papita_sid is HttpOnly / Path=/api on the web origin (DevTools)
+
+  > - [ ] Confirm CSRF mutations still send X-Papita-CSRF through the nginx proxy
+
+  > - [ ] Staging/prod-shaped env: ALLOWED_ORIGINS lists the nginx/SPA origin only (no *); Redis enabled
+
+  > - [ ] Optional: make stack-up brings up web with the rest of the stack
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - stack-up / full compose now builds the web image (slower first up; requires Node build context)
+
+  > > - Operators must set ALLOWED_ORIGINS to the **web** origin for any cross-origin API clients; same-origin nginx path does not need CORS for browser→nginx→/api
+
+  > > - Local .env may still have old ALLOWED_ORIGINS values — update from .env.example if needed (do not commit .env)
+
+  > > - CSP headers still absent (follow-up [#128](https://github.com/Elmorralito/save-ma-money/issues/128))
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - VITE_* are bake-time only — changing them requires rebuild of the web image
+
+  > > - nginx packaging smoke is not a substitute for Playwright E2E (web-e2e); cookie login QA is manual above
+
+  > > - Health smoke checks /api/v1/health/live only (not full ready/auth matrix)
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only) — packaging does not change client auth posture
+
+  > - [x] Cookie flags reviewed for the touched path — nginx proxies /api without rewriting Path=/api / SameSite; Secure still from API AUTH_COOKIE_SECURE / non-DEBUG
+
+  > - [x] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage) — unchanged; proxy passes headers
+
+  > - [x] No secrets in VITE_* (public bundle only); only title / breaking-changes id / empty base URL as build-args
+
+  > - [ ] pnpm web:audit considered (or Dependabot npm-web) — not re-run in this packaging PR; covered by existing web-ci soft audit step
+
+  > - [x] CSP: documented posture OK for this PR — full CSP headers owned by [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (not #122)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - BFF cookies [#115](https://github.com/Elmorralito/save-ma-money/issues/115) · Redis durability [#124](https://github.com/Elmorralito/save-ma-money/issues/124)
+
+  > - CSP follow-up [#128](https://github.com/Elmorralito/save-ma-money/issues/128)
+
+  > - Runbook: [modules/web/README.md](../modules/web/README.md) § nginx Compose packaging
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#129](https://github.com/Elmorralito/save-ma-money/issues/129)**_] :: **feat/PPT-064: [web] Client guard for Papita breaking-changes contract** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:08+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-03 21:26:12+00:00</sub>_
 
