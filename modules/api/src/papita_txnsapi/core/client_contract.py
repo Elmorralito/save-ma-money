@@ -38,6 +38,7 @@ ERROR_BULK_TOO_LARGE = "bulk_too_large"
 ERROR_EXTRA_FIELDS_FORBIDDEN = "extra_fields_forbidden"
 ERROR_INVALID_REQUEST = "invalid_request"
 ERROR_IDEMPOTENCY_BODY_MISMATCH = "idempotency_body_mismatch"
+ERROR_EMAIL_NOT_CONFIRMED = "email_not_confirmed"
 
 # Optional temporary legacy behaviors (settings-gated; emit Deprecation when used).
 COMPAT_LEGACY_REPORT_ACCOUNT_400 = "legacy_report_account_400"

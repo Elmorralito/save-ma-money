@@ -23,6 +23,8 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
+- **PPT-068 / #139:** Email verification after Supabase registration (phases 1–3 on
+  branch `feat/PPT-068`: pending UX, resend, `/auth/confirm` landing, docs).
 - **PPT-057 / #122** (`ops/PPT-057`, PR #158): nginx Compose packaging. Autopilot
   follow-up: explicit `USER nginx` + `nginxinc/nginx-unprivileged` (DS-0002), listen 8080,
   Docker DNS runtime upstream resolve, cryptography >=50 (CVE-2026-69247).
@@ -39,9 +41,9 @@ Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
 
 ### Next action
 
+- Finish PPT-068 / #139 (commit/PR when ready); close issue after AC check
 - Open PR for PPT-063 / #128 (nginx CSP + SPA security headers) when ready
 - PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
-- PPT-068 (#139)
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes

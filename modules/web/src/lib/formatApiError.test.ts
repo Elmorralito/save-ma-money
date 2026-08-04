@@ -85,6 +85,17 @@ describe("formatApiError", () => {
     expect(formatApiError(error)).toMatch(/Confirm your email/i);
     expect(formatApiError(error)).toMatch(/inbox/i);
   });
+
+  it("remaps email_not_confirmed error code without appending [code]", () => {
+    const error = new PapitaApiError({
+      message: "Email not confirmed",
+      status: 401,
+      code: "email_not_confirmed",
+      discovery: emptyDiscovery,
+    });
+    expect(formatApiError(error)).toMatch(/Confirm your email/i);
+    expect(formatApiError(error)).not.toContain("[email_not_confirmed]");
+  });
 });
 
 describe("isGlobalOrMissingCategoryError", () => {

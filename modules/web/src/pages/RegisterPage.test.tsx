@@ -15,6 +15,7 @@ vi.mock("@/api/auth", () => ({
   bffLogout: vi.fn(),
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
+  bffResendConfirmation: vi.fn(),
 }));
 
 const emptyDiscovery = {
@@ -66,7 +67,7 @@ describe("RegisterPage", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
   });
 
-  it("registers then shows the login registered banner", async () => {
+  it("registers then shows the login registered banner when confirmation is not required", async () => {
     const user = userEvent.setup();
     vi.mocked(authApi.bffRegister).mockResolvedValue({
       id: "11111111-1111-1111-1111-111111111111",
@@ -77,6 +78,7 @@ describe("RegisterPage", () => {
       provider: "email",
       auth_provider: "supabase",
       created_at: "2026-07-30T00:00:00Z",
+      email_confirmation_required: false,
     });
 
     render(
@@ -99,6 +101,45 @@ describe("RegisterPage", () => {
       expect(authApi.bffRegister).toHaveBeenCalled();
     });
     expect(await screen.findByRole("status")).toHaveTextContent(/Account created/i);
+  });
+
+  it("registers then shows check-email when confirmation is required", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authApi.bffRegister).mockResolvedValue({
+      id: "11111111-1111-1111-1111-111111111111",
+      username: "alice01",
+      email: "a@example.com",
+      display_name: null,
+      phone: null,
+      provider: "email",
+      auth_provider: "supabase",
+      created_at: "2026-07-30T00:00:00Z",
+      email_confirmation_required: true,
+    });
+
+    const { CheckEmailPage } = await import("@/pages/CheckEmailPage");
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={["/register"]}>
+          <Routes>
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/check-email" element={<CheckEmailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Email"), "a@example.com");
+    await user.type(screen.getByLabelText("Password"), "SecurePass1!");
+    await user.type(screen.getByLabelText("Confirm password"), "SecurePass1!");
+    await user.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(() => {
+      expect(authApi.bffRegister).toHaveBeenCalled();
+    });
+    expect(await screen.findByRole("heading", { name: /Check your email/i })).toBeInTheDocument();
+    expect(screen.getByText(/a@example.com/i)).toBeInTheDocument();
   });
 
   it("surfaces auth 429 with Retry-After in an alert (not silent)", async () => {

@@ -77,7 +77,9 @@ run_eslint() {
         exit 0
     fi
     # Auto-fix + fail on remaining warnings (PDF recommendation).
-    pnpm exec eslint --fix --max-warnings=0 -- "${rel_files[@]}"
+    # --no-warn-ignored: staged generated files (e.g. src/types/api.d.ts) are
+    # eslintignored; without this flag ESLint emits a warning that fails --max-warnings=0.
+    pnpm exec eslint --fix --max-warnings=0 --no-warn-ignored -- "${rel_files[@]}"
 }
 
 run_prettier() {

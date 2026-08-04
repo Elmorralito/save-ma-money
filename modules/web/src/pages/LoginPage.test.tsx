@@ -14,6 +14,7 @@ vi.mock("@/api/auth", () => ({
   bffLogout: vi.fn(),
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
+  bffResendConfirmation: vi.fn(),
 }));
 
 const emptyDiscovery = {
@@ -78,6 +79,7 @@ describe("LoginPage", () => {
       new PapitaApiError({
         message: "Email not confirmed",
         status: 401,
+        code: "email_not_confirmed",
         discovery: emptyDiscovery,
       }),
     );
@@ -95,5 +97,55 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Confirm your email/i);
+    expect(screen.getByRole("button", { name: /Resend confirmation email/i })).toBeInTheDocument();
+  });
+
+  it("shows email-confirmed banner after /auth/confirm handoff", () => {
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={[{ pathname: "/login", state: { emailConfirmed: true } }]}>
+          <LoginPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent(/Email confirmed/i);
+  });
+
+  it("resends confirmation from the unconfirmed login CTA", async () => {
+    const user = userEvent.setup();
+    vi.mocked(authApi.bffLogin).mockRejectedValue(
+      new PapitaApiError({
+        message: "Email not confirmed",
+        status: 401,
+        code: "email_not_confirmed",
+        discovery: emptyDiscovery,
+      }),
+    );
+    vi.mocked(authApi.bffResendConfirmation).mockResolvedValue(undefined);
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await user.type(screen.getByLabelText("Email"), "a@example.com");
+    await user.type(screen.getByLabelText("Password"), "SecurePass1!");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByRole("button", { name: /Resend confirmation email/i });
+    await user.click(screen.getByRole("button", { name: /Resend confirmation email/i }));
+
+    await waitFor(() => {
+      expect(authApi.bffResendConfirmation).toHaveBeenCalled();
+    });
+    expect(vi.mocked(authApi.bffResendConfirmation).mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        email: "a@example.com",
+      }),
+    );
+    expect(await screen.findByText(/sent another email/i)).toBeInTheDocument();
   });
 });

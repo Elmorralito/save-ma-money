@@ -17,6 +17,7 @@ vi.mock("@/api/auth", () => ({
   bffLogout: vi.fn(),
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
+  bffResendConfirmation: vi.fn(),
 }));
 
 vi.mock("@/api/health", () => ({

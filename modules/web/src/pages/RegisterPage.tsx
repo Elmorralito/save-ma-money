@@ -19,7 +19,14 @@ export function RegisterPage() {
 
   const registerMutation = useMutation({
     mutationFn: bffRegister,
-    onSuccess: async () => {
+    onSuccess: async (user) => {
+      if (user.email_confirmation_required) {
+        await navigate("/check-email", {
+          replace: true,
+          state: { email: user.email },
+        });
+        return;
+      }
       await navigate("/login", { replace: true, state: { registered: true } });
     },
     onError: (err: unknown) => {
@@ -46,7 +53,8 @@ export function RegisterPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
         <p className="text-sm text-muted-foreground">
-          Uses the API register path; sign in afterward to open a BFF session.
+          Creates your account via the API. When email confirmation is required, you will confirm
+          before signing in.
         </p>
       </div>
       <form className="space-y-4" onSubmit={onSubmit}>

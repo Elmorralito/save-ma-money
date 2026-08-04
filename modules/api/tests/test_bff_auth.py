@@ -230,6 +230,8 @@ class TestBffCookieSession:
             json={"email": "bff@example.com", "password": "password12"},
         )
         assert registered.status_code == 201
+        assert registered.json()["email_confirmation_required"] is False
+        assert BFF_SESSION_COOKIE not in registered.cookies
         mock_users.register.assert_called_once()
         login = client.post(
             "/api/v1/bff/auth/login",
@@ -406,6 +408,7 @@ class TestBffSupabaseCookieSession:
         auth_result = MagicMock()
         auth_result.user_id = subject
         auth_result.email = email
+        auth_result.access_token = "session-token"
         with patch(
             "papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result
         ) as mock_sign_up:
@@ -415,8 +418,274 @@ class TestBffSupabaseCookieSession:
                 json={"email": email, "password": "SecurePass1!"},
             )
         assert response.status_code == 201
-        assert response.json()["id"] == str(subject)
+        body = response.json()
+        assert body["id"] == str(subject)
+        assert body["email_confirmation_required"] is False
+        assert BFF_SESSION_COOKIE not in response.cookies
         mock_sign_up.assert_called_once()
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_confirm_required_register_sets_pending_flag_without_session_cookie(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PPT-068: confirm-only signup never sets papita_sid."""
+        subject = uuid.uuid4()
+        email = "pending-bff@example.local"
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("AUTH_AUTO_CONFIRM_EMAIL", "false")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.ensure_from_auth_subject.return_value = _supabase_owner(subject, email)
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+        auth_result = MagicMock()
+        auth_result.user_id = subject
+        auth_result.email = email
+        auth_result.access_token = None
+        auth_result.refresh_token = None
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result
+        ):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/register",
+                json={"email": email, "password": "SecurePass1!"},
+            )
+        assert response.status_code == 201
+        assert response.json()["email_confirmation_required"] is True
+        assert BFF_SESSION_COOKIE not in response.cookies
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+        monkeypatch.delenv("AUTH_AUTO_CONFIRM_EMAIL", raising=False)
+
+    def test_unconfirmed_login_returns_error_code_without_session_cookie(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """PPT-068: unconfirmed login is 401 with X-Papita-Error-Code; no cookie."""
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("AUTH_AUTO_CONFIRM_EMAIL", "false")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.get_by_email.return_value = None
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+            side_effect=AuthApiError("Email not confirmed", 400, "email_not_confirmed"),
+        ):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/login",
+                json={"email": "unconfirmed@example.local", "password": "SecurePass1!"},
+            )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Email not confirmed"
+        assert response.headers.get("X-Papita-Error-Code") == "email_not_confirmed"
+        assert BFF_SESSION_COOKIE not in response.cookies
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+        monkeypatch.delenv("AUTH_AUTO_CONFIRM_EMAIL", raising=False)
+
+    def test_unconfirmed_login_elevates_invalid_credentials_via_admin_probe(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        subject = uuid.uuid4()
+        email = "opaque-unconfirmed@example.local"
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "test-service-role")
+        monkeypatch.setenv("AUTH_AUTO_CONFIRM_EMAIL", "false")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.get_by_email.return_value = _supabase_owner(subject, email)
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+        with (
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+                side_effect=AuthApiError("Invalid login credentials", 400, "invalid_credentials"),
+            ),
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.elevate_unconfirmed_login_detail",
+                return_value=(401, "Email not confirmed"),
+            ) as mock_elevate,
+        ):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/login",
+                json={"email": email, "password": "SecurePass1!"},
+            )
+        assert response.status_code == 401
+        assert response.json()["detail"] == "Email not confirmed"
+        assert response.headers.get("X-Papita-Error-Code") == "email_not_confirmed"
+        mock_elevate.assert_called_once()
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+        monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+        monkeypatch.delenv("AUTH_AUTO_CONFIRM_EMAIL", raising=False)
+
+    def test_resend_confirmation_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        app.dependency_overrides[get_users_service] = lambda: MagicMock()
+        with patch("papita_txnsapi.routers.v1.auth.supabase_resend_signup_confirmation") as mock_resend:
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/resend-confirmation",
+                json={
+                    "email": "pending@example.local",
+                    "email_redirect_to": "http://localhost:3000/auth/confirm",
+                },
+            )
+        assert response.status_code == 204
+        assert BFF_SESSION_COOKIE not in response.cookies
+        mock_resend.assert_called_once()
+        assert mock_resend.call_args.kwargs["email_redirect_to"] == "http://localhost:3000/auth/confirm"
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_resend_confirmation_drops_non_allowlisted_redirect(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        app.dependency_overrides[get_users_service] = lambda: MagicMock()
+        with patch("papita_txnsapi.routers.v1.auth.supabase_resend_signup_confirmation") as mock_resend:
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/resend-confirmation",
+                json={
+                    "email": "pending@example.local",
+                    "email_redirect_to": "https://evil.example/phish",
+                },
+            )
+        assert response.status_code == 204
+        assert mock_resend.call_args.kwargs["email_redirect_to"] is None
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_resend_confirmation_maps_429(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        app.dependency_overrides[get_users_service] = lambda: MagicMock()
+        with patch(
+            "papita_txnsapi.routers.v1.auth.supabase_resend_signup_confirmation",
+            side_effect=AuthApiError("email rate limit exceeded", 429, "over_email_send_rate_limit"),
+        ):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/resend-confirmation",
+                json={"email": "pending@example.local"},
+            )
+        assert response.status_code == 429
+        assert "rate limit" in response.json()["detail"].lower()
+        app.dependency_overrides.clear()
+        AuthSecurityManager.reset_instances()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_resend_confirmation_soft_succeeds_on_unknown_user(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        app.dependency_overrides[get_users_service] = lambda: MagicMock()
+        with patch(
+            "papita_txnsapi.routers.v1.auth.supabase_resend_signup_confirmation",
+            side_effect=AuthApiError("User not found", 404, "user_not_found"),
+        ):
+            client = TestClient(app)
+            response = client.post(
+                "/api/v1/bff/auth/resend-confirmation",
+                json={"email": "nobody@example.local"},
+            )
+        assert response.status_code == 204
         app.dependency_overrides.clear()
         AuthSecurityManager.reset_instances()
         get_settings.cache_clear()

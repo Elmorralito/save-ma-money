@@ -15,6 +15,14 @@ const RegisterPage = lazy(async () => {
   const mod = await import("@/pages/RegisterPage");
   return { default: mod.RegisterPage };
 });
+const CheckEmailPage = lazy(async () => {
+  const mod = await import("@/pages/CheckEmailPage");
+  return { default: mod.CheckEmailPage };
+});
+const ConfirmEmailPage = lazy(async () => {
+  const mod = await import("@/pages/ConfirmEmailPage");
+  return { default: mod.ConfirmEmailPage };
+});
 const DashboardPage = lazy(async () => {
   const mod = await import("@/pages/DashboardPage");
   return { default: mod.DashboardPage };
@@ -62,6 +70,8 @@ function App() {
           <Route element={<PublicLayout />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/check-email" element={<CheckEmailPage />} />
+            <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
           </Route>
 
           <Route

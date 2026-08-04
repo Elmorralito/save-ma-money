@@ -54,14 +54,39 @@ export async function bffRegister(input: {
   email: string;
   password: string;
   display_name?: string;
-}): Promise<BffUser> {
-  const { data } = await apiFetch<BffUser>("/api/v1/bff/auth/register", {
+}): Promise<BffUser & { email_confirmation_required: boolean }> {
+  const { data } = await apiFetch<BffUser & { email_confirmation_required: boolean }>(
+    "/api/v1/bff/auth/register",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      skipAuthRefresh: true,
+    },
+  );
+  return {
+    ...data,
+    email_confirmation_required: Boolean(data.email_confirmation_required),
+  };
+}
+
+/** POST /api/v1/bff/auth/resend-confirmation — soft-success 204; no session. */
+export async function bffResendConfirmation(input: {
+  email: string;
+  email_redirect_to?: string;
+}): Promise<void> {
+  const redirect =
+    input.email_redirect_to ??
+    (typeof window !== "undefined" ? `${window.location.origin}/auth/confirm` : undefined);
+  await apiFetch<undefined>("/api/v1/bff/auth/resend-confirmation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      email: input.email.trim(),
+      ...(redirect ? { email_redirect_to: redirect } : {}),
+    }),
     skipAuthRefresh: true,
   });
-  return data;
 }
 
 /** POST /api/v1/bff/auth/refresh — rotate tokens server-side. */

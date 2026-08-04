@@ -67,6 +67,20 @@ class RegisterRequest(BaseModel):
         return ProviderType(self.provider)
 
 
+class ResendConfirmationRequest(BaseModel):
+    """JSON body for ``POST /auth/resend-confirmation`` and BFF twin (PPT-068).
+
+    Attributes:
+        email: Address that may still need signup confirmation.
+        email_redirect_to: Optional same-origin confirm landing URL (allowlisted).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=5, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    email_redirect_to: str | None = Field(default=None, max_length=2048)
+
+
 class RefreshRequest(BaseModel):
     """JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).
 
@@ -250,6 +264,41 @@ class UserResponse(BaseModel):
             provider=provider,
             auth_provider=auth_provider,
             created_at=user.created_at,
+        )
+
+
+class RegisterResponse(UserResponse):
+    """Public register result with optional email-confirmation pending signal (PPT-068).
+
+    When Supabase Confirm email is on and Admin auto-confirm is off, Auth may
+    create the user without issuing a session. ``email_confirmation_required``
+    tells the SPA to show check-email UX instead of prompting an immediate login.
+    Local Auth and Admin auto-confirm paths leave the flag ``False``.
+    """
+
+    email_confirmation_required: bool = False
+
+    @classmethod
+    def from_dto(
+        cls,
+        user: UsersDTO,
+        *,
+        email_confirmation_required: bool = False,
+    ) -> RegisterResponse:
+        """Build a register response from a model ``UsersDTO``.
+
+        Args:
+            user: Persisted tenant user from ``UsersService``.
+            email_confirmation_required: True when the client must confirm email
+                before a usable session can be issued.
+
+        Returns:
+            Public register payload including the pending-confirmation flag.
+        """
+        base = UserResponse.from_dto(user)
+        return cls(
+            **base.model_dump(),
+            email_confirmation_required=email_confirmation_required,
         )
 
 

@@ -26,6 +26,7 @@ from papita_txnsapi.core.bff_session import (
     new_session_id,
     parse_owner_id_hint,
 )
+from papita_txnsapi.core.client_contract import ERROR_EMAIL_NOT_CONFIRMED, HEADER_ERROR_CODE
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.core.session_store import SessionStore
 from papita_txnsapi.core.supabase_auth import (
@@ -37,6 +38,8 @@ from papita_txnsapi.core.supabase_auth import (
     supabase_sign_out,
 )
 from papita_txnsapi.core.supabase_auth_local import (
+    elevate_unconfirmed_login_detail,
+    register_requires_email_confirmation,
     supabase_register_user,
     supabase_sign_in_with_optional_auto_confirm,
 )
@@ -55,9 +58,15 @@ from papita_txnsapi.routers.v1.auth import (
     _http_status_for_provision_error,
     _require_supabase_auth_settings,
     _token_response_from_auth,
+    soft_resend_signup_confirmation,
 )
-from papita_txnsapi.schemas.auth import UserResponse
-from papita_txnsapi.schemas.bff_auth import BffLoginRequest, BffRegisterRequest, BffSessionResponse
+from papita_txnsapi.schemas.auth import RegisterResponse, UserResponse
+from papita_txnsapi.schemas.bff_auth import (
+    BffLoginRequest,
+    BffRegisterRequest,
+    BffResendConfirmationRequest,
+    BffSessionResponse,
+)
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.users import UsersService
 
@@ -65,6 +74,10 @@ logger = logging.getLogger(__name__)
 
 # Opaque ids from ``secrets.token_urlsafe`` (and length bound for Set-Cookie safety).
 _BFF_SESSION_ID_RE = re.compile(r"^[A-Za-z0-9_-]{16,128}$")
+_EMAIL_NOT_CONFIRMED_HEADERS = {
+    "WWW-Authenticate": "Bearer",
+    HEADER_ERROR_CODE: ERROR_EMAIL_NOT_CONFIRMED,
+}
 
 router = APIRouter(prefix="/bff/auth", tags=["BFF Authentication"])
 
@@ -143,6 +156,7 @@ def _issue_supabase_tokens(
     """Sign in via Supabase Auth and ensure the Papita tenant row exists."""
     _require_supabase_auth_settings(settings)
     auth_result = None
+    existing = None
     try:
         existing = users_service.get_by_email(email)
         auth_result = supabase_sign_in_with_optional_auto_confirm(
@@ -167,12 +181,21 @@ def _issue_supabase_tokens(
         return token.access_token, token.refresh_token, token.expires_in, user
     except (AuthApiError, AuthError) as exc:
         http_status, detail = classify_supabase_auth_error(exc, fallback="login failed")
+        http_status, detail = elevate_unconfirmed_login_detail(
+            supabase_url=settings.SUPABASE_URL or "",
+            service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
+            auth_user_id=existing.id if existing is not None else None,
+            auto_confirm=settings.should_auto_confirm_email(),
+            http_status=http_status,
+            detail=detail,
+        )
         if http_status == 401 and detail != "Email not confirmed":
             detail = "Incorrect username or password"
+        headers = _EMAIL_NOT_CONFIRMED_HEADERS if detail == "Email not confirmed" else _UNAUTHORIZED_HEADERS
         raise HTTPException(
             status_code=http_status if http_status in {401, 429} else status.HTTP_401_UNAUTHORIZED,
             detail=detail if http_status in {401, 429} else "Incorrect username or password",
-            headers=_UNAUTHORIZED_HEADERS,
+            headers=headers,
         ) from exc
     except ValueError as exc:
         if auth_result is not None and str(exc) != "User is inactive or deleted":
@@ -280,17 +303,21 @@ def bff_login(  # pylint: disable=too-many-positional-arguments
     return _session_response(user=user, csrf_token=record.csrf_token, backend=bff_store.backend)
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)
 def bff_register(
     body: BffRegisterRequest,
+    response: Response,
     _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
-) -> UserResponse:
+) -> RegisterResponse:
     """Register via the same Auth/UsersService path as ``POST /auth/register``.
 
-    Does not create a BFF session — clients should call ``POST /bff/auth/login`` next.
+    Does not create a BFF session — clients should call ``POST /bff/auth/login``
+    after email confirmation when required (PPT-068). Never sets ``papita_sid``.
     """
+    # Belt-and-suspenders: register must never attach a session cookie.
+    _clear_session_cookie(response)
     resolved_username = body.username or UsersService.username_from_email(body.email)
 
     if settings.AUTH_PROVIDER == "supabase":
@@ -335,7 +362,11 @@ def bff_register(
                 detail=public_value_error_detail(exc, fallback="Registration failed"),
                 headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
             ) from exc
-        return UserResponse.from_dto(user)
+        pending = register_requires_email_confirmation(
+            access_token=auth_result.access_token,
+            auto_confirm_enabled=settings.should_auto_confirm_email(),
+        )
+        return RegisterResponse.from_dto(user, email_confirmation_required=pending)
 
     user = users_service.register(
         email=body.email,
@@ -345,7 +376,26 @@ def bff_register(
         phone=body.phone,
         provider_type=body.provider_type,
     )
-    return UserResponse.from_dto(user)
+    return RegisterResponse.from_dto(user, email_confirmation_required=False)
+
+
+@router.post("/resend-confirmation", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+def bff_resend_confirmation(
+    body: BffResendConfirmationRequest,
+    _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> Response:
+    """Resend signup confirmation email for pending SPA users (PPT-068).
+
+    Anonymous-friendly (CSRF-exempt). Does not set ``papita_sid``. Soft-succeeds
+    for unknown emails; 429 when Auth/SMTP rate limits fire.
+    """
+    soft_resend_signup_confirmation(
+        settings=settings,
+        email=body.email,
+        email_redirect_to=body.email_redirect_to,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/session", response_model=BffSessionResponse)

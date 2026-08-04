@@ -23,6 +23,7 @@ export {
   bffLogout,
   bffRefresh,
   bffRegister,
+  bffResendConfirmation,
   getBffSession,
   type BffSession,
   type BffUser,

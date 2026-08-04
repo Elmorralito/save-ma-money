@@ -595,6 +595,36 @@
         "title": "BffRegisterRequest",
         "type": "object"
       },
+      "BffResendConfirmationRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /bff/auth/resend-confirmation`` (same fields as Bearer twin).",
+        "properties": {
+          "email": {
+            "maxLength": 255,
+            "minLength": 5,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "email_redirect_to": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Redirect To"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "BffResendConfirmationRequest",
+        "type": "object"
+      },
       "BffSessionResponse": {
         "additionalProperties": false,
         "description": "Public BFF session probe / login response (no JWTs).\n\nAttributes:\n    authenticated: Whether a valid session cookie was resolved.\n    user: Public profile when authenticated.\n    csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.\n    session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).",
@@ -2122,6 +2152,77 @@
         "title": "RegisterRequest",
         "type": "object"
       },
+      "RegisterResponse": {
+        "description": "Public register result with optional email-confirmation pending signal (PPT-068).\n\nWhen Supabase Confirm email is on and Admin auto-confirm is off, Auth may\ncreate the user without issuing a session. ``email_confirmation_required``\ntells the SPA to show check-email UX instead of prompting an immediate login.\nLocal Auth and Admin auto-confirm paths leave the flag ``False``.",
+        "properties": {
+          "auth_provider": {
+            "default": "supabase",
+            "enum": [
+              "supabase",
+              "local"
+            ],
+            "title": "Auth Provider",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "email_confirmation_required": {
+            "default": false,
+            "title": "Email Confirmation Required",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ProviderType",
+            "default": "email"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "created_at"
+        ],
+        "title": "RegisterResponse",
+        "type": "object"
+      },
       "ReportPeriod": {
         "description": "Inclusive report date window.",
         "properties": {
@@ -2141,6 +2242,36 @@
           "end_date"
         ],
         "title": "ReportPeriod",
+        "type": "object"
+      },
+      "ResendConfirmationRequest": {
+        "additionalProperties": false,
+        "description": "JSON body for ``POST /auth/resend-confirmation`` and BFF twin (PPT-068).\n\nAttributes:\n    email: Address that may still need signup confirmation.\n    email_redirect_to: Optional same-origin confirm landing URL (allowlisted).",
+        "properties": {
+          "email": {
+            "maxLength": 255,
+            "minLength": 5,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "email_redirect_to": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Redirect To"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ResendConfirmationRequest",
         "type": "object"
       },
       "SpendingBreakdownItem": {
@@ -3662,7 +3793,7 @@
     },
     "/api/v1/auth/register": {
       "post": {
-        "description": "Register a new user via Supabase Auth (or local ``UsersService``).\n\nEmail is the canonical login identity. A schema ``username`` handle is\nderived from the email local-part when not supplied. Under Supabase, Auth\nsignup runs first; Papita provision is idempotent. Provision failure after a\nsuccessful Auth create triggers best-effort Admin orphan cleanup.\n\nArgs:\n    body: Registration payload (email, password, optional profile fields).\n    _rate_limit: Per-IP register rate-limit dependency (side effect only).\n    settings: Selects ``supabase`` vs ``local`` Auth mode.\n    users_service: Creates or links the tenant ``users`` row.\n\nReturns:\n    Public ``UserResponse`` for the new or already-linked tenant user.\n\nRaises:\n    HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,\n        429 rate limit, 503 misconfigured Supabase, etc.).",
+        "description": "Register a new user via Supabase Auth (or local ``UsersService``).\n\nEmail is the canonical login identity. A schema ``username`` handle is\nderived from the email local-part when not supplied. Under Supabase, Auth\nsignup runs first; Papita provision is idempotent. Provision failure after a\nsuccessful Auth create triggers best-effort Admin orphan cleanup.\n\nArgs:\n    body: Registration payload (email, password, optional profile fields).\n    _rate_limit: Per-IP register rate-limit dependency (side effect only).\n    settings: Selects ``supabase`` vs ``local`` Auth mode.\n    users_service: Creates or links the tenant ``users`` row.\n\nReturns:\n    Public ``RegisterResponse`` for the new or already-linked tenant user,\n    including ``email_confirmation_required`` when Confirm email is on.\n\nRaises:\n    HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,\n        429 rate limit, 503 misconfigured Supabase, etc.).",
         "operationId": "register_user_api_v1_auth_register_post",
         "requestBody": {
           "content": {
@@ -3679,7 +3810,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "$ref": "#/components/schemas/RegisterResponse"
                 }
               }
             },
@@ -3697,6 +3828,41 @@
           }
         },
         "summary": "Register User",
+        "tags": [
+          "Authentication"
+        ]
+      }
+    },
+    "/api/v1/auth/resend-confirmation": {
+      "post": {
+        "description": "Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).\n\nAlways returns 204 on soft success (including unknown emails). Rate-limited\nwith the register bucket because both trigger Auth SMTP.",
+        "operationId": "resend_confirmation_api_v1_auth_resend_confirmation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resend Confirmation",
         "tags": [
           "Authentication"
         ]
@@ -3825,7 +3991,7 @@
     },
     "/api/v1/bff/auth/register": {
       "post": {
-        "description": "Register via the same Auth/UsersService path as ``POST /auth/register``.\n\nDoes not create a BFF session — clients should call ``POST /bff/auth/login`` next.",
+        "description": "Register via the same Auth/UsersService path as ``POST /auth/register``.\n\nDoes not create a BFF session — clients should call ``POST /bff/auth/login``\nafter email confirmation when required (PPT-068). Never sets ``papita_sid``.",
         "operationId": "bff_register_api_v1_bff_auth_register_post",
         "requestBody": {
           "content": {
@@ -3842,7 +4008,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserResponse"
+                  "$ref": "#/components/schemas/RegisterResponse"
                 }
               }
             },
@@ -3860,6 +4026,41 @@
           }
         },
         "summary": "Bff Register",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/resend-confirmation": {
+      "post": {
+        "description": "Resend signup confirmation email for pending SPA users (PPT-068).\n\nAnonymous-friendly (CSRF-exempt). Does not set ``papita_sid``. Soft-succeeds\nfor unknown emails; 429 when Auth/SMTP rate limits fire.",
+        "operationId": "bff_resend_confirmation_api_v1_bff_auth_resend_confirmation_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BffResendConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bff Resend Confirmation",
         "tags": [
           "BFF Authentication"
         ]
