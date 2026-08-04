@@ -1,8 +1,19 @@
 # `@papita/web`
 
-React + TypeScript SPA scaffold for the Papita finance client ([PPT-047](https://github.com/Elmorralito/save-ma-money/issues/113) · epic [PPT-046](https://github.com/Elmorralito/save-ma-money/issues/112)).
+React + TypeScript SPA for the Papita finance client (epic [PPT-046 / #112](https://github.com/Elmorralito/save-ma-money/issues/112)).
 
 This package is presentation-only. Domain rules stay in `papita_txnsmodel` behind `papita_txnsapi` — do not reimplement business logic here.
+
+## Domain boundary (PPT-069 / #140)
+
+**Web must not port domain services.** Accounts, categories, transactions, movements, and reports UI call existing API routes only. The SPA must **never** reimplement `UsersService`, password policy, ledger math, or tenant-ownership rules in TypeScript. Thin OpenAPI types + TanStack Query HTTP mapping is allowed. Epic SSOT: [#112](https://github.com/Elmorralito/save-ma-money/issues/112). Guardrail issue: [#140](https://github.com/Elmorralito/save-ma-money/issues/140).
+
+### Epic close-out DoD (reviewed)
+
+- [x] Feature CRUD UX lives only in the shipped screen modules (no parallel screen scopes under this issue)
+- [x] No TypeScript port of `papita_txnsmodel.services.*` (no password hashing, ledger aggregation, or tenant-ownership rules beyond HTTP mapping)
+- [x] Auth remains BFF HttpOnly cookies + Supabase IdP; Bearer is for smokes/token clients only
+- [x] Spot-check greps under `modules/web` (ignore generated `src/types/api.d.ts` / OpenAPI docstrings): `UsersService`, `bcrypt`/`argon`/`hashPassword`, client-side double-entry / balance aggregation, `class *Service` mirroring model services — **pass** (UI copy may warn _against_ client double-entry)
 
 ## Prerequisites
 
@@ -26,24 +37,24 @@ make web-dev      # Vite on :5173
 
 ## Scripts
 
-| Make (repo root)         | pnpm (repo root)          | Purpose                                                              |
-| ------------------------ | ------------------------- | -------------------------------------------------------------------- |
-| `make web-dev`           | `pnpm web:dev`            | Vite dev server (default `:5173`)                                    |
-| `make web-up`            | —                         | nginx Compose SPA (`WEB_PORT`, default `:3000`) + API deps (PPT-057) |
-| `make web-down`          | —                         | Stop the Compose `web` service                                       |
-| `make web-lint`          | `pnpm web:lint`           | ESLint + Prettier check                                              |
-| `make web-test`          | `pnpm web:test`           | Vitest (jsdom)                                                       |
-| `make web-build`         | `pnpm web:build`          | `tsc -b` + production bundle                                         |
-| `make generate-types`    | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact  |
-| `make check-types`       | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                          |
-| `make sync-openapi`      | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)        |
-| `make check-openapi`     | —                         | Fail if the committed artifact drifts from a fresh offline dump      |
-| `make web-openapi`       | —                         | `sync-openapi` + `generate-types` (after API schema changes)         |
-| `make web-e2e-seed`      | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API (PPT-061 / #126)      |
-| `make web-test-coverage` | `pnpm web:test:coverage`  | Vitest + v8 coverage thresholds (PPT-056 / #121)                     |
-| `make web-e2e`           | `pnpm web:test:e2e`       | Playwright critical path + axe (needs `make api-all`)                |
-| `make web-lhci`          | `pnpm web:lhci`           | Lighthouse CI lab budgets against `vite preview`                     |
-| `make web-audit`         | `pnpm web:audit`          | `pnpm audit --prod` for `@papita/web`                                |
+| Make (repo root)         | pnpm (repo root)          | Purpose                                                             |
+| ------------------------ | ------------------------- | ------------------------------------------------------------------- |
+| `make web-dev`           | `pnpm web:dev`            | Vite dev server (default `:5173`)                                   |
+| `make web-up`            | —                         | nginx Compose SPA (`WEB_PORT`, default `:3000`) + API deps          |
+| `make web-down`          | —                         | Stop the Compose `web` service                                      |
+| `make web-lint`          | `pnpm web:lint`           | ESLint + Prettier check                                             |
+| `make web-test`          | `pnpm web:test`           | Vitest (jsdom)                                                      |
+| `make web-build`         | `pnpm web:build`          | `tsc -b` + production bundle                                        |
+| `make generate-types`    | `pnpm web:generate-types` | Regenerate `src/types/api.d.ts` from the committed OpenAPI artifact |
+| `make check-types`       | `pnpm web:check-types`    | Fail if `api.d.ts` drifts from the artifact                         |
+| `make sync-openapi`      | —                         | Refresh `openapi/openapi.json` from the FastAPI app (offline)       |
+| `make check-openapi`     | —                         | Fail if the committed artifact drifts from a fresh offline dump     |
+| `make web-openapi`       | —                         | `sync-openapi` + `generate-types` (after API schema changes)        |
+| `make web-e2e-seed`      | `pnpm web:seed-e2e`       | Seed Playwright fixtures against a running API                      |
+| `make web-test-coverage` | `pnpm web:test:coverage`  | Vitest + v8 coverage thresholds                                     |
+| `make web-e2e`           | `pnpm web:test:e2e`       | Playwright critical path + axe (needs `make api-all`)               |
+| `make web-lhci`          | `pnpm web:lhci`           | Lighthouse CI lab budgets against `vite preview`                    |
+| `make web-audit`         | `pnpm web:audit`          | `pnpm audit --prod` for `@papita/web`                               |
 
 Package-local: `pnpm --filter @papita/web <script>`.
 
@@ -90,7 +101,7 @@ Presentation-only client under `src/api/`. **No** `papita_txnsmodel` business lo
 | Contract helpers | `src/api/contract.ts`                          | `bulkMaxTransactions` / `reportWindowMaxDays` from body (prefer) or headers; breaking-changes guard helpers |
 | Probes           | `src/api/meta.ts`, `health.ts`                 | Unauthenticated health + `GET /api/v1/meta/client-contract`                                                 |
 | Query            | `queryKeys.ts`, `queries.ts`, `queryClient.ts` | `queryOptions()`; `staleTime` 60s; **no 4xx retries**                                                       |
-| Breaking guard   | `BreakingChangesGuard` (app root)              | PPT-064 / #129 — see § Breaking-changes guard below                                                         |
+| Breaking guard   | `BreakingChangesGuard` (app root)              | See § Breaking-changes guard below                                                                          |
 
 **Credentials policy:** always send cookies (`credentials: 'include'`) for BFF HttpOnly sessions (PPT-049 / #115). Do **not** store JWTs in `localStorage` / JS-readable storage or attach Bearer tokens from the SPA (PDF Axios interceptor pattern is superseded).
 
@@ -128,7 +139,7 @@ Helpers: `evaluateBreakingChangesGuard`, `resolveExpectedBreakingChangesId`, `ob
 
 ### BFF session durability vs Redis (PPT-059 / #124)
 
-Server-side cookie → token bindings live in API `BffSessionStore` (**not** the JWT denylist `SessionStore`). Redis foundation is PPT-043 ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)); this contract locks when memory is OK vs when Redis is required. Staging Compose / nginx packaging that must keep Redis for durable BFF sessions is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057). Full API matrix: [`modules/api/README.md`](../api/README.md) § Workers vs Redis and § Redis.
+Server-side cookie → token bindings live in API `BffSessionStore` (**not** the JWT denylist `SessionStore`). Redis foundation is PPT-043 ([#83](https://github.com/Elmorralito/save-ma-money/issues/83)); this contract locks when memory is OK vs when Redis is required. Compose/nginx packaging that must keep Redis for durable BFF sessions: § [nginx Compose packaging](#nginx-compose-packaging-ppt-057--122). Full API matrix: [`modules/api/README.md`](../api/README.md) § Workers vs Redis and § Redis.
 
 | Mode                                              | `REDIS_ENABLED`   | Workers | BFF session store                                | Notes                                                                                  |
 | ------------------------------------------------- | ----------------- | ------- | ------------------------------------------------ | -------------------------------------------------------------------------------------- |
@@ -164,31 +175,31 @@ The landing page never writes tokens from query/hash into JS storage; it clears 
 
 MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchanged — SPA never stores JWTs. Local DX (Confirm email / `AUTH_AUTO_CONFIRM_EMAIL`) is documented in [`modules/api/README.md`](../api/README.md) (Authentication) and [`environments/local/.env.example`](../../environments/local/.env.example).
 
-| Flow                                    | Decision                            | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Email + password register/login via BFF | **MVP**                             | Primary path (`/login`, `/register` → `/api/v1/bff/auth/*`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Email confirmation required by Supabase | **MVP product UX (PPT-068 / #139)** | **Local/B0:** Confirm email OFF in the Supabase dashboard **or** Admin auto-confirm when `PAPITA_ENV=local` (`AUTH_AUTO_CONFIRM_EMAIL`, service role). **Staging/prod:** Confirm email **ON**; `AUTH_AUTO_CONFIRM_EMAIL` defaults off outside local. Register returns `email_confirmation_required` and SPA shows `/check-email` (no `papita_sid`). Unconfirmed login maps to allowlisted `"Email not confirmed"` + `X-Papita-Error-Code: email_not_confirmed`. Resend via `POST /api/v1/bff/auth/resend-confirmation` (CSRF-exempt; register rate-limit; optional allowlisted `email_redirect_to`). Confirm landing: SPA `/auth/confirm` (never stores JWTs from the URL). |
-| Password reset / forgot password        | **Defer**                           | No in-app reset UI or BFF route. Operators recover accounts via the Supabase Auth dashboard (or project recovery email) until a future issue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Magic link / OTP                        | **Defer**                           | Not part of the BFF SPA contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| OAuth/SSO buttons                       | **Defer** (SPA)                     | Bearer `/auth/oauth/*` may exist on the API; SPA buttons are epic OOS. **PPT-068:** Google/GitHub emails are IdP-verified — no duplicate email-confirm gate on the SPA when those channels are enabled later.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| Auth rate-limit **429**                 | **MVP**                             | App limiter + Supabase SMTP 429 map to allowlisted `detail`; SPA shows them through `formatApiError` (including `Retry-After`) on login/register/resend — not a silent failure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Flow                                    | Decision           | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------- | ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Email + password register/login via BFF | **MVP**            | Primary path (`/login`, `/register` → `/api/v1/bff/auth/*`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Email confirmation required by Supabase | **MVP product UX** | **Local/B0:** Confirm email OFF in the Supabase dashboard **or** Admin auto-confirm when `PAPITA_ENV=local` (`AUTH_AUTO_CONFIRM_EMAIL`, service role). **Staging/prod:** Confirm email **ON**; `AUTH_AUTO_CONFIRM_EMAIL` defaults off outside local. Register returns `email_confirmation_required` and SPA shows `/check-email` (no `papita_sid`). Unconfirmed login maps to allowlisted `"Email not confirmed"` + `X-Papita-Error-Code: email_not_confirmed`. Resend via `POST /api/v1/bff/auth/resend-confirmation` (CSRF-exempt; register rate-limit; optional allowlisted `email_redirect_to`). Confirm landing: SPA `/auth/confirm` (never stores JWTs from the URL). |
+| Password reset / forgot password        | **Defer**          | No in-app reset UI or BFF route. Operators recover accounts via the Supabase Auth dashboard (or project recovery email) until a future issue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Magic link / OTP                        | **Defer**          | Not part of the BFF SPA contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| OAuth/SSO buttons                       | **Defer** (SPA)    | Bearer `/auth/oauth/*` may exist on the API; SPA buttons are epic OOS. Google/GitHub emails are IdP-verified — no duplicate email-confirm gate on the SPA when those channels are enabled later.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Auth rate-limit **429**                 | **MVP**            | App limiter + Supabase SMTP 429 map to allowlisted `detail`; SPA shows them through `formatApiError` (including `Retry-After`) on login/register/resend — not a silent failure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
-### Playwright assumptions (#121)
+### Playwright assumptions
 
 - Default E2E / B0 path uses a **confirmed** (or confirm-N/A) user: CI `AUTH_PROVIDER=local`, or local Supabase with Confirm email OFF / Admin auto-confirm so register → login succeeds without inbox access.
-- Unconfirmed-user journeys (`/check-email`, resend, `/auth/confirm`) are covered at **unit** level (PPT-068); do not write Playwright that depends on confirmation email delivery / SMTP.
+- Unconfirmed-user journeys (`/check-email`, resend, `/auth/confirm`) are covered at **unit** level; do not write Playwright that depends on confirmation email delivery / SMTP.
 - Auth **429** is covered at unit level (mapper + login/register pages); e2e rate-limit is optional later.
-- **Fixture SSOT:** [#126](https://github.com/Elmorralito/save-ma-money/issues/126) / PPT-061 — see [E2E fixtures](#e2e-fixtures-ppt-061--126) below. `globalSetup` must call `make web-e2e-seed` (do not invent a second SQL seed).
+- **Fixture SSOT:** [E2E fixtures](#e2e-fixtures-ppt-061--126) below. `globalSetup` must call `make web-e2e-seed` (do not invent a second SQL seed).
 
 ## E2E fixtures (PPT-061 / #126)
 
-**Locked strategy: A — API seed script** (HTTP against running Compose API). Playwright `globalSetup` (#121) only invokes the seed; SQL dumps are out of scope.
+**Locked strategy: A — API seed script** (HTTP against running Compose API). Playwright `globalSetup` only invokes the seed; SQL dumps are out of scope.
 
 | Piece       | Location                                           | Notes                                                                 |
 | ----------- | -------------------------------------------------- | --------------------------------------------------------------------- |
 | Runner      | [`bin/web_e2e_seed.py`](../../bin/web_e2e_seed.py) | Bearer register/login → accounts → categories → optional baseline txn |
 | Wrapper     | [`bin/web_e2e_seed.sh`](../../bin/web_e2e_seed.sh) | Loads `environments/<env>/.env`; supports `RESET=1`                   |
-| Artifact    | `modules/web/e2e/.auth/seed.json`                  | **Gitignored** — email/password + IDs for #121                        |
+| Artifact    | `modules/web/e2e/.auth/seed.json`                  | **Gitignored** — email/password + IDs for Playwright                  |
 | Make / pnpm | `make web-e2e-seed` / `pnpm web:seed-e2e`          | Requires healthy API (`make api-all`)                                 |
 
 **Why not B/C:** Seed logic must not live only inside Playwright (harder to run standalone). SQL fixtures bypass API validation and do not create auth users correctly for local/Supabase.
@@ -217,11 +228,11 @@ pnpm web:seed-e2e              # same as make (honors RESET=1 env)
 
 **Auth modes:** Prefer `AUTH_PROVIDER=local` for B0 / CI E2E (no Supabase secrets). Bearer path seeds domain data; Playwright still logs in via BFF cookies in the browser. Token clients (`make auth-smoke`) coexist unchanged.
 
-**CI placement:** Keep PR [`web-ci.yml`](../../.github/workflows/web-ci.yml) Node-only (lint, Vitest+coverage, audit soft-gate, build). Compose seed + Playwright + Lighthouse run in [`web-e2e.yml`](../../.github/workflows/web-e2e.yml) (nightly / `workflow_dispatch` / PRs that touch `e2e/` or seed scripts) — see [#121](https://github.com/Elmorralito/save-ma-money/issues/121).
+**CI placement:** Keep PR [`web-ci.yml`](../../.github/workflows/web-ci.yml) Node-only (lint, Vitest+coverage, audit soft-gate, build). Compose seed + Playwright + Lighthouse run in [`web-e2e.yml`](../../.github/workflows/web-e2e.yml) (nightly / `workflow_dispatch` / PRs that touch `e2e/` or seed scripts).
 
 ## Quality, a11y, CWV, security (PPT-056 / #121)
 
-Complements PPT-060 (#125) auth assumptions and PPT-061 (#126) seed SSOT above.
+Complements auth matrix and E2E fixture sections above.
 
 ### Vitest coverage
 
@@ -259,7 +270,7 @@ Deferred polish (not blockers): full screen-reader scripted journeys, mobile nat
 
 ### RUM / Sentry (deferred)
 
-**Field RUM, Sentry, and production error-reporting SDKs are deferred post-MVP.** Do not add browser observability vendors for the PPT-046 MVP. Lab-only Lighthouse / Core Web Vitals budgets live under [PPT-056 / #121](https://github.com/Elmorralito/save-ma-money/issues/121) (`make web-lhci` / `web-e2e.yml`) — not a substitute for field RUM.
+**Field RUM, Sentry, and production error-reporting SDKs are deferred post-MVP.** Do not add browser observability vendors for the PPT-046 MVP. Lab-only Lighthouse / Core Web Vitals budgets live in this section (`make web-lhci` / `web-e2e.yml`) — not a substitute for field RUM.
 
 ### Lighthouse / Core Web Vitals (lab)
 
@@ -277,15 +288,15 @@ Deferred polish (not blockers): full screen-reader scripted journeys, mobile nat
 
 ### Security checklist (BFF / CSP / deps)
 
-| Check                     | Status / owner                                                                                                                                             |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                                                      |
-| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                                                     |
-| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                                                            |
-| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                                                           |
-| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                                                            |
-| CSP headers               | **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)** — nginx SPA locations only (see [CSP (nginx)](#csp-nginx)); no Vite meta CSP |
-| nginx Compose packaging   | **PPT-057 / [#122](https://github.com/Elmorralito/save-ma-money/issues/122)** — `docker/web/` + `make web-up` (same-origin `/api`)                         |
+| Check                     | Status / owner                                                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| No JWT in WebStorage      | Enforced by design + unit/e2e asserts                                                                                     |
+| Cookie flags              | API BFF: `papita_sid` HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG (see BFF section)                    |
+| CSRF                      | `X-Papita-CSRF` from memory (`src/api/csrf.ts`)                                                                           |
+| `pnpm audit` / Dependabot | `make web-audit`; Dependabot ecosystem `npm` dir `modules/web` (`npm-web` group)                                          |
+| gitleaks / `VITE_*`       | Never put secrets in `VITE_*`; repo gitleaks workflow scans PRs                                                           |
+| CSP headers               | nginx SPA locations only (see [CSP (nginx)](#csp-nginx)); no Vite meta CSP                                                |
+| nginx Compose packaging   | `docker/web/` + `make web-up` (same-origin `/api`) — see [nginx Compose packaging](#nginx-compose-packaging-ppt-057--122) |
 
 PR template section **Web security checklist** must be signed off on web/auth PRs.
 
@@ -319,7 +330,7 @@ Cookie notes (aligned with [BFF section](#bff-cookie-auth-ppt-049--115)):
 
 ### CSP (nginx)
 
-Production-shaped headers are set by nginx on **static SPA locations only** (`/`, `/index.html`, `/assets/`). The `/api` proxy does **not** attach SPA CSP — API responses keep [`SecurityHeadersMiddleware`](../api/src/papita_txnsapi/middleware/security_headers.py) (nosniff / no-referrer / DENY; no API CSP so Swagger can work when docs are on). Owned by **PPT-063 / [#128](https://github.com/Elmorralito/save-ma-money/issues/128)**.
+Production-shaped headers are set by nginx on **static SPA locations only** (`/`, `/index.html`, `/assets/`). The `/api` proxy does **not** attach SPA CSP — API responses keep [`SecurityHeadersMiddleware`](../api/src/papita_txnsapi/middleware/security_headers.py) (nosniff / no-referrer / DENY; no API CSP so Swagger can work when docs are on).
 
 | Header                    | Value (summary)                                                                                                                                                                                                                        |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -410,7 +421,7 @@ Reference migrations: `AccountFormDialog` + `CategoryFormDialog`. Ledger/auth fo
 
 ## Feature screens (PPT-052)
 
-Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms use Zod + RHF (`src/forms/`, PPT-055 / [#120](https://github.com/Elmorralito/save-ma-money/issues/120)). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
+Accounts and categories call `/api/v1/accounts` and `/api/v1/categories` via `src/api/accounts.ts` / `categories.ts` + `queryOptions` (`credentials: 'include'` via `apiFetch`). Forms use Zod + RHF (`src/forms/`). Global seed category writes surface as HTTP 404 `Category not found` and are mapped to a read-only UX.
 
 | Detail          | Behavior                                                                                       |
 | --------------- | ---------------------------------------------------------------------------------------------- |
@@ -436,4 +447,9 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 
 ## Out of scope here
 
-Dashboard/reports UI (PPT-054), transaction split v4 UI, migrating remaining ledger/auth forms onto PPT-055, mobile native testing, perf heroics beyond lab CWV budgets — see epic children under [#112](https://github.com/Elmorralito/save-ma-money/issues/112). nginx Compose packaging is [#122](https://github.com/Elmorralito/save-ma-money/issues/122) / PPT-057 (`make web-up`); CSP headers are [#128](https://github.com/Elmorralito/save-ma-money/issues/128) / PPT-063 (above). BFF durability contract + fail-closed runtime are above (PPT-059 / #124). Auth edge-case matrix is above (PPT-060 / #125); email-confirm product UX is [#139](https://github.com/Elmorralito/save-ma-money/issues/139).
+Durable deferrals (not closed delivery tickets):
+
+- Transaction split v4 UI; budgets / budget-performance surfaces
+- Field RUM / Sentry / production error-reporting SDKs (lab Lighthouse/CWV only — see Quality section)
+- Mobile native apps; public marketing SSR
+- TypeScript ports of model services — see [Domain boundary](#domain-boundary-ppt-069--140)

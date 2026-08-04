@@ -2016,7 +2016,6 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 
 > Post-MVP React SPA epic. Live body: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046).
 > Operator SSOT: [`modules/web/README.md`](../../modules/web/README.md) · agent ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
-> Docs index hygiene for this epic: [#123](https://github.com/Elmorralito/save-ma-money/issues/123) (PPT-058).
 
 **Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **PPT-046** · **Step:** Post-MVP web client (after PPT-032 API MVP)
 
@@ -2026,40 +2025,43 @@ Ship a **React + TypeScript SPA** under `modules/web/` that consumes the existin
 
 **Locked decisions (cite epic; do not re-litigate):**
 
-- Deploy: Compose + nginx static hosting (`docker/web/`) — packaging owned by [#122](https://github.com/Elmorralito/save-ma-money/issues/122)
+- Deploy: Compose + nginx static hosting (`docker/web/` + `make web-up`)
 - UI: Tailwind CSS + shadcn/ui
-- Auth: BFF + HttpOnly session cookies from day one (SPA never holds JWTs in JS storage) — [#115](https://github.com/Elmorralito/save-ma-money/issues/115)
+- Auth: BFF + HttpOnly session cookies from day one (SPA never holds JWTs in JS storage)
 - Stack: Vite, React 19, TypeScript strict, TanStack Query v5, `openapi-typescript`, Vitest + Playwright
 
 ### Where to start
 
-| Need                         | Where                                                                                                |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Setup (Node 22 + pnpm 9)     | [`modules/web/README.md`](../../modules/web/README.md)                                               |
-| Local run                    | `make api-all` then `make web-dev`                                                                   |
-| Epic + children              | [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                      |
-| OpenAPI typegen (strategy B) | PPT-065 / [#130](https://github.com/Elmorralito/save-ma-money/issues/130) — committed `openapi.json` |
-| Quality / a11y / lab CWV     | PPT-056 / [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                            |
-| Field RUM / Sentry           | **Deferred post-MVP** — lab Lighthouse/CWV only in #121; no production RUM in MVP                    |
+| Need                         | Where                                                                                                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Setup (Node 22 + pnpm 9)     | [`modules/web/README.md`](../../modules/web/README.md)                                                                                                                            |
+| Local run                    | `make api-all` then `make web-dev`                                                                                                                                                |
+| Epic + children              | [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                                                                                                   |
+| Domain boundary / epic DoD   | PPT-069 / [#140](https://github.com/Elmorralito/save-ma-money/issues/140) — [`modules/web/README.md` § Domain boundary](../../modules/web/README.md#domain-boundary-ppt-069--140) |
+| OpenAPI typegen (strategy B) | Committed `openapi/openapi.json` + `make web-openapi` / `check-types` (web README § OpenAPI typegen)                                                                              |
+| Quality / a11y / lab CWV     | web README § Quality · `make web-test-coverage` / `web-e2e`                                                                                                                       |
+| Field RUM / Sentry           | **Deferred post-MVP** — lab Lighthouse/CWV only; no production RUM in MVP                                                                                                         |
 
 ### Child-issue map (selected)
 
-| Step  | PPT         | Issue                                                                                                                           | Topic                                    |
-| ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| 0     | PPT-047     | [#113](https://github.com/Elmorralito/save-ma-money/issues/113)                                                                 | Scaffold + pnpm + Web CI                 |
-| 0d    | PPT-058     | [#123](https://github.com/Elmorralito/save-ma-money/issues/123)                                                                 | Document modules/web in monorepo indexes |
-| 1a    | PPT-048     | [#114](https://github.com/Elmorralito/save-ma-money/issues/114)                                                                 | OpenAPI types + thin client              |
-| 1b    | PPT-049     | [#115](https://github.com/Elmorralito/save-ma-money/issues/115)                                                                 | BFF cookie auth                          |
-| 1c    | PPT-051     | [#116](https://github.com/Elmorralito/save-ma-money/issues/116)                                                                 | Design system + AppLayout                |
-| 2a–c  | PPT-052…054 | [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119) | Feature screens                          |
-| 3     | PPT-056     | [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                                                                 | Vitest + Playwright + a11y + security    |
-| 4     | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             |
-| 4-sec | PPT-063     | [#128](https://github.com/Elmorralito/save-ma-money/issues/128)                                                                 | nginx CSP + SPA security headers         |
+| Step  | PPT         | Issue                                                                                                                           | Topic                                    | Status |
+| ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------ |
+| 0     | PPT-047     | [#113](https://github.com/Elmorralito/save-ma-money/issues/113)                                                                 | Scaffold + pnpm + Web CI                 | Closed |
+| 0d    | PPT-058     | [#123](https://github.com/Elmorralito/save-ma-money/issues/123)                                                                 | Document modules/web in monorepo indexes | Closed |
+| 1a    | PPT-048     | [#114](https://github.com/Elmorralito/save-ma-money/issues/114)                                                                 | OpenAPI types + thin client              | Closed |
+| 1b    | PPT-049     | [#115](https://github.com/Elmorralito/save-ma-money/issues/115)                                                                 | BFF cookie auth                          | Closed |
+| 1c    | PPT-051     | [#116](https://github.com/Elmorralito/save-ma-money/issues/116)                                                                 | Design system + AppLayout                | Closed |
+| 2a–c  | PPT-052…054 | [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119) | Feature screens                          | Closed |
+| 3     | PPT-056     | [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                                                                 | Vitest + Playwright + a11y + security    | Closed |
+| 4     | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             | Closed |
+| 4-sec | PPT-063     | [#128](https://github.com/Elmorralito/save-ma-money/issues/128)                                                                 | nginx CSP + SPA security headers         | Closed |
+| 5     | PPT-068     | [#139](https://github.com/Elmorralito/save-ma-money/issues/139)                                                                 | Email verification after register        | Closed |
+| 6     | PPT-069     | [#140](https://github.com/Elmorralito/save-ma-money/issues/140)                                                                 | Non-goals / DoD (no TS domain port)      | Open   |
 
-Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT.
+Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT. PPT-069 / #140 is the **last** child (after PPT-068 / #139).
 
 ### Out of scope (epic-level)
 
-- Reimplementing `papita_txnsmodel` services in TypeScript
+- Reimplementing `papita_txnsmodel` services in TypeScript — DoD in [`modules/web/README.md` § Domain boundary](../../modules/web/README.md#domain-boundary-ppt-069--140) ([#140](https://github.com/Elmorralito/save-ma-money/issues/140))
 - Field RUM / Sentry / production error reporting (post-MVP)
 - Mobile native apps, public marketing SSR
