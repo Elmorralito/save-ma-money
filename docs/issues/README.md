@@ -26,7 +26,7 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 | [IV](#part-iv--ppt-039-supabase-auth-reissue-49)        | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                         |
 | [V](#part-v--ppt-043-redis-integration-83)              | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                |
 | [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)    | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                         |
-| [VII](#part-vii--ppt-046-web-spa-epic-112)              | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Open (post-MVP web)            |
+| [VII](#part-vii--ppt-046-web-spa-epic-112)              | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Closed (children delivered)    |
 
 **Merged sources (removed):** `PPT-031-simplify-requirements.md`, `PPT-031-C-supabase-decision-brief.md`, `_gh_body_PPT-032-epic.md`, `_gh_body_PPT-039.md`, `PPT-039-supabase-auth-reissue.md`, `PPT-043-redis-integration-brief.md`, `PPT-045-uvicorn-process-packaging-brief.md` — content lives in this README only.
 
@@ -2016,6 +2016,7 @@ Validate process packaging on **B0 Docker Postgres** (and Compose Redis when ena
 
 > Post-MVP React SPA epic. Live body: [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046).
 > Operator SSOT: [`modules/web/README.md`](../../modules/web/README.md) · agent ops: [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md).
+> **Close-out:** all PPT-046 children (#113–#130, #139–#140) are **closed**; epic ACs met on `main` (BFF SPA + nginx). Deferred OOS remains (budgets/splits, field RUM/Sentry, Vercel, browser JWTs).
 
 **Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **PPT-046** · **Step:** Post-MVP web client (after PPT-032 API MVP)
 
@@ -2056,9 +2057,9 @@ Ship a **React + TypeScript SPA** under `modules/web/` that consumes the existin
 | 4     | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             | Closed |
 | 4-sec | PPT-063     | [#128](https://github.com/Elmorralito/save-ma-money/issues/128)                                                                 | nginx CSP + SPA security headers         | Closed |
 | 5     | PPT-068     | [#139](https://github.com/Elmorralito/save-ma-money/issues/139)                                                                 | Email verification after register        | Closed |
-| 6     | PPT-069     | [#140](https://github.com/Elmorralito/save-ma-money/issues/140)                                                                 | Non-goals / DoD (no TS domain port)      | Open   |
+| 6     | PPT-069     | [#140](https://github.com/Elmorralito/save-ma-money/issues/140)                                                                 | Non-goals / DoD (no TS domain port)      | Closed |
 
-Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT. PPT-069 / #140 is the **last** child (after PPT-068 / #139).
+Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT. PPT-069 / #140 was the **last** child (after PPT-068 / #139); all selected children above are closed.
 
 ### Out of scope (epic-level)
 
