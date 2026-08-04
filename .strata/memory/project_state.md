@@ -24,7 +24,7 @@ Capture with `/strata:capture` only for work in flight.
 ### In progress (ACTIVE)
 
 - **PPT-057 / #122** (`ops/PPT-057`, PR #158): nginx Compose packaging. Autopilot
-  follow-up: `nginxinc/nginx-unprivileged` (non-root / DS-0002), listen 8080,
+  follow-up: explicit `USER nginx` + `nginxinc/nginx-unprivileged` (DS-0002), listen 8080,
   Docker DNS runtime upstream resolve, cryptography >=50 (CVE-2026-69247).
 - **PPT-056 / #121** / **PPT-064 / #129**: verify merge status on main.
 

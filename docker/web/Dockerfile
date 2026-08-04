@@ -42,7 +42,9 @@ FROM nginxinc/nginx-unprivileged:1.27-alpine
 COPY docker/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/modules/web/dist /usr/share/nginx/html
 
-# Image already sets USER nginx and listens on 8080
+# Explicit non-root USER for Trivy DS-0002 (base image also defaults to nginx/101)
+USER nginx
+
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
