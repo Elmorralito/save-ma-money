@@ -30,6 +30,7 @@ Key exports:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import uuid
@@ -827,7 +828,9 @@ def supabase_resend_signup_confirmation(
     if email_redirect_to and str(email_redirect_to).strip():
         payload["options"] = {"email_redirect_to": str(email_redirect_to).strip()}
     auth_client.auth.resend(cast(Any, payload))
-    logger.info("Supabase signup confirmation resend requested email=%s", normalized)
+    # Digest only — never log the raw email (log injection / PII).
+    email_digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:12]
+    logger.info("Supabase signup confirmation resend requested email_digest=%s", email_digest)
 
 
 __all__ = [

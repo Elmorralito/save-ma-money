@@ -19,6 +19,10 @@ What does NOT qualify (keep noise out):
 
 ---
 
+## 2026-08-04 — PPT-068 PR #160
+
+- **PPT-068 / #139** — Opened [PR #160](https://github.com/Elmorralito/save-ma-money/pull/160) (email verification under BFF cookies). Follow-up push: resend allowlist test + log digests for CodeQL.
+
 ## 2026-07-15 — PPT-039 PR #91 babysit
 
 - **PPT-039 / #91** — Dismissed CodeQL alerts 4–5 (OAuth PKCE cookie FPs) and replied on GHAS review threads ([PR #91](https://github.com/Elmorralito/save-ma-money/pull/91)). Clears merge-blocking security check noise for intentional PKCE HttpOnly cookies.

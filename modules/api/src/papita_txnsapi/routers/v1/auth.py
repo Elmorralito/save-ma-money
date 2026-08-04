@@ -9,6 +9,7 @@ Business logic stays in ``papita_txnsmodel`` / ``core.supabase_auth``.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import uuid
 from typing import Annotated
@@ -317,7 +318,9 @@ def _allowlisted_email_redirect(settings: Settings, redirect: str | None) -> str
         base = origin.rstrip("/")
         if trimmed == base or trimmed.startswith(f"{base}/"):
             return trimmed
-    logger.info("Ignoring non-allowlisted email_redirect_to=%s", trimmed)
+    # Digest only — never log the raw user-controlled redirect (log injection).
+    redirect_digest = hashlib.sha256(trimmed.encode("utf-8")).hexdigest()[:12]
+    logger.info("Ignoring non-allowlisted email_redirect_to digest=%s", redirect_digest)
     return None
 
 

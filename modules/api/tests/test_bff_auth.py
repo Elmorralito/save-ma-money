@@ -570,6 +570,8 @@ class TestBffSupabaseCookieSession:
         monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
         monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
         monkeypatch.setenv("DATABASE_URL", "")
+        # conftest defaults ALLOWED_ORIGINS to testserver only; pin SPA origin for this case.
+        monkeypatch.setenv("ALLOWED_ORIGINS", '["http://localhost:3000","http://testserver"]')
         get_settings.cache_clear()
         AuthSecurityManager.reset_instances()
         InMemoryRateLimiter().reset()
