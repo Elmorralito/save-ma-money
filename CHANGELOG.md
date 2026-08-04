@@ -2,17 +2,565 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
-- [ ] [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary:
-
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary:
 
 - [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary:
-
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 17:44:20+00:00</sub>_
+
+  > **Closed by** [_**#160**](https://github.com/Elmorralito/save-ma-money/pull/160): **feat/PPT-068: [web] Email verification after Supabase registration**
+
+  > **Branch:** feat/PPT-068 · **Base:** main · **1 commit** · **36 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-068: [web] Email verification after Supabase registration
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the Confirm-email gap under BFF cookies (PPT-068 / #139): password signup must not open a usable papita_sid until the address is confirmed, and users need clear pending / resend / confirm UX. This ships register pending signaling, unconfirmed-login error codes, soft-success resend endpoints, SPA /check-email + /auth/confirm, and PPT-060 docs close-out for Auth smoke / IdP email trust.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Changing Supabase dashboard Confirm email / SMTP settings (operator-owned)
+
+  > - Full Playwright e2e for the mailbox click path (docs + unit coverage only)
+
+  > - OAuth IdP email-verification policy beyond documentation
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Unconfirmed login surfaces X-Papita-Error-Code: email_not_confirmed (with Admin probe when Auth is opaque)
+
+  > - Resend is soft-success (anti-enumeration) except SMTP/Auth rate limits → 429
+
+  > - Confirm landing clears hash fragments and never stores JWTs in WebStorage
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **API / BFF**
+
+  >
+
+  > - RegisterResponse.email_confirmation_required when Auth issues no session (auto-confirm off)
+
+  > - BFF register clears / never sets papita_sid on that path
+
+  > - Login maps email-not-confirmed (and elevates opaque Auth errors via Admin probe when configured)
+
+  > - POST /api/v1/bff/auth/resend-confirmation (+ Bearer twin); CSRF-exempt; optional allowlisted email_redirect_to vs ALLOWED_ORIGINS
+
+  > - Contract: ERROR_EMAIL_NOT_CONFIRMED + regenerated OpenAPI → web types
+
+  >
+
+  > **Web SPA**
+
+  >
+
+  > - Public routes /check-email and /auth/confirm
+
+  > - Register routes to check-email when pending; Login resend CTA + emailConfirmed banner
+
+  > - bffResendConfirmation + formatApiError remap for email_not_confirmed
+
+  > - Vitest coverage for CheckEmail / ConfirmEmail / Login / Register / App routes
+
+  >
+
+  > **Docs / ops / CI hooks**
+
+  >
+
+  > - API + web README + e2e README: PPT-060/068 posture, auth-smoke, Redirect URL for /auth/confirm
+
+  > - environments/local/.env.example: Redirect URL note (no secrets)
+
+  > - pre_commit_web.sh: eslint --no-warn-ignored so staged generated api.d.ts does not fail --max-warnings=0
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~36 files)</summary>
+
+  >
+
+  >
+
+  > .github/scripts/pre_commit_web.sh | 4 +-
+
+  > .strata/memory/project_state.md | 4 +-
+
+  > docs/interrogate_badge.svg | 8 +-
+
+  > environments/local/.env.example | 2 +
+
+  > modules/api/README.md | 8 +-
+
+  > modules/api/src/papita_txnsapi/core/client_contract.py | 1 +
+
+  > modules/api/src/papita_txnsapi/core/supabase_auth.py | 38 +++
+
+  > modules/api/src/papita_txnsapi/core/supabase_auth_local.py | 66 +++++
+
+  > modules/api/src/papita_txnsapi/middleware/bff_csrf.py | 6 +-
+
+  > modules/api/src/papita_txnsapi/routers/v1/auth.py | 115 ++++++++-
+
+  > modules/api/src/papita_txnsapi/routers/v1/bff_auth.py | 66 ++++-
+
+  > modules/api/src/papita_txnsapi/schemas/**init**.py | 4 +
+
+  > modules/api/src/papita_txnsapi/schemas/auth.py | 49 ++++
+
+  > modules/api/src/papita_txnsapi/schemas/bff_auth.py | 6 +-
+
+  > modules/api/tests/test_bff_auth.py | 271 ++++++++++++++++++++-
+
+  > modules/api/tests/test_supabase_auth_client.py | 78 ++++++
+
+  > modules/web/README.md | 50 ++--
+
+  > modules/web/e2e/README.md | 7 +-
+
+  > modules/web/openapi/openapi.json | 209 +++++++++++++++-
+
+  > modules/web/src/App.test.tsx | 1 +
+
+  > modules/web/src/App.tsx | 10 +
+
+  > modules/web/src/api/auth.ts | 33 ++-
+
+  > modules/web/src/api/index.ts | 1 +
+
+  > modules/web/src/auth/emailConfirmLanding.ts | 103 ++++++++
+
+  > modules/web/src/components/layout/AppLayout.test.tsx | 1 +
+
+  > modules/web/src/lib/formatApiError.test.ts | 11 +
+
+  > modules/web/src/lib/formatApiError.ts | 13 +-
+
+  > modules/web/src/pages/CheckEmailPage.test.tsx | 110 +++++++++
+
+  > modules/web/src/pages/CheckEmailPage.tsx | 98 ++++++++
+
+  > modules/web/src/pages/ConfirmEmailPage.test.tsx | 72 ++++++
+
+  > modules/web/src/pages/ConfirmEmailPage.tsx | 76 +++++++
+
+  > modules/web/src/pages/LoginPage.test.tsx | 52 ++++
+
+  > modules/web/src/pages/LoginPage.tsx | 69 +++++-
+
+  > modules/web/src/pages/RegisterPage.test.tsx | 43 +++-
+
+  > modules/web/src/pages/RegisterPage.tsx | 12 +-
+
+  > modules/web/src/types/api.d.ts | 184 +++++++++++++-
+
+  > 36 files changed, 1818 insertions(+), 63 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 7f5ada8 feat(web): ship Supabase email verification under BFF cookies (PPT-068)
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > Observed locally on this branch (not claiming remote CI green):
+
+  >
+
+  > - [x] Pre-commit on commit (eslint, prettier, tsc, vitest related, pylint, mypy, interrogate, markdownlint) — passed
+
+  > - [x] Targeted API pytest (test_bff_auth, test_supabase_auth_client paths for pending register / unconfirmed login / resend) — passed with REDIS_ENABLED=false
+
+  > - [x] Vitest for CheckEmail / ConfirmEmail / Login / formatApiError — passed
+
+  > - [ ] GitHub Actions on this PR — **not verified yet**
+
+  > - [ ] Live Supabase mailbox confirm + make auth-smoke — **not run in this pass** (needs configured local .env)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm email enabled in Supabase Auth; Redirect URLs include SPA /auth/confirm
+
+  > - [ ] Register → /check-email; no papita_sid until login after confirm
+
+  > - [ ] Unconfirmed login shows “Email not confirmed” + resend CTA; header email_not_confirmed
+
+  > - [ ] Resend soft-succeeds for unknown emails; 429 when Auth/SMTP rate-limits
+
+  > - [ ] Confirm link → /auth/confirm clears hash; login with emailConfirmed banner works
+
+  > - [ ] CSRF: other BFF mutations still send X-Papita-CSRF; resend remains exempt as designed
+
+  > - [ ] pnpm web:audit / Dependabot considered; no new high prod vulns left untracked
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Requires Supabase **Confirm email** + correct **Redirect URLs** for /auth/confirm; misconfigured dashboard breaks the happy path.
+
+  > > - Unconfirmed-login elevation uses Admin API when Auth returns opaque errors — needs SUPABASE_SERVICE_ROLE_KEY (server-only; name only — never commit values).
+
+  > > - Soft-success resend can hide “wrong email typed” from the UI by design (anti-enumeration).
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Mailbox click / SMTP delivery is operator- and project-dependent; unit tests mock Auth.
+
+  > > - BFF tests in this session used REDIS_ENABLED=false; Redis-backed session store behavior for this path is unchanged but not re-smoked live here.
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only; confirm landing clears hash)
+
+  > - [x] Cookie flags reviewed for the touched path (HttpOnly / Secure when not DEBUG / SameSite) — register does not set session cookie when confirmation required
+
+  > - [x] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage); resend-confirmation intentionally CSRF-exempt (same posture as login/register)
+
+  > - [x] No secrets in VITE_* (public bundle only); gitleaks-aware for accidental embeds
+
+  > - [ ] pnpm web:audit considered (or Dependabot npm-web); no known high prod vulns left untracked — **not re-run in this pass**
+
+  > - [ ] CSP: nginx SPA headers reviewed when touching docker/web/** (PPT-063 / #128; Vite :5173 has no CSP meta) — **N/A** (no docker/web/** changes)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #139 (PPT-068)
+
+  > - Parent epic: #112 (PPT-046)
+
+  > - Related: PPT-060 auth-smoke / IdP notes in modules/web/README.md and modules/api/README.md
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#128](https://github.com/Elmorralito/save-ma-money/issues/128)**_] :: **ops/PPT-063: [web] nginx CSP and SPA security headers** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:59:07+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 16:37:35+00:00</sub>_
+
+  > **Closed by** [_**#159**](https://github.com/Elmorralito/save-ma-money/pull/159): **ops/PPT-063: [web] nginx CSP and SPA security headers**
+
+  > **Branch:** ops/PPT-063 · **Base:** main · **1 commit** · **14 files**
+
+  >
+
+  > **Suggested title:** ops/PPT-063: [web] nginx CSP and SPA security headers
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-063 / #128**: production-shaped **Content-Security-Policy** and baseline browser hardening headers on the nginx-served SPA, without changing BFF cookie paths or the /api proxy. Complements API SecurityHeadersMiddleware (which intentionally omits CSP for Swagger). Documents residual style-src 'unsafe-inline' for Radix and adds make web-up + Web CI header smoke.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Vite :5173 / Playwright CSP meta (DX path stays header-less by design)
+
+  > - Nonce / 'unsafe-hashes' CSP pipeline (deferred post-MVP)
+
+  > - API/Swagger CSP (still omitted on purpose)
+
+  > - Browser JWT posture changes; nginx packaging rewrite (#122 already landed)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - SPA-only headers (/, /index.html, /assets/); /api left to API middleware
+
+  > - Web CI: Buildx tar export → docker load + header asserts (avoids load:true+cache-to friction)
+
+  > - make web-up fails closed if CSP/baseline headers are missing
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ops / nginx**
+
+  >
+
+  > - New docker/web/spa-security-headers.conf → image spa-security-headers.inc
+
+  > - nginx.conf includes snippet on static locations; Cache-Control uses always
+
+  > - Dockerfile copies the snippet; Compose comment notes PPT-063
+
+  >
+
+  > **CI / Make**
+
+  >
+
+  > - web-ci.yml web-docker: docker-container driver, scoped GHA cache, tar→load, curl header smoke
+
+  > - Makefile web-up: assert CSP + baseline headers after health
+
+  >
+
+  > **Docs / indexes**
+
+  >
+
+  > - modules/web/README.md CSP SSOT (#csp-nginx), residual risk, VITE_API_BASE_URL empty for connect-src 'self'
+
+  > - Root README, AGENTS, CI.md, PR template CSP checklist, issues index step 4-sec, project_structure rule, strata project_state
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (14 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > .cursor/rules/gen-custom/project_structure.mdc | 5 ++-
+
+  > .github/CI.md | 40 ++++++++++----------
+
+  > .github/PULL_REQUEST_TEMPLATE.md | 2 +-
+
+  > .github/workflows/web-ci.yml | 35 +++++++++++++++++-
+
+  > .strata/memory/project_state.md | 6 +--
+
+  > Makefile | 9 +++++
+
+  > README.md | 2 +-
+
+  > docker/docker-compose.yml | 2 +-
+
+  > docker/web/Dockerfile | 4 +-
+
+  > docker/web/nginx.conf | 18 +++++++--
+
+  > docker/web/spa-security-headers.conf | 7 ++++
+
+  > docs/issues/README.md | 21 ++++++-----
+
+  > modules/web/README.md | 51 +++++++++++++++++---------
+
+  > 14 files changed, 141 insertions(+), 63 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 233c90f ops/PPT-063: [web] nginx CSP and SPA security headers
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make web-up — pass (health + CSP smoke OK on :3000)
+
+  > - Standalone image build + curl -sI / / /assets/* — CSP + baseline present
+
+  > - Buildx tar export → docker load → header smoke (CI path) — pass
+
+  > - Playwright against nginx :3000 with live CSP (/login, /register, /accounts redirect) — 0 CSP violations / 0 console errors
+
+  > - Pre-commit on commit (prettier, actionlint, strata, markdownlint, yamllint) — pass
+
+  > - GitHub Actions web-docker on this PR — **not yet observed** (pending after open)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm Web CI web + web-docker jobs green on this PR
+
+  > - [ ] Spot-check login + open a Radix dialog/dropdown under make web-up
+
+  > - [ ] curl -sI http://localhost:3000/api/v1/health/live — no SPA CSP inventing breakage; API middleware headers still present
+
+  > - [ ] Confirm spa-security-headers.conf is in the tree (not missing from image COPY)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - style-src 'unsafe-inline' weakens style-injection mitigations (accepted for Radix; document-only residual)
+
+  > > - Baking a non-empty cross-origin VITE_API_BASE_URL would be blocked by connect-src 'self' (Compose default remains empty)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Vite day-to-day (make web-dev / Playwright :5173) does **not** emit these headers — assert via nginx packaging path only
+
+  > > - Nonce/hash CSP tightening remains deferred post-MVP
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only)
+
+  > - [x] Cookie flags reviewed for the touched path (HttpOnly / Secure when not DEBUG / SameSite) — proxy/Path=/api unchanged
+
+  > - [x] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage) — untouched
+
+  > - [x] No secrets in VITE_* (public bundle only); gitleaks-aware for accidental embeds
+
+  > - [x] pnpm web:audit considered (or Dependabot npm-web); no known high prod vulns left untracked — not re-run this PR (docs/ops only for web sources)
+
+  > - [x] CSP: nginx SPA headers reviewed when touching docker/web/** (PPT-063 / #128; Vite :5173 has no CSP meta)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (PPT-063)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Prerequisite packaging [#122](https://github.com/Elmorralito/save-ma-money/issues/122) (PPT-057)
+
+  > - BFF cookies [#115](https://github.com/Elmorralito/save-ma-money/issues/115) (PPT-049)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#122](https://github.com/Elmorralito/save-ma-money/issues/122)**_] :: **ops/PPT-057: [web] nginx Compose packaging and prod origins** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:47:55+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 14:31:24+00:00</sub>_
 
