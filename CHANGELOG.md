@@ -2,13 +2,209 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary:
-
 - [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
 
 - [ ] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#140](https://github.com/Elmorralito/save-ma-money/issues/140)**_] :: **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:29:56+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 18:35:18+00:00</sub>_
+
+  > **Closed by** [_**#161**](https://github.com/Elmorralito/save-ma-money/pull/161): **docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService**
+
+  > **Branch:** docs/PPT-069 · **Base:** main · **1 commit** · **4 files**
+
+  >
+
+  > **Suggested title:** docs/PPT-069: [web] Non-goals — CRUD via #117+; no TypeScript UsersService
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Locks the PPT-046 web domain boundary as the epic’s terminal documentation / Definition-of-Done guardrail ([#140](https://github.com/Elmorralito/save-ma-money/issues/140)): the SPA must never reimplement UsersService or other papita_txnsmodel business rules in TypeScript, and feature CRUD stays on the existing API-backed screens. Also updates Part VII so [#140](https://github.com/Elmorralito/save-ma-money/issues/140) is indexed as the last child (after [#139](https://github.com/Elmorralito/save-ma-money/issues/139)) and replaces closed-ticket “owner” noise in operator READMEs with section/path references.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Feature screens / email verification / API or model service changes (owned by closed children or Python packages)
+
+  > - New product tests or CI workflow changes
+
+  > - Closing epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (separate epic close-out after this lands)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Reviewed Domain boundary DoD checkboxes in modules/web/README.md (CRUD ownership, no TS service ports, BFF auth posture, grep pass)
+
+  > - Part VII Status column + Where-to-start row for Domain boundary / #140
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Docs / agent ops**
+
+  >
+
+  > - modules/web/README.md: Domain boundary (PPT-069 / #140) + checked epic close-out DoD; durable Out of scope; closed-ticket cross-links retargeted to README sections
+
+  > - docs/issues/README.md Part VII: Domain boundary index row; child map Status (#140 Open); drop closed-ticket “owned by” noise
+
+  > - .cursor/AGENTS.md: PPT-069 non-goal (UsersService / model services stay in Python)
+
+  > - Root README.md: packaging / CWV / CSP notes cite web README sections
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (4 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 2 +-
+
+  > README.md | 4 ++--
+
+  > docs/issues/README.md | ~50 lines (Part VII index + Status)
+
+  > modules/web/README.md | Domain boundary DoD + closed-ticket noise cleanup
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 152db63 docs/PPT-069: [web] Lock domain non-goals and epic DoD close-out
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Pre-commit on commit (prettier, markdownlint, strata validate, interrogate) — **pass**
+
+  > - Manual close-out greps under modules/web (exclude generated OpenAPI docstring noise) — **pass** (no TS UsersService / hash libs / model-service ports)
+
+  > - GitHub Actions CI on this PR — **not observed yet** (will run after create)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm modules/web/README.md § Domain boundary renders and DoD items are checked
+
+  > - [ ] Confirm Part VII child map lists #140 as last / Open and Where-to-start Domain boundary row links resolve
+
+  > - [ ] Spot-check root README web section no longer cites closed #121/#122/#128 as work owners
+
+  > - [ ] CI green on docs-only paths (no web product code)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - None identified (docs/agent-index only; no runtime or auth behavior change)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Historical section titles still keep PPT-NNN / #NNN anchors for in-doc links; that is intentional, not a work queue
+
+  > > - Epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) remains open until this child is merged/closed
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > Docs-only touch of modules/web/README.md (no SPA/auth code):
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (unchanged; docs restate BFF-only)
+
+  > - [x] Cookie flags reviewed for the touched path — N/A (no cookie code)
+
+  > - [x] CSRF: mutations send X-Papita-CSRF — N/A (no mutation code)
+
+  > - [x] No secrets in VITE_* — N/A (no env/code changes)
+
+  > - [x] pnpm web:audit considered — N/A (docs-only)
+
+  > - [x] CSP: nginx SPA headers — N/A (no docker/web/** changes)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#140](https://github.com/Elmorralito/save-ma-money/issues/140) (PPT-069)
+
+  > - Parent epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112) (PPT-046)
+
+  > - Soft context: feature CRUD [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119); email verify [#139](https://github.com/Elmorralito/save-ma-money/issues/139)
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#139](https://github.com/Elmorralito/save-ma-money/issues/139)**_] :: **feat/PPT-068: [web] Email verification after Supabase registration** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-29 17:27:47+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 17:44:20+00:00</sub>_
 
