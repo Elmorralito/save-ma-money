@@ -1,4 +1,4 @@
-# Papita web SPA - multi-stage: pnpm build -> nginx (PPT-057 / #122)
+# Papita web SPA - multi-stage: pnpm build -> nginx (PPT-057 / #122 + PPT-063 / #128)
 # Build context: repository root
 #   docker build -f docker/web/Dockerfile --build-arg VITE_APP_TITLE=Papita .
 #
@@ -39,6 +39,8 @@ RUN pnpm --filter @papita/web build
 # -----------------------------------------------------------------------------
 FROM nginxinc/nginx-unprivileged:1.27-alpine
 
+# .inc is not auto-loaded by conf.d/*.conf; included from default.conf (PPT-063 / #128).
+COPY docker/web/spa-security-headers.conf /etc/nginx/conf.d/spa-security-headers.inc
 COPY docker/web/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/modules/web/dist /usr/share/nginx/html
 

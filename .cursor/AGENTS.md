@@ -88,7 +88,7 @@ Domain entities in the model layer include **accounts**, **transactions**, **cat
 
 **Web accounts/categories UI (PPT-052 / #117):** presentation-only screens under `modules/web/src/pages/{Accounts,AccountDetail,Categories}Page.tsx` + `components/{accounts,categories}/`. Forms use Zod + RHF (`src/forms/`, PPT-055 / #120). Global category write 404 → read-only UX.
 
-**Web quality gate (PPT-056 / #121):** Vitest coverage in `web-ci`; Playwright critical path + axe + Lighthouse in `web-e2e.yml` (Compose). `globalSetup` → `make web-e2e-seed` only (PPT-061 / #126). Auth assumptions: PPT-060 / #125 (confirmed seed user). nginx packaging: PPT-057 / #122 (`docker/web/`, `make web-up`); CSP headers: PPT-063 / #128.
+**Web quality gate (PPT-056 / #121):** Vitest coverage in `web-ci`; Playwright critical path + axe + Lighthouse in `web-e2e.yml` (Compose). `globalSetup` → `make web-e2e-seed` only (PPT-061 / #126). Auth assumptions: PPT-060 / #125 (confirmed seed user). nginx packaging: PPT-057 / #122 (`docker/web/`, `make web-up`); CSP + SPA security headers: PPT-063 / #128 (`web-docker` smoke on `/`).
 
 **Local Supabase email confirm:** `AUTH_AUTO_CONFIRM_EMAIL` (default on for `PAPITA_ENV=local`) + service role → Admin register without SMTP; login auto-confirm only when Auth email is unconfirmed (see `modules/api/README.md` Authentication).
 

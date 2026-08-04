@@ -78,6 +78,9 @@ jobs:
         run: pnpm web:build
 
   # PPT-057 / #122 — validate multi-stage nginx image (no full Compose required).
+  # PPT-063 / #128 — assert SPA CSP + baseline security headers on /.
+  # Build exports to a tarball (not load:true) so GHA cache-to works reliably with
+  # the docker-container driver, then docker load for the header smoke.
   web-docker:
     if: >-
       github.event_name != 'pull_request' ||
@@ -89,6 +92,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
       - name: Build web nginx image
         uses: docker/build-push-action@v6
@@ -100,6 +105,32 @@ jobs:
             VITE_APP_TITLE=Papita
             VITE_PAPITA_BREAKING_CHANGES_ID=ppt-044
             VITE_API_BASE_URL=
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=papita-web-nginx
+          cache-to: type=gha,mode=max,scope=papita-web-nginx
           tags: papita-web:ci
+          outputs: type=docker,dest=/tmp/papita-web.tar
+
+      - name: Load image and smoke SPA security headers (PPT-063)
+        run: |
+          set -euo pipefail
+          docker load -i /tmp/papita-web.tar
+          docker rm -f papita-web-ci >/dev/null 2>&1 || true
+          docker run -d --name papita-web-ci -p 18080:8080 papita-web:ci
+          cleanup() { docker rm -f papita-web-ci >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          for _ in $(seq 1 30); do
+            if curl -sf "http://127.0.0.1:18080/" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl -sf "http://127.0.0.1:18080/" >/dev/null
+          HDRS="$(curl -sI "http://127.0.0.1:18080/")"
+          echo "$HDRS"
+          echo "$HDRS" | grep -qi '^content-security-policy:'
+          echo "$HDRS" | grep -F "script-src 'self'" >/dev/null
+          echo "$HDRS" | grep -F "frame-ancestors 'none'" >/dev/null
+          echo "$HDRS" | grep -qi '^x-content-type-options: *nosniff'
+          echo "$HDRS" | grep -qi '^referrer-policy: *no-referrer'
+          echo "$HDRS" | grep -qi '^x-frame-options: *DENY'
+          echo "SPA security header smoke OK"

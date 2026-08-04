@@ -1,7 +1,7 @@
 # save-ma-money
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2089-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2090-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
 ![interrogate score](./docs/interrogate_badge.svg)
 [![coverage score](./docs/coverage-badge.svg)](https://app.codecov.io/github/Elmorralito/save-ma-money)
 ![pre-commit.ci status](https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/main.svg)
@@ -191,7 +191,7 @@ make web-dev      # Vite on :5173; /api proxied to the API
 # Packaging smoke (PPT-057 / #122): make web-up → nginx on :3000 (WEB_PORT), same-origin /api
 ```
 
-nginx Compose packaging: `docker/web/` + `make web-up` — see [`modules/web/README.md`](./modules/web/README.md) § nginx Compose packaging. Field RUM / Sentry are deferred post-MVP; lab Lighthouse/CWV lives under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) only. CSP headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128).
+nginx Compose packaging: `docker/web/` + `make web-up` — see [`modules/web/README.md`](./modules/web/README.md) § nginx Compose packaging. Field RUM / Sentry are deferred post-MVP; lab Lighthouse/CWV lives under [#121](https://github.com/Elmorralito/save-ma-money/issues/121) only. CSP / SPA security headers: [#128](https://github.com/Elmorralito/save-ma-money/issues/128) (nginx static locations; see web README § CSP).
 
 ---
 

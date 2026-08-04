@@ -84,7 +84,7 @@ Base the description on ALL commits + full diff vs the PR base (not tip-only).
 - [ ] CSRF: mutations send `X-Papita-CSRF`; token stays in memory (not WebStorage)
 - [ ] No secrets in `VITE_*` (public bundle only); gitleaks-aware for accidental embeds
 - [ ] `pnpm web:audit` considered (or Dependabot `npm-web`); no known high prod vulns left untracked
-- [ ] CSP: documented posture OK for this PR (full CSP headers owned by launch packaging / #122)
+- [ ] CSP: nginx SPA headers reviewed when touching `docker/web/**` (PPT-063 / #128; Vite `:5173` has no CSP meta)
 
 ## References
 

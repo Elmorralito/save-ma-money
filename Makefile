@@ -78,8 +78,17 @@ web-up:
 	while [ $$i -lt 90 ]; do \
 		if curl -sf "http://localhost:$${WEB_PORT}/" >/dev/null 2>&1 \
 			&& curl -sf "http://localhost:$${WEB_PORT}/api/v1/health/live" >/dev/null 2>&1; then \
+			HDRS=$$(curl -sI "http://localhost:$${WEB_PORT}/"); \
+			echo "$$HDRS" | grep -qi '^content-security-policy:' \
+				&& echo "$$HDRS" | grep -F "script-src 'self'" >/dev/null \
+				&& echo "$$HDRS" | grep -F "frame-ancestors 'none'" >/dev/null \
+				&& echo "$$HDRS" | grep -qi '^x-content-type-options: *nosniff' \
+				&& echo "$$HDRS" | grep -qi '^referrer-policy: *no-referrer' \
+				&& echo "$$HDRS" | grep -qi '^x-frame-options: *DENY' \
+				|| { echo "SPA security headers missing on / (PPT-063). Check docker/web/nginx.conf"; exit 1; }; \
 			echo "Web ready:     http://localhost:$${WEB_PORT}/"; \
 			echo "API via nginx: http://localhost:$${WEB_PORT}/api/v1/health"; \
+			echo "CSP smoke:     OK (PPT-063)"; \
 			exit 0; \
 		fi; \
 		i=$$((i + 1)); \

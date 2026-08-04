@@ -2044,16 +2044,17 @@ Ship a **React + TypeScript SPA** under `modules/web/` that consumes the existin
 
 ### Child-issue map (selected)
 
-| Step | PPT         | Issue                                                                                                                           | Topic                                    |
-| ---- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| 0    | PPT-047     | [#113](https://github.com/Elmorralito/save-ma-money/issues/113)                                                                 | Scaffold + pnpm + Web CI                 |
-| 0d   | PPT-058     | [#123](https://github.com/Elmorralito/save-ma-money/issues/123)                                                                 | Document modules/web in monorepo indexes |
-| 1a   | PPT-048     | [#114](https://github.com/Elmorralito/save-ma-money/issues/114)                                                                 | OpenAPI types + thin client              |
-| 1b   | PPT-049     | [#115](https://github.com/Elmorralito/save-ma-money/issues/115)                                                                 | BFF cookie auth                          |
-| 1c   | PPT-051     | [#116](https://github.com/Elmorralito/save-ma-money/issues/116)                                                                 | Design system + AppLayout                |
-| 2a–c | PPT-052…054 | [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119) | Feature screens                          |
-| 3    | PPT-056     | [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                                                                 | Vitest + Playwright + a11y + security    |
-| 4    | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             |
+| Step  | PPT         | Issue                                                                                                                           | Topic                                    |
+| ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 0     | PPT-047     | [#113](https://github.com/Elmorralito/save-ma-money/issues/113)                                                                 | Scaffold + pnpm + Web CI                 |
+| 0d    | PPT-058     | [#123](https://github.com/Elmorralito/save-ma-money/issues/123)                                                                 | Document modules/web in monorepo indexes |
+| 1a    | PPT-048     | [#114](https://github.com/Elmorralito/save-ma-money/issues/114)                                                                 | OpenAPI types + thin client              |
+| 1b    | PPT-049     | [#115](https://github.com/Elmorralito/save-ma-money/issues/115)                                                                 | BFF cookie auth                          |
+| 1c    | PPT-051     | [#116](https://github.com/Elmorralito/save-ma-money/issues/116)                                                                 | Design system + AppLayout                |
+| 2a–c  | PPT-052…054 | [#117](https://github.com/Elmorralito/save-ma-money/issues/117)–[#119](https://github.com/Elmorralito/save-ma-money/issues/119) | Feature screens                          |
+| 3     | PPT-056     | [#121](https://github.com/Elmorralito/save-ma-money/issues/121)                                                                 | Vitest + Playwright + a11y + security    |
+| 4     | PPT-057     | [#122](https://github.com/Elmorralito/save-ma-money/issues/122)                                                                 | nginx Compose + prod origins             |
+| 4-sec | PPT-063     | [#128](https://github.com/Elmorralito/save-ma-money/issues/128)                                                                 | nginx CSP + SPA security headers         |
 
 Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel) live on the GitHub epic body — this Part is an **index**, not a second epic SSOT.
 
