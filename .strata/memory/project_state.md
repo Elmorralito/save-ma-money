@@ -20,7 +20,8 @@ Capture with `/strata:capture` only for work in flight.
 ### In progress (ACTIVE)
 
 - **PPT-067 / #132:** Stable GHCR publish from **main only**; PR `publish-dev` → `pr-*`/`dev-*`
-  (skip `skip-api-image-dev`); Environments `ghcr` / `ghcr-dev`; smoke + digest pins.
+  (skip `skip-api-image-dev`); web GHCR `save-ma-money-web` (skip `skip-web-image-dev`);
+  Environments `ghcr` / `ghcr-dev`; smoke + digest pins.
 - **`feat/bff-oauth-buttons` / [PR #169](https://github.com/Elmorralito/save-ma-money/pull/169):**
   BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons, `access_expires_at`,
   redirect allowlist rebuild + IdP error digests (CodeQL), branding, dashboard TTL +

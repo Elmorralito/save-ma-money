@@ -127,6 +127,7 @@ Durable **functional** labels (not `PPT-*`). Apply on a **PR** to skip the match
 | -------------------- | ------------------------------------ | ------------------------------------------------------------ |
 | `skip-dev-release`   | Publish model (dev) TestPyPI preview | [`publish-model-dev.yml`](./workflows/publish-model-dev.yml) |
 | `skip-api-image-dev` | Publish API image (PR dev GHCR)      | [`publish-api-image.yml`](./workflows/publish-api-image.yml) |
+| `skip-web-image-dev` | Publish Web image (PR dev GHCR)      | [`publish-web-image.yml`](./workflows/publish-web-image.yml) |
 | `skip-strata`        | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
 | `skip-web-ci`        | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
 | `skip-web-e2e`       | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
@@ -168,6 +169,7 @@ gh pr edit 123 --add-label skip-dev-release
 | Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`                                | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
 | Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                                            | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
 | Publish API image    | [`workflows/publish-api-image.yml`](./workflows/publish-api-image.yml)   | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-api-image-dev`) | PPT-067 / #132 — Environments `ghcr` + `ghcr-dev`                                                                                                 |
+| Publish Web image    | [`workflows/publish-web-image.yml`](./workflows/publish-web-image.yml)   | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-web-image-dev`) | PPT-067 — nginx SPA (`save-ma-money-web`); same Environments                                                                                      |
 
 ---
 
@@ -285,6 +287,21 @@ pip install \
 **Operator setup (once):** on [TestPyPI](https://test.pypi.org/) / [PyPI](https://pypi.org/), add a Trusted Publisher for this repository, workflow **`publish-model.yml`** (the reusable file that performs OIDC), and the matching environment. For PR → TestPyPI, the `testpypi` GitHub Environment must allow deployments from PR head branches (not only `main`). Prefer environment protection on `pypi`. Do not store long-lived tokens in git.
 
 **Local:** `make package-model` · docs: [`modules/model/README.md`](../modules/model/README.md) § Install.
+
+### Publish Web image (PPT-067)
+
+|                 |                                                                                                                                                                           |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trigger**     | Path-relevant push to **`main`** → stable GHCR; path-filtered **PR** → dev GHCR (unless `skip-web-image-dev`); dispatch `smoke-only` \| `publish` (publish requires main) |
+| **Jobs**        | `publish` (Environment **`ghcr`**) · `publish-dev` (Environment **`ghcr-dev`**) · `changes` · `build-smoke` (dispatch only)                                               |
+| **Image**       | `ghcr.io/<owner>/save-ma-money-web`                                                                                                                                       |
+| **Stable tags** | `:edge`, `:{semver}`, `:js-web-v{semver}`, `:sha-<12>` from `modules/web/package.json`                                                                                    |
+| **Dev tags**    | `:pr-<N>`, `:pr-<N>-<sha>`, `:dev-<run_id>` only                                                                                                                          |
+| **Gates**       | Trivy CRITICAL/HIGH (rootfs) before push · SPA `/` + security-header smoke                                                                                                |
+
+**Not a merge gate.** Opt out of PR images: `gh pr edit <n> --add-label skip-web-image-dev`.
+
+**Local:** `make web-image-build` · `make web-up` · `./.github/scripts/web_image_smoke.sh papita-web:local` · SSOT: [`docker/README.md`](../docker/README.md).
 
 ### Publish API image (PPT-067)
 

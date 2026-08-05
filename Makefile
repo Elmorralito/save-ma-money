@@ -55,6 +55,19 @@ api-image-build:
 	}
 	docker build -f docker/api/Dockerfile -t papita-api:local .
 
+# Build web nginx image only (local tag; no registry). Multi-stage pnpm → nginx.
+web-image-build:
+	@docker info >/dev/null 2>&1 || { \
+		echo "Docker is not running. Start Docker Desktop, then retry: make web-image-build"; \
+		exit 1; \
+	}
+	docker build -f docker/web/Dockerfile \
+		--build-arg VITE_APP_TITLE=Papita \
+		--build-arg VITE_PAPITA_BREAKING_CHANGES_ID=ppt-044 \
+		--build-arg VITE_API_BASE_URL= \
+		-t papita-web:local .
+
+
 # Canonical API runtime (PPT-045): uvicorn runs inside the Compose image — not on the host.
 # Brings up api + depends_on (Postgres, Redis, migrate). Bind: 0.0.0.0:8000 in-container;
 # host publish via API_PORT (environments/local/.env). No --reload / --workers in the container.
