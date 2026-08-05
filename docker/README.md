@@ -19,19 +19,19 @@ PyPI wheels for `papita-transactions-model` stay on `publish-model.yml` / `relea
 
 ## Locked decisions (PPT-067)
 
-| Topic                 | Decision                                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------- |
-| Registry              | **GitHub Container Registry** — `ghcr.io/elmorralito/…`                                                   |
-| API image name        | `ghcr.io/elmorralito/save-ma-money-api`                                                                   |
-| Web image name        | `ghcr.io/elmorralito/save-ma-money-web`                                                                   |
-| Stable publish        | **`main` only** (path-relevant push or dispatch `publish` on main). No image publish from git tag events. |
-| PR publish            | **Dev channel** tags (`pr-*`, `dev-*`) unless skip labels                                                 |
-| Model packaging       | **A — no standalone model runtime image.** Model is **PyPI-only**; API image vendors model at build.      |
-| Model “service” image | **C — rejected**                                                                                          |
-| Migrate / Alembic     | Reuse API image with overridden entrypoint (Compose `migrate`).                                           |
-| Provenance            | SBOM / cosign deferred (not MVP); publish builds set `provenance: false` / `sbom: false` for Trivy.       |
-| Multi-arch            | Stable (`main`): `linux/amd64` + `linux/arm64`. PR dev: `linux/amd64` only.                               |
-| Vuln gate             | **Trivy** CRITICAL/HIGH (rootfs) before any GHCR push.                                                    |
+| Topic                 | Decision                                                                                                               |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Registry              | **GitHub Container Registry** — `ghcr.io/elmorralito/…`                                                                |
+| API image name        | `ghcr.io/elmorralito/save-ma-money-api`                                                                                |
+| Web image name        | `ghcr.io/elmorralito/save-ma-money-web`                                                                                |
+| Stable publish        | **`main` only** (path-relevant push or dispatch `publish` on main). No image publish from git tag events.              |
+| PR publish            | **Dev channel** (`pr-*`, `dev-*`) only when the PR changes API/model or web **runtime** paths; skip labels still apply |
+| Model packaging       | **A — no standalone model runtime image.** Model is **PyPI-only**; API image vendors model at build.                   |
+| Model “service” image | **C — rejected**                                                                                                       |
+| Migrate / Alembic     | Reuse API image with overridden entrypoint (Compose `migrate`).                                                        |
+| Provenance            | SBOM / cosign deferred (not MVP); publish builds set `provenance: false` / `sbom: false` for Trivy.                    |
+| Multi-arch            | Stable (`main`): `linux/amd64` + `linux/arm64`. PR dev: `linux/amd64` only.                                            |
+| Vuln gate             | **Trivy** CRITICAL/HIGH (rootfs) before any GHCR push.                                                                 |
 
 ### Model = PyPI; API + web = containers
 
@@ -63,7 +63,7 @@ Image: **`ghcr.io/elmorralito/save-ma-money-api`**
 | `pr-<N>-<12-char-sha>` | Immutable image for that PR head                              |
 | `dev-<run_id>`         | Unique per Actions run                                        |
 
-Skip with PR label **`skip-api-image-dev`**.
+Skips when the PR only touches workflow pins / smoke scripts (no `docker/api`, `modules/api`, or model runtime paths). Opt out anytime with **`skip-api-image-dev`**.
 
 ## Image tags (Web)
 
@@ -82,7 +82,8 @@ Version source: `modules/web/package.json` `version` (bump when you want meaning
 
 ### Dev channel (pull requests)
 
-Same `pr-*` / `dev-*` shape as API. Skip with **`skip-web-image-dev`**.
+Same `pr-*` / `dev-*` shape as API. Skips when the PR only touches e2e/docs/workflow pins
+(no `docker/web`, SPA sources, or pnpm lockfiles). Opt out anytime with **`skip-web-image-dev`**.
 
 Dev publishes **never** write `:edge`, bare `{semver}`, `py-api-v*`, or `js-web-v*`.
 
@@ -113,12 +114,12 @@ Git tags (`py-api-v*`, `js-web-v*`) remain a **source/package** convention; they
 
 **Jobs** (both workflows)
 
-| Job           | Permissions / env                              | When                                                                |
-| ------------- | ---------------------------------------------- | ------------------------------------------------------------------- |
-| `build-smoke` | `contents: read`                               | Dispatch `mode=smoke-only`                                          |
-| `changes`     | `contents: read`                               | Push to `main` — path detect                                        |
-| `publish`     | `packages: write` + Environment **`ghcr`**     | `main`: build → **Trivy gate** → smoke → multi-arch push            |
-| `publish-dev` | `packages: write` + Environment **`ghcr-dev`** | PR: build → **Trivy gate** → smoke → amd64 push (unless skip label) |
+| Job           | Permissions / env                              | When                                                            |
+| ------------- | ---------------------------------------------- | --------------------------------------------------------------- |
+| `build-smoke` | `contents: read`                               | Dispatch `mode=smoke-only`                                      |
+| `changes`     | `contents: read`                               | `main` + PR — path detect (`api` / `web` runtime flags)         |
+| `publish`     | `packages: write` + Environment **`ghcr`**     | `main`: build → **Trivy gate** → smoke → multi-arch push        |
+| `publish-dev` | `packages: write` + Environment **`ghcr-dev`** | PR + runtime paths: build → **Trivy gate** → smoke → amd64 push |
 
 **Triggers**
 

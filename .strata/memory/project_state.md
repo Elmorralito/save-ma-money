@@ -16,16 +16,12 @@ Capture with `/strata:capture` only for work in flight.
 
 - **PPT-068 / #139**, **PPT-063 / #128**, **PPT-069 / #140**: landed on main (see git log).
 - **PPT-070 / #163** filed: payment due-date reminders epic + children #164–#168 (issues only).
+- **PPT-067 / #132:** API (#188) + web (#190) GHCR publish + Docker Image Security on main.
 
 ### In progress (ACTIVE)
 
-- **PPT-067 / #132:** Stable GHCR publish from **main only**; PR `publish-dev` → `pr-*`/`dev-*`
-  (skip `skip-api-image-dev`); web GHCR `save-ma-money-web` (skip `skip-web-image-dev`);
-  Environments `ghcr` / `ghcr-dev`; smoke + digest pins.
-- **`feat/bff-oauth-buttons` / [PR #169](https://github.com/Elmorralito/save-ma-money/pull/169):**
-  BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons, `access_expires_at`,
-  redirect allowlist rebuild + IdP error digests (CodeQL), branding, dashboard TTL +
-  snapshots, UI polish. Guide: `modules/web/docs/oauth-supabase-setup.md`.
+- **PPT-067 follow-up:** PR `publish-dev` gated on API/model/web **runtime** paths only
+  (no GHCR deploy for workflow-pin / e2e-only PRs).
 
 ### Open (backlog)
 
@@ -34,9 +30,7 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Land PPT-067 (#132) PR; first GHCR publish via `workflow_dispatch` or `py-api-v*` tag;
-  set package visibility on GHCR if needed
-- Merge PR #169 once CodeQL / CI green; enable IdP providers + redirect URLs per OAuth doc
+- Land publish-dev path-gate PR; set GHCR package visibility if needed
 - Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 
