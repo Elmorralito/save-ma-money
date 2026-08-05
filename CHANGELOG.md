@@ -2,6 +2,42 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
+- [ ] [_**[#187](https://github.com/Elmorralito/save-ma-money/issues/187)**_] :: **ci/PPT-094: [infra] README badges for TypeScript lint and web CI gates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:46:53+00:00</sub>_ :weary:
+
+- [ ] [_**[#186](https://github.com/Elmorralito/save-ma-money/issues/186)**_] :: **test/PPT-093: [web] A11y, reduced-motion, E2E smoke, and docs** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:40:03+00:00</sub>_ :weary:
+
+- [ ] [_**[#185](https://github.com/Elmorralito/save-ma-money/issues/185)**_] :: **feat/PPT-092: [web] Auth ambient polish and Categories visual pass** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:40:01+00:00</sub>_ :weary:
+
+- [ ] [_**[#184](https://github.com/Elmorralito/save-ma-money/issues/184)**_] :: **feat/PPT-091: [web] Insight-forward Reports surfaces** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:39:59+00:00</sub>_ :weary:
+
+- [ ] [_**[#183](https://github.com/Elmorralito/save-ma-money/issues/183)**_] :: **feat/PPT-090: [web] Scan-first ledger for transactions and movements** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:39:56+00:00</sub>_ :weary:
+
+- [ ] [_**[#182](https://github.com/Elmorralito/save-ma-money/issues/182)**_] :: **feat/PPT-089: [web] Accounts canvas and detail atmosphere** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:39:21+00:00</sub>_ :weary:
+
+- [ ] [_**[#181](https://github.com/Elmorralito/save-ma-money/issues/181)**_] :: **feat/PPT-088: [web] Automation-first Home dashboard** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:39:19+00:00</sub>_ :weary:
+
+- [ ] [_**[#180](https://github.com/Elmorralito/save-ma-money/issues/180)**_] :: **feat/PPT-086: [web] Ambient tokens, system theme, and motion primitives** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:39:17+00:00</sub>_ :weary:
+
+- [ ] [_**[#179](https://github.com/Elmorralito/save-ma-money/issues/179)**_] :: **feat/PPT-085: [EPIC][web] Ambient automation-first UX leap** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:38:43+00:00</sub>_ :weary:
+
+- [ ] [_**[#178](https://github.com/Elmorralito/save-ma-money/issues/178)**_] :: **test/PPT-084: [ingestor] Tests, secrets templates, and provider onboarding docs** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:08:15+00:00</sub>_ :weary:
+
+- [ ] [_**[#177](https://github.com/Elmorralito/save-ma-money/issues/177)**_] :: **feat/PPT-083: [api] Ingestion connection and run-status endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:08:13+00:00</sub>_ :weary:
+
+- [ ] [_**[#176](https://github.com/Elmorralito/save-ma-money/issues/176)**_] :: **feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:51+00:00</sub>_ :weary:
+
+- [ ] [_**[#175](https://github.com/Elmorralito/save-ma-money/issues/175)**_] :: **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:49+00:00</sub>_ :weary:
+
+- [ ] [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary:
+
+- [ ] [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary:
+
+- [ ] [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary:
+
+- [ ] [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary:
+
+- [ ] [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
 - [ ] [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary:
 
 - [ ] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary:
@@ -14,9 +50,265 @@
 
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
 
-- [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 03:25:41+00:00</sub>_
+
+  > **Closed by** [_**#188**](https://github.com/Elmorralito/save-ma-money/pull/188): **ops/PPT-067: [infra] Publish versioned Docker images for API**
+
+  > **Branch:** ops/PPT-067 (tracks origin/ops/PPT-067, clean) · **Base:** main · **7 commits** · **18+ files**
+
+  >
+
+  > **Suggested title:** ops/PPT-067: [infra] Publish versioned Docker images for API
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-067 gap where Compose could build the API image locally but CI never published versioned runtime artifacts to a registry. Stable images now publish to GHCR from main only (edge / semver / py-api-v* / sha tags); same-repo PRs get skippable pr-* / dev-* preview tags. Pre-push Trivy CRITICAL/HIGH (rootfs gate) and /api/v1/health/live smoke gate pushes. Decision A is locked: model stays on PyPI; Compose migrate reuses the API image (no separate migrate runtime image). Helm remains out of scope.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Helm charts / full-platform packaging
+
+  > - Separate model or migrate runtime images (Decision A: model = PyPI)
+
+  > - Driving shields.io badges via auto-updates.yml (badges resolve at render time)
+
+  > - First post-merge GHCR package visibility / optional human reviewers on Environment ghcr
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Main-only stable publish + PR publish-dev with label skip-api-image-dev
+
+  > - Rootfs Trivy CRITICAL/HIGH gate (avoids stale third-party SBOM false positives) + SARIF upload
+
+  > - Environments ghcr / ghcr-dev; digest-pinned Python base; Dependabot docker for /docker/api
+
+  > - docker/README.md as registry/naming SSOT; root README API image + GHCR badges
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **CI / ops**
+
+  >
+
+  > - New workflow publish-api-image.yml: path detect → stable publish on main / dispatch publish; PR publish-dev for non-draft PRs
+
+  > - Composite action trivy-api-image-gate (export rootfs → Trivy table gate; strip embedded SBOMs; SARIF non-gating) + api_image_smoke.sh
+
+  > - Dependabot weekly docker updates for /docker/api
+
+  > - Makefile api-image-build; Compose pointer to docker/README.md
+
+  > - Docs: .github/CI.md, issue conventions (skip-api-image-dev), AGENTS / project_structure
+
+  >
+
+  > **Docker**
+
+  >
+
+  > - docker/README.md: registry, tags, Decision A, coverage vs PPT-045/057/066
+
+  > - docker/api/Dockerfile: pin base by digest; raise pip / setuptools / msgpack floors for known HIGHs
+
+  >
+
+  > **Docs / memory**
+
+  >
+
+  > - Root / API README badges and pointers; ARCHITECTURE Part IX + design/issues indexes
+
+  > - Strata project_state.md session note for PPT-067
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (see tip vs main)</summary>
+
+  >
+
+  >
+
+  > .github/workflows/publish-api-image.yml
+
+  > .github/actions/trivy-api-image-gate/action.yml
+
+  > .github/scripts/api_image_smoke.sh
+
+  > .github/dependabot.yml
+
+  > .github/CI.md
+
+  > .github/workflows/trivy.yml
+
+  > docker/README.md
+
+  > docker/api/Dockerfile
+
+  > docker/docker-compose.yml
+
+  > Makefile
+
+  > README.md
+
+  > modules/api/README.md
+
+  > docs/design/ARCHITECTURE.md
+
+  > docs/design/README.md
+
+  > docs/issues/README.md
+
+  > .cursor/AGENTS.md
+
+  > .cursor/rules/gen-custom/*
+
+  > .strata/memory/project_state.md
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - da7fdb3 ops(infra): publish versioned API Docker images to GHCR
+
+  > - b1e2841 ci: update CI adoption badge [skip ci]
+
+  > - 7ffda93 fix(ci): keep Trivy SARIF exit-code on CRITICAL/HIGH only
+
+  > - e3bfaaa fix(docker): upgrade setuptools and msgpack for Trivy HIGH gate
+
+  > - dd4f7e6 fix(ci): harden API image Trivy gate against scan drift
+
+  > - f1c7af7 fix(ci): scan API image rootfs to ignore stale SBOM attestations
+
+  > - 6ec8ecc fix(ci): strip embedded third-party SBOMs before API image Trivy gate
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - [x] Local make api-image-build + smoke on papita-api:local (session, pre-PR)
+
+  > - [x] actionlint clean on publish-api-image.yml
+
+  > - [x] Pre-commit on commits (prettier, ShellCheck, yamllint, actionlint, strata, markdownlint)
+
+  > - [x] Remote CI on tip 6ec8ecc: all completed checks green, including **Publish API image** (publish-dev)
+
+  > - [ ] First main publish after merge — **deferred to post-merge**
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [x] Confirm PR triggers publish-dev and does **not** push :edge / semver tags
+
+  > - [ ] After merge to main (path-relevant or dispatch publish): tags :edge, :{semver}, :py-api-v{semver}, :sha-<12> appear on GHCR package save-ma-money-api
+
+  > - [x] Trivy CRITICAL/HIGH gate + smoke path exercised on PR (publish-dev success)
+
+  > - [ ] Set GHCR package visibility as intended (often private until first push)
+
+  > - [ ] Optional: add human required reviewers on Environment ghcr
+
+  > - [ ] Confirm B0 Compose still builds from Dockerfiles without requiring a registry pull
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - First publish creates the GHCR package; visibility and package permissions may need an operator pass after merge.
+
+  > > - Environments ghcr / ghcr-dev must exist (ghcr deployment branches limited to main).
+
+  > > - Trivy CRITICAL/HIGH rootfs gate can still block on real OS/library findings; Dependabot docker track helps for the base digest.
+
+  > > - Stable tags move on main (:edge and semver rewrite on publish) — pin by digest or sha-<12> for immutability.
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Git tag events (py-api-v*) do **not** trigger this workflow; version tags come from the API package version on main publish / dispatch.
+
+  > > - PR preview tags are same-repo only; forks do not publish.
+
+  > > - Image builds set provenance: false / sbom: false so Trivy is not poisoned by stale BuildKit/third-party SBOMs; gate scans exported rootfs.
+
+  > > - No Helm; model remains PyPI-only for runtime distribution.
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#132](https://github.com/Elmorralito/save-ma-money/issues/132) (ops/PPT-067)
+
+  > - [docker/README.md](https://github.com/Elmorralito/save-ma-money/blob/ops/PPT-067/docker/README.md) — registry/naming SSOT
+
+  > - [.github/CI.md](https://github.com/Elmorralito/save-ma-money/blob/ops/PPT-067/.github/CI.md) — workflow + skip label
+
+  > - [ARCHITECTURE.md Part IX](https://github.com/Elmorralito/save-ma-money/blob/ops/PPT-067/docs/design/ARCHITECTURE.md) — packaging notes
 
 - [x] [_**[#112](https://github.com/Elmorralito/save-ma-money/issues/112)**_] :: **feat/PPT-046: [EPIC][web] React SPA on FastAPI v1 with BFF cookies + nginx** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 00:46:57+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-04 20:01:25+00:00</sub>_
 
