@@ -15,6 +15,8 @@ vi.mock("@/api/auth", () => ({
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
   bffResendConfirmation: vi.fn(),
+  bffOAuthStartUrl: (provider: string, returnTo = "/dashboard") =>
+    `/api/v1/bff/auth/oauth/${provider}?return_to=${encodeURIComponent(returnTo)}`,
 }));
 
 const emptyDiscovery = {
@@ -39,6 +41,7 @@ describe("LoginPage", () => {
       user: null,
       csrf_token: null,
       session_backend: "memory",
+      access_expires_at: null,
     });
   });
 
@@ -147,5 +150,40 @@ describe("LoginPage", () => {
       }),
     );
     expect(await screen.findByText(/sent another email/i)).toBeInTheDocument();
+  });
+
+  it("offers Google and GitHub OAuth buttons that navigate to BFF start URLs", async () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <LoginPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /Continue with Google/i }));
+    expect(assign).toHaveBeenCalledWith("/api/v1/bff/auth/oauth/google?return_to=%2Fdashboard");
+
+    assign.mockClear();
+    await user.click(screen.getByRole("button", { name: /Continue with GitHub/i }));
+    expect(assign).toHaveBeenCalledWith("/api/v1/bff/auth/oauth/github?return_to=%2Fdashboard");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("surfaces oauth_error query as an alert", async () => {
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={["/login?oauth_error=1"]}>
+          <LoginPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Social sign-in failed/i);
   });
 });

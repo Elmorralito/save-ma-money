@@ -3,6 +3,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
+import * as accountsApi from "@/api/accounts";
+import * as movementsApi from "@/api/movements";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -17,6 +19,23 @@ vi.mock("@/api/auth", () => ({
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
   bffResendConfirmation: vi.fn(),
+}));
+
+vi.mock("@/api/accounts", () => ({
+  listAccounts: vi.fn(),
+  getAccount: vi.fn(),
+  createAccount: vi.fn(),
+  updateAccount: vi.fn(),
+  deleteAccount: vi.fn(),
+}));
+
+vi.mock("@/api/movements", () => ({
+  listMovements: vi.fn(),
+  getMovement: vi.fn(),
+  createMovement: vi.fn(),
+  updateMovement: vi.fn(),
+  executeMovement: vi.fn(),
+  cancelMovement: vi.fn(),
 }));
 
 vi.mock("@/api/health", () => ({
@@ -84,6 +103,7 @@ beforeEach(() => {
     user: null,
     csrf_token: null,
     session_backend: "memory",
+    access_expires_at: null,
   });
 });
 
@@ -132,7 +152,8 @@ describe("auth routing", () => {
 });
 
 describe("DashboardPage (authenticated)", () => {
-  it("renders probes when session is authenticated", async () => {
+  it("renders welcome, session TTL, accounts, and pending transfers", async () => {
+    const expiresAt = Math.floor(Date.now() / 1000) + 3600;
     vi.mocked(authApi.getBffSession).mockResolvedValue({
       authenticated: true,
       user: {
@@ -147,6 +168,42 @@ describe("DashboardPage (authenticated)", () => {
       },
       csrf_token: "csrf-test",
       session_backend: "memory",
+      access_expires_at: expiresAt,
+    });
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue({
+      items: [
+        {
+          id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          name: "Checking",
+          currency: "USD",
+          balance: 1200,
+          account_kind: "bank_account",
+          ledger_side: "asset",
+          is_active: true,
+        },
+      ],
+      total: 1,
+      skip: 0,
+      limit: 5,
+    });
+    vi.mocked(movementsApi.listMovements).mockResolvedValue({
+      items: [
+        {
+          id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+          amount: 50,
+          currency: "USD",
+          description: "Rent hold",
+          movement_date: "2026-08-01",
+          source_account_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+          destination_account_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+          source_account_name: "Checking",
+          destination_account_name: "Landlord",
+          status: "pending",
+        },
+      ],
+      total: 1,
+      skip: 0,
+      limit: 5,
     });
 
     render(
@@ -158,8 +215,17 @@ describe("DashboardPage (authenticated)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/tester@example.com/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 1, name: /Welcome back, tester/i }),
+      ).toBeInTheDocument();
     });
-    expect(screen.getByRole("region", { name: "API probe status" })).toBeInTheDocument();
+    expect(screen.getByTestId("session-ttl")).toHaveTextContent(/Time left to live:/i);
+    expect(screen.getByRole("region", { name: "Accounts" })).toHaveTextContent("Checking");
+    expect(screen.getByRole("region", { name: "Pending transfers" })).toHaveTextContent(
+      "Rent hold",
+    );
+    expect(screen.getByRole("region", { name: "Quick links" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Balances and account details/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /View spending report/i })).toBeInTheDocument();
   });
 });

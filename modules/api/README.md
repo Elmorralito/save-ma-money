@@ -295,7 +295,7 @@ Live-DB suites (skipped without reachable Postgres): `test_auth_tenancy.py`, `te
 
 **`make auth-smoke` when Confirm email is ON:** use a confirmed Supabase fixture user, or `AUTH_PROVIDER=local` (confirm-N/A). Auth-smoke exercises Bearer `/auth/*` only — it does not cover `/check-email` / resend / `/auth/confirm`. Do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
 
-**OAuth IdP email trust:** Google/GitHub channels (API Bearer OAuth) are IdP-email-verified; no duplicate confirm gate is required for MVP when those buttons ship later.
+**OAuth IdP email trust:** Google/GitHub via BFF (`GET /api/v1/bff/auth/oauth/*` → `papita_sid`) or Bearer `/auth/oauth/*` are IdP-email-verified; no duplicate confirm gate is required for MVP.
 
 **Web auth edge-case matrix (PPT-060 / #125):** MVP vs deferred (password reset deferred, auth 429 via shared SPA mapper; confirm-email product UX → #139) lives in [`modules/web/README.md`](../web/README.md#supabase-auth-edge-case-matrix-ppt-060--125). Staging/prod: expect Confirm email ON; do not enable `AUTH_AUTO_CONFIRM_EMAIL` outside local.
 

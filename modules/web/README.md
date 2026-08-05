@@ -124,11 +124,19 @@ Helpers: `evaluateBreakingChangesGuard`, `resolveExpectedBreakingChangesId`, `ob
 
 | Piece         | Location                                                               | Notes                                                                                   |
 | ------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| BFF routes    | `POST/GET /api/v1/bff/auth/*`                                          | login, register, session, refresh, logout                                               |
+| BFF routes    | `POST/GET /api/v1/bff/auth/*`                                          | login, register, session, refresh, logout, OAuth start/callback                         |
 | Cookie        | `papita_sid`                                                           | HttpOnly, `SameSite=Lax`, `Path=/api`, `Secure` when not DEBUG                          |
 | CSRF          | `X-Papita-CSRF`                                                        | Required on cookie-authenticated mutations; token from login/session JSON (memory only) |
 | SPA routes    | `/login`, `/register`, `/check-email`, `/auth/confirm`, feature routes | `RequireAuth` + `AppLayout`; anonymous users redirect to login                          |
 | Session query | `queryKeys.auth.session()`                                             | Bootstrap via `GET /bff/auth/session`                                                   |
+
+### Google / GitHub OAuth (operator guide)
+
+Start-to-end setup (Google Cloud / GitHub OAuth App → Supabase Providers → Redirect URLs → local `ALLOWED_ORIGINS` → smoke test):
+
+**[`docs/oauth-supabase-setup.md`](./docs/oauth-supabase-setup.md)**
+
+SPA buttons navigate to `GET /api/v1/bff/auth/oauth/{google|github}` (full page, not `fetch`). Callback sets HttpOnly `papita_sid` and never returns JWTs to JavaScript.
 
 **Threat model (short):**
 
@@ -167,7 +175,7 @@ Same-origin landing: **`/auth/confirm`**. Configure the Supabase project:
 
 The landing page never writes tokens from query/hash into JS storage; it clears the hash and sends the user to `/login` for a BFF cookie session.
 
-**OAuth IdP-verified email (narrow):** when Google/GitHub OAuth is enabled on the API later, treat the IdP email as already verified — do **not** require a second password-signup confirmation gate on the SPA. Password signup remains the confirm-email path above.
+**OAuth IdP-verified email (narrow):** Google/GitHub via BFF OAuth (`/api/v1/bff/auth/oauth/*`) treat the IdP email as already verified — do **not** require a second password-signup confirmation gate on the SPA. Password signup remains the confirm-email path above.
 
 **`make auth-smoke` coexistence (confirm-email ON):** use a **already-confirmed** Supabase test user, or run smoke with `AUTH_PROVIDER=local` (confirm-N/A). Do not point auth-smoke at an unconfirmed password user — Bearer login will correctly fail with `email_not_confirmed`. Admin auto-confirm (`AUTH_AUTO_CONFIRM_EMAIL`) is for local DX only, not staging/prod.
 
@@ -181,7 +189,7 @@ MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchan
 | Email confirmation required by Supabase | **MVP product UX** | **Local/B0:** Confirm email OFF in the Supabase dashboard **or** Admin auto-confirm when `PAPITA_ENV=local` (`AUTH_AUTO_CONFIRM_EMAIL`, service role). **Staging/prod:** Confirm email **ON**; `AUTH_AUTO_CONFIRM_EMAIL` defaults off outside local. Register returns `email_confirmation_required` and SPA shows `/check-email` (no `papita_sid`). Unconfirmed login maps to allowlisted `"Email not confirmed"` + `X-Papita-Error-Code: email_not_confirmed`. Resend via `POST /api/v1/bff/auth/resend-confirmation` (CSRF-exempt; register rate-limit; optional allowlisted `email_redirect_to`). Confirm landing: SPA `/auth/confirm` (never stores JWTs from the URL). |
 | Password reset / forgot password        | **Defer**          | No in-app reset UI or BFF route. Operators recover accounts via the Supabase Auth dashboard (or project recovery email) until a future issue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Magic link / OTP                        | **Defer**          | Not part of the BFF SPA contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| OAuth/SSO buttons                       | **Defer** (SPA)    | Bearer `/auth/oauth/*` may exist on the API; SPA buttons are epic OOS. Google/GitHub emails are IdP-verified — no duplicate email-confirm gate on the SPA when those channels are enabled later.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| OAuth/SSO buttons                       | **MVP** (BFF)      | Login/Register → BFF OAuth; IdP-verified email (no duplicate confirm gate). Full setup: [`docs/oauth-supabase-setup.md`](./docs/oauth-supabase-setup.md). Bearer `/auth/oauth/*` remains for token clients only.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Auth rate-limit **429**                 | **MVP**            | App limiter + Supabase SMTP 429 map to allowlisted `detail`; SPA shows them through `formatApiError` (including `Retry-After`) on login/register/resend — not a silent failure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ### Playwright assumptions
@@ -370,7 +378,7 @@ make web-up
 | ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                        |
 | Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                       |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); mobile drawer + desktop sidebar                                                              |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); hideable sidebar (toggle + localStorage)                                                     |
 | Routes     | `src/App.tsx`             | Lazy routes: auth (login/register), accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053), dashboard/reports (PPT-054) |
 
 Add a component:

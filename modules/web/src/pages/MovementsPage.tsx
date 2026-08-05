@@ -28,7 +28,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatApiError } from "@/lib/formatApiError";
+import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 import type { MovementResponse } from "@/types/domain";
 
 const PAGE_LIMIT = 100;
@@ -80,6 +82,7 @@ export function MovementsPage() {
   const accountsQuery = useQuery(accountsListQueryOptions(PICKER_PARAMS));
   const items = listQuery.data?.items ?? [];
   const accounts = accountsQuery.data?.items ?? [];
+  const hasActiveFilters = Object.values(filters).some((value) => value.trim() !== "");
 
   const executeMutation = useMutation({
     mutationFn: (movementId: string) => executeMovement(movementId),
@@ -118,8 +121,7 @@ export function MovementsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Movements</h1>
           <p className="text-sm text-muted-foreground">
-            Transfers via the API. Execute or cancel only applies to pending movements — no
-            client-side double-entry.
+            Move money between accounts. Execute or cancel only applies to pending transfers.
           </p>
         </div>
         <Button
@@ -222,8 +224,34 @@ export function MovementsPage() {
         isError={listQuery.isError}
         error={listQuery.error}
         isEmpty={!listQuery.isPending && !listQuery.isError && items.length === 0}
-        emptyTitle="No movements yet"
-        emptyDescription="Create a transfer between two accounts."
+        emptyTitle={hasActiveFilters ? "No matching movements" : "No movements yet"}
+        emptyDescription={
+          hasActiveFilters
+            ? "Try clearing filters or broadening the date range."
+            : "Create a transfer between two accounts."
+        }
+        emptyAction={
+          hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFilters(EMPTY_FILTERS);
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => {
+                setCreateOpen(true);
+              }}
+            >
+              Create your first transfer
+            </Button>
+          )
+        }
         onRetry={() => {
           void listQuery.refetch();
         }}
@@ -243,7 +271,7 @@ export function MovementsPage() {
           <TableBody>
             {items.map((movement) => (
               <TableRow key={movement.id}>
-                <TableCell className="tabular-nums">{movement.movement_date}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(movement.movement_date)}</TableCell>
                 <TableCell>{movement.source_account_name ?? movement.source_account_id}</TableCell>
                 <TableCell>
                   {movement.destination_account_name ?? movement.destination_account_id}
@@ -252,7 +280,7 @@ export function MovementsPage() {
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(movement.amount, movement.currency)}
                 </TableCell>
-                <TableCell>{movement.status}</TableCell>
+                <TableCell>{formatSlugLabel(movement.status)}</TableCell>
                 <TableCell className="text-right">
                   {isPending(movement) ? (
                     <div className="flex justify-end gap-2">

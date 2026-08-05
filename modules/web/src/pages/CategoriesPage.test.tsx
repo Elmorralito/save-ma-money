@@ -146,7 +146,7 @@ describe("CategoriesPage", () => {
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/read-only/i)).toBeInTheDocument();
+      expect(screen.getByText("(read-only)")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
   });
@@ -200,7 +200,7 @@ describe("CategoriesPage", () => {
     });
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(() => {
-      expect(screen.getByText(/read-only/i)).toBeInTheDocument();
+      expect(screen.getByText("(read-only)")).toBeInTheDocument();
     });
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
   });

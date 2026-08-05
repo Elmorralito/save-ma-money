@@ -1,5 +1,9 @@
 # save-ma-money
 
+<p align="center">
+  <img src="./docs/save-ma-money-brand.png" alt="Save Ma Money — broke but planning" width="640" />
+</p>
+
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
 [![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2090-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
 ![interrogate score](./docs/interrogate_badge.svg)

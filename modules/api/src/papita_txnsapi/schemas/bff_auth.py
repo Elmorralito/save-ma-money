@@ -42,6 +42,8 @@ class BffSessionResponse(BaseModel):
         user: Public profile when authenticated.
         csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.
         session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).
+        access_expires_at: Unix timestamp (seconds) when the server-held access JWT
+            expires. Never includes the JWT itself — SPA countdown / refresh UX only.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -50,3 +52,4 @@ class BffSessionResponse(BaseModel):
     user: UserResponse | None = None
     csrf_token: str | None = None
     session_backend: str | None = None
+    access_expires_at: float | None = None

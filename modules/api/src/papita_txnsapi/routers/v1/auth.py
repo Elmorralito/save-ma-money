@@ -142,16 +142,24 @@ def _api_oauth_callback_url(request: Request) -> str:
     return str(request.url_for("oauth_callback_get"))
 
 
-def _resolve_oauth_redirect_to(request: Request, settings: Settings, redirect_to: str | None) -> str:
+def _resolve_oauth_redirect_to(
+    request: Request,
+    settings: Settings,
+    redirect_to: str | None,
+    *,
+    extra_allowed: set[str] | None = None,
+) -> str:
     """Resolve and allowlist the OAuth ``redirect_to`` URI.
 
-    Allowed values are the API callback URL and ``SUPABASE_OAUTH_REDIRECT_TO``
-    when configured. Rejects open redirects via arbitrary query params.
+    Allowed values are the API callback URL, ``SUPABASE_OAUTH_REDIRECT_TO`` when
+    configured, and any ``extra_allowed`` URIs (e.g. BFF OAuth callback). Rejects
+    open redirects via arbitrary query params.
 
     Args:
         request: Current request (used to build the named callback URL).
         settings: Application settings that may define ``SUPABASE_OAUTH_REDIRECT_TO``.
         redirect_to: Client-requested redirect, or ``None`` for the default.
+        extra_allowed: Optional additional absolute URIs to accept for this call.
 
     Returns:
         An allowlisted absolute redirect URI for Supabase OAuth.
@@ -164,6 +172,8 @@ def _resolve_oauth_redirect_to(request: Request, settings: Settings, redirect_to
     allowed = {callback}
     if configured is not None:
         allowed.add(configured)
+    if extra_allowed:
+        allowed.update(extra_allowed)
     if redirect_to is None or not redirect_to.strip():
         return configured or callback
     candidate = redirect_to.strip()
@@ -391,7 +401,7 @@ def _complete_oauth_provision(
     code_verifier: str,
     redirect_to: str | None,
     display_name: str | None = None,
-) -> TokenResponse:
+) -> tuple[TokenResponse, UsersDTO]:
     """Exchange an OAuth code for a session and provision the Papita tenant row.
 
     Args:
@@ -404,7 +414,8 @@ def _complete_oauth_provision(
         display_name: Optional profile override when Auth metadata is incomplete.
 
     Returns:
-        OAuth2-compatible ``TokenResponse`` with Supabase access/refresh tokens.
+        Pair of OAuth2 ``TokenResponse`` (Supabase tokens) and the provisioned
+        ``UsersDTO`` owner row.
 
     Raises:
         AuthApiError: Supabase rejected the code exchange (API error).
@@ -418,18 +429,19 @@ def _complete_oauth_provision(
         code_verifier=code_verifier,
         redirect_to=redirect_to,
     )
-    users_service.ensure_from_auth_subject(
+    user = users_service.ensure_from_auth_subject(
         subject=auth_result.user_id,
         email=auth_result.email,
         display_name=display_name,
         provider_type=provider,
     )
-    return _token_response_from_auth(
+    token = _token_response_from_auth(
         access_token=str(auth_result.access_token),
         refresh_token=auth_result.refresh_token,
         expires_in=auth_result.expires_in,
         settings=settings,
     )
+    return token, user
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)
@@ -695,7 +707,7 @@ def oauth_callback_post(
     _require_supabase_auth_settings(settings)
     try:
         redirect_to = _resolve_oauth_redirect_to(request, settings, body.redirect_to)
-        return _complete_oauth_provision(
+        token, _user = _complete_oauth_provision(
             settings=settings,
             users_service=users_service,
             provider=body.provider,
@@ -704,6 +716,7 @@ def oauth_callback_post(
             redirect_to=redirect_to,
             display_name=body.display_name,
         )
+        return token
     except (AuthApiError, AuthError) as exc:
         detail = auth_error_detail(exc, fallback="OAuth code exchange rejected")
         raise HTTPException(
@@ -719,7 +732,7 @@ def oauth_callback_post(
 
 
 @router.get("/oauth/callback", response_model=TokenResponse, name="oauth_callback_get")
-def oauth_callback_get(
+def oauth_callback_get(  # pylint: disable=too-many-locals
     request: Request,
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -781,7 +794,7 @@ def oauth_callback_get(
     _require_supabase_auth_settings(settings)
     try:
         redirect_to = _resolve_oauth_redirect_to(request, settings, redirect_from_cookie)
-        token = _complete_oauth_provision(
+        token, _user = _complete_oauth_provision(
             settings=settings,
             users_service=users_service,
             provider=oauth_provider,

@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatMoney } from "@/lib/formatMoney";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 
 /** First-page list window (pagination UI deferred). */
 const LIST_PARAMS = { limit: 100, skip: 0 } as const;
@@ -30,7 +31,7 @@ export function AccountsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
           <p className="text-sm text-muted-foreground">
-            Balances come from the API (materialized view / initial value). No client-side math.
+            Your bank, card, and other balances in one place.
           </p>
         </div>
         <Button
@@ -50,6 +51,16 @@ export function AccountsPage() {
         isEmpty={!listQuery.isPending && !listQuery.isError && items.length === 0}
         emptyTitle="No accounts yet"
         emptyDescription="Create an account to start tracking balances."
+        emptyAction={
+          <Button
+            type="button"
+            onClick={() => {
+              setCreateOpen(true);
+            }}
+          >
+            Create your first account
+          </Button>
+        }
         onRetry={() => {
           void listQuery.refetch();
         }}
@@ -75,8 +86,12 @@ export function AccountsPage() {
                     {account.name}
                   </Link>
                 </TableCell>
-                <TableCell className="text-muted-foreground">{account.account_kind}</TableCell>
-                <TableCell className="text-muted-foreground">{account.ledger_side}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatSlugLabel(account.account_kind)}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatSlugLabel(account.ledger_side)}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(account.balance, account.currency)}
                 </TableCell>

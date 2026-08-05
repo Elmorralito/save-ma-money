@@ -64,7 +64,7 @@ export function CheckEmailPage() {
         </p>
       </div>
       <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
-        No session is opened until your email is confirmed. JWTs never touch the browser.
+        No session starts until you confirm your email.
       </p>
       {statusMessage ? (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">

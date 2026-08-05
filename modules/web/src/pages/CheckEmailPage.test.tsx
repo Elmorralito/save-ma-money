@@ -47,7 +47,7 @@ describe("CheckEmailPage", () => {
     );
 
     expect(screen.getByRole("heading", { name: /Check your email/i })).toBeInTheDocument();
-    expect(screen.getByText(/No session is opened/i)).toBeInTheDocument();
+    expect(screen.getByText(/No session starts until you confirm/i)).toBeInTheDocument();
     expect(screen.getByText(/a@example.com/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Sign in/i })).toHaveAttribute("href", "/login");
   });

@@ -25,6 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatApiError, isGlobalOrMissingCategoryError } from "@/lib/formatApiError";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 import type { CategoryResponse } from "@/types/domain";
 
 /** First-page list window (pagination UI deferred). */
@@ -70,7 +71,7 @@ export function CategoriesPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
           <p className="text-sm text-muted-foreground">
-            Tenant categories are editable. Global seeds may appear in the list but reject writes.
+            Organize income and expenses. Some seeded categories may be read-only.
           </p>
         </div>
         <Button
@@ -89,7 +90,17 @@ export function CategoriesPage() {
         error={listQuery.error}
         isEmpty={!listQuery.isPending && !listQuery.isError && items.length === 0}
         emptyTitle="No categories yet"
-        emptyDescription="Create a category or wait for global seeds from the API."
+        emptyDescription="Create a category to start labeling income and expenses."
+        emptyAction={
+          <Button
+            type="button"
+            onClick={() => {
+              setCreateOpen(true);
+            }}
+          >
+            Create your first category
+          </Button>
+        }
         onRetry={() => {
           void listQuery.refetch();
         }}
@@ -115,7 +126,9 @@ export function CategoriesPage() {
                       <span className="ml-2 text-xs text-muted-foreground">(read-only)</span>
                     ) : null}
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{category.category_type}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {formatSlugLabel(category.category_type)}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {category.subcategories?.length ?? 0}
                   </TableCell>

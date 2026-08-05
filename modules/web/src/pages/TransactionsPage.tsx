@@ -33,7 +33,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatApiError } from "@/lib/formatApiError";
+import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 import type { TransactionResponse } from "@/types/domain";
 
 const PAGE_LIMIT = 100;
@@ -88,6 +90,7 @@ export function TransactionsPage() {
   const items = listQuery.data?.items ?? [];
   const accounts = accountsQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
+  const hasActiveFilters = Object.values(filters).some((value) => value.trim() !== "");
 
   const deleteMutation = useMutation({
     mutationFn: (transactionId: string) => deleteTransaction(transactionId),
@@ -250,8 +253,34 @@ export function TransactionsPage() {
         isError={listQuery.isError}
         error={listQuery.error}
         isEmpty={!listQuery.isPending && !listQuery.isError && items.length === 0}
-        emptyTitle="No transactions yet"
-        emptyDescription="Create an income or expense, or adjust filters."
+        emptyTitle={hasActiveFilters ? "No matching transactions" : "No transactions yet"}
+        emptyDescription={
+          hasActiveFilters
+            ? "Try clearing filters or broadening the date range."
+            : "Create an income or expense to get started."
+        }
+        emptyAction={
+          hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFilters(EMPTY_FILTERS);
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={() => {
+                setCreateOpen(true);
+              }}
+            >
+              Create your first transaction
+            </Button>
+          )
+        }
         onRetry={() => {
           void listQuery.refetch();
         }}
@@ -272,15 +301,17 @@ export function TransactionsPage() {
           <TableBody>
             {items.map((txn) => (
               <TableRow key={txn.id}>
-                <TableCell className="tabular-nums">{txn.transaction_date}</TableCell>
-                <TableCell className="text-muted-foreground">{txn.transaction_type}</TableCell>
+                <TableCell className="tabular-nums">{formatDate(txn.transaction_date)}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatSlugLabel(txn.transaction_type)}
+                </TableCell>
                 <TableCell>{txn.account_name ?? txn.account_id ?? "—"}</TableCell>
                 <TableCell>{txn.category_name ?? txn.category_id ?? "—"}</TableCell>
                 <TableCell>{txn.description || "—"}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(txn.amount, txn.currency)}
                 </TableCell>
-                <TableCell>{txn.status}</TableCell>
+                <TableCell>{formatSlugLabel(txn.status)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button

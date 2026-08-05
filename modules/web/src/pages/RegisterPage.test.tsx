@@ -40,6 +40,7 @@ describe("RegisterPage", () => {
       user: null,
       csrf_token: null,
       session_backend: "memory",
+      access_expires_at: null,
     });
   });
 

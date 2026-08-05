@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import { bffRegister } from "@/api/auth";
+import { OAuthProviderButtons } from "@/components/OAuthProviderButtons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,8 +54,8 @@ export function RegisterPage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Create account</h1>
         <p className="text-sm text-muted-foreground">
-          Creates your account via the API. When email confirmation is required, you will confirm
-          before signing in.
+          Create an account with email, or continue with Google or GitHub. You may need to confirm
+          your email before signing in.
         </p>
       </div>
       <form className="space-y-4" onSubmit={onSubmit}>
@@ -122,6 +123,7 @@ export function RegisterPage() {
           {registerMutation.isPending ? "Creating…" : "Register"}
         </Button>
       </form>
+      <OAuthProviderButtons />
       <p className="text-sm text-muted-foreground">
         Already registered?{" "}
         <Link to="/login" className="font-medium text-primary underline-offset-4 hover:underline">

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatApiError } from "@/lib/formatApiError";
 import { formatMoney } from "@/lib/formatMoney";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 
 export function AccountDetailPage() {
   const { accountId = "" } = useParams();
@@ -79,7 +80,7 @@ export function AccountDetailPage() {
               <div>
                 <dt className="text-xs text-muted-foreground">Kind / side</dt>
                 <dd className="text-sm">
-                  {account.account_kind} · {account.ledger_side}
+                  {formatSlugLabel(account.account_kind)} · {formatSlugLabel(account.ledger_side)}
                 </dd>
               </div>
               <div>
