@@ -4,15 +4,16 @@
 #
 # Policy:
 #   - Stable/release tags publish ONLY from main (never from git tag events or PR heads)
-#   - PRs publish a non-release "dev" image (pr-* / dev-*) unless skip-api-image-dev
+#   - PR publish-dev only when the PR touches API/model runtime paths (not workflow-only /
+#     smoke-script-only bumps); still skippable with skip-api-image-dev
 #   - Automated vuln gate: Trivy CRITICAL/HIGH before any GHCR push (Environment
 #     required reviewers cannot be scanners — see .github/actions/trivy-api-image-gate)
 #
 # Jobs:
 #   build-smoke  — dispatch smoke-only: contents:read (no packages:write)
-#   changes      — main path detect
+#   changes      — path detect (main + PR)
 #   publish      — main only → build → Trivy → smoke → multi-arch push
-#   publish-dev  — PR → build → Trivy → smoke → amd64 push (never release tags)
+#   publish-dev  — PR + runtime paths → build → Trivy → smoke → amd64 push
 #
 # Auth: GITHUB_TOKEN packages:write on publish jobs only. No long-lived registry secrets.
 
@@ -59,10 +60,14 @@ env:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Detect API-relevant path changes on main pushes.
+  # Detect API/model runtime path changes (main + PR).
+  # PR publish-dev: runtime only (docker/api, modules/api, modules/model, .dockerignore).
+  # Main stable: also treat workflow/smoke script edits as publish-relevant.
   # ---------------------------------------------------------------------------
   changes:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -74,21 +79,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect API image paths vs push before
+      - name: Detect API image paths
         id: check
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
-            echo "api=true" >>"${GITHUB_OUTPUT}"
-            echo "No usable before SHA — treating as api-relevant"
-            exit 0
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            range="${BASE_SHA}...${HEAD_SHA}"
+          else
+            if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
+              echo "api=true" >>"${GITHUB_OUTPUT}"
+              echo "No usable before SHA — treating as api-relevant"
+              exit 0
+            fi
+            range="${BEFORE}...${SHA}"
           fi
           api=false
           count=0
           while IFS= read -r f; do
+            [[ -z "${f}" ]] && continue
             count=$((count + 1))
             case "${f}" in
               docker/api/* | \
@@ -99,15 +113,22 @@ jobs:
               modules/model/alembic.ini | \
               modules/model/README.md | \
               modules/model/LICENSE | \
-              .dockerignore | \
-              .github/workflows/publish-api-image.yml | \
-              .github/scripts/api_image_smoke.sh)
+              .dockerignore)
                 api=true
                 ;;
             esac
-          done < <(git diff --name-only "${BEFORE}" "${SHA}" || true)
+            # Main only: workflow/smoke recipe edits may warrant a stable rebuild.
+            if [[ "${EVENT_NAME}" == "push" ]]; then
+              case "${f}" in
+                .github/workflows/publish-api-image.yml | \
+                .github/scripts/api_image_smoke.sh)
+                  api=true
+                  ;;
+              esac
+            fi
+          done < <(git diff --name-only "${range}" || true)
           echo "api=${api}" >>"${GITHUB_OUTPUT}"
-          echo "api=${api} (changed_files=${count})"
+          echo "api=${api} event=${EVENT_NAME} range=${range} changed_files=${count}"
 
   # ---------------------------------------------------------------------------
   # Manual smoke — never packages:write.
@@ -405,9 +426,14 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # PR dev preview — never writes :edge / semver / py-api-v* tags.
+  # Only when the PR changes API/model runtime paths (not Actions pin bumps alone).
   # ---------------------------------------------------------------------------
   publish-dev:
+    needs: [changes]
     if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.api == 'true' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
