@@ -7,6 +7,8 @@
 # high-cost build (pnpm install + Vite → nginx).
 #
 # Policy: same as publish-api-image.yml (main stable / PR dev / Trivy gate).
+# PR publish-dev only when the PR touches web runtime paths (not e2e-only or
+# workflow-only bumps); skippable with skip-web-image-dev.
 
 name: Publish Web image
 
@@ -48,8 +50,13 @@ env:
   IMAGE_NAME: save-ma-money-web
 
 jobs:
+  # Detect web runtime path changes (main + PR).
+  # PR publish-dev: docker/web + SPA sources/lockfiles (not e2e/docs/workflow-only).
+  # Main stable: also treat workflow/smoke script edits as publish-relevant.
   changes:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,38 +68,55 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect web image paths vs push before
+      - name: Detect web image paths
         id: check
         env:
+          EVENT_NAME: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           SHA: ${{ github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
-            echo "web=true" >>"${GITHUB_OUTPUT}"
-            echo "No usable before SHA — treating as web-relevant"
-            exit 0
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            range="${BASE_SHA}...${HEAD_SHA}"
+          else
+            if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
+              echo "web=true" >>"${GITHUB_OUTPUT}"
+              echo "No usable before SHA — treating as web-relevant"
+              exit 0
+            fi
+            range="${BEFORE}...${SHA}"
           fi
           web=false
           count=0
           while IFS= read -r f; do
+            [[ -z "${f}" ]] && continue
             count=$((count + 1))
             case "${f}" in
+              # Playwright / docs do not change the nginx runtime image.
+              modules/web/e2e/* | modules/web/docs/* | modules/web/README.md) ;;
               docker/web/* | \
               modules/web/* | \
               package.json | \
               pnpm-lock.yaml | \
               pnpm-workspace.yaml | \
               .nvmrc | \
-              .dockerignore | \
-              .github/workflows/publish-web-image.yml | \
-              .github/scripts/web_image_smoke.sh)
+              .dockerignore)
                 web=true
                 ;;
             esac
-          done < <(git diff --name-only "${BEFORE}" "${SHA}" || true)
+            if [[ "${EVENT_NAME}" == "push" ]]; then
+              case "${f}" in
+                .github/workflows/publish-web-image.yml | \
+                .github/scripts/web_image_smoke.sh)
+                  web=true
+                  ;;
+              esac
+            fi
+          done < <(git diff --name-only "${range}" || true)
           echo "web=${web}" >>"${GITHUB_OUTPUT}"
-          echo "web=${web} (changed_files=${count})"
+          echo "web=${web} event=${EVENT_NAME} range=${range} changed_files=${count}"
 
   build-smoke:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'smoke-only'
@@ -376,7 +400,11 @@ jobs:
           } >>"${GITHUB_STEP_SUMMARY}"
 
   publish-dev:
+    needs: [changes]
     if: >-
+      always() &&
+      needs.changes.result == 'success' &&
+      needs.changes.outputs.web == 'true' &&
       github.event_name == 'pull_request' &&
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
