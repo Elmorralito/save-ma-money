@@ -37,7 +37,13 @@ RUN pnpm --filter @papita/web build
 # -----------------------------------------------------------------------------
 # Stage 2: static nginx (non-root)
 # -----------------------------------------------------------------------------
-FROM nginxinc/nginx-unprivileged:1.27-alpine
+# Base digest pinned for supply-chain stability; Dependabot (docker /docker/web) refreshes it.
+# 1.27-alpine carried fixed Alpine HIGH/CRITICAL (openssl/musl/zlib); keep current mainline.
+FROM nginxinc/nginx-unprivileged:1.31.3-alpine@sha256:a6c3ec0c0d249d68b0682df854d4a9e222b90fb607dc3fcf2f1d2fcbc85d347e
+
+# Apply Alpine security patches between base rebuilds (Trivy CRITICAL/HIGH gate).
+USER root
+RUN apk upgrade --no-cache
 
 # .inc is not auto-loaded by conf.d/*.conf; included from default.conf (PPT-063 / #128).
 COPY docker/web/spa-security-headers.conf /etc/nginx/conf.d/spa-security-headers.inc

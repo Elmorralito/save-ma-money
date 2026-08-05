@@ -16,11 +16,10 @@ Capture with `/strata:capture` only for work in flight.
 
 - **PPT-068 / #139**, **PPT-063 / #128**, **PPT-069 / #140**: landed on main (see git log).
 - **PPT-070 / #163** filed: payment due-date reminders epic + children #164–#168 (issues only).
+- **PPT-067 / #132:** API GHCR (#188) + web GHCR / Docker Image Security (#190) on main.
 
 ### In progress (ACTIVE)
 
-- **PPT-067 / #132:** API GHCR landed (#188). Web GHCR + Docker Image Security on
-  [PR #190](https://github.com/Elmorralito/save-ma-money/pull/190) (merge-ready).
 - **[PR #191](https://github.com/Elmorralito/save-ma-money/pull/191):** Dependabot GHA bumps;
   e2e login assert fixed for dashboard "Welcome back, …" h1 race.
 
@@ -31,7 +30,7 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Merge PR #190 then #191; first web GHCR package visibility if needed
+- Merge PR #191; set `save-ma-money-web` GHCR package visibility if needed
 - Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 

@@ -316,6 +316,8 @@ PR template section **Web security checklist** must be signed off on web/auth PR
 
 Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage image: pnpm build → `nginxinc/nginx-unprivileged` (non-root, port 8080) with SPA fallback and `/api` reverse-proxy to the `api` service.
 
+**Registry (PPT-067):** GHCR `save-ma-money-web` publishes from `main` via [`publish-web-image.yml`](../../.github/workflows/publish-web-image.yml) (PR `pr-*`/`dev-*` unless `skip-web-image-dev`). Local: `make web-image-build` + `./.github/scripts/web_image_smoke.sh papita-web:local`. Naming SSOT: [`docker/README.md`](../../docker/README.md).
+
 | Piece      | Location                                              | Notes                                                                                                          |
 | ---------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Dockerfile | `docker/web/Dockerfile`                               | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`; non-root (DS-0002) |
