@@ -5,7 +5,7 @@
 </p>
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2090-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2092-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
 [![API image](https://img.shields.io/github/actions/workflow/status/Elmorralito/save-ma-money/publish-api-image.yml?branch=main&label=API%20image&logo=docker&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions/workflows/publish-api-image.yml)
 [![GHCR](https://img.shields.io/badge/ghcr.io-save--ma--money--api-blue?logo=github&logoColor=white)](https://github.com/Elmorralito/save-ma-money/pkgs/container/save-ma-money-api)
 ![interrogate score](./docs/interrogate_badge.svg)
