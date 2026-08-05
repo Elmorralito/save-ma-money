@@ -14,38 +14,24 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
-- **PPT-062 / #127:** AppLayout session chip + logout — merged via #152.
-- **PPT-059 / #124:** BFF durability docs + fail-closed runtime — merged via #153.
-- **PPT-061 / #126:** E2E seed fixtures — merged via #151.
-- **PPT-060 / #125:** Auth edge-case MVP matrix — merged.
-- **PPT-055 / #120:** forms + UX standards — closed/merged.
-- **Strata cleanup:** no `issues/archive/`; closed work → GitHub / git only.
+- **PPT-068 / #139**, **PPT-063 / #128**, **PPT-069 / #140**: landed on main (see git log).
+- **PPT-070 / #163** filed: payment due-date reminders epic + children #164–#168 (issues only).
 
 ### In progress (ACTIVE)
 
-- **PPT-068 / #139** ([PR #160](https://github.com/Elmorralito/save-ma-money/pull/160)):
-  Email verification under BFF cookies on `feat/PPT-068`. Autopilot: pin
-  `ALLOWED_ORIGINS` in resend success test (conftest uses `testserver`); digest
-  email/redirect in resend logs (CodeQL `py/log-injection`).
-- **PPT-057 / #122** (`ops/PPT-057`, PR #158): nginx Compose packaging. Autopilot
-  follow-up: explicit `USER nginx` + `nginxinc/nginx-unprivileged` (DS-0002), listen 8080,
-  Docker DNS runtime upstream resolve, cryptography >=50 (CVE-2026-69247).
-- **PPT-056 / #121** / **PPT-064 / #129**: verify merge status on main.
+- **`feat/bff-oauth-buttons` / [PR #169](https://github.com/Elmorralito/save-ma-money/pull/169):**
+  BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons, `access_expires_at`,
+  redirect allowlist rebuild + IdP error digests (CodeQL), branding, dashboard TTL +
+  snapshots, UI polish. Guide: `modules/web/docs/oauth-supabase-setup.md`.
 
 ### Open (backlog)
 
-_Nothing open in strata._ Capture next epic children from
-[#112](https://github.com/Elmorralito/save-ma-money/issues/112) when starting work.
-
-### Docs hygiene (PPT-058 / #123)
-
-Monorepo indexes point at `modules/web` + PPT-046. RUM/Sentry deferred.
+- **PPT-070** children #164–#168 — dues schema/services/API/SPA/tests (not started in code).
 
 ### Next action
 
-- Land PPT-068 / #139 via PR #160 (CI green + AC); close issue after merge
-- Open PR for PPT-063 / #128 (nginx CSP + SPA security headers) when ready
-- PPT-054 carry-forward: cash-flow + trends → export + 501 UX → dashboard
+- Merge PR #169 once CodeQL / CI green; enable IdP providers + redirect URLs per OAuth doc
+- Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes

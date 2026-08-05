@@ -551,6 +551,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/bff/auth/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bff Oauth Callback Get
+         * @description Complete Supabase OAuth for the SPA and set ``papita_sid`` (never JWT JSON).
+         *
+         *     Pair with ``GET /bff/auth/oauth/{provider}``. Exchanges the authorization
+         *     ``code`` using Path=/api PKCE cookies, creates a BFF session, then 302s to
+         *     the allowlisted SPA ``return_to`` URL. Failures redirect to ``/login?oauth_error=1``.
+         */
+        get: operations["bff_oauth_callback_get_api_v1_bff_auth_oauth_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bff/auth/oauth/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bff Start Oauth
+         * @description Start Supabase OAuth for the SPA and 302 to the IdP (PKCE cookies, Path=/api).
+         *
+         *     Browser navigates here (full page, not ``fetch``). ``return_to`` is a relative
+         *     SPA path (default ``/dashboard``) stored for the callback redirect after
+         *     ``papita_sid`` is set. Never returns JWTs or the PKCE verifier to JavaScript.
+         */
+        get: operations["bff_start_oauth_api_v1_bff_auth_oauth__provider__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/bff/auth/refresh": {
         parameters: {
             query?: never;
@@ -1911,8 +1959,12 @@ export interface components {
          *         user: Public profile when authenticated.
          *         csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.
          *         session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).
+         *         access_expires_at: Unix timestamp (seconds) when the server-held access JWT
+         *             expires. Never includes the JWT itself — SPA countdown / refresh UX only.
          */
         BffSessionResponse: {
+            /** Access Expires At */
+            access_expires_at?: number | null;
             /** Authenticated */
             authenticated: boolean;
             /** Csrf Token */
@@ -3713,6 +3765,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    bff_oauth_callback_get_api_v1_bff_auth_oauth_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                error?: string | null;
+                error_description?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bff_start_oauth_api_v1_bff_auth_oauth__provider__get: {
+        parameters: {
+            query?: {
+                return_to?: string | null;
+            };
+            header?: never;
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

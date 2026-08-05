@@ -36,6 +36,7 @@ describe("BFF auth storage posture (PPT-056 security)", () => {
             },
             csrf_token: "csrf-from-login",
             session_backend: "memory",
+            access_expires_at: Math.floor(Date.now() / 1000) + 3600,
             // Deliberately include a token-shaped field — SPA must ignore persistence.
             access_token: accessToken,
           },
@@ -63,6 +64,7 @@ describe("BFF auth storage posture (PPT-056 security)", () => {
           user: null,
           csrf_token: null,
           session_backend: null,
+          access_expires_at: null,
         },
         { status: 200 },
       ),

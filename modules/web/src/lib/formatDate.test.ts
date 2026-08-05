@@ -10,6 +10,11 @@ describe("formatDate", () => {
     expect(formatted).toMatch(/2026/);
   });
 
+  it("keeps date-only API strings on the same calendar day", () => {
+    // new Date("YYYY-MM-DD") is UTC midnight and shifts west of UTC; we must not.
+    expect(formatDate("2026-08-01", "en-US")).toBe("Aug 1, 2026");
+  });
+
   it("returns the original string for invalid dates", () => {
     expect(formatDate("not-a-date")).toBe("not-a-date");
   });

@@ -9,12 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
+from auth_helpers import make_user
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from supabase_auth.errors import AuthApiError
 
-from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.core.bff_session import (
     BFF_CSRF_HEADER,
@@ -125,6 +125,8 @@ class TestBffCookieSession:
         body = response.json()
         assert body["authenticated"] is True
         assert body["csrf_token"]
+        assert isinstance(body.get("access_expires_at"), (int, float))
+        assert body["access_expires_at"] > time.time()
         assert "access_token" not in body
         assert "refresh_token" not in body
         assert BFF_SESSION_COOKIE in response.cookies
@@ -151,6 +153,8 @@ class TestBffCookieSession:
         body = session.json()
         assert body["authenticated"] is True
         assert body["csrf_token"] == csrf
+        assert isinstance(body.get("access_expires_at"), (int, float))
+        assert body["access_expires_at"] > time.time()
 
     def test_cookie_authorizes_auth_me(self, bff_client: tuple[TestClient, MagicMock]) -> None:
         client, _ = bff_client
@@ -266,16 +270,12 @@ class TestBffCookieSession:
 class TestBffSupabaseCookieSession:
     """Supabase IdP branches for BFF login/register/refresh/logout + silent refresh."""
 
-    def test_login_sets_cookie_and_authorizes_me(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_login_sets_cookie_and_authorizes_me(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "bff-sb@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -301,7 +301,9 @@ class TestBffSupabaseCookieSession:
         auth_result.refresh_token = "sb-refresh"
         auth_result.expires_in = 3600
 
-        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result
+        ):
             client = TestClient(app)
             login = client.post(
                 "/api/v1/bff/auth/login",
@@ -374,7 +376,9 @@ class TestBffSupabaseCookieSession:
         auth_result.access_token = "tok"
         auth_result.refresh_token = "ref"
         auth_result.expires_in = 3600
-        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result
+        ):
             client = TestClient(app)
             response = client.post(
                 "/api/v1/bff/auth/login",
@@ -456,9 +460,7 @@ class TestBffSupabaseCookieSession:
         auth_result.email = email
         auth_result.access_token = None
         auth_result.refresh_token = None
-        with patch(
-            "papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result
-        ):
+        with patch("papita_txnsapi.routers.v1.bff_auth.supabase_register_user", return_value=auth_result):
             client = TestClient(app)
             response = client.post(
                 "/api/v1/bff/auth/register",
@@ -475,9 +477,7 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
         monkeypatch.delenv("AUTH_AUTO_CONFIRM_EMAIL", raising=False)
 
-    def test_unconfirmed_login_returns_error_code_without_session_cookie(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_unconfirmed_login_returns_error_code_without_session_cookie(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """PPT-068: unconfirmed login is 401 with X-Papita-Error-Code; no cookie."""
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
@@ -599,9 +599,7 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_resend_confirmation_drops_non_allowlisted_redirect(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_resend_confirmation_drops_non_allowlisted_redirect(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
         monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
@@ -663,9 +661,7 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_resend_confirmation_soft_succeeds_on_unknown_user(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_resend_confirmation_soft_succeeds_on_unknown_user(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
         monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
@@ -764,19 +760,13 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
 
-    def test_refresh_rotates_cookie_and_tokens(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_refresh_rotates_cookie_and_tokens(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "refresh@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
-        rotated = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
+        rotated = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -810,7 +800,10 @@ class TestBffSupabaseCookieSession:
         refresh_result.expires_in = 1800
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+                return_value=login_result,
+            ),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_refresh_session",
                 return_value=refresh_result,
@@ -846,16 +839,12 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_refresh_without_refresh_token_is_unauthorized(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_refresh_without_refresh_token_is_unauthorized(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "noref@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -898,16 +887,12 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_refresh_auth_error_is_unauthorized(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_refresh_auth_error_is_unauthorized(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "badref@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -934,7 +919,10 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+                return_value=login_result,
+            ),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_refresh_session",
                 side_effect=AuthApiError("Invalid refresh token", 401, "invalid_grant"),
@@ -960,16 +948,12 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_logout_calls_supabase_sign_out(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_logout_calls_supabase_sign_out(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "out@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -996,7 +980,10 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+                return_value=login_result,
+            ),
             patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_out") as mock_sign_out,
         ):
             client = TestClient(app)
@@ -1021,16 +1008,12 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_logout_sign_out_failure_is_best_effort(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_logout_sign_out_failure_is_best_effort(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "outfail@example.local"
-        access = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        access = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -1057,7 +1040,10 @@ class TestBffSupabaseCookieSession:
         login_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm", return_value=login_result),
+            patch(
+                "papita_txnsapi.routers.v1.bff_auth.supabase_sign_in_with_optional_auto_confirm",
+                return_value=login_result,
+            ),
             patch(
                 "papita_txnsapi.routers.v1.bff_auth.supabase_sign_out",
                 side_effect=AuthApiError("gone", 401, "session_not_found"),
@@ -1083,19 +1069,13 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_silent_refresh_on_expired_access(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_silent_refresh_on_expired_access(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "silent@example.local"
-        stale = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
-        fresh = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        stale = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
+        fresh = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -1148,16 +1128,12 @@ class TestBffSupabaseCookieSession:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_silent_refresh_failure_clears_session(
-        self, rsa_keypair, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_silent_refresh_failure_clears_session(self, rsa_keypair, monkeypatch: pytest.MonkeyPatch) -> None:
         private_pem, public_pem = rsa_keypair
         supabase_url = "https://example.supabase.co"
         subject = uuid.uuid4()
         email = "silent-fail@example.local"
-        stale = _mint_supabase_token(
-            private_pem, subject=subject, email=email, supabase_url=supabase_url
-        )
+        stale = _mint_supabase_token(private_pem, subject=subject, email=email, supabase_url=supabase_url)
 
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", supabase_url)
@@ -1269,3 +1245,375 @@ class TestBffSessionFailClosedHttp:
         assert "session store unavailable" in me.json()["detail"].lower()
         assert session.status_code == 503
         assert csrf_blocked.status_code == 503
+
+
+class TestBffOAuth:
+    """BFF OAuth start/callback — HttpOnly ``papita_sid``, never JWT JSON bodies."""
+
+    @staticmethod
+    def _cookie_value(response, name: str) -> str:
+        raw = response.cookies.get(name) or ""
+        return raw.strip().strip('"')
+
+    def test_start_oauth_redirects_to_idp_with_pkce_cookies(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("ALLOWED_ORIGINS", '["http://testserver"]')
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_oauth_authorize_url",
+            return_value=MagicMock(
+                provider="google",
+                url="https://example.supabase.co/auth/v1/authorize?provider=google",
+                code_verifier="pkce-verifier-bff-0123456789abcdef",
+            ),
+        ) as mock_start:
+            client = TestClient(create_app())
+            response = client.get(
+                "/api/v1/bff/auth/oauth/google",
+                params={"return_to": "/dashboard"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        assert "authorize" in (response.headers.get("location") or "")
+        assert self._cookie_value(response, "papita_bff_oauth_cv") == "pkce-verifier-bff-0123456789abcdef"
+        assert self._cookie_value(response, "papita_bff_oauth_provider") == "google"
+        assert "bff/auth/oauth/callback" in self._cookie_value(response, "papita_bff_oauth_rt")
+        assert self._cookie_value(response, "papita_bff_oauth_return").endswith("/dashboard")
+        assert mock_start.call_args.kwargs["redirect_to"].endswith("/api/v1/bff/auth/oauth/callback")
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_start_oauth_rejects_open_return_to_path(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("ALLOWED_ORIGINS", '["http://testserver"]')
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_oauth_authorize_url",
+            return_value=MagicMock(
+                provider="github",
+                url="https://example.supabase.co/auth/v1/authorize?provider=github",
+                code_verifier="pkce-verifier-bff-github",
+            ),
+        ):
+            client = TestClient(create_app())
+            response = client.get(
+                "/api/v1/bff/auth/oauth/github",
+                params={"return_to": "//evil.example/phish"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        assert self._cookie_value(response, "papita_bff_oauth_return").endswith("/dashboard")
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_oauth_callback_sets_papita_sid_and_redirects(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        subject = uuid.uuid4()
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("ALLOWED_ORIGINS", '["http://testserver"]')
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.ensure_from_auth_subject.return_value = _supabase_owner(subject, "john@gmail.com")
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+
+        token = MagicMock()
+        token.access_token = "bff-oauth-access"
+        token.refresh_token = "bff-oauth-refresh"
+        token.expires_in = 3600
+        user = _supabase_owner(subject, "john@gmail.com")
+
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth._complete_oauth_provision",
+            return_value=(token, user),
+        ):
+            client = TestClient(app)
+            client.cookies.set("papita_bff_oauth_cv", "pkce-verifier-bff")
+            client.cookies.set("papita_bff_oauth_provider", "google")
+            client.cookies.set(
+                "papita_bff_oauth_rt",
+                "http://testserver/api/v1/bff/auth/oauth/callback",
+            )
+            client.cookies.set("papita_bff_oauth_return", "http://testserver/dashboard")
+            response = client.get(
+                "/api/v1/bff/auth/oauth/callback",
+                params={"code": "auth-code-xyz"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        assert response.headers.get("location") == "http://testserver/dashboard"
+        assert response.cookies.get(BFF_SESSION_COOKIE)
+        body = response.content
+        assert b"access_token" not in body
+        assert b"refresh_token" not in body
+        app.dependency_overrides.clear()
+        clear_memory_bff_sessions()
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    def test_oauth_callback_missing_cookies_redirects_to_login_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("ALLOWED_ORIGINS", '["http://testserver"]')
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+
+        client = TestClient(create_app())
+        response = client.get(
+            "/api/v1/bff/auth/oauth/callback",
+            params={"code": "auth-code"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 302
+        assert "oauth_error=1" in (response.headers.get("location") or "")
+        assert response.cookies.get(BFF_SESSION_COOKIE) is None
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+
+class TestBffOAuthRedirectHardening:
+    """Origin/redirect allowlisting for BFF OAuth (never trust Origin/Referer/cookies)."""
+
+    @staticmethod
+    def _supabase_env(monkeypatch: pytest.MonkeyPatch, allowed_origins: str) -> None:
+        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
+        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
+        monkeypatch.setenv("DATABASE_URL", "")
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        monkeypatch.setenv("ALLOWED_ORIGINS", allowed_origins)
+        get_settings.cache_clear()
+        AuthSecurityManager.reset_instances()
+        InMemoryRateLimiter().reset()
+        clear_memory_bff_sessions()
+
+    @staticmethod
+    def _reset_env(monkeypatch: pytest.MonkeyPatch) -> None:
+        get_settings.cache_clear()
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.delenv("SUPABASE_URL", raising=False)
+        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
+
+    @staticmethod
+    def _start_oauth(client: TestClient, headers: dict[str, str] | None = None):
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth.supabase_oauth_authorize_url",
+            return_value=MagicMock(
+                provider="google",
+                url="https://example.supabase.co/auth/v1/authorize?provider=google",
+                code_verifier="pkce-verifier-bff-0123456789abcdef",
+            ),
+        ) as mock_start:
+            response = client.get(
+                "/api/v1/bff/auth/oauth/google",
+                params={"return_to": "/dashboard"},
+                headers=headers or {},
+                follow_redirects=False,
+            )
+        return response, mock_start
+
+    def test_start_oauth_ignores_non_allowlisted_origin_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A spoofed ``Origin`` must not become the Supabase ``redirect_to``."""
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+        client = TestClient(create_app())
+        response, mock_start = self._start_oauth(client, {"origin": "https://evil.example"})
+
+        assert response.status_code == 302
+        redirect_to = mock_start.call_args.kwargs["redirect_to"]
+        assert redirect_to == "http://testserver/api/v1/bff/auth/oauth/callback"
+        assert "evil.example" not in redirect_to
+        self._reset_env(monkeypatch)
+
+    def test_start_oauth_with_empty_allowlist_ignores_origin_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An empty ``ALLOWED_ORIGINS`` must fail closed onto the server-derived URL."""
+        self._supabase_env(monkeypatch, "[]")
+        client = TestClient(create_app())
+        response, mock_start = self._start_oauth(client, {"origin": "https://evil.example"})
+
+        assert response.status_code == 302
+        assert mock_start.call_args.kwargs["redirect_to"] == "http://testserver/api/v1/bff/auth/oauth/callback"
+        return_cookie = (client.cookies.get("papita_bff_oauth_return") or "").strip('"')
+        assert "evil.example" not in return_cookie
+        self._reset_env(monkeypatch)
+
+    def test_start_oauth_pkce_cookies_are_httponly_and_api_scoped(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """PKCE cookies must stay HttpOnly, SameSite=Lax and scoped to ``/api``."""
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+        client = TestClient(create_app())
+        response, _ = self._start_oauth(client)
+
+        assert response.status_code == 302
+        set_cookies = [header for header in response.headers.get_list("set-cookie")]
+        pkce_headers = [
+            header
+            for header in set_cookies
+            if header.split("=", 1)[0]
+            in {
+                "papita_bff_oauth_cv",
+                "papita_bff_oauth_provider",
+                "papita_bff_oauth_rt",
+                "papita_bff_oauth_return",
+            }
+        ]
+        assert len(pkce_headers) == 4
+        for header in pkce_headers:
+            assert "HttpOnly" in header
+            assert "SameSite=lax" in header
+            assert "Path=/api" in header
+        self._reset_env(monkeypatch)
+
+    def test_oauth_callback_idp_error_redirects_to_login_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """An IdP ``error`` must land on ``/login?oauth_error=1`` without a session."""
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+        client = TestClient(create_app())
+        client.cookies.set("papita_bff_oauth_cv", "pkce-verifier-bff")
+        client.cookies.set("papita_bff_oauth_provider", "google")
+        client.cookies.set("papita_bff_oauth_return", "http://testserver/dashboard")
+        response = client.get(
+            "/api/v1/bff/auth/oauth/callback",
+            params={
+                "error": "access_denied",
+                "error_description": "user cancelled consent",
+            },
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 302
+        assert response.headers.get("location") == "http://testserver/login?oauth_error=1"
+        assert response.cookies.get(BFF_SESSION_COOKIE) is None
+        assert b"user cancelled consent" not in response.content
+        self._reset_env(monkeypatch)
+
+    def test_oauth_error_redirect_ignores_tampered_return_cookie(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A tossed ``papita_bff_oauth_return`` must not steer the error redirect."""
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+        client = TestClient(create_app())
+        client.cookies.set("papita_bff_oauth_return", "https://evil.example/dashboard")
+        response = client.get(
+            "/api/v1/bff/auth/oauth/callback",
+            params={"error": "server_error"},
+            follow_redirects=False,
+        )
+
+        assert response.status_code == 302
+        location = response.headers.get("location") or ""
+        assert "evil.example" not in location
+        assert location.endswith("/login?oauth_error=1")
+        self._reset_env(monkeypatch)
+
+    def test_oauth_callback_ignores_tampered_return_cookie_on_success(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A successful exchange must still redirect to an allowlisted SPA origin."""
+        subject = uuid.uuid4()
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.ensure_from_auth_subject.return_value = _supabase_owner(subject, "john@gmail.com")
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+
+        token = MagicMock()
+        token.access_token = "bff-oauth-access"
+        token.refresh_token = "bff-oauth-refresh"
+        token.expires_in = 3600
+
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth._complete_oauth_provision",
+            return_value=(token, _supabase_owner(subject, "john@gmail.com")),
+        ):
+            client = TestClient(app)
+            client.cookies.set("papita_bff_oauth_cv", "pkce-verifier-bff")
+            client.cookies.set("papita_bff_oauth_provider", "google")
+            client.cookies.set("papita_bff_oauth_rt", "http://testserver/api/v1/bff/auth/oauth/callback")
+            client.cookies.set("papita_bff_oauth_return", "https://evil.example/dashboard")
+            response = client.get(
+                "/api/v1/bff/auth/oauth/callback",
+                params={"code": "auth-code-xyz"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        location = response.headers.get("location") or ""
+        assert "evil.example" not in location
+        assert location == "http://testserver/dashboard"
+        assert response.cookies.get(BFF_SESSION_COOKIE)
+        app.dependency_overrides.clear()
+        clear_memory_bff_sessions()
+        self._reset_env(monkeypatch)
+
+    def test_oauth_callback_ignores_tampered_redirect_cookie(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A tossed ``papita_bff_oauth_rt`` must not widen the Supabase ``redirect_to``."""
+        subject = uuid.uuid4()
+        self._supabase_env(monkeypatch, '["http://testserver"]')
+
+        app = create_app()
+        mock_users = MagicMock()
+        mock_users.ensure_from_auth_subject.return_value = _supabase_owner(subject, "john@gmail.com")
+        app.dependency_overrides[get_users_service] = lambda: mock_users
+
+        token = MagicMock()
+        token.access_token = "bff-oauth-access"
+        token.refresh_token = "bff-oauth-refresh"
+        token.expires_in = 3600
+
+        with patch(
+            "papita_txnsapi.routers.v1.bff_auth._complete_oauth_provision",
+            return_value=(token, _supabase_owner(subject, "john@gmail.com")),
+        ) as mock_provision:
+            client = TestClient(app)
+            client.cookies.set("papita_bff_oauth_cv", "pkce-verifier-bff")
+            client.cookies.set("papita_bff_oauth_provider", "google")
+            client.cookies.set("papita_bff_oauth_rt", "https://evil.example/api/v1/bff/auth/oauth/callback")
+            client.cookies.set("papita_bff_oauth_return", "http://testserver/dashboard")
+            response = client.get(
+                "/api/v1/bff/auth/oauth/callback",
+                params={"code": "auth-code-xyz"},
+                follow_redirects=False,
+            )
+
+        assert response.status_code == 302
+        assert mock_provision.call_args.kwargs["redirect_to"] == ("http://testserver/api/v1/bff/auth/oauth/callback")
+        app.dependency_overrides.clear()
+        clear_memory_bff_sessions()
+        self._reset_env(monkeypatch)

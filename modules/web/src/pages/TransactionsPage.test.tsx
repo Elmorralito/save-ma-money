@@ -154,7 +154,7 @@ describe("TransactionsPage", () => {
     await waitFor(() => {
       expect(screen.getByText("Lunch")).toBeInTheDocument();
     });
-    expect(screen.getByText("expense")).toBeInTheDocument();
+    expect(screen.getAllByText("Expense").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/\$12\.50/)).toBeInTheDocument();
   });
 

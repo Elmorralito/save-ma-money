@@ -6,6 +6,7 @@ import { bffLogin, bffResendConfirmation } from "@/api/auth";
 import { isPapitaApiError } from "@/api/errors";
 import { queryKeys } from "@/api/queryKeys";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
+import { OAuthProviderButtons } from "@/components/OAuthProviderButtons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +27,17 @@ export function LoginPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const sessionQuery = useQuery(bffSessionQueryOptions());
+  const postLoginPath =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "from" in location.state &&
+    typeof (location.state as { from?: unknown }).from === "string"
+      ? (location.state as { from: string }).from
+      : "/dashboard";
+  const oauthReturnTo =
+    postLoginPath.startsWith("/") && !postLoginPath.startsWith("//") && postLoginPath !== "/"
+      ? postLoginPath
+      : "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -36,13 +48,7 @@ export function LoginPage() {
     mutationFn: bffLogin,
     onSuccess: async (session) => {
       queryClient.setQueryData(queryKeys.auth.session(), session);
-      const from =
-        typeof location.state === "object" &&
-        location.state !== null &&
-        "from" in location.state &&
-        typeof (location.state as { from?: unknown }).from === "string"
-          ? (location.state as { from: string }).from
-          : "/dashboard";
+      const from = postLoginPath;
       await navigate(from === "/" ? "/dashboard" : from, { replace: true });
     },
     onError: (err: unknown) => {
@@ -100,14 +106,21 @@ export function LoginPage() {
     "emailConfirmed" in location.state &&
     Boolean((location.state as { emailConfirmed?: unknown }).emailConfirmed);
 
+  const oauthError = new URLSearchParams(location.search).get("oauth_error");
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
         <p className="text-sm text-muted-foreground">
-          Session cookies only — JWTs never touch the browser.
+          Sign in with email or continue with Google or GitHub.
         </p>
       </div>
+      {oauthError ? (
+        <p role="alert" className="text-sm text-destructive">
+          Social sign-in failed. Try again or use email and password.
+        </p>
+      ) : null}
       {emailConfirmed ? (
         <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm" role="status">
           Email confirmed. Sign in with your email and password to open a session.
@@ -172,6 +185,7 @@ export function LoginPage() {
           {resendMutation.isPending ? "Sending…" : "Resend confirmation email"}
         </Button>
       ) : null}
+      <OAuthProviderButtons returnTo={oauthReturnTo} />
       <p className="text-sm text-muted-foreground">
         No account?{" "}
         <Link

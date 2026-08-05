@@ -10,6 +10,7 @@ type QueryStateProps = {
   isEmpty: boolean;
   emptyTitle: string;
   emptyDescription?: string;
+  emptyAction?: ReactNode;
   onRetry?: () => void;
   children: ReactNode;
 };
@@ -22,6 +23,7 @@ export function QueryState({
   isEmpty,
   emptyTitle,
   emptyDescription,
+  emptyAction,
   onRetry,
   children,
 }: QueryStateProps) {
@@ -53,6 +55,7 @@ export function QueryState({
         {emptyDescription ? (
           <p className="mt-1 text-sm text-muted-foreground">{emptyDescription}</p>
         ) : null}
+        {emptyAction ? <div className="mt-4 flex justify-center">{emptyAction}</div> : null}
       </div>
     );
   }

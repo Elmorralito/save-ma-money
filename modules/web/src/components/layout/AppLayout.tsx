@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import { Menu, PanelLeftClose } from "lucide-react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { bffLogout } from "@/api/auth";
 import { queryKeys } from "@/api/queryKeys";
+import { BrandLogo } from "@/components/layout/BrandLogo";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
 import { sessionUserLabel } from "@/components/layout/sessionUserLabel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
 import { cn } from "@/lib/utils";
+
+const NAV_OPEN_STORAGE_KEY = "papita.navOpen";
 
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return cn(
@@ -21,10 +24,39 @@ function navLinkClassName({ isActive }: { isActive: boolean }): string {
   );
 }
 
-/** Authenticated app shell: responsive nav + header session chip. */
+function readStoredNavOpen(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  try {
+    const raw = window.localStorage.getItem(NAV_OPEN_STORAGE_KEY);
+    if (raw === "0") {
+      return false;
+    }
+    if (raw === "1") {
+      return true;
+    }
+  } catch {
+    // ignore quota / private mode
+  }
+  // Default: open on desktop, closed on small screens (jsdom has no matchMedia).
+  if (typeof window.matchMedia !== "function") {
+    return true;
+  }
+  return window.matchMedia("(min-width: 768px)").matches;
+}
+
+function isMobileViewport(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false;
+  }
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
+/** Authenticated app shell: hideable nav + header session chip. */
 export function AppLayout() {
   const title = import.meta.env.VITE_APP_TITLE ?? "Papita";
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(readStoredNavOpen);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const sessionQuery = useQuery(bffSessionQueryOptions());
@@ -32,17 +64,29 @@ export function AppLayout() {
   const isSessionPending = sessionQuery.isPending;
   const isSessionError = sessionQuery.isError;
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NAV_OPEN_STORAGE_KEY, isNavOpen ? "1" : "0");
+    } catch {
+      // ignore quota / private mode
+    }
+  }, [isNavOpen]);
+
   const logoutMutation = useMutation({
     mutationFn: bffLogout,
     onSettled: async () => {
       await queryClient.removeQueries({ queryKey: queryKeys.auth.all });
-      setIsMobileNavOpen(false);
+      setIsNavOpen(false);
       await navigate("/login", { replace: true });
     },
   });
 
-  function closeMobileNav() {
-    setIsMobileNavOpen(false);
+  function closeNav() {
+    setIsNavOpen(false);
+  }
+
+  function toggleNav() {
+    setIsNavOpen((open) => !open);
   }
 
   let sessionChip: string | null = null;
@@ -59,25 +103,31 @@ export function AppLayout() {
   return (
     <div className="flex min-h-svh w-full max-w-full overflow-x-hidden bg-background">
       <aside
+        id="app-main-nav"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200 md:static md:translate-x-0",
-          isMobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-64 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200",
+          isNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Main navigation"
+        aria-hidden={!isNavOpen}
+        // Closed drawer must not remain in the tab order (aria-hidden alone is insufficient).
+        {...(!isNavOpen ? { inert: true } : {})}
       >
-        <div className="flex h-14 items-center justify-between px-4">
-          <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">
-            {title}
-          </p>
+        <div className="flex h-14 items-center justify-between gap-2 px-4">
+          <BrandLogo
+            title={title}
+            className="min-w-0 text-sidebar-foreground"
+            imageClassName="size-8"
+          />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="md:hidden"
-            onClick={closeMobileNav}
-            aria-label="Close navigation"
+            className="shrink-0"
+            onClick={closeNav}
+            aria-label="Hide navigation"
           >
-            <X />
+            <PanelLeftClose />
           </Button>
         </div>
         <Separator className="bg-sidebar-border" />
@@ -87,7 +137,12 @@ export function AppLayout() {
               key={item.to}
               to={item.to}
               className={navLinkClassName}
-              onClick={closeMobileNav}
+              onClick={() => {
+                // Collapse the drawer on small screens after navigation.
+                if (isMobileViewport()) {
+                  closeNav();
+                }
+              }}
             >
               {item.label}
             </NavLink>
@@ -95,32 +150,39 @@ export function AppLayout() {
         </nav>
       </aside>
 
-      {isMobileNavOpen ? (
+      {isNavOpen ? (
         <button
           type="button"
           className="fixed inset-0 z-30 bg-foreground/30 md:hidden"
           aria-label="Dismiss navigation overlay"
-          onClick={closeMobileNav}
+          onClick={closeNav}
         />
       ) : null}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col transition-[padding] duration-200",
+          isNavOpen ? "md:pl-64" : "md:pl-0",
+        )}
+      >
         <header className="flex h-14 items-center gap-3 border-b border-border px-3 sm:px-4">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="md:hidden"
-            onClick={() => {
-              setIsMobileNavOpen(true);
-            }}
-            aria-label="Open navigation"
-            aria-expanded={isMobileNavOpen}
+            onClick={toggleNav}
+            aria-label={isNavOpen ? "Hide navigation" : "Show navigation"}
+            aria-expanded={isNavOpen}
+            aria-controls="app-main-nav"
           >
-            <Menu />
+            {isNavOpen ? <PanelLeftClose /> : <Menu />}
           </Button>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm text-muted-foreground md:hidden">{title}</p>
+            <BrandLogo
+              title={title}
+              className={cn("text-muted-foreground", isNavOpen && "md:hidden")}
+              imageClassName="size-7"
+            />
           </div>
           <div className="flex min-w-0 items-center gap-2" aria-live="polite">
             {sessionChip ? (

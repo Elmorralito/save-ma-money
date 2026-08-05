@@ -6,7 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
+import { formatSlugLabel } from "@/lib/formatSlugLabel";
 import type { SpendingReportResponse } from "@/types/domain";
 
 type SpendingReportViewProps = {
@@ -28,7 +30,8 @@ export function SpendingReportView({ report, currency = "USD" }: SpendingReportV
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Period {report.period.start_date} → {report.period.end_date} · grouped by {report.group_by}
+        Period {formatDate(report.period.start_date)} → {formatDate(report.period.end_date)} ·
+        grouped by {formatSlugLabel(report.group_by)}
       </p>
 
       {breakdown.length === 0 ? (
@@ -48,8 +51,8 @@ export function SpendingReportView({ report, currency = "USD" }: SpendingReportV
             </TableRow>
           </TableHeader>
           <TableBody>
-            {breakdown.map((row) => (
-              <TableRow key={`${row.category}-${String(row.amount)}`}>
+            {breakdown.map((row, index) => (
+              <TableRow key={`${row.category}-${String(index)}`}>
                 <TableCell className="font-medium">{row.category}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatMoney(row.amount, currency)}

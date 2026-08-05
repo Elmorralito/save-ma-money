@@ -42,7 +42,10 @@ redis-up:
 redis-down:
 	docker compose --env-file environments/local/.env -f docker/database/docker-compose.yml stop redis
 
-COMPOSE_LOCAL := docker compose --env-file environments/local/.env -f docker/docker-compose.yml
+# Prefer environments/local/.env over a polluted shell (Compose shell env wins over
+# --env-file for ${VAR} interpolation). Stale ALLOWED_ORIGINS without :5173 breaks
+# Vite BFF OAuth cookies/redirects.
+COMPOSE_LOCAL := env -u ALLOWED_ORIGINS docker compose --env-file environments/local/.env -f docker/docker-compose.yml
 
 # Canonical API runtime (PPT-045): uvicorn runs inside the Compose image — not on the host.
 # Brings up api + depends_on (Postgres, Redis, migrate). Bind: 0.0.0.0:8000 in-container;

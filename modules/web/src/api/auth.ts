@@ -17,6 +17,8 @@ export type BffSession = {
   user: BffUser | null;
   csrf_token: string | null;
   session_backend: string | null;
+  /** Unix seconds when the server-held access JWT expires (never the JWT itself). */
+  access_expires_at: number | null;
 };
 
 function rememberCsrf(session: BffSession): BffSession {
@@ -106,4 +108,18 @@ export async function bffLogout(): Promise<void> {
     skipAuthRefresh: true,
   });
   clearCsrfToken();
+}
+
+export type BffOAuthProvider = "google" | "github";
+
+/**
+ * Same-origin BFF OAuth start URL (full-page navigation — do not fetch).
+ * Sets HttpOnly PKCE cookies then 302s to the IdP; callback sets ``papita_sid``.
+ */
+export function bffOAuthStartUrl(
+  provider: BffOAuthProvider,
+  returnTo: string = "/dashboard",
+): string {
+  const params = new URLSearchParams({ return_to: returnTo });
+  return `/api/v1/bff/auth/oauth/${provider}?${params.toString()}`;
 }

@@ -627,8 +627,19 @@
       },
       "BffSessionResponse": {
         "additionalProperties": false,
-        "description": "Public BFF session probe / login response (no JWTs).\n\nAttributes:\n    authenticated: Whether a valid session cookie was resolved.\n    user: Public profile when authenticated.\n    csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.\n    session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).",
+        "description": "Public BFF session probe / login response (no JWTs).\n\nAttributes:\n    authenticated: Whether a valid session cookie was resolved.\n    user: Public profile when authenticated.\n    csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.\n    session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).\n    access_expires_at: Unix timestamp (seconds) when the server-held access JWT\n        expires. Never includes the JWT itself — SPA countdown / refresh UX only.",
         "properties": {
+          "access_expires_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Access Expires At"
+          },
           "authenticated": {
             "title": "Authenticated",
             "type": "boolean"
@@ -3962,6 +3973,143 @@
           }
         },
         "summary": "Bff Logout",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/oauth/callback": {
+      "get": {
+        "description": "Complete Supabase OAuth for the SPA and set ``papita_sid`` (never JWT JSON).\n\nPair with ``GET /bff/auth/oauth/{provider}``. Exchanges the authorization\n``code`` using Path=/api PKCE cookies, creates a BFF session, then 302s to\nthe allowlisted SPA ``return_to`` URL. Failures redirect to ``/login?oauth_error=1``.",
+        "operationId": "bff_oauth_callback_get_api_v1_bff_auth_oauth_callback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error_description",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Description"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bff Oauth Callback Get",
+        "tags": [
+          "BFF Authentication"
+        ]
+      }
+    },
+    "/api/v1/bff/auth/oauth/{provider}": {
+      "get": {
+        "description": "Start Supabase OAuth for the SPA and 302 to the IdP (PKCE cookies, Path=/api).\n\nBrowser navigates here (full page, not ``fetch``). ``return_to`` is a relative\nSPA path (default ``/dashboard``) stored for the callback redirect after\n``papita_sid`` is set. Never returns JWTs or the PKCE verifier to JavaScript.",
+        "operationId": "bff_start_oauth_api_v1_bff_auth_oauth__provider__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "title": "Provider",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Return To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bff Start Oauth",
         "tags": [
           "BFF Authentication"
         ]

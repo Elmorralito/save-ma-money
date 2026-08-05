@@ -54,7 +54,7 @@ describe("AccountsPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("link", { name: "Checking" })).toBeInTheDocument();
     });
-    expect(screen.getByText("checking")).toBeInTheDocument();
+    expect(screen.getByText("Asset")).toBeInTheDocument();
     expect(screen.getByText(/\$42\.50/)).toBeInTheDocument();
   });
 

@@ -20,6 +20,23 @@ vi.mock("@/api/auth", () => ({
   bffResendConfirmation: vi.fn(),
 }));
 
+vi.mock("@/api/accounts", () => ({
+  listAccounts: vi.fn(async () => ({ items: [], total: 0, skip: 0, limit: 5 })),
+  getAccount: vi.fn(),
+  createAccount: vi.fn(),
+  updateAccount: vi.fn(),
+  deleteAccount: vi.fn(),
+}));
+
+vi.mock("@/api/movements", () => ({
+  listMovements: vi.fn(async () => ({ items: [], total: 0, skip: 0, limit: 5 })),
+  getMovement: vi.fn(),
+  createMovement: vi.fn(),
+  updateMovement: vi.fn(),
+  executeMovement: vi.fn(),
+  cancelMovement: vi.fn(),
+}));
+
 vi.mock("@/api/health", () => ({
   getHealth: vi.fn(async () => ({
     status: "healthy",
@@ -90,6 +107,7 @@ const authenticatedSession: BffSession = {
   user: fixtureUser,
   csrf_token: "csrf-test",
   session_backend: "memory",
+  access_expires_at: Math.floor(Date.now() / 1000) + 3600,
 };
 
 function renderShell(initialPath = "/dashboard") {
@@ -136,13 +154,19 @@ describe("sessionUserLabel", () => {
 });
 
 describe("AppLayout", () => {
+  beforeEach(() => {
+    window.localStorage.removeItem("papita.navOpen");
+  });
+
   it("renders nav landmarks and navigates between stub routes", async () => {
     const user = userEvent.setup();
 
     renderShell();
 
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 1, name: "Dashboard" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 1, name: /Welcome back, tester/i }),
+      ).toBeInTheDocument();
     });
     await waitFor(() => {
       expect(screen.getByTestId("session-user-chip")).toHaveTextContent("tester");
@@ -156,6 +180,29 @@ describe("AppLayout", () => {
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Accounts" })).toBeInTheDocument();
+    });
+  });
+
+  it("toggles the navigation sidebar open and closed", async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    await waitFor(() => {
+      expect(screen.getByRole("navigation", { name: "App sections" })).toBeInTheDocument();
+    });
+
+    const hideButtons = screen.getAllByRole("button", { name: "Hide navigation" });
+    await user.click(hideButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Show navigation" })).toBeInTheDocument();
+    });
+    expect(screen.getByLabelText("Main navigation")).toHaveAttribute("aria-hidden", "true");
+
+    await user.click(screen.getByRole("button", { name: "Show navigation" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Main navigation")).toHaveAttribute("aria-hidden", "false");
     });
   });
 
