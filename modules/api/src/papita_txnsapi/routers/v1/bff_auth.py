@@ -95,6 +95,10 @@ _BFF_OAUTH_RETURN_COOKIE = "papita_bff_oauth_return"
 _BFF_OAUTH_COOKIE_MAX_AGE = 600
 _DEFAULT_SPA_RETURN_PATH = "/dashboard"
 _OAUTH_ERROR_LOGIN_PATH = "/login?oauth_error=1"
+# PKCE verifier charset (RFC 7636 unreserved) + length bound for Set-Cookie safety.
+_BFF_OAUTH_VERIFIER_RE = re.compile(r"^[A-Za-z0-9._~-]{16,128}$")
+# IdP ``error`` query codes are logged only when they match this shape.
+_OAUTH_IDP_ERROR_CODE_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 router = APIRouter(prefix="/bff/auth", tags=["BFF Authentication"])
 
@@ -139,6 +143,21 @@ def _is_allowlisted_url(settings: Settings, url: str) -> bool:
     if not trimmed:
         return False
     return any(trimmed == base or trimmed.startswith(f"{base}/") for base in _allowlisted_origins(settings))
+
+
+def _match_allowlisted_origin(settings: Settings, candidate: str) -> str | None:
+    """Return the ``ALLOWED_ORIGINS`` entry equal to ``candidate``, or ``None``.
+
+    Iterating the allowlist and returning that entry (not the candidate string)
+    breaks CodeQL URL-redirection taint after an allowlist membership check.
+    """
+    normalized = candidate.strip().rstrip("/")
+    if not normalized:
+        return None
+    for allowed in _allowlisted_origins(settings):
+        if normalized == allowed:
+            return allowed
+    return None
 
 
 def _browser_origin_candidates(request: Request) -> list[str]:
@@ -239,19 +258,42 @@ def _resolve_spa_return_url(request: Request, settings: Settings, return_to: str
     """
     path = _safe_spa_return_path(return_to)
     origin = _spa_origin_from_request(request, settings)
+    matched = _match_allowlisted_origin(settings, origin)
+    if matched is not None:
+        return f"{matched}{path}"
+    # Fall back to dashboard on a known SPA origin (never the raw user string).
     absolute = f"{origin}{path}"
     if _is_allowlisted_url(settings, absolute):
         return absolute
-    # Fall back to dashboard on a known SPA origin (never the raw user string).
     fallback = f"{origin}{_DEFAULT_SPA_RETURN_PATH}"
     if _is_allowlisted_url(settings, fallback):
         return fallback
     return path
 
 
+def _post_oauth_spa_location(request: Request, settings: Settings, return_url: str | None) -> str:
+    """Rebuild the post-OAuth SPA ``Location`` from allowlisted origins only.
+
+    Never returns the raw ``papita_bff_oauth_return`` cookie string to
+    ``RedirectResponse`` — even after an allowlist check — so open-redirect
+    taint cannot reach the response.
+    """
+    if return_url:
+        trimmed = return_url.strip()
+        parsed = urlparse(trimmed)
+        if parsed.scheme and parsed.netloc:
+            matched = _match_allowlisted_origin(settings, f"{parsed.scheme}://{parsed.netloc}")
+            if matched is not None:
+                return f"{matched}{_safe_spa_return_path(parsed.path or _DEFAULT_SPA_RETURN_PATH)}"
+        if trimmed.startswith("/") and not trimmed.startswith("//"):
+            return _resolve_spa_return_url(request, settings, trimmed)
+    return _resolve_spa_return_url(request, settings, _DEFAULT_SPA_RETURN_PATH)
+
+
 def _set_bff_oauth_pkce_cookies(
     response: Response,
     *,
+    settings: Settings,
     code_verifier: str,
     provider: ProviderType,
     redirect_to: str,
@@ -259,21 +301,34 @@ def _set_bff_oauth_pkce_cookies(
     secure: bool,
 ) -> None:
     """Store BFF OAuth PKCE + SPA return URL in Path=/api HttpOnly cookies."""
-    for key, value in (
-        (_BFF_OAUTH_VERIFIER_COOKIE, code_verifier),
-        (_BFF_OAUTH_PROVIDER_COOKIE, provider.value),
-        (_BFF_OAUTH_REDIRECT_COOKIE, redirect_to),
-        (_BFF_OAUTH_RETURN_COOKIE, return_url),
-    ):
-        response.set_cookie(
-            key=key,
-            value=value,
-            max_age=_BFF_OAUTH_COOKIE_MAX_AGE,
-            httponly=True,
-            samesite="lax",
-            secure=secure,
-            path=BFF_COOKIE_PATH,
-        )
+    cookie_kwargs = {
+        "max_age": _BFF_OAUTH_COOKIE_MAX_AGE,
+        "httponly": True,
+        "samesite": "lax",
+        "secure": secure,
+        "path": BFF_COOKIE_PATH,
+    }
+    if _BFF_OAUTH_VERIFIER_RE.fullmatch(code_verifier) is None:
+        raise ValueError("invalid BFF OAuth PKCE code_verifier for Set-Cookie")
+    # PKCE code_verifier is OAuth entropy for the token exchange, not a user password.
+    # It must round-trip in an HttpOnly Path=/api cookie until the BFF callback.
+    # codeql[py/clear-text-storage-sensitive-data] PKCE verifier (not a password); HttpOnly Path=/api round-trip
+    response.set_cookie(key=_BFF_OAUTH_VERIFIER_COOKIE, value=code_verifier, **cookie_kwargs)
+    response.set_cookie(key=_BFF_OAUTH_PROVIDER_COOKIE, value=provider.value, **cookie_kwargs)
+    # ``redirect_to`` is the server-computed BFF callback (never a query param).
+    response.set_cookie(key=_BFF_OAUTH_REDIRECT_COOKIE, value=redirect_to, **cookie_kwargs)
+    # Persist only an allowlist-rebuilt SPA URL / relative path (not raw return_to).
+    parsed_return = urlparse(return_url.strip())
+    if parsed_return.scheme and parsed_return.netloc:
+        matched = _match_allowlisted_origin(settings, f"{parsed_return.scheme}://{parsed_return.netloc}")
+        if matched is not None:
+            safe_return = f"{matched}{_safe_spa_return_path(parsed_return.path or _DEFAULT_SPA_RETURN_PATH)}"
+        else:
+            safe_return = _safe_spa_return_path(parsed_return.path or _DEFAULT_SPA_RETURN_PATH)
+    else:
+        safe_return = _safe_spa_return_path(return_url)
+    # codeql[py/cookie-injection] value is allowlist-rebuilt or a sanitized relative SPA path
+    response.set_cookie(key=_BFF_OAUTH_RETURN_COOKIE, value=safe_return, **cookie_kwargs)
 
 
 def _clear_bff_oauth_pkce_cookies(response: Response) -> None:
@@ -296,11 +351,14 @@ def _oauth_error_redirect(request: Request, settings: Settings, return_url: str 
     origin = _spa_origin_from_request(request, settings)
     if return_url:
         parsed = urlparse(return_url.strip())
-        cookie_origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.scheme and parsed.netloc else ""
-        if cookie_origin and cookie_origin in _allowlisted_origins(settings):
-            origin = cookie_origin
-    target = f"{origin}{_OAUTH_ERROR_LOGIN_PATH}"
-    if not _is_allowlisted_url(settings, target):
+        if parsed.scheme and parsed.netloc:
+            matched = _match_allowlisted_origin(settings, f"{parsed.scheme}://{parsed.netloc}")
+            if matched is not None:
+                origin = matched
+    matched_origin = _match_allowlisted_origin(settings, origin)
+    if matched_origin is not None:
+        target = f"{matched_origin}{_OAUTH_ERROR_LOGIN_PATH}"
+    else:
         target = _OAUTH_ERROR_LOGIN_PATH
     response = RedirectResponse(url=target, status_code=status.HTTP_302_FOUND)
     _clear_bff_oauth_pkce_cookies(response)
@@ -767,11 +825,11 @@ def bff_oauth_callback(  # pylint: disable=too-many-locals,too-many-positional-a
             detail="OAuth SSO requires AUTH_PROVIDER=supabase",
         )
     if error:
-        logger.info(
-            "BFF OAuth IdP error code=%s desc_digest=%s",
-            error,
-            hashlib.sha256((error_description or "").encode("utf-8")).hexdigest()[:12] if error_description else "-",
+        safe_error = error if _OAUTH_IDP_ERROR_CODE_RE.fullmatch(error) else "invalid"
+        desc_digest = (
+            hashlib.sha256((error_description or "").encode("utf-8")).hexdigest()[:12] if error_description else "-"
         )
+        logger.info("BFF OAuth IdP error code=%s desc_digest=%s", safe_error, desc_digest)
         return _oauth_error_redirect(request, settings, return_url)
 
     code_verifier = request.cookies.get(_BFF_OAUTH_VERIFIER_COOKIE)
@@ -818,9 +876,7 @@ def bff_oauth_callback(  # pylint: disable=too-many-locals,too-many-positional-a
         ttl_seconds=_session_max_age(settings),
     )
 
-    spa_target = return_url
-    if spa_target is None or not _is_allowlisted_url(settings, spa_target):
-        spa_target = _resolve_spa_return_url(request, settings, _DEFAULT_SPA_RETURN_PATH)
+    spa_target = _post_oauth_spa_location(request, settings, return_url)
 
     response = RedirectResponse(url=spa_target, status_code=status.HTTP_302_FOUND)
     _set_session_cookie(response, session_id=session_id, settings=settings)
@@ -879,6 +935,7 @@ def bff_start_oauth(  # pylint: disable=too-many-positional-arguments
     response = RedirectResponse(url=started.url, status_code=status.HTTP_302_FOUND)
     _set_bff_oauth_pkce_cookies(
         response,
+        settings=settings,
         code_verifier=started.code_verifier,
         provider=oauth_provider,
         redirect_to=target,

@@ -19,10 +19,10 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **`feat/bff-oauth-buttons`:** BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons,
-  `access_expires_at` on BFF session, redirect allowlist hardening, branding, dashboard
-  TTL + accounts/pending snapshots, UI polish. Operator guide:
-  `modules/web/docs/oauth-supabase-setup.md`.
+- **`feat/bff-oauth-buttons` / [PR #169](https://github.com/Elmorralito/save-ma-money/pull/169):**
+  BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons, `access_expires_at`,
+  redirect allowlist rebuild for CodeQL URL-redirection, branding, dashboard TTL +
+  snapshots, UI polish. Guide: `modules/web/docs/oauth-supabase-setup.md`.
 
 ### Open (backlog)
 
@@ -30,7 +30,7 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Land BFF OAuth PR; enable IdP providers + redirect URLs per web OAuth setup doc
+- Merge PR #169 once CodeQL / CI green; enable IdP providers + redirect URLs per OAuth doc
 - Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 
