@@ -9,7 +9,8 @@ export async function loginWithSeed(page: Page, seed: E2ESeed): Promise<void> {
   await page.getByLabel("Password", { exact: true }).fill(seed.password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/(dashboard)?$/);
-  await page.getByRole("heading", { name: "Dashboard" }).waitFor();
+  // Dashboard h1 is "Welcome back, …" once session user loads; "Dashboard" only while pending.
+  await page.getByRole("heading", { name: /^(Dashboard|Welcome back,)/ }).waitFor();
 }
 
 /** Assert no JWT-shaped values leaked into WebStorage after auth. */

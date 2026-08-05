@@ -158,6 +158,10 @@ updates:
     commit-message:
       prefix: deps
       include: scope
+    # Build stage stays on Node 22 LTS (.nvmrc); major jumps break corepack/pnpm (#192).
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
     groups:
       docker-web:
         patterns:

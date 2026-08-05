@@ -4,3 +4,5 @@
 ignored:
   # Debian slim packages move often; Dependabot refreshes the base digest instead.
   - DL3008
+  # Named USER (appuser / nginx) is intentional; numeric UIDs are less readable.
+  - DL3066

@@ -33,7 +33,7 @@ test.describe("live register → login", () => {
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
     await page.waitForURL(/\/(dashboard)?$/);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^(Dashboard|Welcome back,)/ })).toBeVisible();
     await assertNoJwtInWebStorage(page);
   });
 });

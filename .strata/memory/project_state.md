@@ -18,10 +18,14 @@ Capture with `/strata:capture` only for work in flight.
 - **PPT-070 / #163** filed: payment due-date reminders epic + children #164–#168 (issues only).
 - **PPT-067 / #132:** API (#188) + web (#190) GHCR publish + Docker Image Security on main.
 
+### Last completed (this session) — ops
+
+- **PPT-067 publish-dev path gate** landed (#194). Closed Node 25 Dependabot #192 (stay on 22).
+
 ### In progress (ACTIVE)
 
-- **PPT-067 follow-up:** PR `publish-dev` gated on API/model/web **runtime** paths only
-  (no GHCR deploy for workflow-pin / e2e-only PRs).
+- **[PR #193](https://github.com/Elmorralito/save-ma-money/pull/193):** GHA Dependabot bumps +
+  e2e login/nav hardening + Hadolint HEALTHCHECK JSON / DL3066 ignore.
 
 ### Open (backlog)
 
@@ -30,7 +34,7 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Land publish-dev path-gate PR; set GHCR package visibility if needed
+- Merge PR #193; set GHCR package visibility if needed
 - Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 
