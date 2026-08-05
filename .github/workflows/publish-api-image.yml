@@ -291,6 +291,24 @@ jobs:
             org.opencontainers.image.version=${{ steps.pkg_ver.outputs.version }}
             com.github.papita.image.channel=stable
 
+      - name: Assert patched Python packages in scan image
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python papita-api:scan - <<'PY'
+          import importlib.metadata as m
+
+          def ver(name: str) -> tuple[int, ...]:
+              return tuple(int(p) for p in m.version(name).split(".")[:3])
+
+          setuptools_v = ver("setuptools")
+          msgpack_v = ver("msgpack")
+          pip_v = ver("pip")
+          print(f"pip={m.version('pip')} setuptools={m.version('setuptools')} msgpack={m.version('msgpack')}")
+          assert pip_v >= (26, 1, 2), pip_v
+          assert setuptools_v >= (78, 1, 1), setuptools_v
+          assert msgpack_v >= (1, 2, 1), msgpack_v
+          PY
+
       - name: Trivy image vulnerability gate
         uses: ./.github/actions/trivy-api-image-gate
         with:
@@ -482,8 +500,9 @@ jobs:
           push: false
           load: true
           tags: papita-api:scan
-          cache-from: type=gha,scope=papita-api-dev
-          cache-to: type=gha,mode=max,scope=papita-api-dev
+          # Bust stale GHA build cache from earlier PPT-067 iterations.
+          cache-from: type=gha,scope=papita-api-dev-v2
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v2
           labels: |
             org.opencontainers.image.title=save-ma-money-api
             org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview
@@ -491,6 +510,24 @@ jobs:
             org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
             org.opencontainers.image.version=${{ steps.meta.outputs.dev_version }}
             com.github.papita.image.channel=dev
+
+      - name: Assert patched Python packages in scan image
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python papita-api:scan - <<'PY'
+          import importlib.metadata as m
+
+          def ver(name: str) -> tuple[int, ...]:
+              return tuple(int(p) for p in m.version(name).split(".")[:3])
+
+          setuptools_v = ver("setuptools")
+          msgpack_v = ver("msgpack")
+          pip_v = ver("pip")
+          print(f"pip={m.version('pip')} setuptools={m.version('setuptools')} msgpack={m.version('msgpack')}")
+          assert pip_v >= (26, 1, 2), pip_v
+          assert setuptools_v >= (78, 1, 1), setuptools_v
+          assert msgpack_v >= (1, 2, 1), msgpack_v
+          PY
 
       - name: Trivy image vulnerability gate
         uses: ./.github/actions/trivy-api-image-gate
@@ -517,8 +554,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=papita-api-dev
-          cache-to: type=gha,mode=max,scope=papita-api-dev
+          cache-from: type=gha,scope=papita-api-dev-v2
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v2
           labels: |
             org.opencontainers.image.title=save-ma-money-api
             org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview

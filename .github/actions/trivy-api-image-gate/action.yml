@@ -1,6 +1,10 @@
 # Composite gate: fail the job on CRITICAL/HIGH image vulns (PPT-067).
 # GitHub Environment "required reviewers" cannot be scanners — this is the automated gate.
 # Aligns severity/ignore-unfixed with .github/workflows/trivy.yml filesystem scan.
+#
+# Gate uses `docker run aquasec/trivy` (table + exit-code) so severity filtering is
+# reliable. SARIF upload is separate and non-gating (trivy-action SARIF mode can
+# unset severity unless limit-severities-for-sarif is set).
 
 name: Trivy API image gate
 description: Scan a local Docker image with Trivy; fail on CRITICAL/HIGH; upload SARIF
@@ -20,19 +24,40 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Trivy image scan (CRITICAL/HIGH gate)
+    - name: Assert image is visible to Docker
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker image inspect "${{ inputs.image-ref }}" --format 'id={{.Id}} created={{.Created}}'
+
+    - name: Trivy image scan (CRITICAL/HIGH table gate)
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "${HOME}/.cache/trivy"
+        docker run --rm \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+          aquasec/trivy:0.70.0 image \
+          --scanners vuln \
+          --severity CRITICAL,HIGH \
+          --ignore-unfixed \
+          --exit-code 1 \
+          --format table \
+          "${{ inputs.image-ref }}"
+
+    - name: Trivy image SARIF (report only)
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         scan-type: image
         image-ref: ${{ inputs.image-ref }}
         scanners: vuln
         severity: CRITICAL,HIGH
-        # Without this, SARIF mode unsets TRIVY_SEVERITY and exit-code fails on MEDIUM/LOW too.
         limit-severities-for-sarif: true
         ignore-unfixed: true
         format: sarif
         output: ${{ inputs.sarif-file }}
-        exit-code: "1"
+        exit-code: "0"
 
     - name: Upload Trivy image SARIF
       uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
