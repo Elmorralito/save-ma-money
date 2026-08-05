@@ -44,6 +44,8 @@ jobs:
           scan-ref: .
           scanners: vuln,misconfig
           severity: CRITICAL,HIGH
+          # Keep SARIF + exit-code aligned with severity (see trivy-action entrypoint).
+          limit-severities-for-sarif: true
           format: sarif
           output: trivy-results.sarif
           exit-code: "1"

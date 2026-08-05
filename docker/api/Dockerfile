@@ -12,7 +12,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq5 libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir "pip>=25.0"
+    && pip install --no-cache-dir "pip>=26.1.2"
 
 # Model package (includes Alembic migrations and config data)
 COPY modules/model/pyproject.toml modules/model/README.md modules/model/LICENSE /app/modules/model/

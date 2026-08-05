@@ -27,6 +27,8 @@ runs:
         image-ref: ${{ inputs.image-ref }}
         scanners: vuln
         severity: CRITICAL,HIGH
+        # Without this, SARIF mode unsets TRIVY_SEVERITY and exit-code fails on MEDIUM/LOW too.
+        limit-severities-for-sarif: true
         ignore-unfixed: true
         format: sarif
         output: ${{ inputs.sarif-file }}
