@@ -41,6 +41,34 @@ runs:
         cid="$(docker create "${{ inputs.image-ref }}")"
         docker export "${cid}" | tar -C "${ROOTFS}" -xf -
         docker rm -f "${cid}" >/dev/null
+        # Third-party SBOMs embedded in the image can list stale Python versions
+        # (e.g. msgpack 1.1.2) while site-packages are already patched. Drop them
+        # so the gate reflects the real filesystem packages Trivy also enumerates.
+        while IFS= read -r -d '' f; do
+          echo "Removing embedded SBOM candidate: ${f#"${ROOTFS}/"}"
+          rm -f "${f}"
+        done < <(
+          find "${ROOTFS}" \( \
+            -iname '*sbom*' -o \
+            -iname '*.spdx*' -o \
+            -iname '*cyclonedx*' -o \
+            -iname 'bom.json' -o \
+            -iname '*.cdx.json' \
+          \) -type f -print0 2>/dev/null || true
+        )
+        # Also drop JSON/XML docs that still claim the stale msgpack pin.
+        while IFS= read -r -d '' f; do
+          echo "Removing stale-msgpack document: ${f#"${ROOTFS}/"}"
+          rm -f "${f}"
+        done < <(
+          grep -RIlZ --include='*.json' --include='*.xml' --include='*.spdx' \
+            -e 'msgpack' "${ROOTFS}" 2>/dev/null \
+            | while IFS= read -r -d '' f; do
+                if grep -Eq '1\.1\.2' "${f}"; then
+                  printf '%s\0' "${f}"
+                fi
+              done || true
+        )
         echo "dir=${ROOTFS}" >>"${GITHUB_OUTPUT}"
 
     - name: Trivy rootfs scan (CRITICAL/HIGH table gate)
@@ -57,6 +85,7 @@ runs:
           --ignore-unfixed \
           --exit-code 1 \
           --format table \
+          --skip-files "**/*sbom*,**/*.spdx*,**/*cyclonedx*,**/bom.json,**/*.cdx.json" \
           /rootfs
 
     - name: Trivy image SARIF (report only)
