@@ -281,6 +281,9 @@ jobs:
           push: false
           load: true
           tags: papita-api:scan
+          # Attested/third-party SBOMs can report stale Python package versions to Trivy.
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=papita-api
           cache-to: type=gha,mode=max,scope=papita-api
           labels: |
@@ -333,6 +336,8 @@ jobs:
           platforms: ${{ steps.meta.outputs.platforms }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
+          provenance: false
+          sbom: false
           cache-from: type=gha,scope=papita-api
           cache-to: type=gha,mode=max,scope=papita-api
           labels: |
@@ -500,9 +505,13 @@ jobs:
           push: false
           load: true
           tags: papita-api:scan
-          # Bust stale GHA build cache from earlier PPT-067 iterations.
-          cache-from: type=gha,scope=papita-api-dev-v2
-          cache-to: type=gha,mode=max,scope=papita-api-dev-v2
+          # Attested/third-party SBOMs can report stale Python package versions to Trivy
+          # (filesystem packages were already patched; SBOM still listed msgpack 1.1.2 /
+          # setuptools 70.3.0). Keep scan images attestation-free.
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api-dev-v3
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v3
           labels: |
             org.opencontainers.image.title=save-ma-money-api
             org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview
@@ -554,8 +563,10 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=papita-api-dev-v2
-          cache-to: type=gha,mode=max,scope=papita-api-dev-v2
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api-dev-v3
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v3
           labels: |
             org.opencontainers.image.title=save-ma-money-api
             org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview
