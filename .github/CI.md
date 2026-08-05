@@ -148,28 +148,29 @@ gh pr edit 123 --add-label skip-dev-release
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                                            | Purpose                                                                                                                                           |
-| :------------------- | :----------------------------------------------------------------------- | :---------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web                           | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
-| Web CI               | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                         | PR + push to `main` (`modules/web/**`, `docker/web/**`, pnpm lock/workspace)        | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
-| Web E2E              | [`workflows/web-e2e.yml`](./workflows/web-e2e.yml)                       | Nightly Mon 07:30 UTC; `workflow_dispatch`; PRs touching e2e/seed                   | Compose API (`AUTH_PROVIDER=local`) + Playwright/axe + Lighthouse lab (PPT-056 / #121)                                                            |
-| OpenAPI Web Contract | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)     | PR + push (API src, model model/access, web OpenAPI artifact)                       | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                                                                    |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)                             | PostgreSQL Alembic round-trip + drift check                                                                                                       |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                                      | `poetry check`, version metadata, `pip-audit`                                                                                                     |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                                          | Full-history secret detection                                                                                                                     |
-| CodeQL Python        | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC                        | Python SAST (`security-extended`) — independent of JS/TS                                                                                          |
-| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC                          | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python                                                              |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC                                    | Filesystem CVE + IaC misconfig (SARIF)                                                                                                            |
-| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                                                    | ShellCheck security codes + Semgrep bash rules                                                                                                    |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                                                | `.strata/` layout + strict code/memory pairing                                                                                                    |
-| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                                                    | Fail if branch is behind `origin/main` (needs merge/rebase)                                                                                       |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                                         | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                                                                           |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`                             | Score CI maturity and update README adoption badge                                                                                                |
-| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`                                      | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                     |
-| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`                                | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
-| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                                            | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
-| Publish API image    | [`workflows/publish-api-image.yml`](./workflows/publish-api-image.yml)   | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-api-image-dev`) | PPT-067 / #132 — Environments `ghcr` + `ghcr-dev`                                                                                                 |
-| Publish Web image    | [`workflows/publish-web-image.yml`](./workflows/publish-web-image.yml)   | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-web-image-dev`) | PPT-067 — nginx SPA (`save-ma-money-web`); same Environments                                                                                      |
+| Workflow              | File                                                                           | Triggers                                                                            | Purpose                                                                                                                                           |
+| :-------------------- | :----------------------------------------------------------------------------- | :---------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Code Quality Control  | [`workflows/quality-control.yml`](./workflows/quality-control.yml)             | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web                           | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
+| Web CI                | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                               | PR + push to `main` (`modules/web/**`, `docker/web/**`, pnpm lock/workspace)        | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
+| Web E2E               | [`workflows/web-e2e.yml`](./workflows/web-e2e.yml)                             | Nightly Mon 07:30 UTC; `workflow_dispatch`; PRs touching e2e/seed                   | Compose API (`AUTH_PROVIDER=local`) + Playwright/axe + Lighthouse lab (PPT-056 / #121)                                                            |
+| OpenAPI Web Contract  | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)           | PR + push (API src, model model/access, web OpenAPI artifact)                       | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                                                                    |
+| Migration Check       | [`workflows/migration-check.yml`](./workflows/migration-check.yml)             | PR + push to `main` (model/migration/integration paths)                             | PostgreSQL Alembic round-trip + drift check                                                                                                       |
+| Supply Chain Check    | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml)       | PR + push (deps/workflow paths); Mon 08:00 UTC                                      | `poetry check`, version metadata, `pip-audit`                                                                                                     |
+| Secret Scan           | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                           | **All PRs**; push to `main`; Mon 05:00 UTC                                          | Full-history secret detection                                                                                                                     |
+| CodeQL Python         | [`workflows/codeql.yml`](./workflows/codeql.yml)                               | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC                        | Python SAST (`security-extended`) — independent of JS/TS                                                                                          |
+| CodeQL JS/TS          | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)         | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC                          | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python                                                              |
+| Trivy Security Scan   | [`workflows/trivy.yml`](./workflows/trivy.yml)                                 | PR + push (manifest/docker paths); Mon 07:00 UTC                                    | Filesystem CVE + IaC misconfig (SARIF)                                                                                                            |
+| Docker Image Security | [`workflows/docker-image-security.yml`](./workflows/docker-image-security.yml) | PR + push (api/web image paths); Mon 07:30 UTC; `workflow_dispatch`                 | Hadolint + build each custom image → Trivy CRITICAL/HIGH + smoke (PPT-067)                                                                        |
+| Bash Security         | [`workflows/bash-security.yml`](./workflows/bash-security.yml)                 | **PR only** (shell/script paths)                                                    | ShellCheck security codes + Semgrep bash rules                                                                                                    |
+| Strata Check          | [`workflows/strata-check.yml`](./workflows/strata-check.yml)                   | PR + push to `main` (code/bin paths)                                                | `.strata/` layout + strict code/memory pairing                                                                                                    |
+| Branch sync           | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)                     | **All PRs**; `workflow_dispatch`                                                    | Fail if branch is behind `origin/main` (needs merge/rebase)                                                                                       |
+| Auto Updates          | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)                   | Push or merged PR to `main`                                                         | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                                                                           |
+| CI Adoption Badge     | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                           | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`                             | Score CI maturity and update README adoption badge                                                                                                |
+| Release model (PSR)   | [`workflows/release-model.yml`](./workflows/release-model.yml)                 | Push `main` (model paths); `workflow_dispatch`                                      | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                     |
+| Publish model (PyPI)  | [`workflows/publish-model.yml`](./workflows/publish-model.yml)                 | `workflow_call`; tag `model-v*`; `workflow_dispatch`                                | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
+| Publish model (dev)   | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)         | PR (model paths) after other checks pass                                            | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
+| Publish API image     | [`workflows/publish-api-image.yml`](./workflows/publish-api-image.yml)         | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-api-image-dev`) | PPT-067 / #132 — Environments `ghcr` + `ghcr-dev`                                                                                                 |
+| Publish Web image     | [`workflows/publish-web-image.yml`](./workflows/publish-web-image.yml)         | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-web-image-dev`) | PPT-067 — nginx SPA (`save-ma-money-web`); same Environments                                                                                      |
 
 ---
 
@@ -481,6 +482,25 @@ Findings appear in workflow logs, not the Security tab SARIF view.
 | Severity gate | CRITICAL, HIGH (`exit-code: 1`)                     |
 | Unfixed CVEs  | Ignored (`ignore-unfixed: true`)                    |
 | Output        | SARIF → Security tab (`category: trivy-filesystem`) |
+
+---
+
+### Docker Image Security (PPT-067)
+
+|             |                                                                      |
+| :---------- | :------------------------------------------------------------------- |
+| **Trigger** | PR + push on API/web image paths; Mon 07:30 UTC; `workflow_dispatch` |
+| **Timeout** | 45 minutes per image job                                             |
+
+**Path filters:** `docker/{api,web}/**`, API/model or web/pnpm inputs, `.hadolint.yaml`, Trivy image gate action, smoke scripts, workflow file.
+
+| Job                     | Gate                                                                                                        |
+| :---------------------- | :---------------------------------------------------------------------------------------------------------- |
+| Hadolint Dockerfiles    | [`hadolint/hadolint-action`](./workflows/docker-image-security.yml) + [`.hadolint.yaml`](../.hadolint.yaml) |
+| API image Trivy + smoke | Build `docker/api` → [Trivy image gate](./actions/trivy-api-image-gate/action.yml) → `/health/live`         |
+| Web image Trivy + smoke | Build `docker/web` → same Trivy gate → SPA `/` + security headers                                           |
+
+Jobs are path-selected (`api` / `web`); schedule and dispatch scan **both**. SARIF categories: `trivy-api-image-ci`, `trivy-web-image-ci`. Complements pre-push gates inside `publish-*-image.yml` (still required before GHCR push).
 
 ---
 
@@ -893,14 +913,15 @@ Re-stage and commit. Hooks like Black, prettier, and markdownlint `--fix` modify
 
 All times **UTC**, every **Monday**:
 
-| Workflow            | Cron         | Local time hint (US Eastern, DST) |
-| :------------------ | :----------- | :-------------------------------- |
-| Secret Scan         | `0 5 * * 1`  | ~01:00 EDT                        |
-| CI Adoption Badge   | `0 6 * * 1`  | ~02:00 EDT                        |
-| CodeQL Python       | `0 6 * * 1`  | ~02:00 EDT                        |
-| CodeQL JS/TS        | `30 6 * * 1` | ~02:30 EDT                        |
-| Trivy Security Scan | `0 7 * * 1`  | ~03:00 EDT                        |
-| Supply Chain Check  | `0 8 * * 1`  | ~04:00 EDT                        |
+| Workflow              | Cron         | Local time hint (US Eastern, DST) |
+| :-------------------- | :----------- | :-------------------------------- |
+| Secret Scan           | `0 5 * * 1`  | ~01:00 EDT                        |
+| CI Adoption Badge     | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL Python         | `0 6 * * 1`  | ~02:00 EDT                        |
+| CodeQL JS/TS          | `30 6 * * 1` | ~02:30 EDT                        |
+| Trivy Security Scan   | `0 7 * * 1`  | ~03:00 EDT                        |
+| Docker Image Security | `30 7 * * 1` | ~03:30 EDT                        |
+| Supply Chain Check    | `0 8 * * 1`  | ~04:00 EDT                        |
 
 Each scheduled workflow also supports **`workflow_dispatch`** from the Actions tab. Bash Security is **PR-only** (not scheduled).
 
@@ -908,14 +929,15 @@ Each scheduled workflow also supports **`workflow_dispatch`** from the Actions t
 
 ## Security tab integration
 
-| Source                             | Location                        | Format                              |
-| :--------------------------------- | :------------------------------ | :---------------------------------- |
-| CodeQL (Python + JS/TS workflows)  | Security → Code scanning alerts | Native CodeQL (separate categories) |
-| Trivy                              | Security → Code scanning alerts | SARIF (`trivy-filesystem`)          |
-| Gitleaks                           | Workflow job logs               | Inline findings                     |
-| Bash Security (ShellCheck/Semgrep) | Workflow job logs               | Inline findings (fails the job)     |
-| pip-audit                          | Supply Chain Check logs         | Text report with CVE descriptions   |
-| pre-commit `detect-private-key`    | Local / Quality Control logs    | Blocks commit/CI                    |
+| Source                             | Location                        | Format                               |
+| :--------------------------------- | :------------------------------ | :----------------------------------- |
+| CodeQL (Python + JS/TS workflows)  | Security → Code scanning alerts | Native CodeQL (separate categories)  |
+| Trivy (filesystem)                 | Security → Code scanning alerts | SARIF (`trivy-filesystem`)           |
+| Trivy (API/web images)             | Security → Code scanning alerts | SARIF (`trivy-*-image-ci` / publish) |
+| Gitleaks                           | Workflow job logs               | Inline findings                      |
+| Bash Security (ShellCheck/Semgrep) | Workflow job logs               | Inline findings (fails the job)      |
+| pip-audit                          | Supply Chain Check logs         | Text report with CVE descriptions    |
+| pre-commit `detect-private-key`    | Local / Quality Control logs    | Blocks commit/CI                     |
 
 ---
 
@@ -949,7 +971,8 @@ Each scheduled workflow also supports **`workflow_dispatch`** from the Actions t
 | Codecov                   | `codecov/codecov-action@v4`                       |
 | Gitleaks                  | `gitleaks/gitleaks-action@e0c47f4…` (v3)          |
 | CodeQL                    | `github/codeql-action@411c4c9…` (v3 init/analyze) |
-| Trivy                     | `aquasecurity/trivy-action@a9c7b0f…` (v0.36.0)    |
+| Trivy                     | `aquasecurity/trivy-action@ed142fd…` (v0.36.0)    |
+| Hadolint                  | `hadolint/hadolint-action@2332a7b…` (v3.3.0)      |
 | SARIF upload              | `github/codeql-action/upload-sarif@54f647b…` (v4) |
 | ShellCheck action         | `ludeeus/action-shellcheck@00cae500…` (2.0.0)     |
 | ShellCheck binary         | `v0.11.0` (matches pre-commit)                    |

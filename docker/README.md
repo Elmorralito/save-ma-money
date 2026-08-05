@@ -100,12 +100,16 @@ Git tags (`py-api-v*`, `js-web-v*`) remain a **source/package** convention; they
 
 ## CI workflows
 
-| Workflow          | File                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| Publish API image | [`.github/workflows/publish-api-image.yml`](../.github/workflows/publish-api-image.yml) |
-| Publish Web image | [`.github/workflows/publish-web-image.yml`](../.github/workflows/publish-web-image.yml) |
-| API smoke         | [`.github/scripts/api_image_smoke.sh`](../.github/scripts/api_image_smoke.sh)           |
-| Web smoke         | [`.github/scripts/web_image_smoke.sh`](../.github/scripts/web_image_smoke.sh)           |
+| Workflow              | File                                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| Docker Image Security | [`.github/workflows/docker-image-security.yml`](../.github/workflows/docker-image-security.yml) |
+| Publish API image     | [`.github/workflows/publish-api-image.yml`](../.github/workflows/publish-api-image.yml)         |
+| Publish Web image     | [`.github/workflows/publish-web-image.yml`](../.github/workflows/publish-web-image.yml)         |
+| API smoke             | [`.github/scripts/api_image_smoke.sh`](../.github/scripts/api_image_smoke.sh)                   |
+| Web smoke             | [`.github/scripts/web_image_smoke.sh`](../.github/scripts/web_image_smoke.sh)                   |
+| Hadolint config       | [`.hadolint.yaml`](../.hadolint.yaml)                                                           |
+
+**Image security (every relevant PR / weekly):** Hadolint on both Dockerfiles → build the touched image(s) → Trivy CRITICAL/HIGH (rootfs gate) → smoke. Runs even when GHCR publish is skipped (`skip-*-image-dev`).
 
 **Jobs** (both workflows)
 
@@ -161,7 +165,7 @@ docker pull ghcr.io/elmorralito/save-ma-money-web:pr-<N>
 - API base digest-pinned; Dependabot watches `/docker/api` and `/docker/web`.
 - Stable publish gated to **main** + Environment `ghcr`.
 - PR `packages: write` only pushes `pr-*` / `dev-*` tags (guarded in workflow).
-- **Automated image review:** [`.github/actions/trivy-api-image-gate`](../.github/actions/trivy-api-image-gate/action.yml) exports rootfs, strips stale third-party SBOMs, fails on unfixed **CRITICAL/HIGH**, uploads SARIF.
+- **Automated image review:** [`.github/actions/trivy-api-image-gate`](../.github/actions/trivy-api-image-gate/action.yml) exports rootfs, strips stale third-party SBOMs, fails on unfixed **CRITICAL/HIGH**, uploads SARIF. CI: [`docker-image-security.yml`](../.github/workflows/docker-image-security.yml) (Hadolint + Trivy + smoke per image); publish workflows re-run the Trivy gate pre-push.
 - No secrets in Dockerfiles (`VITE_*` bake-time public only for web).
 - Cosign deferred.
 
