@@ -2,6 +2,18 @@
 
 > Auto-generated from GitHub issues by [.github/scripts/update_todos.py](.github/scripts/update_todos.py) via the [Auto Updates](.github/workflows/auto-updates.yml) workflow.
 
+- [ ] [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary:
+
+- [ ] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary:
+
+- [ ] [_**[#166](https://github.com/Elmorralito/save-ma-money/issues/166)**_] :: **feat/PPT-073: [api] Transaction-templates CRUD and upcoming dues endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:31+00:00</sub>_ :weary:
+
+- [ ] [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary:
+
+- [ ] [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary:
+
+- [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+
 - [ ] [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
