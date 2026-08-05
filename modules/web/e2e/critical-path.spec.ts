@@ -22,8 +22,8 @@ test.describe("critical path", () => {
     await loginWithSeed(page, seed);
     await assertNoJwtInWebStorage(page);
 
-    // Create account
-    await page.getByRole("link", { name: "Accounts" }).click();
+    // Create account (exact: avoid dashboard quick-link cards matching nav labels)
+    await page.getByRole("link", { name: "Accounts", exact: true }).click();
     await page.getByRole("heading", { name: "Accounts" }).waitFor();
     await page.getByRole("button", { name: "New account" }).click();
     const accountDialog = page.getByRole("dialog");
@@ -35,7 +35,7 @@ test.describe("critical path", () => {
     await expect(page.getByRole("link", { name: newAccountName })).toBeVisible({ timeout: 15_000 });
 
     // Create expense (seed category + new account)
-    await page.getByRole("link", { name: "Transactions" }).click();
+    await page.getByRole("link", { name: "Transactions", exact: true }).click();
     await page.getByRole("heading", { name: "Transactions" }).waitFor();
     await page.getByRole("button", { name: "New transaction" }).click();
     const txnDialog = page.getByRole("dialog");
@@ -51,7 +51,7 @@ test.describe("critical path", () => {
     await expect(page.getByText(expenseDesc)).toBeVisible({ timeout: 15_000 });
 
     // Transfer between seed accounts
-    await page.getByRole("link", { name: "Movements" }).click();
+    await page.getByRole("link", { name: "Movements", exact: true }).click();
     await page.getByRole("heading", { name: "Movements" }).waitFor();
     await page.getByRole("button", { name: "New movement" }).click();
     const movDialog = page.getByRole("dialog");
@@ -70,7 +70,7 @@ test.describe("critical path", () => {
 
     // Spending report includes the UI expense (and seed baseline).
     // Local Compose may 429 under burst traffic — CI disables API rate limits.
-    await page.getByRole("link", { name: "Reports" }).click();
+    await page.getByRole("link", { name: "Reports", exact: true }).click();
     await page.getByRole("heading", { name: "Reports" }).waitFor();
     await page.locator("#report-start-date").fill("2026-01-01");
     await page.locator("#report-end-date").fill(today);

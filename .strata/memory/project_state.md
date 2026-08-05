@@ -21,7 +21,7 @@ Capture with `/strata:capture` only for work in flight.
 ### In progress (ACTIVE)
 
 - **[PR #191](https://github.com/Elmorralito/save-ma-money/pull/191):** Dependabot GHA bumps;
-  e2e login assert fixed for dashboard "Welcome back, …" h1 race.
+  e2e hardened for dashboard greeting h1 + exact nav link clicks vs quick-link cards.
 
 ### Open (backlog)
 
