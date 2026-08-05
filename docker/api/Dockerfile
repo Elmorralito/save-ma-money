@@ -1,14 +1,18 @@
 # Papita Transactions API - B0 local / B1 pooler runtime
 # Build context: repository root (docker compose: context: .., dockerfile: docker/api/Dockerfile)
+# Registry publish: GHCR via .github/workflows/publish-api-image.yml (PPT-067 / #132)
+# Naming SSOT: docker/README.md
+#
+# Base digest pinned for supply-chain stability; Dependabot (docker /docker/api) refreshes it.
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b
 
 WORKDIR /app
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq5 libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir "pip>=25.0"
+    && pip install --no-cache-dir "pip>=26.1.2" "setuptools>=78.1.1"
 
 # Model package (includes Alembic migrations and config data)
 COPY modules/model/pyproject.toml modules/model/README.md modules/model/LICENSE /app/modules/model/
@@ -20,7 +24,10 @@ COPY modules/model/alembic.ini /app/modules/model/
 COPY modules/api/pyproject.toml modules/api/README.md modules/api/LICENSE /app/modules/api/
 COPY modules/api/src /app/modules/api/src
 
+# Upgrade transitive / base tooling after package install so Trivy CRITICAL/HIGH stays green
+# (msgpack via redis stack; setuptools from python:slim base).
 RUN pip install --no-cache-dir /app/modules/model /app/modules/api \
+    && pip install --no-cache-dir --upgrade "msgpack>=1.2.1" "setuptools>=78.1.1" \
     && groupadd --system --gid 1001 appuser \
     && useradd --system --uid 1001 --gid appuser --home-dir /app appuser \
     && chown -R appuser:appuser /app

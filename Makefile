@@ -47,9 +47,18 @@ redis-down:
 # Vite BFF OAuth cookies/redirects.
 COMPOSE_LOCAL := env -u ALLOWED_ORIGINS docker compose --env-file environments/local/.env -f docker/docker-compose.yml
 
+# Build API image only (local tag; no registry). See docker/README.md (PPT-067).
+api-image-build:
+	@docker info >/dev/null 2>&1 || { \
+		echo "Docker is not running. Start Docker Desktop, then retry: make api-image-build"; \
+		exit 1; \
+	}
+	docker build -f docker/api/Dockerfile -t papita-api:local .
+
 # Canonical API runtime (PPT-045): uvicorn runs inside the Compose image — not on the host.
 # Brings up api + depends_on (Postgres, Redis, migrate). Bind: 0.0.0.0:8000 in-container;
 # host publish via API_PORT (environments/local/.env). No --reload / --workers in the container.
+# Registry publish (GHCR) is PPT-067 — not required for B0; see docker/README.md.
 api-up:
 	$(COMPOSE_LOCAL) up --build -d api
 

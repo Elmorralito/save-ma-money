@@ -20,7 +20,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 - [PR skip labels](#pr-skip-labels)
 - [Workflow overview](#workflow-overview)
 - [Run checks locally](#run-checks-locally)
-- [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi))
+- [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi) + [Publish API image](#publish-api-image-ppt-067))
 - [CI Adoption Badge](#ci-adoption-badge)
 - [Pre-commit hooks](#pre-commit-hooks)
 - [Strata validation](#strata-validation)
@@ -58,6 +58,7 @@ flowchart TB
         AU[Auto Updates]
         REL[Release model PSR]
         PYPI[Publish model PyPI]
+        APIIMG[Publish API image edge]
     end
 
     QC --> |pre-commit + pytest + Codecov| Pass1[Gate]
@@ -78,6 +79,7 @@ flowchart TB
     Merge --> AU
     Merge --> |modules/model paths + releasable commits| REL
     REL --> |workflow_call on released=true| PYPI
+    Merge --> APIIMG
     AU --> |CHANGELOG + badges| Push[Push to main]
 ```
 
@@ -121,15 +123,16 @@ Use this matrix to predict required checks before opening a PR.
 
 Durable **functional** labels (not `PPT-*`). Apply on a **PR** to skip the matching workflow job. Adding/removing the label re-triggers the workflow (`labeled` / `unlabeled`). **Push to `main`, schedules, and `workflow_dispatch` ignore these labels.**
 
-| Label              | Skips workflow                       | File                                                         |
-| ------------------ | ------------------------------------ | ------------------------------------------------------------ |
-| `skip-dev-release` | Publish model (dev) TestPyPI preview | [`publish-model-dev.yml`](./workflows/publish-model-dev.yml) |
-| `skip-strata`      | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
-| `skip-web-ci`      | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
-| `skip-web-e2e`     | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
-| `skip-quality`     | Code Quality Control (Python gate)   | [`quality-control.yml`](./workflows/quality-control.yml)     |
-| `skip-migrations`  | Migration Check                      | [`migration-check.yml`](./workflows/migration-check.yml)     |
-| `skip-openapi`     | OpenAPI Web Contract                 | [`openapi-contract.yml`](./workflows/openapi-contract.yml)   |
+| Label                | Skips workflow                       | File                                                         |
+| -------------------- | ------------------------------------ | ------------------------------------------------------------ |
+| `skip-dev-release`   | Publish model (dev) TestPyPI preview | [`publish-model-dev.yml`](./workflows/publish-model-dev.yml) |
+| `skip-api-image-dev` | Publish API image (PR dev GHCR)      | [`publish-api-image.yml`](./workflows/publish-api-image.yml) |
+| `skip-strata`        | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
+| `skip-web-ci`        | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
+| `skip-web-e2e`       | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
+| `skip-quality`       | Code Quality Control (Python gate)   | [`quality-control.yml`](./workflows/quality-control.yml)     |
+| `skip-migrations`    | Migration Check                      | [`migration-check.yml`](./workflows/migration-check.yml)     |
+| `skip-openapi`       | OpenAPI Web Contract                 | [`openapi-contract.yml`](./workflows/openapi-contract.yml)   |
 
 **Not skippable via label (by design):** Gitleaks, CodeQL, Trivy, Bash Security, Supply Chain, Branch sync — keep security and merge-hygiene gates honest.
 
@@ -144,26 +147,27 @@ gh pr edit 123 --add-label skip-dev-release
 
 ## Workflow overview
 
-| Workflow             | File                                                                     | Triggers                                                                     | Purpose                                                                                                                                           |
-| :------------------- | :----------------------------------------------------------------------- | :--------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web                    | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
-| Web CI               | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                         | PR + push to `main` (`modules/web/**`, `docker/web/**`, pnpm lock/workspace) | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
-| Web E2E              | [`workflows/web-e2e.yml`](./workflows/web-e2e.yml)                       | Nightly Mon 07:30 UTC; `workflow_dispatch`; PRs touching e2e/seed            | Compose API (`AUTH_PROVIDER=local`) + Playwright/axe + Lighthouse lab (PPT-056 / #121)                                                            |
-| OpenAPI Web Contract | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)     | PR + push (API src, model model/access, web OpenAPI artifact)                | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                                                                    |
-| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)                      | PostgreSQL Alembic round-trip + drift check                                                                                                       |
-| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                               | `poetry check`, version metadata, `pip-audit`                                                                                                     |
-| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                                   | Full-history secret detection                                                                                                                     |
-| CodeQL Python        | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC                 | Python SAST (`security-extended`) — independent of JS/TS                                                                                          |
-| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC                   | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python                                                              |
-| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC                             | Filesystem CVE + IaC misconfig (SARIF)                                                                                                            |
-| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                                             | ShellCheck security codes + Semgrep bash rules                                                                                                    |
-| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                                         | `.strata/` layout + strict code/memory pairing                                                                                                    |
-| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                                             | Fail if branch is behind `origin/main` (needs merge/rebase)                                                                                       |
-| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                                  | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                                                                           |
-| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`                      | Score CI maturity and update README adoption badge                                                                                                |
-| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`                               | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                     |
-| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`                         | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
-| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                                     | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
+| Workflow             | File                                                                     | Triggers                                                                            | Purpose                                                                                                                                           |
+| :------------------- | :----------------------------------------------------------------------- | :---------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Code Quality Control | [`workflows/quality-control.yml`](./workflows/quality-control.yml)       | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web                           | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
+| Web CI               | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                         | PR + push to `main` (`modules/web/**`, `docker/web/**`, pnpm lock/workspace)        | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
+| Web E2E              | [`workflows/web-e2e.yml`](./workflows/web-e2e.yml)                       | Nightly Mon 07:30 UTC; `workflow_dispatch`; PRs touching e2e/seed                   | Compose API (`AUTH_PROVIDER=local`) + Playwright/axe + Lighthouse lab (PPT-056 / #121)                                                            |
+| OpenAPI Web Contract | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)     | PR + push (API src, model model/access, web OpenAPI artifact)                       | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                                                                    |
+| Migration Check      | [`workflows/migration-check.yml`](./workflows/migration-check.yml)       | PR + push to `main` (model/migration/integration paths)                             | PostgreSQL Alembic round-trip + drift check                                                                                                       |
+| Supply Chain Check   | [`workflows/supply-chain-check.yml`](./workflows/supply-chain-check.yml) | PR + push (deps/workflow paths); Mon 08:00 UTC                                      | `poetry check`, version metadata, `pip-audit`                                                                                                     |
+| Secret Scan          | [`workflows/gitleaks.yml`](./workflows/gitleaks.yml)                     | **All PRs**; push to `main`; Mon 05:00 UTC                                          | Full-history secret detection                                                                                                                     |
+| CodeQL Python        | [`workflows/codeql.yml`](./workflows/codeql.yml)                         | PR → `main` + push (`modules/{model,api}/**`); Mon 06:00 UTC                        | Python SAST (`security-extended`) — independent of JS/TS                                                                                          |
+| CodeQL JS/TS         | [`workflows/codeql-javascript.yml`](./workflows/codeql-javascript.yml)   | PR → `main` + push (`modules/web/**`, pnpm); Mon 06:30 UTC                          | JavaScript/TypeScript SAST — runs when web/JS/TS paths change; independent of Python                                                              |
+| Trivy Security Scan  | [`workflows/trivy.yml`](./workflows/trivy.yml)                           | PR + push (manifest/docker paths); Mon 07:00 UTC                                    | Filesystem CVE + IaC misconfig (SARIF)                                                                                                            |
+| Bash Security        | [`workflows/bash-security.yml`](./workflows/bash-security.yml)           | **PR only** (shell/script paths)                                                    | ShellCheck security codes + Semgrep bash rules                                                                                                    |
+| Strata Check         | [`workflows/strata-check.yml`](./workflows/strata-check.yml)             | PR + push to `main` (code/bin paths)                                                | `.strata/` layout + strict code/memory pairing                                                                                                    |
+| Branch sync          | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)               | **All PRs**; `workflow_dispatch`                                                    | Fail if branch is behind `origin/main` (needs merge/rebase)                                                                                       |
+| Auto Updates         | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)             | Push or merged PR to `main`                                                         | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                                                                           |
+| CI Adoption Badge    | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                     | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`                             | Score CI maturity and update README adoption badge                                                                                                |
+| Release model (PSR)  | [`workflows/release-model.yml`](./workflows/release-model.yml)           | Push `main` (model paths); `workflow_dispatch`                                      | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                     |
+| Publish model (PyPI) | [`workflows/publish-model.yml`](./workflows/publish-model.yml)           | `workflow_call`; tag `model-v*`; `workflow_dispatch`                                | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
+| Publish model (dev)  | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)   | PR (model paths) after other checks pass                                            | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
+| Publish API image    | [`workflows/publish-api-image.yml`](./workflows/publish-api-image.yml)   | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` (skip `skip-api-image-dev`) | PPT-067 / #132 — Environments `ghcr` + `ghcr-dev`                                                                                                 |
 
 ---
 
@@ -281,6 +285,29 @@ pip install \
 **Operator setup (once):** on [TestPyPI](https://test.pypi.org/) / [PyPI](https://pypi.org/), add a Trusted Publisher for this repository, workflow **`publish-model.yml`** (the reusable file that performs OIDC), and the matching environment. For PR → TestPyPI, the `testpypi` GitHub Environment must allow deployments from PR head branches (not only `main`). Prefer environment protection on `pypi`. Do not store long-lived tokens in git.
 
 **Local:** `make package-model` · docs: [`modules/model/README.md`](../modules/model/README.md) § Install.
+
+### Publish API image (PPT-067)
+
+|                 |                                                                                                                                                                           |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Trigger**     | Path-relevant push to **`main`** → stable GHCR; path-filtered **PR** → dev GHCR (unless `skip-api-image-dev`); dispatch `smoke-only` \| `publish` (publish requires main) |
+| **Jobs**        | `publish` (Environment **`ghcr`**) · `publish-dev` (Environment **`ghcr-dev`**) · `changes` · `build-smoke` (dispatch only)                                               |
+| **Image**       | `ghcr.io/<owner>/save-ma-money-api`                                                                                                                                       |
+| **Stable tags** | `main` only: `:edge`, `:{semver}`, `:py-api-v{semver}`, `:sha-<12>` — **not** triggered by git tag events                                                                 |
+| **Dev tags**    | PR only: `:pr-<N>`, `:pr-<N>-<sha>`, `:dev-<run_id>` (never overwrites stable tags)                                                                                       |
+| **Vuln gate**   | Pre-push [Trivy image gate](./actions/trivy-api-image-gate/action.yml) (CRITICAL/HIGH, ignore-unfixed) + SARIF → Security tab — Environment reviewers cannot be scanners  |
+| **Smoke**       | Pre-push [`api_image_smoke.sh`](./scripts/api_image_smoke.sh) on the scanned local image                                                                                  |
+| **Auth**        | Ephemeral `GITHUB_TOKEN` + `packages: write` on publish jobs; same-repo non-draft PRs for `publish-dev`; forks/drafts skipped                                             |
+| **Platforms**   | Stable: `linux/amd64,linux/arm64`; PR dev: `linux/amd64`                                                                                                                  |
+| **Model**       | Decision **A** — no model runtime image; PyPI remains SSOT                                                                                                                |
+
+**Not a merge gate.** Opt out of PR images: `gh pr edit <n> --add-label skip-api-image-dev`.
+
+**Operator setup (once):** Environments **`ghcr`** / **`ghcr-dev`**; set GHCR package visibility for `save-ma-money-api`.
+
+**Local:** `make api-image-build` · `make api-up` · `./.github/scripts/api_image_smoke.sh papita-api:local` · SSOT: [`docker/README.md`](../docker/README.md).
+
+**Coverage:** PPT-045 (#93) owns Dockerfile CMD only; PPT-057 (#122) owns web nginx Compose image; PPT-066 (#131) owns git tag prefixes — **this workflow owns API registry publish**.
 
 ---
 

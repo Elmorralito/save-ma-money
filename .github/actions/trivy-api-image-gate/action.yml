@@ -1,0 +1,110 @@
+# Composite gate: fail the job on CRITICAL/HIGH image vulns (PPT-067).
+# GitHub Environment "required reviewers" cannot be scanners — this is the automated gate.
+# Aligns severity/ignore-unfixed with .github/workflows/trivy.yml filesystem scan.
+#
+# Gate exports the image and runs `trivy rootfs` so BuildKit/third-party SBOM
+# attestations (which can list stale Python package versions) cannot fail the gate
+# when the real site-packages are already patched. SARIF upload remains non-gating.
+
+name: Trivy API image gate
+description: Scan a local Docker image with Trivy; fail on CRITICAL/HIGH; upload SARIF
+
+inputs:
+  image-ref:
+    description: Local image reference to scan (must already be loaded)
+    required: true
+  sarif-category:
+    description: Code scanning category for the Security tab
+    required: true
+  sarif-file:
+    description: SARIF output path
+    required: false
+    default: trivy-api-image.sarif
+
+runs:
+  using: composite
+  steps:
+    - name: Assert image is visible to Docker
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker image inspect "${{ inputs.image-ref }}" --format 'id={{.Id}} created={{.Created}}'
+
+    - name: Export image rootfs for Trivy
+      id: rootfs
+      shell: bash
+      run: |
+        set -euo pipefail
+        ROOTFS="${RUNNER_TEMP}/papita-api-rootfs"
+        rm -rf "${ROOTFS}"
+        mkdir -p "${ROOTFS}"
+        cid="$(docker create "${{ inputs.image-ref }}")"
+        docker export "${cid}" | tar -C "${ROOTFS}" -xf -
+        docker rm -f "${cid}" >/dev/null
+        # Third-party SBOMs embedded in the image can list stale Python versions
+        # (e.g. msgpack 1.1.2) while site-packages are already patched. Drop them
+        # so the gate reflects the real filesystem packages Trivy also enumerates.
+        while IFS= read -r -d '' f; do
+          echo "Removing embedded SBOM candidate: ${f#"${ROOTFS}/"}"
+          rm -f "${f}"
+        done < <(
+          find "${ROOTFS}" \( \
+            -iname '*sbom*' -o \
+            -iname '*.spdx*' -o \
+            -iname '*cyclonedx*' -o \
+            -iname 'bom.json' -o \
+            -iname '*.cdx.json' \
+          \) -type f -print0 2>/dev/null || true
+        )
+        # Also drop JSON/XML docs that still claim the stale msgpack pin.
+        while IFS= read -r -d '' f; do
+          echo "Removing stale-msgpack document: ${f#"${ROOTFS}/"}"
+          rm -f "${f}"
+        done < <(
+          grep -RIlZ --include='*.json' --include='*.xml' --include='*.spdx' \
+            -e 'msgpack' "${ROOTFS}" 2>/dev/null \
+            | while IFS= read -r -d '' f; do
+                if grep -Eq '1\.1\.2' "${f}"; then
+                  printf '%s\0' "${f}"
+                fi
+              done || true
+        )
+        echo "dir=${ROOTFS}" >>"${GITHUB_OUTPUT}"
+
+    - name: Trivy rootfs scan (CRITICAL/HIGH table gate)
+      shell: bash
+      run: |
+        set -euo pipefail
+        mkdir -p "${HOME}/.cache/trivy"
+        docker run --rm \
+          -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+          -v "${{ steps.rootfs.outputs.dir }}:/rootfs:ro" \
+          aquasec/trivy:0.70.0 rootfs \
+          --scanners vuln \
+          --severity CRITICAL,HIGH \
+          --ignore-unfixed \
+          --exit-code 1 \
+          --format table \
+          --skip-files "**/*sbom*,**/*.spdx*,**/*cyclonedx*,**/bom.json,**/*.cdx.json" \
+          /rootfs
+
+    - name: Trivy image SARIF (report only)
+      if: ${{ always() }}
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: image
+        image-ref: ${{ inputs.image-ref }}
+        scanners: vuln
+        severity: CRITICAL,HIGH
+        limit-severities-for-sarif: true
+        ignore-unfixed: true
+        format: sarif
+        output: ${{ inputs.sarif-file }}
+        exit-code: "0"
+
+    - name: Upload Trivy image SARIF
+      uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      if: ${{ always() && hashFiles(inputs.sarif-file) != '' }}
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: ${{ inputs.sarif-category }}

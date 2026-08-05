@@ -1,0 +1,607 @@
+# Publish papita_txnsapi runtime image to GHCR (PPT-067 / #132).
+# Dockerfile SSOT: docker/api/Dockerfile (PPT-045 uvicorn CMD).
+# Naming SSOT: docker/README.md
+#
+# Policy:
+#   - Stable/release tags publish ONLY from main (never from git tag events or PR heads)
+#   - PRs publish a non-release "dev" image (pr-* / dev-*) unless skip-api-image-dev
+#   - Automated vuln gate: Trivy CRITICAL/HIGH before any GHCR push (Environment
+#     required reviewers cannot be scanners — see .github/actions/trivy-api-image-gate)
+#
+# Jobs:
+#   build-smoke  — dispatch smoke-only: contents:read (no packages:write)
+#   changes      — main path detect
+#   publish      — main only → build → Trivy → smoke → multi-arch push
+#   publish-dev  — PR → build → Trivy → smoke → amd64 push (never release tags)
+#
+# Auth: GITHUB_TOKEN packages:write on publish jobs only. No long-lived registry secrets.
+
+name: Publish API image
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+    paths:
+      - "docker/api/**"
+      - "modules/api/**"
+      - "modules/model/pyproject.toml"
+      - "modules/model/src/**"
+      - "modules/model/alembic/**"
+      - "modules/model/alembic.ini"
+      - "modules/model/README.md"
+      - "modules/model/LICENSE"
+      - ".dockerignore"
+      - ".github/workflows/publish-api-image.yml"
+      - ".github/scripts/api_image_smoke.sh"
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "smoke-only (no push) | publish (main → stable GHCR tags)"
+        type: choice
+        options:
+          - smoke-only
+          - publish
+        default: smoke-only
+
+concurrency:
+  group: >-
+    publish-api-image-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: save-ma-money-api
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Detect API-relevant path changes on main pushes.
+  # ---------------------------------------------------------------------------
+  changes:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      api: ${{ steps.check.outputs.api }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect API image paths vs push before
+        id: check
+        env:
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
+            echo "api=true" >>"${GITHUB_OUTPUT}"
+            echo "No usable before SHA — treating as api-relevant"
+            exit 0
+          fi
+          api=false
+          count=0
+          while IFS= read -r f; do
+            count=$((count + 1))
+            case "${f}" in
+              docker/api/* | \
+              modules/api/* | \
+              modules/model/pyproject.toml | \
+              modules/model/src/* | \
+              modules/model/alembic/* | \
+              modules/model/alembic.ini | \
+              modules/model/README.md | \
+              modules/model/LICENSE | \
+              .dockerignore | \
+              .github/workflows/publish-api-image.yml | \
+              .github/scripts/api_image_smoke.sh)
+                api=true
+                ;;
+            esac
+          done < <(git diff --name-only "${BEFORE}" "${SHA}" || true)
+          echo "api=${api}" >>"${GITHUB_OUTPUT}"
+          echo "api=${api} (changed_files=${count})"
+
+  # ---------------------------------------------------------------------------
+  # Manual smoke — never packages:write.
+  # ---------------------------------------------------------------------------
+  build-smoke:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'smoke-only'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read API package version
+        id: pkg_ver
+        run: |
+          set -euo pipefail
+          PKG_VER="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path("modules/api/pyproject.toml").read_text())
+          print(data["project"]["version"])
+          PY
+          )"
+          echo "version=${PKG_VER}" >>"${GITHUB_OUTPUT}"
+
+      - name: Image coordinates
+        id: meta
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          OWNER="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
+          echo "image=${IMAGE}" >>"${GITHUB_OUTPUT}"
+          echo "tags=${IMAGE}:ci" >>"${GITHUB_OUTPUT}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build API image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha,scope=papita-api
+          cache-to: type=gha,mode=max,scope=papita-api
+          labels: |
+            org.opencontainers.image.title=save-ma-money-api
+            org.opencontainers.image.description=Papita transactions API (papita_txnsapi)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.pkg_ver.outputs.version }}
+
+      - name: Smoke GET /api/v1/health/live
+        run: /bin/bash .github/scripts/api_image_smoke.sh "${{ steps.meta.outputs.tags }}"
+
+      - name: Summary
+        env:
+          PKG_VER: ${{ steps.pkg_ver.outputs.version }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: |
+          {
+            echo "## API image build-smoke (PPT-067)"
+            echo ""
+            echo "- Package version: \`${PKG_VER}\`"
+            echo "- Image (local): \`${IMAGE}:ci\`"
+            echo "- Push: \`false\`"
+            echo "- SSOT: \`docker/README.md\`"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  # ---------------------------------------------------------------------------
+  # Stable publish — main only (path-relevant push or dispatch mode=publish).
+  # ---------------------------------------------------------------------------
+  publish:
+    needs: [changes]
+    if: >-
+      always() &&
+      needs.changes.result != 'failure' &&
+      (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.api == 'true') ||
+        (github.event_name == 'workflow_dispatch' && inputs.mode == 'publish')
+      )
+    runs-on: ubuntu-latest
+    environment: ghcr
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Guard main-only publish
+        env:
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [[ "${REF}" != "refs/heads/main" ]]; then
+            echo "Stable API images publish only from main (got ${REF} event=${EVENT_NAME})" >&2
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read API package version
+        id: pkg_ver
+        run: |
+          set -euo pipefail
+          PKG_VER="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path("modules/api/pyproject.toml").read_text())
+          print(data["project"]["version"])
+          PY
+          )"
+          echo "version=${PKG_VER}" >>"${GITHUB_OUTPUT}"
+
+      - name: Decide platforms / tags (stable)
+        id: meta
+        env:
+          SHA: ${{ github.sha }}
+          PKG_VER: ${{ steps.pkg_ver.outputs.version }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          OWNER="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
+          SHORT_SHA="$(echo "${SHA}" | cut -c1-12)"
+          PLATFORMS="linux/amd64,linux/arm64"
+          TAGS=(
+            "${IMAGE}:edge"
+            "${IMAGE}:${PKG_VER}"
+            "${IMAGE}:py-api-v${PKG_VER}"
+            "${IMAGE}:sha-${SHORT_SHA}"
+          )
+          TAGS_CSV="$(IFS=,; echo "${TAGS[*]}")"
+          {
+            echo "image=${IMAGE}"
+            echo "kind=stable"
+            echo "platforms=${PLATFORMS}"
+            echo "short_sha=${SHORT_SHA}"
+            echo "scan_tag=papita-api:scan"
+            echo "tags=${TAGS_CSV}"
+            echo "tags_list<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+          } >>"${GITHUB_OUTPUT}"
+          printf 'tags:\n'
+          printf '  %s\n' "${TAGS[@]}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build amd64 for Trivy gate + smoke
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: papita-api:scan
+          # Attested/third-party SBOMs can report stale Python package versions to Trivy.
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api
+          cache-to: type=gha,mode=max,scope=papita-api
+          labels: |
+            org.opencontainers.image.title=save-ma-money-api
+            org.opencontainers.image.description=Papita transactions API (papita_txnsapi)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.pkg_ver.outputs.version }}
+            com.github.papita.image.channel=stable
+
+      - name: Assert patched Python packages in scan image
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python papita-api:scan - <<'PY'
+          import importlib.metadata as m
+
+          def ver(name: str) -> tuple[int, ...]:
+              return tuple(int(p) for p in m.version(name).split(".")[:3])
+
+          setuptools_v = ver("setuptools")
+          msgpack_v = ver("msgpack")
+          pip_v = ver("pip")
+          print(f"pip={m.version('pip')} setuptools={m.version('setuptools')} msgpack={m.version('msgpack')}")
+          assert pip_v >= (26, 1, 2), pip_v
+          assert setuptools_v >= (78, 1, 1), setuptools_v
+          assert msgpack_v >= (1, 2, 1), msgpack_v
+          PY
+
+      - name: Trivy image vulnerability gate
+        uses: ./.github/actions/trivy-api-image-gate
+        with:
+          image-ref: papita-api:scan
+          sarif-category: trivy-api-image-stable
+
+      - name: Smoke GET /api/v1/health/live (pre-push)
+        run: /bin/bash .github/scripts/api_image_smoke.sh papita-api:scan
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (multi-arch stable)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: ${{ steps.meta.outputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api
+          cache-to: type=gha,mode=max,scope=papita-api
+          labels: |
+            org.opencontainers.image.title=save-ma-money-api
+            org.opencontainers.image.description=Papita transactions API (papita_txnsapi)
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.pkg_ver.outputs.version }}
+            org.opencontainers.image.licenses=MIT
+            com.github.papita.module=api
+            com.github.papita.package=papita-transactions-api
+            com.github.papita.image.channel=stable
+
+      - name: Resolve image digests (pin guidance)
+        id: digests
+        env:
+          TAGS_LIST: ${{ steps.meta.outputs.tags_list }}
+        run: |
+          set -euo pipefail
+          {
+            echo "digests_md<<EOF"
+            while IFS= read -r tag; do
+              [[ -z "${tag}" ]] && continue
+              DIGEST="$(docker buildx imagetools inspect "${tag}" 2>/dev/null | awk '/^Digest:/ {print $2; exit}' || true)"
+              if [[ -n "${DIGEST}" ]]; then
+                echo "- \`${tag}@${DIGEST}\`"
+              else
+                echo "- \`${tag}\` (digest lookup unavailable)"
+              fi
+            done <<< "${TAGS_LIST}"
+            echo "EOF"
+          } >>"${GITHUB_OUTPUT}"
+
+      - name: Summary
+        env:
+          PKG_VER: ${{ steps.pkg_ver.outputs.version }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          PLATFORMS: ${{ steps.meta.outputs.platforms }}
+          TAGS_LIST: ${{ steps.meta.outputs.tags_list }}
+          DIGESTS_MD: ${{ steps.digests.outputs.digests_md }}
+          SHORT_SHA: ${{ steps.meta.outputs.short_sha }}
+        run: |
+          {
+            echo "## API image publish — stable (main)"
+            echo ""
+            echo "- Package version: \`${PKG_VER}\`"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Platforms: \`${PLATFORMS}\`"
+            echo "- Gates: Trivy CRITICAL/HIGH (pre-push) · /health/live smoke"
+            echo "- Tags:"
+            while IFS= read -r tag; do
+              [[ -z "${tag}" ]] && continue
+              echo "  - \`${tag}\`"
+            done <<< "${TAGS_LIST}"
+            echo ""
+            echo "### Prefer digest pins for staging/prod"
+            echo ""
+            echo "${DIGESTS_MD}"
+            echo ""
+            echo "Immutable alternative: \`${IMAGE}:sha-${SHORT_SHA}\`"
+            echo ""
+            echo "SSOT: \`docker/README.md\` · environment: \`ghcr\`"
+          } >>"${GITHUB_STEP_SUMMARY}"
+
+  # ---------------------------------------------------------------------------
+  # PR dev preview — never writes :edge / semver / py-api-v* tags.
+  # ---------------------------------------------------------------------------
+  publish-dev:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-api-image-dev')
+    runs-on: ubuntu-latest
+    environment: ghcr-dev
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Read API package version
+        id: pkg_ver
+        run: |
+          set -euo pipefail
+          PKG_VER="$(python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path("modules/api/pyproject.toml").read_text())
+          print(data["project"]["version"])
+          PY
+          )"
+          echo "version=${PKG_VER}" >>"${GITHUB_OUTPUT}"
+
+      - name: Decide platforms / tags (dev only)
+        id: meta
+        env:
+          SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_ID: ${{ github.run_id }}
+          PKG_VER: ${{ steps.pkg_ver.outputs.version }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          # PR number and SHA come from trusted GitHub event context (not PR body).
+          if [[ ! "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+            echo "Invalid PR number: ${PR_NUMBER}" >&2
+            exit 1
+          fi
+          OWNER="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
+          SHORT_SHA="$(echo "${SHA}" | cut -c1-12)"
+          # Dev channel only — never :edge, bare semver, or py-api-v*
+          TAGS=(
+            "${IMAGE}:pr-${PR_NUMBER}"
+            "${IMAGE}:pr-${PR_NUMBER}-${SHORT_SHA}"
+            "${IMAGE}:dev-${RUN_ID}"
+          )
+          for tag in "${TAGS[@]}"; do
+            case "${tag}" in
+              *:edge | *:py-api-v* )
+                echo "Refusing forbidden release tag: ${tag}" >&2
+                exit 1
+                ;;
+            esac
+            # Block bare semver-looking tags (e.g. :0.0.3a14)
+            suffix="${tag##*:}"
+            if [[ "${suffix}" =~ ^[0-9] ]]; then
+              echo "Refusing semver-like tag: ${tag}" >&2
+              exit 1
+            fi
+          done
+          TAGS_CSV="$(IFS=,; echo "${TAGS[*]}")"
+          {
+            echo "image=${IMAGE}"
+            echo "kind=dev"
+            echo "platforms=linux/amd64"
+            echo "short_sha=${SHORT_SHA}"
+            echo "pr=${PR_NUMBER}"
+            echo "dev_version=${PKG_VER}.dev${RUN_ID}+pr${PR_NUMBER}"
+            echo "tags=${TAGS_CSV}"
+            echo "tags_list<<EOF"
+            printf '%s\n' "${TAGS[@]}"
+            echo "EOF"
+          } >>"${GITHUB_OUTPUT}"
+          printf 'dev tags:\n'
+          printf '  %s\n' "${TAGS[@]}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build amd64 for Trivy gate + smoke
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: papita-api:scan
+          # Attested/third-party SBOMs can report stale Python package versions to Trivy
+          # (filesystem packages were already patched; SBOM still listed msgpack 1.1.2 /
+          # setuptools 70.3.0). Keep scan images attestation-free.
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api-dev-v3
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v3
+          labels: |
+            org.opencontainers.image.title=save-ma-money-api
+            org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.dev_version }}
+            com.github.papita.image.channel=dev
+
+      - name: Assert patched Python packages in scan image
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python papita-api:scan - <<'PY'
+          import importlib.metadata as m
+
+          def ver(name: str) -> tuple[int, ...]:
+              return tuple(int(p) for p in m.version(name).split(".")[:3])
+
+          setuptools_v = ver("setuptools")
+          msgpack_v = ver("msgpack")
+          pip_v = ver("pip")
+          print(f"pip={m.version('pip')} setuptools={m.version('setuptools')} msgpack={m.version('msgpack')}")
+          assert pip_v >= (26, 1, 2), pip_v
+          assert setuptools_v >= (78, 1, 1), setuptools_v
+          assert msgpack_v >= (1, 2, 1), msgpack_v
+          PY
+
+      - name: Trivy image vulnerability gate
+        uses: ./.github/actions/trivy-api-image-gate
+        with:
+          image-ref: papita-api:scan
+          sarif-category: trivy-api-image-dev
+          sarif-file: trivy-api-image-dev.sarif
+
+      - name: Smoke GET /api/v1/health/live (pre-push)
+        run: /bin/bash .github/scripts/api_image_smoke.sh papita-api:scan
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push amd64 dev tags
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api-dev-v3
+          cache-to: type=gha,mode=max,scope=papita-api-dev-v3
+          labels: |
+            org.opencontainers.image.title=save-ma-money-api
+            org.opencontainers.image.description=Papita transactions API (papita_txnsapi) PR preview
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.dev_version }}
+            org.opencontainers.image.licenses=MIT
+            com.github.papita.module=api
+            com.github.papita.package=papita-transactions-api
+            com.github.papita.image.channel=dev
+            com.github.papita.pr.number=${{ github.event.pull_request.number }}
+
+      - name: Summary
+        env:
+          PKG_VER: ${{ steps.pkg_ver.outputs.version }}
+          DEV_VER: ${{ steps.meta.outputs.dev_version }}
+          IMAGE: ${{ steps.meta.outputs.image }}
+          TAGS_LIST: ${{ steps.meta.outputs.tags_list }}
+          PR: ${{ steps.meta.outputs.pr }}
+        run: |
+          {
+            echo "## API image publish — PR dev"
+            echo ""
+            echo "- PR: \`#${PR}\`"
+            echo "- Package version: \`${PKG_VER}\`"
+            echo "- Dev label: \`${DEV_VER}\`"
+            echo "- Image: \`${IMAGE}\`"
+            echo "- Gates: Trivy CRITICAL/HIGH (pre-push) · /health/live smoke"
+            echo "- Tags (dev channel only):"
+            while IFS= read -r tag; do
+              [[ -z "${tag}" ]] && continue
+              echo "  - \`${tag}\`"
+            done <<< "${TAGS_LIST}"
+            echo ""
+            echo "Opt out: label \`skip-api-image-dev\`"
+            echo ""
+            echo "SSOT: \`docker/README.md\` · environment: \`ghcr-dev\`"
+          } >>"${GITHUB_STEP_SUMMARY}"

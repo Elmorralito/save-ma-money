@@ -5,7 +5,9 @@
 </p>
 
 ![Python](https://img.shields.io/badge/python-3.12+-blue.svg)
-[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2090-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![CI Adoption](https://img.shields.io/badge/CI%20Adoption-Advanced%20%7C%20Score%3A%2092-brightgreen?style=flat&logo=githubactions&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions)
+[![API image](https://img.shields.io/github/actions/workflow/status/Elmorralito/save-ma-money/publish-api-image.yml?branch=main&label=API%20image&logo=docker&logoColor=white)](https://github.com/Elmorralito/save-ma-money/actions/workflows/publish-api-image.yml)
+[![GHCR](https://img.shields.io/badge/ghcr.io-save--ma--money--api-blue?logo=github&logoColor=white)](https://github.com/Elmorralito/save-ma-money/pkgs/container/save-ma-money-api)
 ![interrogate score](./docs/interrogate_badge.svg)
 [![coverage score](./docs/coverage-badge.svg)](https://app.codecov.io/github/Elmorralito/save-ma-money)
 ![pre-commit.ci status](https://results.pre-commit.ci/badge/github/pre-commit/pre-commit/main.svg)
@@ -126,11 +128,15 @@ save-ma-money/
 │       ├── README.md           # Node 22 + pnpm setup, BFF, OpenAPI types, quality
 │       └── src/
 ├── bin/                        # alembic.sh, test.sh, utils.sh, web_e2e_seed.*
-├── docker/database/            # local Postgres 15 Compose
+├── docker/                     # Compose stack + API/web Dockerfiles; GHCR naming SSOT in README
+│   ├── README.md               # image registry / tags (PPT-067) — B0 still builds locally
+│   ├── api/Dockerfile          # uvicorn CMD (PPT-045); GHCR publish from main (PPT-067)
+│   ├── web/                    # nginx SPA image (PPT-057 / PPT-063)
+│   └── database/               # local Postgres 15 Compose
 ├── docs/design/                # ARCHITECTURE.md (PPT-031) + README gates index
 ├── docs/issues/                # consolidated issue briefs (incl. PPT-046 Part VII)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci)
+└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, GHCR)
 ```
 
 ---

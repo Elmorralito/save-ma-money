@@ -6,6 +6,9 @@
 #   make web-up    # nginx SPA (:3000) + API deps; same-origin /api → BFF cookies (PPT-057)
 #   # uvicorn runs inside the api image (Dockerfile CMD) — not on the host
 #
+# Image naming / GHCR publish (PPT-067): docker/README.md — B0 builds from Dockerfiles here;
+# registry pull is optional for staging/prod pins.
+#
 # API (direct): http://localhost:8000/api/docs
 # Web (nginx):  http://localhost:3000/  (WEB_PORT) — /api proxied to api:8000
 # Health: http://localhost:8000/api/v1/health/ready  (or via nginx :3000/api/v1/health/live)
