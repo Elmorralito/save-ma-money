@@ -97,9 +97,6 @@ _DEFAULT_SPA_RETURN_PATH = "/dashboard"
 _OAUTH_ERROR_LOGIN_PATH = "/login?oauth_error=1"
 # PKCE verifier charset (RFC 7636 unreserved) + length bound for Set-Cookie safety.
 _BFF_OAUTH_VERIFIER_RE = re.compile(r"^[A-Za-z0-9._~-]{16,128}$")
-# IdP ``error`` query codes are logged only when they match this shape.
-_OAUTH_IDP_ERROR_CODE_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
-
 router = APIRouter(prefix="/bff/auth", tags=["BFF Authentication"])
 
 
@@ -825,11 +822,12 @@ def bff_oauth_callback(  # pylint: disable=too-many-locals,too-many-positional-a
             detail="OAuth SSO requires AUTH_PROVIDER=supabase",
         )
     if error:
-        safe_error = error if _OAUTH_IDP_ERROR_CODE_RE.fullmatch(error) else "invalid"
+        # Digests only — never interpolate IdP query strings into log lines (log injection).
+        error_digest = hashlib.sha256((error or "").encode("utf-8")).hexdigest()[:12]
         desc_digest = (
             hashlib.sha256((error_description or "").encode("utf-8")).hexdigest()[:12] if error_description else "-"
         )
-        logger.info("BFF OAuth IdP error code=%s desc_digest=%s", safe_error, desc_digest)
+        logger.info("BFF OAuth IdP error_digest=%s desc_digest=%s", error_digest, desc_digest)
         return _oauth_error_redirect(request, settings, return_url)
 
     code_verifier = request.cookies.get(_BFF_OAUTH_VERIFIER_COOKIE)

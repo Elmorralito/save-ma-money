@@ -21,7 +21,7 @@ Capture with `/strata:capture` only for work in flight.
 
 - **`feat/bff-oauth-buttons` / [PR #169](https://github.com/Elmorralito/save-ma-money/pull/169):**
   BFF Google/GitHub OAuth (`/bff/auth/oauth/*`), SPA buttons, `access_expires_at`,
-  redirect allowlist rebuild for CodeQL URL-redirection, branding, dashboard TTL +
+  redirect allowlist rebuild + IdP error digests (CodeQL), branding, dashboard TTL +
   snapshots, UI polish. Guide: `modules/web/docs/oauth-supabase-setup.md`.
 
 ### Open (backlog)
