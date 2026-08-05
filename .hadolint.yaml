@@ -1,0 +1,6 @@
+# Hadolint config for docker/{api,web}/Dockerfile (PPT-067 image security).
+# Fail CI on error-level findings; warnings listed here are intentional.
+
+ignored:
+  # Debian slim packages move often; Dependabot refreshes the base digest instead.
+  - DL3008

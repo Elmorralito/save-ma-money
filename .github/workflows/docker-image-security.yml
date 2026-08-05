@@ -1,0 +1,315 @@
+# Build + security gate for each custom runtime image (PPT-067).
+# Complements publish-*-image.yml (pre-push Trivy) and trivy.yml (repo filesystem).
+#
+# Per image:
+#   - Hadolint on Dockerfiles (when docker/** changes)
+#   - Build image → Trivy CRITICAL/HIGH rootfs gate + SARIF
+#
+# Custom images only: api + web. Postgres/Redis are upstream (not built here).
+
+name: Docker Image Security
+
+on:
+  pull_request:
+    paths:
+      - "docker/api/**"
+      - "docker/web/**"
+      - "modules/api/**"
+      - "modules/model/pyproject.toml"
+      - "modules/model/src/**"
+      - "modules/model/alembic/**"
+      - "modules/model/alembic.ini"
+      - "modules/model/README.md"
+      - "modules/model/LICENSE"
+      - "modules/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".nvmrc"
+      - ".dockerignore"
+      - ".hadolint.yaml"
+      - ".github/workflows/docker-image-security.yml"
+      - ".github/actions/trivy-api-image-gate/**"
+      - ".github/scripts/api_image_smoke.sh"
+      - ".github/scripts/web_image_smoke.sh"
+  push:
+    branches:
+      - main
+    paths:
+      - "docker/api/**"
+      - "docker/web/**"
+      - "modules/api/**"
+      - "modules/model/pyproject.toml"
+      - "modules/model/src/**"
+      - "modules/model/alembic/**"
+      - "modules/model/alembic.ini"
+      - "modules/model/README.md"
+      - "modules/model/LICENSE"
+      - "modules/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".nvmrc"
+      - ".dockerignore"
+      - ".hadolint.yaml"
+      - ".github/workflows/docker-image-security.yml"
+      - ".github/actions/trivy-api-image-gate/**"
+      - ".github/scripts/api_image_smoke.sh"
+      - ".github/scripts/web_image_smoke.sh"
+  schedule:
+    # After filesystem Trivy (Mon 07:00 UTC) — catch base-image drift weekly.
+    - cron: "30 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: docker-image-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      dockerfiles: ${{ steps.filter.outputs.dockerfiles }}
+      all: ${{ steps.filter.outputs.all }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Detect which images to secure
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "schedule" || "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            {
+              echo "api=true"
+              echo "web=true"
+              echo "dockerfiles=true"
+              echo "all=true"
+            } >>"${GITHUB_OUTPUT}"
+            echo "schedule/dispatch — scan both images"
+            exit 0
+          fi
+
+          api=false
+          web=false
+          dockerfiles=false
+
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            range="${BASE_SHA}...${HEAD_SHA}"
+          else
+            if [[ -z "${BEFORE}" || "${BEFORE}" =~ ^0+$ ]]; then
+              api=true
+              web=true
+              dockerfiles=true
+              {
+                echo "api=true"
+                echo "web=true"
+                echo "dockerfiles=true"
+                echo "all=true"
+              } >>"${GITHUB_OUTPUT}"
+              echo "No usable before SHA — scan both"
+              exit 0
+            fi
+            range="${BEFORE}...${SHA}"
+          fi
+
+          while IFS= read -r f; do
+            case "${f}" in
+              docker/api/* | \
+              modules/api/* | \
+              modules/model/pyproject.toml | \
+              modules/model/src/* | \
+              modules/model/alembic/* | \
+              modules/model/alembic.ini | \
+              modules/model/README.md | \
+              modules/model/LICENSE | \
+              .github/scripts/api_image_smoke.sh)
+                api=true
+                ;;
+              docker/web/* | \
+              modules/web/* | \
+              package.json | \
+              pnpm-lock.yaml | \
+              pnpm-workspace.yaml | \
+              .nvmrc | \
+              .github/scripts/web_image_smoke.sh)
+                web=true
+                ;;
+            esac
+            case "${f}" in
+              docker/api/Dockerfile | docker/web/Dockerfile | .hadolint.yaml | \
+              .github/workflows/docker-image-security.yml | \
+              .github/actions/trivy-api-image-gate/* | \
+              .dockerignore)
+                dockerfiles=true
+                api=true
+                web=true
+                ;;
+            esac
+          done < <(git diff --name-only "${range}" || true)
+
+          {
+            echo "api=${api}"
+            echo "web=${web}"
+            echo "dockerfiles=${dockerfiles}"
+            if [[ "${api}" == "true" && "${web}" == "true" ]]; then
+              echo "all=true"
+            else
+              echo "all=false"
+            fi
+          } >>"${GITHUB_OUTPUT}"
+          echo "api=${api} web=${web} dockerfiles=${dockerfiles}"
+
+  hadolint:
+    name: Hadolint Dockerfiles
+    needs: [changes]
+    if: >-
+      needs.changes.outputs.dockerfiles == 'true' ||
+      needs.changes.outputs.all == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Lint docker/api/Dockerfile
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: docker/api/Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: warning
+
+      - name: Lint docker/web/Dockerfile
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: docker/web/Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: warning
+
+  api-image:
+    name: API image Trivy + smoke
+    needs: [changes]
+    if: >-
+      needs.changes.outputs.api == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build API image (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/api/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: papita-api:security
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=papita-api-security
+          cache-to: type=gha,mode=max,scope=papita-api-security
+
+      - name: Assert patched Python packages
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint python papita-api:security - <<'PY'
+          import importlib.metadata as m
+
+          def ver(name: str) -> tuple[int, ...]:
+              return tuple(int(p) for p in m.version(name).split(".")[:3])
+
+          assert ver("pip") >= (26, 1, 2)
+          assert ver("setuptools") >= (78, 1, 1)
+          assert ver("msgpack") >= (1, 2, 1)
+          print("pip/setuptools/msgpack floors OK")
+          PY
+
+      - name: Trivy CRITICAL/HIGH gate
+        uses: ./.github/actions/trivy-api-image-gate
+        with:
+          image-ref: papita-api:security
+          sarif-category: trivy-api-image-ci
+          sarif-file: trivy-api-image-ci.sarif
+
+      - name: Smoke GET /api/v1/health/live
+        run: /bin/bash .github/scripts/api_image_smoke.sh papita-api:security
+
+  web-image:
+    name: Web image Trivy + smoke
+    needs: [changes]
+    if: >-
+      needs.changes.outputs.web == 'true' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
+
+      - name: Build web image (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/web/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: papita-web:security
+          provenance: false
+          sbom: false
+          build-args: |
+            VITE_APP_TITLE=Papita
+            VITE_PAPITA_BREAKING_CHANGES_ID=ppt-044
+            VITE_API_BASE_URL=
+          cache-from: type=gha,scope=papita-web-security
+          cache-to: type=gha,mode=max,scope=papita-web-security
+
+      - name: Trivy CRITICAL/HIGH gate
+        uses: ./.github/actions/trivy-api-image-gate
+        with:
+          image-ref: papita-web:security
+          sarif-category: trivy-web-image-ci
+          sarif-file: trivy-web-image-ci.sarif
+
+      - name: Smoke GET / + SPA security headers
+        run: /bin/bash .github/scripts/web_image_smoke.sh papita-web:security

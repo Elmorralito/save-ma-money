@@ -6,8 +6,8 @@
 # attestations (which can list stale Python package versions) cannot fail the gate
 # when the real site-packages are already patched. SARIF upload remains non-gating.
 
-name: Trivy API image gate
-description: Scan a local Docker image with Trivy; fail on CRITICAL/HIGH; upload SARIF
+name: Trivy image gate
+description: Scan a local Docker image (API or web) with Trivy; fail on CRITICAL/HIGH; upload SARIF
 
 inputs:
   image-ref:
