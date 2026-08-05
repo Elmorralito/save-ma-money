@@ -1,0 +1,40 @@
+# Composite gate: fail the job on CRITICAL/HIGH image vulns (PPT-067).
+# GitHub Environment "required reviewers" cannot be scanners — this is the automated gate.
+# Aligns severity/ignore-unfixed with .github/workflows/trivy.yml filesystem scan.
+
+name: Trivy API image gate
+description: Scan a local Docker image with Trivy; fail on CRITICAL/HIGH; upload SARIF
+
+inputs:
+  image-ref:
+    description: Local image reference to scan (must already be loaded)
+    required: true
+  sarif-category:
+    description: Code scanning category for the Security tab
+    required: true
+  sarif-file:
+    description: SARIF output path
+    required: false
+    default: trivy-api-image.sarif
+
+runs:
+  using: composite
+  steps:
+    - name: Trivy image scan (CRITICAL/HIGH gate)
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: image
+        image-ref: ${{ inputs.image-ref }}
+        scanners: vuln
+        severity: CRITICAL,HIGH
+        ignore-unfixed: true
+        format: sarif
+        output: ${{ inputs.sarif-file }}
+        exit-code: "1"
+
+    - name: Upload Trivy image SARIF
+      uses: github/codeql-action/upload-sarif@f205ea1c3313d32999d8d6a48b4f6530d4437b38 # v4
+      if: ${{ always() && hashFiles(inputs.sarif-file) != '' }}
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: ${{ inputs.sarif-category }}

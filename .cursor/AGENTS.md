@@ -68,7 +68,7 @@ save-ma-money/
 │       └── src/                # presentation only — no domain logic
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
 ├── bin/                        # alembic.sh, test.sh, smokes, utils.sh, web_e2e_seed.*
-├── docker/                     # database/, api/, redis/, web/ (nginx SPA), docker-compose.yml
+├── docker/                     # README (GHCR SSOT PPT-067), database/, api/, redis/, web/, docker-compose.yml
 ├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
 ├── .cursor/                    # adapters, gen-custom rules, skills
 ├── .agents/                    # symlinks to .cursor/ adapters (Codex)
@@ -228,6 +228,7 @@ Use the right tier for the question:
 | Post-MVP hardening / uvicorn | [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) · [Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
 | Human README                 | [`README.md`](../README.md)                                                                                                                                                                          |
 | CI workflows & scripts       | [`.github/CI.md`](../.github/CI.md)                                                                                                                                                                  |
+| Docker / GHCR image publish  | [`docker/README.md`](../docker/README.md) (PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132))                                                                                |
 
 Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:save`; do not duplicate routing rules here.
 

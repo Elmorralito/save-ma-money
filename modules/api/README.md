@@ -223,6 +223,8 @@ make api-up
 
 In-container bind is literal `0.0.0.0:8000` ([`docker/api/Dockerfile`](../../docker/api/Dockerfile) `CMD` — no `--reload` / `--workers`). Host publish uses Compose `API_PORT` (`${API_PORT}:8000`). Settings `HOST`/`PORT` are **unused for bind** (env-file compatibility only).
 
+**Registry images (PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132)):** stable GHCR tags publish from **`main` only**; PRs get `pr-*` / `dev-*` previews unless labeled `skip-api-image-dev`. Prefer digest or `sha-*` pins for staging/prod. Naming, Decision A, and pull examples: [`docker/README.md`](../../docker/README.md). B0: `make api-up` / `make api-image-build` (no registry).
+
 | Service      | URL                                       |
 | ------------ | ----------------------------------------- |
 | Swagger UI   | http://localhost:8000/api/docs            |

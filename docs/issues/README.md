@@ -1902,6 +1902,7 @@ When PPT-036–038 land, apply cache-aside on hot GETs:
 
 > Post-MVP ops packaging brief. Closed ([#93](https://github.com/Elmorralito/save-ma-money/issues/93), [PR #103](https://github.com/Elmorralito/save-ma-money/pull/103)).
 > Technical packaging: [`ARCHITECTURE.md` Part IX](../design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) · operator run paths: [`modules/api/README.md`](../../modules/api/README.md).
+> **Not this part:** API registry image publish is PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132) — [`docker/README.md`](../../docker/README.md).
 
 **Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **Parent epic:** [#42](https://github.com/Elmorralito/save-ma-money/issues/42) (PPT-032) · **PPT-045** · **Step:** Post-MVP ops packaging
 

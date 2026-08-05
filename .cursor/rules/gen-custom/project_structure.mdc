@@ -96,15 +96,16 @@ Developer/ops entrypoints (CI wrappers stay under `.github/scripts/`):
 
 | Path | Role |
 | ---- | ---- |
+| `docker/README.md` | GHCR naming + publish SSOT (PPT-067 / #132); model = PyPI, API = container |
 | `docker/database/docker-compose.yml` | Local Postgres 15 (B0) |
 | `docker/docker-compose.yml` | API + Postgres + Redis + nginx SPA stack |
-| `docker/api/Dockerfile` | uvicorn `CMD` SSOT (`papita_txnsapi.main:app`) |
+| `docker/api/Dockerfile` | uvicorn `CMD` SSOT (`papita_txnsapi.main:app`); base digest pinned |
 | `docker/web/Dockerfile` | multi-stage pnpm → nginx:alpine (PPT-057 / #122); SPA CSP snippet PPT-063 / #128 |
 | `docker/web/nginx.conf` | SPA fallback + `/api` proxy (BFF cookie Path=/api) |
 | `docker/web/spa-security-headers.conf` | CSP + baseline headers for static SPA locations (PPT-063 / #128) |
 | `docker/redis/` | Redis config for Compose |
 
-Canonical B0 API start: `make api-up` (uvicorn in-container). nginx SPA: `make web-up`. See `ARCHITECTURE.md` Part IX (PPT-045). Do not promote host `poetry run uvicorn` as the day-to-day path.
+Canonical B0 API start: `make api-up` (uvicorn in-container). nginx SPA: `make web-up`. See `ARCHITECTURE.md` Part IX (PPT-045). API image registry publish: `publish-api-image.yml` → `ghcr.io/.../save-ma-money-api` (PPT-067). Do not promote host `poetry run uvicorn` as the day-to-day path.
 
 ### Documentation
 

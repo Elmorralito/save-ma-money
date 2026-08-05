@@ -79,7 +79,7 @@ Part V in [`ARCHITECTURE.md`](ARCHITECTURE.md#part-v--api-coverage-matrix-ppt-03
 
 ## Ops (Redis + optional B1 pooler)
 
-Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/README.md). Env layout: [`environments/README.md`](../../environments/README.md). Design summary: [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89). Packaging: [Part IX](ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93).
+Canonical contract detail stays in [`modules/api/README.md`](../../modules/api/README.md). Env layout: [`environments/README.md`](../../environments/README.md). Design summary: [Part VIII](ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89). Packaging: [Part IX](ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93). **Container registry (API GHCR publish, PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132)):** [`docker/README.md`](../../docker/README.md) — not Helm; model stays PyPI.
 
 ### Redis (PPT-043 / B0 + B1)
 

@@ -1,7 +1,11 @@
 # Papita Transactions API - B0 local / B1 pooler runtime
 # Build context: repository root (docker compose: context: .., dockerfile: docker/api/Dockerfile)
+# Registry publish: GHCR via .github/workflows/publish-api-image.yml (PPT-067 / #132)
+# Naming SSOT: docker/README.md
+#
+# Base digest pinned for supply-chain stability; Dependabot (docker /docker/api) refreshes it.
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm@sha256:d50fb7611f86d04a3b0471b46d7557818d88983fc3136726336b2a4c657aa30b
 
 WORKDIR /app
 

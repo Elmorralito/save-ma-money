@@ -4165,7 +4165,7 @@ ASGI target: `papita_txnsapi.main:app`. Compose `api` keeps `REDIS_URL=redis://r
 Kubernetes / ECS / systemd · TLS / reverse proxy · gunicorn worker fleet (unless ADR) · REST or
 `papita_txnsmodel` business-logic changes · Registrar / DuckDB / RLS (B3) · full PPT-044 security
 pack ([Part VIII](#part-viii--post-mvp-api-hardening-ppt-044-89) / #89) · host Poetry uvicorn as a
-supported B0 runtime.
+supported B0 runtime · **GHCR / registry image publish** (owned by PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132) — [`docker/README.md`](../../docker/README.md)).
 
 ### 4. References
 
@@ -4173,7 +4173,9 @@ supported B0 runtime.
 - [PR #103](https://github.com/Elmorralito/save-ma-money/pull/103) — closing PR
 - [`docker/api/Dockerfile`](../../docker/api/Dockerfile) — uvicorn `CMD` + healthcheck
 - [`docker/docker-compose.yml`](../../docker/docker-compose.yml) — `api` service
+- [`docker/README.md`](../../docker/README.md) — GHCR naming + publish (PPT-067 / #132; distinct from this part)
 - [`Makefile`](../../Makefile) — `api-up`, `api-down`, `stack-up`, `redis-up`, `redis-smoke`
 - [`modules/api/src/papita_txnsapi/main.py`](../../modules/api/src/papita_txnsapi/main.py) — `create_app`, lifespan
 - [#83](https://github.com/Elmorralito/save-ma-money/issues/83) — PPT-043 Redis lifespan / ready
 - [#89](https://github.com/Elmorralito/save-ma-money/issues/89) — PPT-044 hardening (distinct scope)
+- [#132](https://github.com/Elmorralito/save-ma-money/issues/132) — PPT-067 API image registry publish
