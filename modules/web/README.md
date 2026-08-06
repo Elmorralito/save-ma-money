@@ -318,6 +318,8 @@ Primary deploy path is **nginx in Compose** (not Vercel/Netlify/S3). Multi-stage
 
 **Registry (PPT-067):** GHCR `save-ma-money-web` publishes from `main` via [`publish-web-image.yml`](../../.github/workflows/publish-web-image.yml) (PR `pr-*`/`dev-*` unless `skip-web-image-dev`). Local: `make web-image-build` + `./.github/scripts/web_image_smoke.sh papita-web:local`. Naming SSOT: [`docker/README.md`](../../docker/README.md).
 
+**Git tags (PPT-066 / [#131](https://github.com/Elmorralito/save-ma-money/issues/131)):** when this package cuts a source release, use `js-web-v{semver}` (semver from `package.json`). That is a **Git tag / GitHub Release** convention only — GHCR image publish stays on `main` path triggers (see [`docker/README.md`](../../docker/README.md)). Convention SSOT: [`.github/CI.md` § Release tagging](../../.github/CI.md#release-tagging-ppt-066).
+
 | Piece      | Location                                              | Notes                                                                                                          |
 | ---------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Dockerfile | `docker/web/Dockerfile`                               | Bake public `VITE_*` as build-args; leave `VITE_API_BASE_URL` empty for same-origin `/api`; non-root (DS-0002) |

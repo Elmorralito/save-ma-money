@@ -215,20 +215,21 @@ Prefer **minimal diffs** — match surrounding code; do not refactor unrelated a
 
 Use the right tier for the question:
 
-| Need                         | Where                                                                                                                                                                                                |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Session state / backlog      | `.strata/memory/`, `.strata/issues/` (see MANIFEST load order)                                                                                                                                       |
-| Codemap                      | [`.strata/docs/ARCHITECTURE.md`](../.strata/docs/ARCHITECTURE.md)                                                                                                                                    |
-| PPT-031 design program       | [`docs/design/README.md`](../docs/design/README.md) · [`docs/design/ARCHITECTURE.md`](../docs/design/ARCHITECTURE.md)                                                                                |
-| Auth contract                | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                                                        |
-| API ↔ model mapping          | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                                                    |
-| Target REST contract         | [`modules/api/README.md`](../modules/api/README.md)                                                                                                                                                  |
-| Issue briefs                 | [`docs/issues/README.md`](../docs/issues/README.md) (merged SSOT; Parts I–VII incl. PPT-046 web epic)                                                                                                |
-| Web SPA setup / no domain JS | [`modules/web/README.md`](../modules/web/README.md) · epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                                                           |
-| Post-MVP hardening / uvicorn | [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) · [Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93) |
-| Human README                 | [`README.md`](../README.md)                                                                                                                                                                          |
-| CI workflows & scripts       | [`.github/CI.md`](../.github/CI.md)                                                                                                                                                                  |
-| Docker / GHCR image publish  | [`docker/README.md`](../docker/README.md) (PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132))                                                                                |
+| Need                         | Where                                                                                                                                                                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session state / backlog      | `.strata/memory/`, `.strata/issues/` (see MANIFEST load order)                                                                                                                                                         |
+| Codemap                      | [`.strata/docs/ARCHITECTURE.md`](../.strata/docs/ARCHITECTURE.md)                                                                                                                                                      |
+| PPT-031 design program       | [`docs/design/README.md`](../docs/design/README.md) · [`docs/design/ARCHITECTURE.md`](../docs/design/ARCHITECTURE.md)                                                                                                  |
+| Auth contract                | [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                                                                          |
+| API ↔ model mapping          | [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                                                                      |
+| Target REST contract         | [`modules/api/README.md`](../modules/api/README.md)                                                                                                                                                                    |
+| Issue briefs                 | [`docs/issues/README.md`](../docs/issues/README.md) (merged SSOT; Parts I–VII incl. PPT-046 web epic)                                                                                                                  |
+| Web SPA setup / no domain JS | [`modules/web/README.md`](../modules/web/README.md) · epic [#112](https://github.com/Elmorralito/save-ma-money/issues/112)                                                                                             |
+| Post-MVP hardening / uvicorn | [`ARCHITECTURE.md` Part VIII](../docs/design/ARCHITECTURE.md#part-viii--post-mvp-api-hardening-ppt-044-89) · [Part IX](../docs/design/ARCHITECTURE.md#part-ix--uvicorn-process-packaging-ppt-045-93)                   |
+| Human README                 | [`README.md`](../README.md)                                                                                                                                                                                            |
+| CI workflows & scripts       | [`.github/CI.md`](../.github/CI.md)                                                                                                                                                                                    |
+| Release Git tags (PPT-066)   | [`.github/CI.md` § Release tagging](../.github/CI.md#release-tagging-ppt-066) — `{lang}-{module}-v{semver}` (`py-model-v*`, `js-web-v*`, `py-api-v*`); [#131](https://github.com/Elmorralito/save-ma-money/issues/131) |
+| Docker / GHCR image publish  | [`docker/README.md`](../docker/README.md) (PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132))                                                                                                  |
 
 Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:save`; do not duplicate routing rules here.
 
@@ -237,6 +238,8 @@ Promote durable decisions to `.strata/docs/decisions/` (ADR-NNNN) via `/strata:s
 ## Continuous integration
 
 Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and troubleshooting: [`.github/CI.md`](../.github/CI.md).
+
+**Release tags (PPT-066):** model PSR creates `py-model-v*`; `publish-model.yml` dual-triggers legacy `model-v*` for a short window. Do not invent new `model-v*` tags. Image registry tags that mirror language prefixes are PPT-067 (`docker/README.md`), not git-tag publish triggers.
 
 **Agent-critical:**
 

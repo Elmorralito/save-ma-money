@@ -225,6 +225,8 @@ In-container bind is literal `0.0.0.0:8000` ([`docker/api/Dockerfile`](../../doc
 
 **Registry images (PPT-067 / [#132](https://github.com/Elmorralito/save-ma-money/issues/132)):** stable GHCR tags publish from **`main` only**; PRs get `pr-*` / `dev-*` previews unless labeled `skip-api-image-dev`. Prefer digest or `sha-*` pins for staging/prod. Naming, Decision A, and pull examples: [`docker/README.md`](../../docker/README.md). B0: `make api-up` / `make api-image-build` (no registry).
 
+**Git tags (PPT-066 / [#131](https://github.com/Elmorralito/save-ma-money/issues/131)):** if/when this package is git-tagged for a source release, use `py-api-v{semver}` (semver from `modules/api/pyproject.toml`). That is a **Git tag / GitHub Release** convention only — GHCR publish stays on `main` path triggers. Convention SSOT: [`.github/CI.md` § Release tagging](../../.github/CI.md#release-tagging-ppt-066).
+
 | Service      | URL                                       |
 | ------------ | ----------------------------------------- |
 | Swagger UI   | http://localhost:8000/api/docs            |

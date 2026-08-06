@@ -19,6 +19,7 @@ GitHub Actions workflows, validation scripts, and local pre-commit hooks for **s
 - [Which checks run on my PR?](#which-checks-run-on-my-pr)
 - [PR skip labels](#pr-skip-labels)
 - [Workflow overview](#workflow-overview)
+- [Release tagging (PPT-066)](#release-tagging-ppt-066)
 - [Run checks locally](#run-checks-locally)
 - [Workflows in detail](#workflows-in-detail) (includes [Publish model package](#publish-model-package-ppt-024) + [dev TestPyPI](#publish-model-dev--testpypi) + [Publish API image](#publish-api-image-ppt-067))
 - [CI Adoption Badge](#ci-adoption-badge)
@@ -166,11 +167,40 @@ gh pr edit 123 --add-label skip-dev-release
 | Branch sync           | [`workflows/branch-sync.yml`](./workflows/branch-sync.yml)                     | **All PRs**; `workflow_dispatch`                                                                                                | Fail if branch is behind `origin/main` (needs merge/rebase)                                                                                       |
 | Auto Updates          | [`workflows/auto-updates.yml`](./workflows/auto-updates.yml)                   | Push or merged PR to `main`                                                                                                     | Regenerate [`CHANGELOG.md`](../CHANGELOG.md) and badges                                                                                           |
 | CI Adoption Badge     | [`workflows/ci-badge.yml`](./workflows/ci-badge.yml)                           | PR + push to `main`; Mon 06:00 UTC; `workflow_dispatch`                                                                         | Score CI maturity and update README adoption badge                                                                                                |
-| Release model (PSR)   | [`workflows/release-model.yml`](./workflows/release-model.yml)                 | Push `main` (model paths); `workflow_dispatch`                                                                                  | python-semantic-release → `model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                     |
-| Publish model (PyPI)  | [`workflows/publish-model.yml`](./workflows/publish-model.yml)                 | `workflow_call`; tag `model-v*`; `workflow_dispatch`                                                                            | Build + OIDC publish `papita-transactions-model` (PPT-024)                                                                                        |
+| Release model (PSR)   | [`workflows/release-model.yml`](./workflows/release-model.yml)                 | Push `main` (model paths); `workflow_dispatch`                                                                                  | python-semantic-release → `py-model-v*` + `modules/model/CHANGELOG.md`; calls publish on release                                                  |
+| Publish model (PyPI)  | [`workflows/publish-model.yml`](./workflows/publish-model.yml)                 | `workflow_call`; tags `py-model-v*` (+ legacy `model-v*`); `workflow_dispatch`                                                  | Build + OIDC publish `papita-transactions-model` (PPT-024 / PPT-066)                                                                              |
 | Publish model (dev)   | [`workflows/publish-model-dev.yml`](./workflows/publish-model-dev.yml)         | PR (model paths) after other checks pass                                                                                        | Stamp `{version}.dev{run_id}` → TestPyPI (same-repo, non-draft)                                                                                   |
 | Publish API image     | [`workflows/publish-api-image.yml`](./workflows/publish-api-image.yml)         | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` only if API/model **runtime** paths changed (skip `skip-api-image-dev`) | PPT-067 / #132 — Environments `ghcr` + `ghcr-dev`                                                                                                 |
 | Publish Web image     | [`workflows/publish-web-image.yml`](./workflows/publish-web-image.yml)         | Path-relevant `main` → stable GHCR; PR → `pr-*`/`dev-*` only if web **runtime** paths changed (skip `skip-web-image-dev`)       | PPT-067 — nginx SPA (`save-ma-money-web`); same Environments                                                                                      |
+
+---
+
+## Release tagging (PPT-066)
+
+Language-prefixed Git tags keep polyglot releases unambiguous in this Poetry + pnpm monorepo ([#131](https://github.com/Elmorralito/save-ma-money/issues/131)).
+
+**Pattern:** `{lang}-{module}-v{semver}`
+
+| Prefix       | Module          | Example           | Status today                                                      |
+| :----------- | :-------------- | :---------------- | :---------------------------------------------------------------- |
+| `py-model-v` | `modules/model` | `py-model-v1.0.2` | **Canonical** — PSR `tag_format` + publish trigger                |
+| `model-v`    | `modules/model` | `model-v1.0.2`    | **Legacy dual-trigger** — still publishes; do not create new ones |
+| `py-api-v`   | `modules/api`   | `py-api-v0.3.0`   | Convention reserved; no `release-api` workflow yet                |
+| `js-web-v`   | `modules/web`   | `js-web-v0.1.0`   | Convention reserved; first tag when web packaging cuts a release  |
+
+- Language codes: `py` = Python packages; `js` = JS/TS web package (use `js` even when source is TypeScript).
+- Semver body matches the package version in `pyproject.toml` / `package.json` (no language prefix in the version field).
+- GitHub Release titles match the tag name.
+- PyPI distribution names (`papita-transactions-model`, etc.) are **unchanged**.
+- Container image tags that mirror these names are owned by PPT-067 — see [`docker/README.md`](../docker/README.md).
+
+### Cut a model release
+
+1. Merge conventional commits that touch `modules/model/**` to `main` (`feat(model): …`, `fix(model): …`).
+2. [`release-model.yml`](./workflows/release-model.yml) bumps version, updates `modules/model/CHANGELOG.md`, tags **`py-model-vX.Y.Z`**, opens a GitHub Release with that title, then **`workflow_call`** → [`publish-model.yml`](./workflows/publish-model.yml) → PyPI.
+3. Escape hatch: push a human/PAT tag `py-model-vX.Y.Z` (or legacy `model-vX.Y.Z` during the dual-trigger window) whose semver matches `modules/model/pyproject.toml`.
+
+**Migration:** keep accepting `model-v*` for one or two releases after this cutover, then remove the legacy trigger and treat `model-v*` as ignored. Prefer `py-model-v*` for all new tags.
 
 ---
 
@@ -247,7 +277,7 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 | :-------------- | :------------------------------------------------------------------------------------------------------------- |
 | **Trigger**     | Push to `main` touching `modules/model/**`; optional `workflow_dispatch` (+ force bump)                        |
 | **Tool**        | [python-semantic-release](https://python-semantic-release.readthedocs.io/) v10 (`directory: modules/model`)    |
-| **Outputs**     | Bumps `modules/model/pyproject.toml`, updates **`modules/model/CHANGELOG.md`**, tags `model-v*`                |
+| **Outputs**     | Bumps `modules/model/pyproject.toml`, updates **`modules/model/CHANGELOG.md`**, tags `py-model-v*` (PPT-066)   |
 | **Publish**     | On `released=true`, **`workflow_call`** → [`publish-model.yml`](./workflows/publish-model.yml) (`target=pypi`) |
 | **Not touched** | Repo-root [`CHANGELOG.md`](../CHANGELOG.md) — owned by [Auto Updates](#auto-updates) only                      |
 
@@ -259,12 +289,12 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 
 |             |                                                                                                                                                                                                                                                                                                                                |
 | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Trigger** | `workflow_call` (from release / dev); tag `model-v*` → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi`                                                                                                                                                                                                              |
+| **Trigger** | `workflow_call` (from release / dev); tags `py-model-v*` (canonical) or `model-v*` (legacy dual-trigger) → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi`                                                                                                                                                          |
 | **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                                                                                                                                                                                                                                                                   |
 | **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`). Publish steps set `attestations: false` because PEP 740 attestations use the **caller** workflow as Build Config URI while the publisher is registered as `publish-model.yml` ([warehouse#11096](https://github.com/pypi/warehouse/issues/11096)) |
-| **Gates**   | Tag/ref version must match `modules/model/pyproject.toml` (stable); clean-venv wheel import smoke                                                                                                                                                                                                                              |
+| **Gates**   | Tag/ref semver via [`strip_model_release_tag.sh`](./scripts/strip_model_release_tag.sh) must match `modules/model/pyproject.toml` (stable tag push **and** `workflow_call` with `ref=py-model-v*` / legacy `model-v*`); clean-venv wheel import smoke                                                                          |
 
-**Stable release flow:** merge conventional model commits to `main` → `release-model.yml` tags `model-v*` → **calls** `publish-model.yml` → **PyPI**.
+**Stable release flow:** merge conventional model commits to `main` → `release-model.yml` tags `py-model-v*` → **calls** `publish-model.yml` → **PyPI**. Tag convention SSOT: [Release tagging (PPT-066)](#release-tagging-ppt-066).
 
 ### Publish model (dev) → TestPyPI
 
@@ -799,6 +829,7 @@ Missing file → skip with success (project may not use MCP).
 | [`branch_sync_check.sh`](./scripts/branch_sync_check.sh)             | Branch sync with main    | Fail if `HEAD` is behind `BASE_REF` (default `origin/main`)              |
 | [`wait_for_pr_checks.sh`](./scripts/wait_for_pr_checks.sh)           | Publish model (dev)      | Poll Actions until other PR checks for `COMMIT_SHA` succeed              |
 | [`stamp_model_dev_version.py`](./scripts/stamp_model_dev_version.py) | Publish model (dev)      | Rewrite model `project.version` to `{base}.dev{run_id}` for TestPyPI     |
+| [`strip_model_release_tag.sh`](./scripts/strip_model_release_tag.sh) | Publish model (stable)   | Strip `py-model-v` / legacy `model-v` prefix → semver (PPT-066)          |
 | [`migration_check.sh`](./scripts/migration_check.sh)                 | Migration Check          | Alembic upgrade → downgrade → upgrade → `check`; requires `DB_URL`       |
 | [`supply_chain_check.sh`](./scripts/supply_chain_check.sh)           | Supply Chain Check       | Poetry metadata, semver check, pip upgrade, pip-audit                    |
 | [`check_module_versions.py`](./scripts/check_module_versions.py)     | Supply Chain Check       | Validates `[project].version` semver in each `modules/*/pyproject.toml`  |
