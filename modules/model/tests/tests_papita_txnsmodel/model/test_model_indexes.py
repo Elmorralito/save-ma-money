@@ -29,6 +29,11 @@ class TestModelTableIndexes:
         index_names = {index.name for index in TransactionTemplates.__table__.indexes}
         assert "ix_transaction_templates_owner_category" in index_names
 
+    def test_transaction_templates_has_owner_due_date_index(self):
+        """One-off payment dues are listed per owner and due_date (PPT-071)."""
+        index_names = {index.name for index in TransactionTemplates.__table__.indexes}
+        assert "ix_transaction_templates_owner_due_date" in index_names
+
     def test_categories_has_unique_owner_name_kind_index(self):
         """FR-15 uniqueness constraint remains on the model."""
         index_names = {index.name for index in Categories.__table__.indexes}
