@@ -1,10 +1,10 @@
 """Transaction templates and posted transactions (v3)."""
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, CHAR, DECIMAL, TIMESTAMP, Column
+from sqlalchemy import ARRAY, CHAR, DECIMAL, TIMESTAMP, Column, Date
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Index, SmallInteger, String, Text
 from sqlmodel import Field, Relationship
@@ -26,11 +26,12 @@ if TYPE_CHECKING:
 
 
 class TransactionTemplates(BaseSQLModel, table=True):  # type: ignore
-    """Recurring or planned transaction template."""
+    """Recurring or planned transaction template (including payment-due reminders)."""
 
     __tablename__ = TRANSACTION_TEMPLATES__TABLENAME
     __table_args__ = (
         Index("ix_transaction_templates_owner_category", "owner_id", "category_id"),
+        Index("ix_transaction_templates_owner_due_date", "owner_id", "due_date"),
         {"schema": SCHEMA_NAME},
     )
 
@@ -43,6 +44,11 @@ class TransactionTemplates(BaseSQLModel, table=True):  # type: ignore
     planned_amount: float = Field(sa_column=Column(DECIMAL(22, 8), nullable=False), gt=0)
     planned_day: int = Field(sa_column=Column(SmallInteger, nullable=False), ge=1, le=31)
     use_month_end: bool = Field(nullable=False, default=False)
+    # PPT-071 / #164 — payment due reminders (in-app). Precedence for due resolution
+    # (one-off ``due_date`` vs recurring ``planned_day`` / ``use_month_end``) is service-owned (PPT-072).
+    due_date: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
+    remind_days_before: int | None = Field(default=None, sa_column=Column(SmallInteger, nullable=True), ge=0)
+    from_account_id: uuid.UUID | None = Field(foreign_key=f"{ACCOUNTS__TABLENAME}.id", default=None, nullable=True)
 
     owner: "Users" = Relationship(back_populates="owned_transaction_templates")
     category: "Categories" = Relationship(back_populates="transaction_templates")

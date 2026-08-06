@@ -28,19 +28,21 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
+- **PPT-071 / #164:** schema + Alembic for payment dues on `transaction_templates`
+  (`due_date`, `remind_days_before`, `from_account_id`; head → `j7e8f9a0b1c2`).
 - **[PR #193](https://github.com/Elmorralito/save-ma-money/pull/193):** GHA Dependabot bumps +
   e2e login/nav hardening + Hadolint HEALTHCHECK JSON / DL3066 ignore.
 
 ### Open (backlog)
 
-- **PPT-070** children #164–#168 — dues schema/services/API/SPA/tests (not started in code).
+- **PPT-070** children #165–#168 — services/API/SPA/tests after PPT-071 lands.
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 
 ### Next action
 
+- Finish PPT-071 verification (migration check + focused tests); open PR for #164
+- PPT-072 / #165 upcoming-dues + mark-paid (owner check on `from_account_id`)
 - Merge PR #193; set GHCR package visibility if needed
-- Verify next model release produces `py-model-v*`; close #131 when dual-trigger docs + CI land
-- Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes
