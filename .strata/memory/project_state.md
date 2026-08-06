@@ -21,6 +21,10 @@ Capture with `/strata:capture` only for work in flight.
 ### Last completed (this session) — ops
 
 - **PPT-067 publish-dev path gate** landed (#194). Closed Node 25 Dependabot #192 (stay on 22).
+- **PPT-066 / #131** — `py-model-v*` cutover (PSR `tag_format` + dual-trigger publish; SSOT
+  [`.github/CI.md` § Release tagging](../../.github/CI.md#release-tagging-ppt-066)).
+  Audit fix: stable `workflow_call` version gate no longer keys off dead
+  `event_name == workflow_call`; shared `strip_model_release_tag.sh`.
 
 ### In progress (ACTIVE)
 
@@ -30,11 +34,12 @@ Capture with `/strata:capture` only for work in flight.
 ### Open (backlog)
 
 - **PPT-070** children #164–#168 — dues schema/services/API/SPA/tests (not started in code).
-- **PPT-066 / #131** — language-prefixed git tags (`py-api-v*` aligns with PPT-067 image tags).
+- **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 
 ### Next action
 
 - Merge PR #193; set GHCR package visibility if needed
+- Verify next model release produces `py-model-v*`; close #131 when dual-trigger docs + CI land
 - Start PPT-071 schema when ready for dues
 - Do not re-add closed GH issues into `.strata/issues/`
 

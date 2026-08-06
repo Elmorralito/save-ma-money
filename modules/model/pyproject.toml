@@ -61,12 +61,13 @@ build-backend = "poetry.core.masonry.api"
 
 # python-semantic-release (PPT-024) — model package only.
 # Changelog: modules/model/CHANGELOG.md (NOT repo-root CHANGELOG.md / auto-updates.yml).
-# Tags: model-v{version} → .github/workflows/publish-model.yml (PyPI OIDC).
+# Tags: py-model-v{version} (PPT-066 / #131) → .github/workflows/publish-model.yml (PyPI OIDC).
+# Legacy model-v* tags still publish during the dual-trigger window (see .github/CI.md).
 # Run from modules/model (GitHub Action sets directory=).
 [tool.semantic_release]
 commit_parser = "conventional-monorepo"
 version_toml = ["pyproject.toml:project.version"]
-tag_format = "model-v{version}"
+tag_format = "py-model-v{version}"
 allow_zero_version = true
 major_on_zero = true
 commit_message = """\

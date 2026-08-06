@@ -4,7 +4,8 @@
 # Secrets: none required when using OIDC (id-token: write). Never commit tokens.
 #
 # Triggers:
-#   - push tag model-v* → PyPI (human/PAT tags; GITHUB_TOKEN tags often do not cascade)
+#   - push tag py-model-v* → PyPI (canonical; PPT-066 / #131)
+#   - push tag model-v* → PyPI (legacy dual-trigger; deprecated)
 #   - workflow_call from release-model.yml (stable PyPI) or publish-model-dev.yml (TestPyPI)
 #   - workflow_dispatch (manual TestPyPI / PyPI escape hatch)
 
@@ -13,6 +14,7 @@ name: Publish model package
 on:
   push:
     tags:
+      - "py-model-v*"
       - "model-v*"
   workflow_dispatch:
     inputs:
@@ -103,26 +105,31 @@ jobs:
           echo "package_version=${PKG_VER}"
 
       - name: Verify tag version matches pyproject (tag pushes)
-        if: startsWith(github.ref, 'refs/tags/model-v')
+        if: >-
+          startsWith(github.ref, 'refs/tags/py-model-v') ||
+          startsWith(github.ref, 'refs/tags/model-v')
         run: |
           set -euo pipefail
-          TAG_VER="${GITHUB_REF_NAME#model-v}"
+          TAG="${GITHUB_REF_NAME}"
+          TAG_VER="$(/bin/bash .github/scripts/strip_model_release_tag.sh "${TAG}")"
           PKG_VER="${{ steps.pkg_ver.outputs.version }}"
-          echo "tag=${TAG_VER} pyproject=${PKG_VER}"
+          echo "tag=${TAG} semver=${TAG_VER} pyproject=${PKG_VER}"
           test "${TAG_VER}" = "${PKG_VER}"
 
-      - name: Verify checkout ref tag matches pyproject (workflow_call stable)
+      # Inside a reusable workflow github.event_name is the *caller* event
+      # (push / workflow_dispatch / pull_request), never "workflow_call".
+      # Gate on inputs.ref + !stamp_dev_version instead.
+      - name: Verify checkout ref tag matches pyproject (stable workflow_call)
         if: >-
-          github.event_name == 'workflow_call' &&
           !inputs.stamp_dev_version &&
           inputs.ref != '' &&
-          startsWith(inputs.ref, 'model-v')
+          (startsWith(inputs.ref, 'py-model-v') || startsWith(inputs.ref, 'model-v'))
         run: |
           set -euo pipefail
-          TAG_VER="${{ inputs.ref }}"
-          TAG_VER="${TAG_VER#model-v}"
+          TAG="${{ inputs.ref }}"
+          TAG_VER="$(/bin/bash .github/scripts/strip_model_release_tag.sh "${TAG}")"
           PKG_VER="${{ steps.pkg_ver.outputs.version }}"
-          echo "ref_tag=${TAG_VER} pyproject=${PKG_VER}"
+          echo "ref_tag=${TAG} semver=${TAG_VER} pyproject=${PKG_VER}"
           test "${TAG_VER}" = "${PKG_VER}"
 
       - name: Smoke-install wheel in clean venv
@@ -185,7 +192,10 @@ jobs:
     # manual dispatch still requires confirm_pypi=publish. Do not gate on
     # event_name == workflow_call (never true in the called workflow).
     if: >-
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/model-v')) ||
+      (github.event_name == 'push' && (
+        startsWith(github.ref, 'refs/tags/py-model-v') ||
+        startsWith(github.ref, 'refs/tags/model-v')
+      )) ||
       (inputs.target == 'pypi' && (
         github.event_name != 'workflow_dispatch' ||
         inputs.confirm_pypi == 'publish'

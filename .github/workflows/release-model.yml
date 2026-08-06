@@ -1,6 +1,6 @@
 ---
-# python-semantic-release for modules/model only (PPT-024).
-# Writes modules/model/CHANGELOG.md + bumps pyproject version + tags model-v*.
+# python-semantic-release for modules/model only (PPT-024 + PPT-066).
+# Writes modules/model/CHANGELOG.md + bumps pyproject version + tags py-model-v*.
 # Does NOT touch repo-root CHANGELOG.md (owned by auto-updates.yml).
 # On a successful release, calls publish-model.yml (workflow_call) so PyPI publish
 # still runs when GITHUB_TOKEN tag pushes do not cascade to other workflows.

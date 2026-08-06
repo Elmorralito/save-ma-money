@@ -253,6 +253,10 @@ Issue briefs (PPT-031/032): [`docs/issues/README.md`](./docs/issues/README.md). 
 
 GitHub Actions workflows, supporting scripts, local pre-commit hooks, scheduled security scans, and the PR checklist are documented in [`.github/CI.md`](./.github/CI.md).
 
+### Release tagging (PPT-066)
+
+Publishable packages use language-prefixed Git tags so Python and JS artifacts never collide: `{lang}-{module}-v{semver}` (e.g. `py-model-v1.0.2`, future `js-web-v0.1.0` / `py-api-v0.3.0`). Model releases create `py-model-v*` via python-semantic-release; legacy `model-v*` still publishes during a short dual-trigger window. Full table and cut instructions: [`.github/CI.md` § Release tagging](./.github/CI.md#release-tagging-ppt-066) ([#131](https://github.com/Elmorralito/save-ma-money/issues/131)). Image tags that mirror these names are separate (PPT-067 / [`docker/README.md`](./docker/README.md)).
+
 ## Changelog
 
 Open issues, completed work, and closing pull-request summaries are maintained in [CHANGELOG.md](./CHANGELOG.md). That file is updated automatically when issues are opened or closed on the default branch.

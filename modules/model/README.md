@@ -415,16 +415,16 @@ pip install \
 
 Environment templates: [`.env.example`](../../.env.example) · Compose: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
 
-### Build / version / publish (PPT-024)
+### Build / version / publish (PPT-024 + PPT-066)
 
-Packaging and release automation for **this module only** ([#11](https://github.com/Elmorralito/save-ma-money/issues/11)):
+Packaging and release automation for **this module only** ([#11](https://github.com/Elmorralito/save-ma-money/issues/11)). Git tag prefix convention: [PPT-066 / #131](https://github.com/Elmorralito/save-ma-money/issues/131) — SSOT in [`.github/CI.md` § Release tagging](../../.github/CI.md#release-tagging-ppt-066).
 
-| Concern                                          | Owner                                                                                                                                         |
-| :----------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
-| Version bump + `model-v*` tag + GH release notes | [`release-model.yml`](../../.github/workflows/release-model.yml) ([python-semantic-release](https://python-semantic-release.readthedocs.io/)) |
-| Package release notes                            | [`modules/model/CHANGELOG.md`](./CHANGELOG.md) **only**                                                                                       |
-| Monorepo issue tracker changelog                 | Root [`CHANGELOG.md`](../../CHANGELOG.md) via [`auto-updates.yml`](../../.github/workflows/auto-updates.yml) — **never** written by PSR       |
-| sdist / wheel → TestPyPI / PyPI                  | [`publish-model.yml`](../../.github/workflows/publish-model.yml) (OIDC [Trusted Publishers](https://docs.pypi.org/trusted-publishers/))       |
+| Concern                                             | Owner                                                                                                                                         |
+| :-------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------- |
+| Version bump + `py-model-v*` tag + GH release notes | [`release-model.yml`](../../.github/workflows/release-model.yml) ([python-semantic-release](https://python-semantic-release.readthedocs.io/)) |
+| Package release notes                               | [`modules/model/CHANGELOG.md`](./CHANGELOG.md) **only**                                                                                       |
+| Monorepo issue tracker changelog                    | Root [`CHANGELOG.md`](../../CHANGELOG.md) via [`auto-updates.yml`](../../.github/workflows/auto-updates.yml) — **never** written by PSR       |
+| sdist / wheel → TestPyPI / PyPI                     | [`publish-model.yml`](../../.github/workflows/publish-model.yml) (OIDC [Trusted Publishers](https://docs.pypi.org/trusted-publishers/))       |
 
 **Commit style for bumps** — Conventional Commits with model scope (or path-filtered changes under `modules/model/`). Title style `feat/PPT-024: …` alone does **not** drive a version bump:
 
@@ -455,15 +455,16 @@ python -m venv /tmp/model-smoke
 
 #### Release triggers
 
-| Trigger                                                                                        | Result                                                                                                    |
-| :--------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------- |
-| PR (non-draft, same-repo) touching `modules/model/**` after other PR checks pass               | `publish-model-dev.yml` → TestPyPI as `{version}.dev{run_id}` (not committed)                             |
-| Push/merge to `main` touching `modules/model/**` (or `workflow_dispatch` on **Release model**) | PSR bumps version, updates `modules/model/CHANGELOG.md`, tags `model-v*`, then **`workflow_call` → PyPI** |
-| Tag `model-vX.Y.Z` (human/PAT; `GITHUB_TOKEN` tags usually do not cascade)                     | `publish-model.yml` → **PyPI** (escape hatch)                                                             |
-| Actions → **Publish model package** → `target=testpypi`                                        | **TestPyPI** (OIDC, environment `testpypi`)                                                               |
-| Actions → **Publish model package** → `target=pypi` + `confirm_pypi=publish`                   | **PyPI** (OIDC, environment `pypi`) — manual escape hatch                                                 |
+| Trigger                                                                                        | Result                                                                                                       |
+| :--------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------- |
+| PR (non-draft, same-repo) touching `modules/model/**` after other PR checks pass               | `publish-model-dev.yml` → TestPyPI as `{version}.dev{run_id}` (not committed)                                |
+| Push/merge to `main` touching `modules/model/**` (or `workflow_dispatch` on **Release model**) | PSR bumps version, updates `modules/model/CHANGELOG.md`, tags `py-model-v*`, then **`workflow_call` → PyPI** |
+| Tag `py-model-vX.Y.Z` (human/PAT; `GITHUB_TOKEN` tags usually do not cascade)                  | `publish-model.yml` → **PyPI** (canonical escape hatch)                                                      |
+| Tag `model-vX.Y.Z` (legacy dual-trigger; deprecated)                                           | `publish-model.yml` → **PyPI** — still accepted; do not create new `model-v*` tags                           |
+| Actions → **Publish model package** → `target=testpypi`                                        | **TestPyPI** (OIDC, environment `testpypi`)                                                                  |
+| Actions → **Publish model package** → `target=pypi` + `confirm_pypi=publish`                   | **PyPI** (OIDC, environment `pypi`) — manual escape hatch                                                    |
 
-**Operator note:** Trusted Publishers are configured on PyPI/TestPyPI for workflow **`publish-model.yml`** (reusable OIDC publisher) and GitHub Environments `pypi` / `testpypi`. The `testpypi` environment must allow PR branch deployments for dev publishes. Do **not** commit API tokens. Stable publishes after merge use `workflow_call` from `release-model.yml` so they do **not** depend on tag-push cascade (see [CI.md](../../.github/CI.md#publish-model-package-ppt-024)).
+**Operator note:** Trusted Publishers are configured on PyPI/TestPyPI for workflow **`publish-model.yml`** (reusable OIDC publisher) and GitHub Environments `pypi` / `testpypi`. The `testpypi` environment must allow PR branch deployments for dev publishes. Do **not** commit API tokens. Stable publishes after merge use `workflow_call` from `release-model.yml` so they do **not** depend on tag-push cascade (see [CI.md](../../.github/CI.md#publish-model-package-ppt-024)). Tag naming: [Release tagging (PPT-066)](../../.github/CI.md#release-tagging-ppt-066).
 
 ## Package layout
 
@@ -528,21 +529,22 @@ DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \
 
 ## Related documentation
 
-| Document                                                                                                                                                             | Description                                                                                       |
-| :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------ |
-| [`CHANGELOG.md`](./CHANGELOG.md)                                                                                                                                     | **Package** release notes (python-semantic-release)                                               |
-| [PyPI — papita-transactions-model](https://pypi.org/project/papita-transactions-model/)                                                                              | Published distributions                                                                           |
-| [`.github/CI.md` — Publish model](../../.github/CI.md#publish-model-package-ppt-024)                                                                                 | Release + OIDC publish workflows (PPT-024)                                                        |
-| [`docs/design/README.md`](../../docs/design/README.md)                                                                                                               | PPT-031 design program index                                                                      |
-| [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 frozen schema, constraints, G1 checklist                                                       |
-| [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../../docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)               | v0 inventory, 3NF analysis, NF register                                                           |
-| [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42)) |
-| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Local JWT + `UsersService` flows                                                                  |
-| [`docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)                 | B0/B1 validation, rollback, FR-14                                                                 |
-| [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)             | B0/B1 platform; B2/B3 deferred                                                                    |
-| [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)                                                            |
-| [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI REST surface over this model                                                              |
-| [`README.md`](../../README.md)                                                                                                                                       | Monorepo overview and quick start                                                                 |
-| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                                 | Monorepo **issue** tracker (auto-updates; not package releases)                                   |
+| Document                                                                                                                                                             | Description                                                                                                        |
+| :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| [`CHANGELOG.md`](./CHANGELOG.md)                                                                                                                                     | **Package** release notes (python-semantic-release)                                                                |
+| [PyPI — papita-transactions-model](https://pypi.org/project/papita-transactions-model/)                                                                              | Published distributions                                                                                            |
+| [`.github/CI.md` — Publish model](../../.github/CI.md#publish-model-package-ppt-024)                                                                                 | Release + OIDC publish workflows (PPT-024)                                                                         |
+| [`.github/CI.md` — Release tagging](../../.github/CI.md#release-tagging-ppt-066)                                                                                     | Language-prefixed tags (`py-model-v*`) — PPT-066 / [#131](https://github.com/Elmorralito/save-ma-money/issues/131) |
+| [`docs/design/README.md`](../../docs/design/README.md)                                                                                                               | PPT-031 design program index                                                                                       |
+| [`docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32`](../../docs/design/ARCHITECTURE.md#part-ii--target-schema-v1v3-ppt-031-a2a4-32)           | v3 frozen schema, constraints, G1 checklist                                                                        |
+| [`docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30`](../../docs/design/ARCHITECTURE.md#part-i--v0-data-model-audit-ppt-031-a1-30)               | v0 inventory, 3NF analysis, NF register                                                                            |
+| [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33`](../../docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-031-c-33)                 | Endpoint → Service → DTO (API epic [#42](https://github.com/Elmorralito/save-ma-money/issues/42))                  |
+| [`docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e`](../../docs/design/ARCHITECTURE.md#part-vi--auth-contract-ppt-031-track-e)                     | Local JWT + `UsersService` flows                                                                                   |
+| [`docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34`](../../docs/design/ARCHITECTURE.md#part-vii--migration-runbook-ppt-031-d-34)                 | B0/B1 validation, rollback, FR-14                                                                                  |
+| [`docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31`](../../docs/issues/README.md#part-ii--ppt-031-c-supabase--fastapi-decision-31)             | B0/B1 platform; B2/B3 deferred                                                                                     |
+| [`docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a) | Budgets, splits, recurrence (post-MVP)                                                                             |
+| [`modules/api/README.md`](../api/README.md)                                                                                                                          | FastAPI REST surface over this model                                                                               |
+| [`README.md`](../../README.md)                                                                                                                                       | Monorepo overview and quick start                                                                                  |
+| [`CHANGELOG.md`](../../CHANGELOG.md)                                                                                                                                 | Monorepo **issue** tracker (auto-updates; not package releases)                                                    |
 
 Package metadata: [`pyproject.toml`](./pyproject.toml) (`papita-transactions-model`).

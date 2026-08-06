@@ -6,12 +6,12 @@ Local B0 still builds from Dockerfiles via Compose (`make api-up` / `make web-up
 
 ## Coverage (who owns what)
 
-| Issue                                                                                | Owns                                                                     | Does **not** own                      |
-| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | ------------------------------------- |
-| [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045 **closed**     | API **process packaging** (`docker/api/Dockerfile` uvicorn `CMD`)        | Registry publish / release automation |
-| [#122](https://github.com/Elmorralito/save-ma-money/issues/122) PPT-057 **closed**   | Web **nginx Compose image** (`docker/web/`)                              | Registry publish (now PPT-067)        |
-| [#131](https://github.com/Elmorralito/save-ma-money/issues/131) PPT-066              | Language-prefixed **Git tags** (`py-api-v*`, `py-model-v*`, `js-web-v*`) | Container registry images             |
-| [#132](https://github.com/Elmorralito/save-ma-money/issues/132) PPT-067 **this doc** | **API + web GHCR publish** + naming SSOT                                 | Helm/K8s; PyPI; upstream DB images    |
+| Issue                                                                                | Owns                                                                                                                                        | Does **not** own                      |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045 **closed**     | API **process packaging** (`docker/api/Dockerfile` uvicorn `CMD`)                                                                           | Registry publish / release automation |
+| [#122](https://github.com/Elmorralito/save-ma-money/issues/122) PPT-057 **closed**   | Web **nginx Compose image** (`docker/web/`)                                                                                                 | Registry publish (now PPT-067)        |
+| [#131](https://github.com/Elmorralito/save-ma-money/issues/131) PPT-066              | Language-prefixed **Git tags** (`py-model-v*`, `py-api-v*`, `js-web-v*`) — SSOT [`.github/CI.md`](../.github/CI.md#release-tagging-ppt-066) | Container registry images             |
+| [#132](https://github.com/Elmorralito/save-ma-money/issues/132) PPT-067 **this doc** | **API + web GHCR publish** + naming SSOT                                                                                                    | Helm/K8s; PyPI; upstream DB images    |
 
 PyPI wheels for `papita-transactions-model` stay on `publish-model.yml` / `release-model.yml` (PPT-024).
 
