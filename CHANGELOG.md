@@ -46,11 +46,219 @@
 
 - [ ] [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary:
 
-- [ ] [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary:
 
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary:
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-06 19:40:19+00:00</sub>_
+
+  > **Closed by** [_**#196**](https://github.com/Elmorralito/save-ma-money/pull/196): **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules**
+
+  > **Branch:** ci/PPT-066 · **Base:** main · **1 commit** · **13 files**
+
+  >
+
+  > **Suggested title:** ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Adopts {lang}-{module}-v{semver} Git tags so Python and JS package releases stay unambiguous in this Poetry + pnpm monorepo ([#131](https://github.com/Elmorralito/save-ma-money/issues/131)). Model python-semantic-release now mints **py-model-v***; publish-model.yml dual-triggers legacy **model-v*** for a short migration window. Docs SSOT is [.github/CI.md § Release tagging](https://github.com/Elmorralito/save-ma-money/blob/ci/PPT-066/.github/CI.md#release-tagging-ppt-066).
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Full modules/web / modules/api release pipelines (placeholders only for js-web-v* / py-api-v*)
+
+  > - GHCR image publish (PPT-067 / #132 — image tags already mirror the convention)
+
+  > - Retagging historical model-v* commits
+
+  > - Dropping the legacy model-v* trigger (follow-up after 1–2 releases)
+
+  > - Cutting a live PyPI release to prove the new tag (operator verify on next model bump)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Fixes a dead stable-publish version gate that keyed on event_name == workflow_call (never true inside a reusable workflow)
+
+  > - Shared strip_model_release_tag.sh for canonical + legacy prefix stripping
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **CI / release**
+
+  >
+
+  > - PSR tag_format → py-model-v{version}
+
+  > - publish-model.yml triggers on py-model-v* and legacy model-v*; semver checks on tag push and stable workflow_call refs
+
+  > - New executable helper .github/scripts/strip_model_release_tag.sh
+
+  >
+
+  > **Docs / agent memory**
+
+  >
+
+  > - Release tagging SSOT in .github/CI.md (TOC + publish gates + scripts table)
+
+  > - Cross-links in root README, model/api/web READMEs, docker/README.md, .cursor/AGENTS.md, .strata/
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (13 files)</summary>
+
+  >
+
+  >
+
+  > .cursor/AGENTS.md | 31 +++++++-------
+
+  > .github/CI.md | 43 +++++++++++++++---
+
+  > .github/scripts/strip_model_release_tag.sh | 24 +++++++++++
+
+  > .github/workflows/publish-model.yml | 32 ++++++++++-----
+
+  > .github/workflows/release-model.yml | 4 +-
+
+  > .strata/docs/ops/README.md | 14 +++----
+
+  > .strata/memory/project_state.md | 7 +++-
+
+  > README.md | 4 ++
+
+  > docker/README.md | 12 +++---
+
+  > modules/api/README.md | 2 +
+
+  > modules/model/README.md | 66 +++++++++++++++---------------
+
+  > modules/model/pyproject.toml | 5 ++-
+
+  > modules/web/README.md | 2 +
+
+  > 13 files changed, 165 insertions(+), 81 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 7e3a623 ci(release): adopt language-prefixed py-model-v* tags (PPT-066)
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Local pre-commit on commit (prettier, ShellCheck, yamllint, actionlint, strata validate, markdownlint) — **pass**
+
+  > - Manual smoke: strip_model_release_tag.sh for py-model-v* / model-v* / invalid tags — **pass**
+
+  > - Acceptance audit script (tag_format, dual-trigger, dead gate removed, docs/TOC) — **pass**
+
+  > - Live release-model / PyPI publish — **not run** (no tag cut)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] CI green on this PR
+
+  > - [ ] On next model release to main: confirm tag py-model-vX.Y.Z, matching GitHub Release title, and PyPI publish via workflow_call
+
+  > - [ ] Optional: human/PAT tag py-model-vX.Y.Z matching modules/model/pyproject.toml still publishes
+
+  > - [ ] After 1–2 releases: open follow-up to drop legacy model-v* trigger
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - First post-merge model release must mint py-model-v* (operators should not create new model-v* tags)
+
+  > > - Legacy model-v* still publishes during the dual-trigger window (skip-existing on PyPI mitigates accidental re-publish of the same version)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Closing #131 operationally wants one successful py-model-v* release after merge; this PR lands CI + docs only
+
+  > > - js-web-v* / py-api-v* are documented conventions only until those release workflows exist
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#131](https://github.com/Elmorralito/save-ma-money/issues/131) (PPT-066)
+
+  > - Related: [#132](https://github.com/Elmorralito/save-ma-money/issues/132) (PPT-067 image tag naming)
+
+  > - SSOT: [.github/CI.md § Release tagging](https://github.com/Elmorralito/save-ma-money/blob/ci/PPT-066/.github/CI.md#release-tagging-ppt-066)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#132](https://github.com/Elmorralito/save-ma-money/issues/132)**_] :: **ops/PPT-067: [infra] Publish versioned Docker images for API (and optional migrate)** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:03:29+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 03:25:41+00:00</sub>_
 
