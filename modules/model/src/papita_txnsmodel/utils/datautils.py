@@ -6,10 +6,57 @@ and to help with data transfer object (DTO) serialization.
 """
 
 import itertools
+import math
 from typing import Any, Dict, Generator, Iterator
 
 import pandas as pd
 from pydantic import BaseModel
+
+
+def _is_missing_scalar(value: Any) -> bool:
+    """Return True for pandas/numpy missing scalars (NaN / NaT), not containers."""
+    if value is None or value is pd.NaT:
+        return True
+    if isinstance(value, (list, tuple, set, dict, bytes, bytearray)):
+        return False
+    if isinstance(value, float):
+        return math.isnan(value)
+    try:
+        result = pd.isna(value)
+    except (TypeError, ValueError):
+        return False
+    if isinstance(result, bool):
+        return result
+    # Array-like results (e.g. list columns) are not treated as missing.
+    return False
+
+
+def mapping_without_missing(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a shallow copy with NaN/NaT scalars coerced to ``None``.
+
+    Pandas promotes mixed int/None columns (e.g. optional ``remind_days_before``)
+    to float64, which surfaces SQL NULLs as ``nan`` and breaks Pydantic
+    ``int | None`` validation. Call this before ``model_validate``.
+
+    Args:
+        data: Mapping from ``Series.to_dict`` / ``DataFrame.to_dict(orient="records")``.
+
+    Returns:
+        Plain mapping suitable for Pydantic validation.
+    """
+    return {key: (None if _is_missing_scalar(value) else value) for key, value in data.items()}
+
+
+def dataframe_row_to_mapping(row: pd.Series) -> dict[str, Any]:
+    """Convert a DataFrame row to a dict with NaN/NaT coerced to ``None``.
+
+    Args:
+        row: Series from ``DataFrame.iterrows`` / ``apply``.
+
+    Returns:
+        Plain mapping suitable for Pydantic validation.
+    """
+    return mapping_without_missing(row.to_dict())
 
 
 def standardize_dataframe(
@@ -56,7 +103,7 @@ def standardize_dataframe(
         output = temp
 
     standardized = output.reset_index(drop=True).apply(
-        lambda row: cls.model_validate(row.to_dict()).model_dump(mode=dump_mode, by_alias=by_alias),
+        lambda row: cls.model_validate(dataframe_row_to_mapping(row)).model_dump(mode=dump_mode, by_alias=by_alias),
         axis=1,
         result_type="expand",
     )

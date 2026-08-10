@@ -13,6 +13,8 @@ Routes exposed (prefix relative to app mount):
         :class:`~papita_txnsmodel.services.categories.CategoriesService`.
     ``/transactions`` — tenant-scoped INCOME/EXPENSE ledger via
         :class:`~papita_txnsmodel.services.transactions.TransactionsService`.
+    ``/transaction-templates`` — template CRUD + upcoming dues / mark-paid (PPT-073)
+        via :class:`~papita_txnsmodel.services.transactions.TransactionTemplatesService`.
     ``/movements`` — TRANSFER alias over the same transactions service.
     ``/reports`` — FR-12 read models via :class:`~papita_txnsmodel.services.reports.ReportService`.
     ``/budgets`` — placeholder 501 responses (FR-09 deferred to v4.1).
@@ -35,6 +37,7 @@ from papita_txnsapi.routers.v1 import (
     meta,
     movements,
     reports,
+    transaction_templates,
     transactions,
 )
 
@@ -46,6 +49,7 @@ api_v1_router.include_router(bff_auth.router)
 api_v1_router.include_router(accounts.router)
 api_v1_router.include_router(categories.router)
 api_v1_router.include_router(transactions.router)
+api_v1_router.include_router(transaction_templates.router)
 api_v1_router.include_router(movements.router)
 api_v1_router.include_router(reports.router)
 api_v1_router.include_router(budgets.router)

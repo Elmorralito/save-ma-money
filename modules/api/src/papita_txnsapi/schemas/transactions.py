@@ -23,18 +23,19 @@ from papita_txnsapi.config.settings import (
 from papita_txnsapi.schemas.accounts import paginate_dataframe
 from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_transaction_kind, parse_transaction_status
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
 
 
 def _relation_uuid(value: uuid.UUID | Any | None) -> uuid.UUID | None:
-    """Extract a UUID from a relation field that may be a DTO."""
+    """Extract a UUID from a relation field that may be a nested DTO."""
     if value is None:
         return None
     if isinstance(value, uuid.UUID):
         return value
-    if isinstance(value, (AccountsDTO, CategoriesDTO)):
+    if isinstance(value, TableDTO):
         return value.id
     return uuid.UUID(str(value))
 

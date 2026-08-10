@@ -7,8 +7,10 @@ function is a thin FastAPI dependency over a shared connector.
 Key exports:
     get_connector: Resolve and validate the SQLAlchemy connector class.
     get_users_service, get_accounts_service, get_categories_service,
-    get_transactions_service, get_report_service: Domain service factories.
-    clear_transactions_service_cache: Drop module-scoped transactions DI cache.
+    get_transaction_templates_service, get_transactions_service, get_report_service:
+    Domain service factories.
+    clear_transactions_service_cache / clear_transaction_templates_service_cache:
+    Drop module-scoped DI caches.
 """
 
 from __future__ import annotations
@@ -31,11 +33,18 @@ ServiceT = TypeVar("ServiceT", bound=BaseModel)
 # Module-scoped TransactionsService (with FK link services) keyed by connector.
 # Avoids rebuilding Accounts/Categories/Templates services on every request (E6).
 _transactions_service_by_connector: dict[type[SQLDatabaseConnector], TransactionsService] = {}
+# Module-scoped TransactionTemplatesService (wires accounts/transactions for dues).
+_templates_service_by_connector: dict[type[SQLDatabaseConnector], TransactionTemplatesService] = {}
 
 
 def clear_transactions_service_cache() -> None:
     """Drop cached ``TransactionsService`` instances (test isolation helper)."""
     _transactions_service_by_connector.clear()
+
+
+def clear_transaction_templates_service_cache() -> None:
+    """Drop cached ``TransactionTemplatesService`` instances (test isolation helper)."""
+    _templates_service_by_connector.clear()
 
 
 def get_connector(settings: Annotated[Settings, Depends(get_settings)]) -> Type[SQLDatabaseConnector]:
@@ -109,6 +118,30 @@ def get_categories_service(
     return _service_factory(CategoriesService, connector)
 
 
+def get_transaction_templates_service(
+    connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
+) -> TransactionTemplatesService:
+    """Build ``TransactionTemplatesService`` for template CRUD and dues routes (PPT-073).
+
+    The service model-validator wires accounts/transactions helpers used by
+    ``mark_paid`` / ``clear_paid``. Instances are cached per connector so that
+    wiring is not rebuilt on every request.
+
+    Args:
+        connector: Injected model database connector.
+
+    Returns:
+        Configured ``TransactionTemplatesService`` instance.
+    """
+    cached = _templates_service_by_connector.get(connector)
+    if cached is not None:
+        return cached
+
+    service = _service_factory(TransactionTemplatesService, connector)
+    _templates_service_by_connector[connector] = service
+    return service
+
+
 def get_transactions_service(
     connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
 ) -> TransactionsService:
@@ -132,7 +165,7 @@ def get_transactions_service(
 
     accounts = _service_factory(AccountsService, connector)
     categories = _service_factory(CategoriesService, connector)
-    templates = _service_factory(TransactionTemplatesService, connector)
+    templates = get_transaction_templates_service(connector)
     service = _service_factory(TransactionsService, connector)
     wired = service.load_link_services(
         {
