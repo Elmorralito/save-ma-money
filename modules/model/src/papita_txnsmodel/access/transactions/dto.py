@@ -43,6 +43,9 @@ class TransactionTemplatesDTO(OwnedTableDTO, CoreTableDTO):
         planned_amount (float): Expected transaction amount. Must be positive.
         planned_day (int): Day of the month when the transaction is expected (1-31).
         use_month_end (bool): Whether to schedule on the last day of the month.
+        due_date (datetime.date | None): Optional one-off calendar due date (PPT-071).
+        remind_days_before (int | None): Optional lead days before due for in-app reminders.
+        from_account_id (uuid.UUID | AccountsDTO | None): Optional pay-from account.
     """
 
     __dao_type__ = TransactionTemplates
@@ -51,17 +54,32 @@ class TransactionTemplatesDTO(OwnedTableDTO, CoreTableDTO):
     planned_amount: float = Field(gt=0, description="Expected value of the transaction")
     planned_day: int = Field(ge=1, le=31, description="Day of the month when the transaction is expected to occur")
     use_month_end: bool = False
+    due_date: datetime.date | None = Field(
+        default=None,
+        description="One-off payment due calendar date; recurring templates leave this null",
+    )
+    remind_days_before: int | None = Field(
+        default=None,
+        ge=0,
+        description="Days before due to surface an in-app reminder; null means no lead window",
+    )
+    from_account_id: uuid.UUID | AccountsDTO | None = Field(
+        default=None,
+        description="Optional account to pay from when marking a due as paid",
+    )
 
-    @field_serializer("category_id")
-    def _serialize_category_id(self, value: uuid.UUID | TableDTO) -> uuid.UUID:
-        """Serialize category_id to its UUID value.
+    @field_serializer("category_id", "from_account_id")
+    def _serialize_template_relations(self, value: uuid.UUID | TableDTO | None) -> uuid.UUID | None:
+        """Serialize category_id / from_account_id to UUID values.
 
         Args:
-            value: Category as UUID or DTO.
+            value: Relation as UUID, DTO, or None.
 
         Returns:
-            uuid.UUID: The category UUID.
+            uuid.UUID | None: The related entity UUID, or None.
         """
+        if value is None:
+            return None
         return _serialize_relation_id(value)
 
 
