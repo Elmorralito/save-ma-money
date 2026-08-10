@@ -33,9 +33,14 @@ if "DATABASE_URL" not in os.environ and "TEST_DATABASE_URL" not in os.environ:
     os.environ["DATABASE_URL"] = ""
 
 from auth_helpers import make_user
+
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.dependencies.services import clear_transactions_service_cache, get_users_service
+from papita_txnsapi.dependencies.services import (
+    clear_transaction_templates_service_cache,
+    clear_transactions_service_cache,
+    get_users_service,
+)
 from papita_txnsapi.main import create_app
 from papita_txnsmodel.access.users.dto import UsersDTO
 
@@ -47,6 +52,7 @@ def _clear_auth_singletons() -> None:
     get_settings.cache_clear()
     AuthSecurityManager.reset_instances()
     clear_transactions_service_cache()
+    clear_transaction_templates_service_cache()
     clear_memory_bff_sessions()
 
 
@@ -129,6 +135,23 @@ def transactions_client() -> tuple[TestClient, UsersDTO, MagicMock]:
     mock_service = MagicMock()
     app.dependency_overrides[get_current_owner] = lambda: owner
     app.dependency_overrides[get_transactions_service] = lambda: mock_service
+    test_client = TestClient(app)
+    yield test_client, owner, mock_service
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def templates_client() -> tuple[TestClient, UsersDTO, MagicMock]:
+    """Authenticated client with mocked TransactionTemplatesService."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import get_transaction_templates_service
+
+    _clear_auth_singletons()
+    app = create_app()
+    owner = make_user()
+    mock_service = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_transaction_templates_service] = lambda: mock_service
     test_client = TestClient(app)
     yield test_client, owner, mock_service
     app.dependency_overrides.clear()

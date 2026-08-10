@@ -14,6 +14,7 @@ Key exports:
     DEFERRED_EXPORT_FORMATS: ``xlsx`` / ``pdf`` formats for router 501 handling.
     date_to_start_datetime / date_to_end_datetime: Inclusive UTC day bounds.
     TransactionListQuery / MovementListQuery (+ ``*ServiceKwargs``, ``get_*``).
+    UpcomingDuesQuery / get_upcoming_dues_query (PPT-073).
     ReportSpendingQuery / ReportCashFlowQuery / ReportTrendsQuery /
     ReportExportQuery (+ matching TypedDicts and ``get_report_*_query`` helpers).
 """
@@ -730,6 +731,57 @@ def get_report_trends_query(  # pylint: disable=too-many-arguments
     if query.start_date is not None and query.end_date is not None:
         _enforce_report_window(query.start_date, query.end_date, settings)
     return query
+
+
+class UpcomingDuesServiceKwargs(TypedDict):
+    """Keyword arguments for ``TransactionTemplatesService.list_upcoming_dues``."""
+
+    as_of: date
+    window_days: int
+    include_paid: bool
+
+
+class UpcomingDuesQuery(BaseModel):
+    """Bundled query parameters for ``GET /transaction-templates/upcoming-dues``.
+
+    Attributes:
+        as_of: Window anchor date (defaults to UTC today when omitted at the
+            dependency layer).
+        window_days: Inclusive days after ``as_of`` to consider (default 14).
+        include_paid: When False, omit dues that already have a linked posting.
+    """
+
+    as_of: date
+    window_days: int = Field(default=14, ge=0)
+    include_paid: bool = True
+
+    def service_kwargs(self) -> UpcomingDuesServiceKwargs:
+        """Map query fields to ``list_upcoming_dues`` kwargs."""
+        return {
+            "as_of": self.as_of,
+            "window_days": self.window_days,
+            "include_paid": self.include_paid,
+        }
+
+
+def get_upcoming_dues_query(
+    *,
+    as_of: Annotated[date | None, Query(description="Window anchor date (UTC today when omitted)")] = None,
+    window_days: Annotated[int, Query(description="Inclusive days after as_of", ge=0)] = 14,
+    include_paid: Annotated[bool, Query(description="Include dues already marked paid")] = True,
+) -> UpcomingDuesQuery:
+    """Collect upcoming-dues query parameters for FastAPI injection.
+
+    Args:
+        as_of: Optional anchor date; defaults to the current UTC calendar day.
+        window_days: Inclusive days after ``as_of`` (must be ``>= 0``).
+        include_paid: Whether paid dues remain in the response.
+
+    Returns:
+        Populated ``UpcomingDuesQuery``.
+    """
+    anchor = as_of if as_of is not None else datetime.now(timezone.utc).date()
+    return UpcomingDuesQuery(as_of=anchor, window_days=window_days, include_paid=include_paid)
 
 
 def get_report_export_query(  # pylint: disable=too-many-arguments

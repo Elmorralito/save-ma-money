@@ -1,11 +1,13 @@
-"""Tests for API service dependency factories (PR-E / E6)."""
+"""Tests for API service dependency factories (PR-E / E6 / PPT-073)."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
 from papita_txnsapi.dependencies.services import (
+    clear_transaction_templates_service_cache,
     clear_transactions_service_cache,
+    get_transaction_templates_service,
     get_transactions_service,
 )
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
@@ -16,9 +18,11 @@ class TestTransactionsServiceDiCache:
 
     def setup_method(self) -> None:
         clear_transactions_service_cache()
+        clear_transaction_templates_service_cache()
 
     def teardown_method(self) -> None:
         clear_transactions_service_cache()
+        clear_transaction_templates_service_cache()
 
     def test_get_transactions_service_reuses_instance_per_connector(self) -> None:
         connector = SQLDatabaseConnector
@@ -44,6 +48,7 @@ class TestTransactionsServiceDiCache:
             assert first is second
             assert first is service
             mock_txn_cls.model_validate.assert_called_once()
+            mock_templates_cls.model_validate.assert_called_once()
             service.load_link_services.assert_called_once_with(
                 {
                     "template_id": templates,
@@ -52,3 +57,26 @@ class TestTransactionsServiceDiCache:
                     "category_id": categories,
                 }
             )
+
+
+class TestTransactionTemplatesServiceDiCache:
+    """Module-scoped TransactionTemplatesService for PPT-073 routers."""
+
+    def setup_method(self) -> None:
+        clear_transaction_templates_service_cache()
+
+    def teardown_method(self) -> None:
+        clear_transaction_templates_service_cache()
+
+    def test_get_transaction_templates_service_reuses_instance(self) -> None:
+        connector = SQLDatabaseConnector
+        with patch("papita_txnsapi.dependencies.services.TransactionTemplatesService") as mock_templates_cls:
+            templates = MagicMock(name="templates")
+            mock_templates_cls.model_validate.return_value = templates
+
+            first = get_transaction_templates_service(connector)
+            second = get_transaction_templates_service(connector)
+
+            assert first is second
+            assert first is templates
+            mock_templates_cls.model_validate.assert_called_once()
