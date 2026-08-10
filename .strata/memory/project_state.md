@@ -29,9 +29,9 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-074 / #167:** SPA payment dues UI + dashboard **Due soon** — OpenAPI sync, typed
-  `transactionTemplates` client/query keys, `/payment-dues` CRUD + mark/clear paid,
-  dashboard panel; presentation only over PPT-073 API (branch `feat/PPT-074`).
+- **PPT-074 / #167:** [PR #206](https://github.com/Elmorralito/save-ma-money/pull/206) —
+  SPA payment dues UI + dashboard **Due soon**; also restore model path version **1.0.3**
+  after main PSR `chore(model): release 1.0.2` incorrectly downgraded past API `>=1.0.3`.
 
 ### Open (backlog)
 
