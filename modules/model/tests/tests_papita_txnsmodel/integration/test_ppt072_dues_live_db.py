@@ -75,7 +75,8 @@ class TestLiveDbPpt072DuesServices:
                 name=f"PPT072 cash {uuid.uuid4().hex[:8]}",
                 description="dues test",
                 owner_id=owner.id,
-                account_kind=AccountKind.CASH,
+                # OTHER_ASSET has no required *_account_details row.
+                account_kind=AccountKind.OTHER_ASSET,
                 ledger_side=LedgerSide.ASSET,
             ),
             owner=owner,
