@@ -38,9 +38,253 @@
 
 - [ ] [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
 
-- [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 20:56:35+00:00</sub>_
+
+  > **Closed by** [_**#207**](https://github.com/Elmorralito/save-ma-money/pull/207): **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index**
+
+  > **Branch:** test/PPT-075 · **Base:** main · **1 commit** · **9 files**
+
+  >
+
+  > **Suggested title:** test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Closes the PPT-070 payment-dues epic hardening step ([#168](https://github.com/Elmorralito/save-ma-money/issues/168)): docs/index SSOT for the epic, module README pointers, ARCHITECTURE status corrections, OpenAPI/types verification, and a B0 live-API fixture harden so template tests do not 503 when local .env enables Redis without a TestClient Redis pool.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - New dues product features (schema/API/SPA already landed in #164–#167)
+
+  > - Email / push / calendar notify channels
+
+  > - Playwright dues critical-path e2e (soft stretch; not required by #168 AC)
+
+  > - Epic [#163](https://github.com/Elmorralito/save-ma-money/issues/163) formal close checklist tick (follow-up after merge)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - docs/issues/README.md **Part VIII** indexes PPT-070 children + AC evidence
+
+  > - OpenAPI artifact already in sync — no regen churn in this PR
+
+  > - Live fixture pins REDIS_ENABLED=false for pytest B0 posture
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Docs / design**
+
+  >
+
+  > - Add PPT-070 Part VIII to the issues brief index (child map, test/AC matrix, OOS)
+
+  > - Design README progress + document↔issue rows
+
+  > - ARCHITECTURE: /transaction-templates/* + dues marked **shipped** (was “post-MVP”)
+
+  >
+
+  > **Module READMEs**
+
+  >
+
+  > - API: catalog + endpoint table for /transaction-templates/* dues actions
+
+  > - Model: dues service methods + PPT-072 test pointers
+
+  > - Web: Payment dues / Due soon section + /payment-dues a11y route note
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - test_transaction_templates_live_db.py: pin REDIS_ENABLED=false around TestClient so JWT denylist does not fail-closed against developer Redis-on env without a pool
+
+  >
+
+  > **Strata**
+
+  >
+
+  > - project_state.md / MEMORY.md: ACTIVE = PPT-075 / #168
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (9 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/MEMORY.md | 2 +-
+
+  > .strata/memory/project_state.md | 16 ++--
+
+  > docs/design/ARCHITECTURE.md | 20 ++---
+
+  > docs/design/README.md | 24 +++---
+
+  > docs/issues/README.md | 88 +++++++++++++++++++---
+
+  > modules/api/README.md | 73 ++++++++++++------
+
+  > .../tests/test_transaction_templates_live_db.py | 16 +++-
+
+  > modules/model/README.md | 31 ++++----
+
+  > modules/web/README.md | 29 +++++--
+
+  > 9 files changed, 209 insertions(+), 90 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - c1d8617 test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make check-openapi — pass (artifact in sync)
+
+  > - make check-types — pass (OpenAPI types in sync)
+
+  > - poetry run pytest model test_ppt072_dues.py + API test_transaction_templates.py — 32 passed
+
+  > - Live B0 (Docker Postgres): test_ppt072_dues_live_db.py + test_transaction_templates_live_db.py — 4 passed (with fixture Redis pin)
+
+  > - Pre-commit on commit — pass (after prettier + strata pairing)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] CI Quality Control / OpenAPI contract green on this PR
+
+  > - [ ] Spot-check Part VIII anchor + API README templates section render on GitHub
+
+  > - [ ] After merge: close/tick epic [#163](https://github.com/Elmorralito/save-ma-money/issues/163) ACs if remaining checkboxes are only formal
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - None identified for production runtime (docs + test fixture env pin only)
+
+  > > - Live fixture forces REDIS_ENABLED=false for this TestClient suite only — Compose API Redis path unchanged
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - OpenAPI was verified in sync; this PR does not regenerate openapi.json / api.d.ts
+
+  > > - Web README updates are documentation only (no SPA code changes)
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > Docs-only touch under modules/web/README.md — no BFF/cookie/auth code changes.
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (unchanged; BFF path)
+
+  > - [x] Cookie flags N/A (no cookie code in this PR)
+
+  > - [x] CSRF N/A (no mutation client changes)
+
+  > - [x] No secrets in VITE_* (README only)
+
+  > - [x] pnpm web:audit N/A for this docs PR
+
+  > - [x] CSP / nginx N/A (no docker/web changes)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#168](https://github.com/Elmorralito/save-ma-money/issues/168) (PPT-075)
+
+  > - Parent epic [#163](https://github.com/Elmorralito/save-ma-money/issues/163) (PPT-070)
+
+  > - Prior children: [#164](https://github.com/Elmorralito/save-ma-money/issues/164)–[#167](https://github.com/Elmorralito/save-ma-money/issues/167)
+
+  > - Index: [docs/issues/README.md Part VIII](https://github.com/Elmorralito/save-ma-money/blob/test/PPT-075/docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163)
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 20:22:58+00:00</sub>_
 
