@@ -2903,7 +2903,7 @@ Full contract: [Part VI — Auth contract](#part-vi--auth-contract-ppt-031-track
 
 **Query filter:** `transaction_type=transfer` on `/transactions` returns same rows as `/movements/*`. Default list excludes `TRANSFER` unless filter includes it (avoid duplicate listing when both routers mounted).
 
-**Templates:** Recurring/planned entries use `transaction_templates` table. Optional nested resource `/transaction-templates/*` post-MVP; MVP links via `template_id` on transaction responses.
+**Templates:** Recurring/planned entries use `transaction_templates` table. Nested resource `/transaction-templates/*` (CRUD + upcoming-dues / mark-paid / clear-paid) **shipped** under PPT-070 / [#163](https://github.com/Elmorralito/save-ma-money/issues/163) (API PPT-073 / [#166](https://github.com/Elmorralito/save-ma-money/issues/166)). Payment-due columns: `due_date`, `remind_days_before`, `from_account_id` (plus existing `planned_day` / `use_month_end`). Posted dues link via `template_id` on transaction rows. Index: [`docs/issues/README.md` Part VIII](../issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
 
 #### 5.7 Movements — **Alias router**
 
@@ -3029,15 +3029,15 @@ schemas/
 
 ### 9. Open questions (deferred)
 
-| Item                                             | Gate                                                       | Owner                                                  |
-| ------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------ |
-| Auth refresh/logout semantics                    | G5 — [Part VI](#part-vi--auth-contract-ppt-031-track-e) §6 | **Supabase path**; local 501                           |
-| `UsersService.verify_credentials` / `register`   | G5                                                         | **Implemented** in model — wire in #25 routers         |
-| `/transaction-templates/*` nested CRUD           | Post-MVP                                                   | #25 follow-up                                          |
-| `/account-financing/*` CRUD (asset ↔ loan links) | Post-MVP                                                   | #25 follow-up — v3 table exists, no API routes in MVP  |
-| Budget routes: 501 vs unmounted                  | G4 maintainer preference                                   | #28                                                    |
-| OpenAPI as sole source of truth                  | After `main.py` ships                                      | #25                                                    |
-| `python-multipart` dependency                    | #25 implementation                                         | Add to `modules/api/pyproject.toml` before auth routes |
+| Item                                             | Gate                                                                                    | Owner                                                                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth refresh/logout semantics                    | G5 — [Part VI](#part-vi--auth-contract-ppt-031-track-e) §6                              | **Supabase path**; local 501                                                                                                                        |
+| `UsersService.verify_credentials` / `register`   | G5                                                                                      | **Implemented** in model — wire in #25 routers                                                                                                      |
+| `/transaction-templates/*` nested CRUD + dues    | **Shipped** — PPT-070 / [#163](https://github.com/Elmorralito/save-ma-money/issues/163) | API [#166](https://github.com/Elmorralito/save-ma-money/issues/166); docs close-out [#168](https://github.com/Elmorralito/save-ma-money/issues/168) |
+| `/account-financing/*` CRUD (asset ↔ loan links) | Post-MVP                                                                                | #25 follow-up — v3 table exists, no API routes in MVP                                                                                               |
+| Budget routes: 501 vs unmounted                  | G4 maintainer preference                                                                | #28                                                                                                                                                 |
+| OpenAPI as sole source of truth                  | After `main.py` ships                                                                   | #25                                                                                                                                                 |
+| `python-multipart` dependency                    | #25 implementation                                                                      | Add to `modules/api/pyproject.toml` before auth routes                                                                                              |
 
 ---
 

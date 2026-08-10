@@ -269,7 +269,7 @@ Config: `playwright.config.ts` (Vite `webServer` on `:5173`, Chromium).
 
 Documented as **met for MVP flows** when:
 
-- axe reports **no critical/serious** violations on `/login`, `/register`, `/dashboard`, `/accounts`, `/categories`, `/transactions`, `/movements`, `/reports`
+- axe reports **no critical/serious** violations on `/login`, `/register`, `/dashboard`, `/accounts`, `/categories`, `/transactions`, `/movements`, `/reports`, `/payment-dues`
 - Keyboard: native controls + Radix dialogs; global `:focus-visible` ring in `src/index.css`
 - Labels: form fields use `<Label htmlFor>` / dialog field ids; eslint `jsx-a11y` on PRs
 - Contrast: design tokens in `src/index.css` (light default); dark aliases available
@@ -378,12 +378,12 @@ make web-up
 
 ## Design system + app shell (PPT-051 / #116)
 
-| Piece      | Location                  | Notes                                                                                                                                        |
-| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                        |
-| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                       |
-| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); hideable sidebar (toggle + localStorage)                                                     |
-| Routes     | `src/App.tsx`             | Lazy routes: auth (login/register), accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053), dashboard/reports (PPT-054) |
+| Piece      | Location                  | Notes                                                                                                                                                                |
+| ---------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tokens     | `src/index.css`           | CSS variables (`--background`, `--primary`, …) + `.dark` aliases; Tailwind v4 via `@tailwindcss/vite`                                                                |
+| Primitives | `src/components/ui/*`     | shadcn/ui (new-york): Button, Input, Label, Dialog, Dropdown, Table, Separator, Sonner                                                                               |
+| Layouts    | `src/components/layout/*` | `PublicLayout` (auth), `AppLayout` (nav shell); hideable sidebar (toggle + localStorage)                                                                             |
+| Routes     | `src/App.tsx`             | Lazy routes: auth (login/register), accounts (+ detail), categories (PPT-052), transactions/movements (PPT-053), dashboard/reports (PPT-054), payment dues (PPT-074) |
 
 Add a component:
 
@@ -457,11 +457,26 @@ Transactions and movements call `/api/v1/transactions` and `/api/v1/movements` v
 | Split            | API `POST .../split` returns 501 — **not** exposed in the SPA (deferred to v4)                    |
 | 429              | Mutations toast `formatApiError` including optional Retry-After seconds                           |
 
+## Payment dues + Due soon (PPT-074 / #167)
+
+In-app payment due-date reminders (epic PPT-070 / [#163](https://github.com/Elmorralito/save-ma-money/issues/163)). Presentation only over `/api/v1/transaction-templates` — no TypeScript ports of dues/window math.
+
+| Piece            | Location                                                              | Notes                                                            |
+| ---------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| List / CRUD page | `src/pages/PaymentDuesPage.tsx` · route `/payment-dues`               | Create/edit dues; nav label “Payment dues”                       |
+| Form state       | `src/components/paymentDues/*`                                        | Dialog + form state helpers                                      |
+| Due soon         | `src/pages/DashboardPage.tsx`                                         | Dashboard panel titled **Due soon** (`upcomingDuesQueryOptions`) |
+| API client       | `src/api/transactionTemplates.ts` · `src/api/queries.ts`              | `credentials: 'include'` via `apiFetch`; BFF cookies only        |
+| Types            | Generated from committed OpenAPI (`make web-openapi` / `check-types`) | Paths include upcoming-dues / mark-paid / clear-paid             |
+
+Epic index: [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
+
 ## Out of scope here
 
 Durable deferrals (not closed delivery tickets):
 
 - Transaction split v4 UI; budgets / budget-performance surfaces
+- Email / push / calendar feeds for payment dues (PPT-070 deferred)
 - Field RUM / Sentry / production error-reporting SDKs (lab Lighthouse/CWV only — see Quality section)
 - Mobile native apps; public marketing SSR
 - TypeScript ports of model services — see [Domain boundary](#domain-boundary-ppt-069--140)

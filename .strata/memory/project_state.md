@@ -14,12 +14,12 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
-- **PPT-073 / #166:** landed on main ([PR #205](https://github.com/Elmorralito/save-ma-money/pull/205)) —
-  `/transaction-templates` CRUD + upcoming-dues / mark-paid / clear-paid FastAPI routers.
+- **PPT-074 / #167:** landed on main ([PR #206](https://github.com/Elmorralito/save-ma-money/pull/206)) —
+  SPA payment dues UI + dashboard **Due soon**.
+- **PPT-073 / #166:** `/transaction-templates` CRUD + dues FastAPI routers ([PR #205](https://github.com/Elmorralito/save-ma-money/pull/205)).
 - **PPT-072 / #165:** upcoming-dues + mark-paid / clear-paid in `papita_txnsmodel`
   ([PR #204](https://github.com/Elmorralito/save-ma-money/pull/204)).
 - **PPT-071 / #164:** schema + migration for dues columns on `transaction_templates`.
-- **PPT-068 / #139**, **PPT-063 / #128**, **PPT-069 / #140**, **PPT-067 / #132**: on main.
 
 ### Last completed (this session) — ops
 
@@ -29,18 +29,18 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-074 / #167:** [PR #206](https://github.com/Elmorralito/save-ma-money/pull/206) —
-  SPA payment dues UI + dashboard **Due soon**; also restore model path version **1.0.3**
-  after main PSR `chore(model): release 1.0.2` incorrectly downgraded past API `>=1.0.3`.
+- **PPT-075 / #168:** docs index + README pointers + OpenAPI verify + B0 live fixture harden
+  (`REDIS_ENABLED=false` in `test_transaction_templates_live_db.py`). Index:
+  [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
 
 ### Open (backlog)
 
-- **PPT-070** child #168 — tests, OpenAPI sync gate, docs index after PPT-074.
+- **PPT-070 / #163** epic close-out after #168 merges.
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 
 ### Next action
 
-- Open / merge PR for PPT-074 / #167; then PPT-075 / #168
+- Merge PPT-075 / #168; then tick / close epic PPT-070 / #163
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes

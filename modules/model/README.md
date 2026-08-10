@@ -180,15 +180,15 @@ The **primary API for application code**. Instantiate with optional shared `conn
 
 #### Core CRUD services
 
-| Service                       | Domain                                               |
-| :---------------------------- | :--------------------------------------------------- |
-| `UsersService`                | Users; `register`, `verify_credentials`, `get_owner` |
-| `AccountsService`             | Accounts + extension orchestration                   |
-| `CategoriesService`           | Income/expense categories                            |
-| `TransactionTemplatesService` | Recurring/planned templates                          |
-| `TransactionsService`         | Posted ledger + transfer helpers                     |
-| `AccountFinancingService`     | Asset–loan financing links                           |
-| `*AccountDetailsService`      | Per-kind 1:1 extension CRUD                          |
+| Service                       | Domain                                                                                                                                |
+| :---------------------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
+| `UsersService`                | Users; `register`, `verify_credentials`, `get_owner`                                                                                  |
+| `AccountsService`             | Accounts + extension orchestration                                                                                                    |
+| `CategoriesService`           | Income/expense categories                                                                                                             |
+| `TransactionTemplatesService` | Recurring/planned templates + payment dues (`list_upcoming_dues`, `mark_paid`, `clear_paid`; helpers in `services/dues.py`) — PPT-070 |
+| `TransactionsService`         | Posted ledger + transfer helpers                                                                                                      |
+| `AccountFinancingService`     | Asset–loan financing links                                                                                                            |
+| `*AccountDetailsService`      | Per-kind 1:1 extension CRUD                                                                                                           |
 
 #### API-readiness (PPT-041)
 
@@ -510,12 +510,13 @@ Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [
 
 **406** tests (collected) — layered coverage across access, database, services, handlers, views, and package metadata.
 
-| Suite            | Location                                     | Requirements                                                    |
-| :--------------- | :------------------------------------------- | :-------------------------------------------------------------- |
-| Unit (default)   | `tests/tests_papita_txnsmodel/`              | Mocked DB; no `DATABASE_URL` needed                             |
-| Integration      | `tests/.../integration/`                     | `DATABASE_URL` must be PostgreSQL; live tests skipped otherwise |
-| PPT-041 services | `tests/.../services/test_ppt041_services.py` | Account orchestration, transfers, reports, category guards      |
-| Package meta     | `tests/.../test_meta.py`                     | `__version__` via importlib.metadata / pyproject fallback       |
+| Suite            | Location                                                                               | Requirements                                                    |
+| :--------------- | :------------------------------------------------------------------------------------- | :-------------------------------------------------------------- |
+| Unit (default)   | `tests/tests_papita_txnsmodel/`                                                        | Mocked DB; no `DATABASE_URL` needed                             |
+| Integration      | `tests/.../integration/`                                                               | `DATABASE_URL` must be PostgreSQL; live tests skipped otherwise |
+| PPT-041 services | `tests/.../services/test_ppt041_services.py`                                           | Account orchestration, transfers, reports, category guards      |
+| PPT-072 dues     | `tests/.../services/test_ppt072_dues.py` (+ `integration/test_ppt072_dues_live_db.py`) | Upcoming window, mark-paid → linked txn, cross-tenant (B0)      |
+| Package meta     | `tests/.../test_meta.py`                                                               | `__version__` via importlib.metadata / pyproject fallback       |
 
 ```bash
 # Standard gate (from repo root)

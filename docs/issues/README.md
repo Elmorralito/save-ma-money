@@ -1,6 +1,6 @@
-# Issue briefs — PPT-031 / PPT-032 / PPT-046 program
+# Issue briefs — PPT-031 / PPT-032 / PPT-046 / PPT-070 program
 
-Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papita simplify + API MVP program, plus the web SPA epic index (PPT-046).
+Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papita simplify + API MVP program, the web SPA epic index (PPT-046), and the payment due-date reminders epic (PPT-070).
 
 **New GitHub issues:** use the chooser templates under [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — epic (`01-epic.md`), program issue (`02-program-issue.md`), child under epic (`03-child-issue.md`), bug (`04-bug-report.md`). Shape references: [#42](https://github.com/Elmorralito/save-ma-money/issues/42), [#52](https://github.com/Elmorralito/save-ma-money/issues/52), [#89](https://github.com/Elmorralito/save-ma-money/issues/89), [#93](https://github.com/Elmorralito/save-ma-money/issues/93), children of #42.
 
@@ -18,15 +18,16 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 
 ## Table of contents
 
-| Part                                                    | Topic                                       | Issue                                                           | Status                         |
-| ------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------- | ------------------------------ |
-| [I](#part-i--ppt-031-simplify-requirements-28)          | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)   | Closed                         |
-| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31) | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)   | Complete (G7 superseded)       |
-| [III](#part-iii--ppt-032-api-epic-42)                   | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42)   | Open (children #43–#50 closed) |
-| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)        | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                         |
-| [V](#part-v--ppt-043-redis-integration-83)              | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                |
-| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)    | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                         |
-| [VII](#part-vii--ppt-046-web-spa-epic-112)              | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Closed (children delivered)    |
+| Part                                                       | Topic                                       | Issue                                                           | Status                                           |
+| ---------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| [I](#part-i--ppt-031-simplify-requirements-28)             | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)   | Closed                                           |
+| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31)    | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)   | Complete (G7 superseded)                         |
+| [III](#part-iii--ppt-032-api-epic-42)                      | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42)   | Open (children #43–#50 closed)                   |
+| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)           | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                                           |
+| [V](#part-v--ppt-043-redis-integration-83)                 | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                                  |
+| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)       | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                                           |
+| [VII](#part-vii--ppt-046-web-spa-epic-112)                 | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Closed (children delivered)                      |
+| [VIII](#part-viii--ppt-070-payment-due-date-reminders-163) | Payment due-date reminders (in-app)         | [#163](https://github.com/Elmorralito/save-ma-money/issues/163) | Open (children #164–#167 closed; #168 close-out) |
 
 **Merged sources (removed):** `PPT-031-simplify-requirements.md`, `PPT-031-C-supabase-decision-brief.md`, `_gh_body_PPT-032-epic.md`, `_gh_body_PPT-039.md`, `PPT-039-supabase-auth-reissue.md`, `PPT-043-redis-integration-brief.md`, `PPT-045-uvicorn-process-packaging-brief.md` — content lives in this README only.
 
@@ -2067,3 +2068,68 @@ Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel)
 - Reimplementing `papita_txnsmodel` services in TypeScript — DoD in [`modules/web/README.md` § Domain boundary](../../modules/web/README.md#domain-boundary-ppt-069--140) ([#140](https://github.com/Elmorralito/save-ma-money/issues/140))
 - Field RUM / Sentry / production error reporting (post-MVP)
 - Mobile native apps, public marketing SSR
+
+---
+
+## Part VIII — PPT-070 payment due-date reminders (#163)
+
+> Post-MVP **in-app** payment due-date reminders on `transaction_templates` (not a new obligations package). Live body: [#163](https://github.com/Elmorralito/save-ma-money/issues/163) (PPT-070).
+> Operator SSOT: [`modules/api/README.md`](../../modules/api/README.md) (templates/dues catalog) · [`modules/web/README.md`](../../modules/web/README.md) (Payment dues + Due soon) · model dues helpers in [`modules/model/README.md`](../../modules/model/README.md).
+> Design context: [`docs/design/ARCHITECTURE.md`](../design/ARCHITECTURE.md) FR-05 / templates + Part IV mapping (templates routes shipped under PPT-073).
+
+**Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **PPT-070** · **Step:** Post-MVP payment due-date reminders (in-app)
+
+### Summary
+
+Tenants set **recurring** and **one-off** payment dues (deadlines / ETAs) backed by extended `transaction_templates` columns (`due_date`, `remind_days_before`, `from_account_id`, plus existing `planned_day` / `use_month_end`). Surfaces: API CRUD + upcoming-dues / mark-paid, SPA list/edit and dashboard **Due soon**. Business rules stay in `papita_txnsmodel`; SPA is presentation + BFF cookies only.
+
+**Locked decisions (cite epic; do not re-litigate):**
+
+- Extend `transaction_templates` — no `obligations` package; liability balances stay on `accounts`
+- Mark-paid posts a linked `EXPENSE`/`INCOME` via `template_id` (paid state derived from ledger, not a template “paid” column)
+- In-app only — email / push / SMS / calendar feed deferred
+- Full iCal RRULE and CC `payment_due_day` auto-dues deferred (v4.2 alignment only if low-cost)
+
+### Where to start
+
+| Need               | Where                                                                                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| Epic + acceptance  | [#163](https://github.com/Elmorralito/save-ma-money/issues/163)                                                       |
+| Schema + migration | Alembic `j7e8f9a0b1c2` · `papita_txnsmodel.model.transactions.TransactionTemplates`                                   |
+| Dues services      | `papita_txnsmodel.services.dues` · `TransactionTemplatesService.list_upcoming_dues` / `mark_paid` / `clear_paid`      |
+| API routers        | `papita_txnsapi.routers.v1.transaction_templates` · catalog in [`modules/api/README.md`](../../modules/api/README.md) |
+| SPA                | `/payment-dues` · dashboard Due soon — [`modules/web/README.md`](../../modules/web/README.md)                         |
+| OpenAPI / types    | `make check-openapi` / `make web-openapi` · committed `modules/web/openapi/openapi.json`                              |
+| B0 tests           | Model: `test_ppt072_dues.py` (+ live) · API: `test_transaction_templates.py` (+ live)                                 |
+
+### Child-issue map
+
+| Step | PPT     | Issue                                                           | Topic                              | Status |
+| ---- | ------- | --------------------------------------------------------------- | ---------------------------------- | ------ |
+| 0    | PPT-071 | [#164](https://github.com/Elmorralito/save-ma-money/issues/164) | Schema + migration for dues        | Closed |
+| 1    | PPT-072 | [#165](https://github.com/Elmorralito/save-ma-money/issues/165) | Upcoming dues / mark-paid services | Closed |
+| 2    | PPT-073 | [#166](https://github.com/Elmorralito/save-ma-money/issues/166) | API CRUD + upcoming dues endpoints | Closed |
+| 3    | PPT-074 | [#167](https://github.com/Elmorralito/save-ma-money/issues/167) | Web dues UI + Due soon             | Closed |
+| 4    | PPT-075 | [#168](https://github.com/Elmorralito/save-ma-money/issues/168) | Tests, OpenAPI sync, docs index    | Open   |
+
+Order: `#164 → #165 → #166 → #167 → #168`. Full dependency graph and deferred scope live on the GitHub epic — this Part is an **index**, not a second epic SSOT.
+
+### Test / AC evidence (PPT-075)
+
+| Epic AC theme                                      | Evidence                                                                                  |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Recurring + one-off dues on templates              | PPT-071 migration + DTO; service one-off/recurring coverage                               |
+| Upcoming window, owner-scoped                      | `test_ppt072_dues*.py`; API mock + live `test_transaction_templates*.py` (B0 Postgres)    |
+| Mark-paid → linked txn (`template_id`)             | Model asserts `posted.template_id`; API live round-trip                                   |
+| No cross-tenant leak                               | Model live + API live 404 / upcoming isolation                                            |
+| OpenAPI + web types                                | Paths in committed `openapi.json`; `make check-openapi` + `make check-types` green on tip |
+| SPA list + Due soon; no browser JWTs; no TS domain | PPT-074 UI; project domain boundary                                                       |
+| PPT-075 docs close-out                             | This Part + module README pointers + ARCHITECTURE templates status                        |
+
+### Out of scope (epic-level)
+
+- Email / push / calendar feed
+- Budgets (v4.1), counterparties (v4.3), full RRULE engine
+- New `modules/model/.../obligations` package
+- Changing liability account balance semantics
+- Browser JWTs

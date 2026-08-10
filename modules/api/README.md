@@ -39,6 +39,7 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | `/categories/*`                          | `categories` (income/expense taxonomy)                                                                                                                                     | Yes |
 | `/accounts/*`                            | `accounts` + extension tables; `balance` from `account_balances` MV                                                                                                        | Yes |
 | `/transactions/*`                        | `transactions` (`transaction_kind`: INCOME, EXPENSE, TRANSFER)                                                                                                             | Yes |
+| `/transaction-templates/*`               | `transaction_templates` — CRUD + upcoming-dues / mark-paid / clear-paid (PPT-070 / [#163](https://github.com/Elmorralito/save-ma-money/issues/163))                        | Yes |
 | `/movements/*`                           | **Alias** — same rows where `transaction_kind = TRANSFER`                                                                                                                  | Yes |
 | `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                                                                                                      | Yes |
 | `/budgets/*`                             | Deferred — v4.1 ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)) | 501 |
@@ -70,25 +71,27 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 | PPT-040 | [#50](https://github.com/Elmorralito/save-ma-money/issues/50) | Integration tests + B0 CI (Auth-first)                                                                            |
 | PPT-041 | [#51](https://github.com/Elmorralito/save-ma-money/issues/51) | Model hardening (prerequisite)                                                                                    |
 
-| Implemented    | Location                                                                                      |
-| :------------- | :-------------------------------------------------------------------------------------------- |
-| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers                    |
-| Settings / env | `src/papita_txnsapi/config/settings.py`, `config/environment.py`                              |
-| Auth / JWT     | `core/security.py`, `core/supabase_auth.py` — JWKS (`supabase`) or HS256 (`local`)            |
-| Health         | `routers/v1/health.py` — `/`, `/ready`, `/live`, `/database`, `/auth`, `/redis`               |
-| Auth           | `routers/v1/auth.py` — register, login, `/me`, OAuth/SSO, refresh/logout (Supabase)           |
-| Accounts       | `routers/v1/accounts.py`                                                                      |
-| Categories     | `routers/v1/categories.py`                                                                    |
-| Transactions   | `routers/v1/transactions.py` — bulk; split → 501                                              |
-| Movements      | `routers/v1/movements.py` — TRANSFER alias + execute                                          |
-| Reports        | `routers/v1/reports.py` — budget-performance → 501                                            |
-| Deferred 501   | `routers/v1/budgets.py`; split; budget-performance; refresh/logout when `AUTH_PROVIDER=local` |
-| Schemas / deps | `schemas/*`, `dependencies/auth.py`, `pagination.py`, `services.py`, `tenant.py`              |
-| Tests          | `modules/api/tests/` — unit + B0 live-DB; Auth mock + `make auth-smoke`                       |
+| Implemented    | Location                                                                                        |
+| :------------- | :---------------------------------------------------------------------------------------------- |
+| FastAPI app    | `src/papita_txnsapi/main.py` — lifespan, CORS, logging, exception handlers                      |
+| Settings / env | `src/papita_txnsapi/config/settings.py`, `config/environment.py`                                |
+| Auth / JWT     | `core/security.py`, `core/supabase_auth.py` — JWKS (`supabase`) or HS256 (`local`)              |
+| Health         | `routers/v1/health.py` — `/`, `/ready`, `/live`, `/database`, `/auth`, `/redis`                 |
+| Auth           | `routers/v1/auth.py` — register, login, `/me`, OAuth/SSO, refresh/logout (Supabase)             |
+| Accounts       | `routers/v1/accounts.py`                                                                        |
+| Categories     | `routers/v1/categories.py`                                                                      |
+| Transactions   | `routers/v1/transactions.py` — bulk; split → 501                                                |
+| Templates/dues | `routers/v1/transaction_templates.py` — CRUD + upcoming-dues / mark-paid / clear-paid (PPT-073) |
+| Movements      | `routers/v1/movements.py` — TRANSFER alias + execute                                            |
+| Reports        | `routers/v1/reports.py` — budget-performance → 501                                              |
+| Deferred 501   | `routers/v1/budgets.py`; split; budget-performance; refresh/logout when `AUTH_PROVIDER=local`   |
+| Schemas / deps | `schemas/*`, `dependencies/auth.py`, `pagination.py`, `services.py`, `tenant.py`                |
+| Tests          | `modules/api/tests/` — unit + B0 live-DB; Auth mock + `make auth-smoke`                         |
 
 | Remaining (post-MVP / epic hygiene) | Track via                                                                                                                                                                                                           |
 | :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Formal epic #42 close               | Maintainer AC on [#42](https://github.com/Elmorralito/save-ma-money/issues/42)                                                                                                                                      |
+| Payment dues epic #163 close        | PPT-075 / [#168](https://github.com/Elmorralito/save-ma-money/issues/168) — docs/OpenAPI close-out; children #164–#167 closed                                                                                       |
 | Redis / rate-limit / packaging      | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043, [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044, [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045 |
 
 **Model readiness (PPT-041):** closed — routers call `papita-txnsmodel` services only (no duplicate business logic).
@@ -408,16 +411,17 @@ Webhooks are **not implemented** (future: `transaction.created`, etc.).
 
 ### Endpoint summary
 
-| Resource       | Endpoint          | Methods                | MVP scope                 |
-| -------------- | ----------------- | ---------------------- | ------------------------- |
-| Health         | `/health`         | GET                    | ✓                         |
-| Authentication | `/auth/*`         | POST                   | register, login only      |
-| Accounts       | `/accounts/*`     | GET, POST, PUT, DELETE | ✓                         |
-| Categories     | `/categories/*`   | GET, POST, PUT, DELETE | ✓                         |
-| Budgets        | `/budgets/*`      | GET, POST, PUT, DELETE | **Deferred**              |
-| Transactions   | `/transactions/*` | GET, POST, PUT, DELETE | ✓ (no split)              |
-| Movements      | `/movements/*`    | GET, POST, PUT, DELETE | ✓ (alias)                 |
-| Reports        | `/reports/*`      | GET                    | ✓ (no budget-performance) |
+| Resource       | Endpoint                   | Methods                | MVP scope                   |
+| -------------- | -------------------------- | ---------------------- | --------------------------- |
+| Health         | `/health`                  | GET                    | ✓                           |
+| Authentication | `/auth/*`                  | POST                   | register, login only        |
+| Accounts       | `/accounts/*`              | GET, POST, PUT, DELETE | ✓                           |
+| Categories     | `/categories/*`            | GET, POST, PUT, DELETE | ✓                           |
+| Budgets        | `/budgets/*`               | GET, POST, PUT, DELETE | **Deferred**                |
+| Transactions   | `/transactions/*`          | GET, POST, PUT, DELETE | ✓ (no split)                |
+| Templates/dues | `/transaction-templates/*` | GET, POST, PUT, DELETE | ✓ (PPT-070; + dues actions) |
+| Movements      | `/movements/*`             | GET, POST, PUT, DELETE | ✓ (alias)                   |
+| Reports        | `/reports/*`               | GET                    | ✓ (no budget-performance)   |
 
 ---
 
@@ -1376,6 +1380,25 @@ Execute a scheduled movement.
   "executed_at": "2026-02-04T15:14:00Z"
 }
 ```
+
+---
+
+## Transaction template / payment dues endpoints (PPT-070)
+
+Tenant-scoped CRUD on `transaction_templates` plus upcoming-dues window and mark-paid / clear-paid. Routers map schemas and `owner` only; logic lives in `TransactionTemplatesService` (`papita_txnsmodel`). Index: [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
+
+| Method | Path                                              | Notes                                             |
+| ------ | ------------------------------------------------- | ------------------------------------------------- |
+| GET    | `/transaction-templates`                          | Paginated list; owner-scoped                      |
+| GET    | `/transaction-templates/upcoming-dues`            | Window query (`from_date` / `to_date` / flags)    |
+| GET    | `/transaction-templates/{template_id}`            | Single template; cross-tenant → 404               |
+| POST   | `/transaction-templates`                          | Create (recurring or one-off due fields)          |
+| PUT    | `/transaction-templates/{template_id}`            | Update tenant-owned template                      |
+| DELETE | `/transaction-templates/{template_id}`            | Soft-delete                                       |
+| POST   | `/transaction-templates/{template_id}/mark-paid`  | Posts linked `EXPENSE`/`INCOME` via `template_id` |
+| POST   | `/transaction-templates/{template_id}/clear-paid` | Soft-deletes the paid posting for the period      |
+
+**Tests:** `modules/api/tests/test_transaction_templates.py` (mocked) · `test_transaction_templates_live_db.py` (B0). OpenAPI: committed `modules/web/openapi/openapi.json` — `make check-openapi`.
 
 ---
 
