@@ -4,7 +4,7 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — ACTIVE = PPT-075 / #168 dues docs/OpenAPI/B0 close-out; epic PPT-070 / #163 after merge.
+- [Project state](project_state.md) — PPT-070 / #163 closed (dues #164–#168 on main); see Part VIII index.
 - [Active issues](../issues/ACTIVE.md) — refresh against GitHub; prefer project_state for in-flight PR.
 - [Open backlog](../issues/OPEN.md) — PPT-070 children when starting dues work.
 - Closed work — GitHub issues + `git log` (no `.strata/issues/archive/`).

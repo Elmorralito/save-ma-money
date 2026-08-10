@@ -14,12 +14,13 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
-- **PPT-074 / #167:** landed on main ([PR #206](https://github.com/Elmorralito/save-ma-money/pull/206)) —
-  SPA payment dues UI + dashboard **Due soon**.
-- **PPT-073 / #166:** `/transaction-templates` CRUD + dues FastAPI routers ([PR #205](https://github.com/Elmorralito/save-ma-money/pull/205)).
-- **PPT-072 / #165:** upcoming-dues + mark-paid / clear-paid in `papita_txnsmodel`
-  ([PR #204](https://github.com/Elmorralito/save-ma-money/pull/204)).
-- **PPT-071 / #164:** schema + migration for dues columns on `transaction_templates`.
+- **PPT-070 / #163:** epic closed — in-app payment dues delivered (children #164–#168;
+  PRs [#197](https://github.com/Elmorralito/save-ma-money/pull/197)–[#207](https://github.com/Elmorralito/save-ma-money/pull/207)).
+  Index: [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
+- **PPT-075 / #168:** docs/OpenAPI/B0 close-out ([PR #207](https://github.com/Elmorralito/save-ma-money/pull/207)).
+- **PPT-074 / #167:** SPA dues + Due soon ([PR #206](https://github.com/Elmorralito/save-ma-money/pull/206)).
+- **PPT-073 / #166:** `/transaction-templates` API ([PR #205](https://github.com/Elmorralito/save-ma-money/pull/205)).
+- **PPT-072 / #165** · **PPT-071 / #164:** model services + schema.
 
 ### Last completed (this session) — ops
 
@@ -29,18 +30,16 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-075 / #168:** docs index + README pointers + OpenAPI verify + B0 live fixture harden
-  (`REDIS_ENABLED=false` in `test_transaction_templates_live_db.py`). Index:
-  [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163).
+- None for PPT-070. Optional follow-up: SQLModel CHECK metadata drift so Migration Check
+  can run without `skip-migrations` (unrelated to dues epic MVP).
 
 ### Open (backlog)
 
-- **PPT-070 / #163** epic close-out after #168 merges.
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
+- Alembic/`alembic check` SQLModel CHECK alignment (`chk_financing_share`, etc.).
 
 ### Next action
 
-- Merge PPT-075 / #168; then tick / close epic PPT-070 / #163
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes
