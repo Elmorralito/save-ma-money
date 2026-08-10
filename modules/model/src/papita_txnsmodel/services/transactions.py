@@ -353,7 +353,14 @@ class TransactionTemplatesService(CategorizedEntitiesService):
             description=template.description or template.name or "",
             tags=list(template.tags or []),
         )
-        created = self.transactions_service.create(obj=payload, owner=owner, **kwargs)
+        # Avoid CategorizedEntitiesService category hydration on the template link
+        # (passes dto_type= into CategoriesService.get and can collide with kwargs).
+        created = self.transactions_service.create(
+            obj=payload,
+            owner=owner,
+            include_category=False,
+            **kwargs,
+        )
         if not isinstance(created, TransactionsDTO):
             raise RuntimeError("mark_paid failed to create a transaction.")
         return created

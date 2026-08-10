@@ -29,9 +29,9 @@ Capture with `/strata:capture` only for work in flight.
 ### In progress (ACTIVE)
 
 - **PPT-072 / #165:** [PR #204](https://github.com/Elmorralito/save-ma-money/pull/204) —
-  upcoming-dues + mark-paid / clear-paid; model version restored to **1.0.3**;
-  B0 fixture uses `OTHER_ASSET` (no extension); `skip-migrations` for pre-existing
-  alembic check drift on main.
+  upcoming-dues + mark-paid / clear-paid; model version **1.0.3**; B0
+  `OTHER_ASSET` fixture; fix category `dto_type` kw collision on mark-paid create;
+  `skip-migrations` for pre-existing alembic check drift on main.
 - **[PR #193](https://github.com/Elmorralito/save-ma-money/pull/193):** GHA Dependabot bumps +
   e2e login/nav hardening + Hadolint HEALTHCHECK JSON / DL3066 ignore.
 

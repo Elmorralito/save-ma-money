@@ -95,6 +95,9 @@ class CategorizedEntitiesService(BaseService):
         """
         categorized_dto = super().get(obj=obj, owner=owner, **kwargs)
         if kwargs.get("include_category", True) and isinstance(categorized_dto, self.dto_type):
+            # Drop dto_type so it is not passed twice into CategoriesService.get /
+            # BaseRepository.get_record_by_id (explicit kw + **kwargs).
+            category_kwargs = {key: value for key, value in kwargs.items() if key != "dto_type"}
             categorized_dto = self.dto_type.model_validate(
                 categorized_dto.model_dump(mode="python")
                 | {
@@ -102,7 +105,7 @@ class CategorizedEntitiesService(BaseService):
                         obj=getattr(categorized_dto, self.category_id_field_name),
                         owner=owner,
                         dto_type=self.categories_dto_type,
-                        **kwargs,
+                        **category_kwargs,
                     )
                 }
             )
