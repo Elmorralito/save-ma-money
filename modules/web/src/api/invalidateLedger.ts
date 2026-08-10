@@ -12,6 +12,7 @@ export async function invalidateAfterLedgerWrite(
   options: {
     transactions?: boolean;
     movements?: boolean;
+    templates?: boolean;
     transactionId?: string;
     movementId?: string;
     removeTransactionId?: string;
@@ -28,6 +29,9 @@ export async function invalidateAfterLedgerWrite(
   }
   if (options.movements) {
     tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.movements.lists() }));
+  }
+  if (options.templates) {
+    tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.transactionTemplates.all }));
   }
   if (options.transactionId) {
     tasks.push(
@@ -53,4 +57,45 @@ export async function invalidateAfterLedgerWrite(
   }
 
   await Promise.all(tasks);
+}
+
+/**
+ * Invalidate payment-due template caches (list, detail, upcoming dues).
+ *
+ * When ``markPaid`` is true, also refreshes ledger lists (accounts / transactions).
+ */
+export async function invalidateAfterTemplateWrite(
+  queryClient: QueryClient,
+  options: {
+    templateId?: string;
+    removeTemplateId?: string;
+    markPaid?: boolean;
+    transactionId?: string;
+  } = {},
+): Promise<void> {
+  const tasks: Promise<unknown>[] = [
+    queryClient.invalidateQueries({ queryKey: queryKeys.transactionTemplates.all }),
+  ];
+
+  if (options.templateId) {
+    tasks.push(
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.transactionTemplates.detail(options.templateId),
+      }),
+    );
+  }
+  if (options.removeTemplateId) {
+    queryClient.removeQueries({
+      queryKey: queryKeys.transactionTemplates.detail(options.removeTemplateId),
+    });
+  }
+
+  await Promise.all(tasks);
+
+  if (options.markPaid) {
+    await invalidateAfterLedgerWrite(queryClient, {
+      transactions: true,
+      transactionId: options.transactionId,
+    });
+  }
 }

@@ -14,8 +14,10 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
-- **PPT-072 / #165:** landed on main ([PR #204](https://github.com/Elmorralito/save-ma-money/pull/204)) —
-  upcoming-dues + mark-paid / clear-paid in `papita_txnsmodel`.
+- **PPT-073 / #166:** landed on main ([PR #205](https://github.com/Elmorralito/save-ma-money/pull/205)) —
+  `/transaction-templates` CRUD + upcoming-dues / mark-paid / clear-paid FastAPI routers.
+- **PPT-072 / #165:** upcoming-dues + mark-paid / clear-paid in `papita_txnsmodel`
+  ([PR #204](https://github.com/Elmorralito/save-ma-money/pull/204)).
 - **PPT-071 / #164:** schema + migration for dues columns on `transaction_templates`.
 - **PPT-068 / #139**, **PPT-063 / #128**, **PPT-069 / #140**, **PPT-067 / #132**: on main.
 
@@ -27,22 +29,18 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-073 / #166:** [PR #205](https://github.com/Elmorralito/save-ma-money/pull/205) —
-  transaction-templates CRUD + upcoming-dues / mark-paid / clear-paid FastAPI routers;
-  restore model path version **1.0.3** (PSR had rewritten to 1.0.1, breaking API `>=1.0.3`);
-  CI fix: coerce pandas NaN on optional ints before DTO validate; flatten nested `TableDTO`
-  FKs in `_relation_uuid` for mark-paid responses.
-- **[PR #193](https://github.com/Elmorralito/save-ma-money/pull/193):** GHA Dependabot bumps +
-  e2e login/nav hardening + Hadolint HEALTHCHECK JSON / DL3066 ignore (if still open).
+- **PPT-074 / #167:** SPA payment dues UI + dashboard **Due soon** — OpenAPI sync, typed
+  `transactionTemplates` client/query keys, `/payment-dues` CRUD + mark/clear paid,
+  dashboard panel; presentation only over PPT-073 API (branch `feat/PPT-074`).
 
 ### Open (backlog)
 
-- **PPT-070** children #167–#168 — SPA Due soon + OpenAPI/docs after PPT-073 lands.
+- **PPT-070** child #168 — tests, OpenAPI sync gate, docs index after PPT-074.
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 
 ### Next action
 
-- Open / merge PR for PPT-073 / #166; then PPT-074 / #167 web dues UI
+- Open / merge PR for PPT-074 / #167; then PPT-075 / #168
 - Do not re-add closed GH issues into `.strata/issues/`
 
 ### Uncommitted / staging notes

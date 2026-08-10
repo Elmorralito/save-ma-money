@@ -1125,6 +1125,26 @@
         "title": "CategoryUpdate",
         "type": "object"
       },
+      "ClearPaidRequest": {
+        "additionalProperties": false,
+        "description": "Optional body for ``POST …/clear-paid``.",
+        "properties": {
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          }
+        },
+        "title": "ClearPaidRequest",
+        "type": "object"
+      },
       "CreditCardDetailsSchema": {
         "additionalProperties": false,
         "description": "Credit card extension fields.\n\nAttributes:\n    credit_limit: Maximum revolving credit; must be positive.",
@@ -1410,6 +1430,50 @@
           "refresh_token"
         ],
         "title": "LogoutRequest",
+        "type": "object"
+      },
+      "MarkPaidRequest": {
+        "additionalProperties": false,
+        "description": "Optional body for ``POST …/mark-paid``.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "transaction_ts": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Ts"
+          }
+        },
+        "title": "MarkPaidRequest",
         "type": "object"
       },
       "MonthlyTrendItem": {
@@ -1922,6 +1986,39 @@
           "limit"
         ],
         "title": "PaginatedResponse[TransactionResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_TransactionTemplateResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TransactionTemplateResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[TransactionTemplateResponse]",
         "type": "object"
       },
       "ProviderType": {
@@ -2779,6 +2876,357 @@
         "title": "TransactionResponse",
         "type": "object"
       },
+      "TransactionTemplateCreate": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /transaction-templates``.",
+        "properties": {
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
+          "name": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "planned_amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Planned Amount",
+            "type": "number"
+          },
+          "planned_day": {
+            "maximum": 31.0,
+            "minimum": 1.0,
+            "title": "Planned Day",
+            "type": "integer"
+          },
+          "remind_days_before": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remind Days Before"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Tags",
+            "type": "array"
+          },
+          "use_month_end": {
+            "default": false,
+            "title": "Use Month End",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "category_id",
+          "planned_amount",
+          "planned_day"
+        ],
+        "title": "TransactionTemplateCreate",
+        "type": "object"
+      },
+      "TransactionTemplateResponse": {
+        "description": "Transaction-template resource returned by CRUD endpoints.",
+        "properties": {
+          "category_id": {
+            "format": "uuid",
+            "title": "Category Id",
+            "type": "string"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "planned_amount": {
+            "title": "Planned Amount",
+            "type": "number"
+          },
+          "planned_day": {
+            "title": "Planned Day",
+            "type": "integer"
+          },
+          "remind_days_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remind Days Before"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "use_month_end": {
+            "title": "Use Month End",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "category_id",
+          "planned_amount",
+          "planned_day",
+          "use_month_end",
+          "is_active"
+        ],
+        "title": "TransactionTemplateResponse",
+        "type": "object"
+      },
+      "TransactionTemplateUpdate": {
+        "additionalProperties": false,
+        "description": "Partial update body for ``PUT /transaction-templates/{template_id}``.",
+        "properties": {
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "planned_amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Amount"
+          },
+          "planned_day": {
+            "anyOf": [
+              {
+                "maximum": 31.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Planned Day"
+          },
+          "remind_days_before": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remind Days Before"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          },
+          "use_month_end": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Use Month End"
+          }
+        },
+        "title": "TransactionTemplateUpdate",
+        "type": "object"
+      },
       "TransactionUpdate": {
         "additionalProperties": false,
         "description": "Request body for ``PUT /transactions/{transaction_id}``.",
@@ -2969,6 +3417,75 @@
           "analysis_period"
         ],
         "title": "TrendsReportResponse",
+        "type": "object"
+      },
+      "UpcomingDueResponse": {
+        "description": "Single upcoming-due row for in-app reminders.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "is_paid": {
+            "default": false,
+            "title": "Is Paid",
+            "type": "boolean"
+          },
+          "paid_transaction_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Transaction Id"
+          },
+          "remind_start": {
+            "format": "date",
+            "title": "Remind Start",
+            "type": "string"
+          },
+          "template": {
+            "$ref": "#/components/schemas/TransactionTemplateResponse"
+          }
+        },
+        "required": [
+          "template",
+          "due_date",
+          "remind_start"
+        ],
+        "title": "UpcomingDueResponse",
+        "type": "object"
+      },
+      "UpcomingDuesResponse": {
+        "description": "List payload for ``GET /transaction-templates/upcoming-dues``.",
+        "properties": {
+          "as_of": {
+            "format": "date",
+            "title": "As Of",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UpcomingDueResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "window_days": {
+            "title": "Window Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "window_days"
+        ],
+        "title": "UpcomingDuesResponse",
         "type": "object"
       },
       "UserResponse": {
@@ -5866,6 +6383,515 @@
         "summary": "Get Trends Report",
         "tags": [
           "Reports"
+        ]
+      }
+    },
+    "/api/v1/transaction-templates": {
+      "get": {
+        "description": "List tenant transaction templates with optional filters.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    templates_service: Injected templates service.\n    category_id: Optional category filter.\n    is_active: Optional soft-active filter.\n\nReturns:\n    Paginated ``TransactionTemplateResponse`` items owned by ``owner``.",
+        "operationId": "list_transaction_templates_api_v1_transaction_templates_get",
+        "parameters": [
+          {
+            "description": "Filter by category",
+            "in": "query",
+            "name": "category_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by category",
+              "title": "Category Id"
+            }
+          },
+          {
+            "description": "Filter by active status",
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by active status",
+              "title": "Is Active"
+            }
+          },
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_TransactionTemplateResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Transaction Templates",
+        "tags": [
+          "Transaction templates"
+        ]
+      },
+      "post": {
+        "description": "Create a tenant-owned transaction template.",
+        "operationId": "create_transaction_template_api_v1_transaction_templates_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionTemplateCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionTemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Create Transaction Template",
+        "tags": [
+          "Transaction templates"
+        ]
+      }
+    },
+    "/api/v1/transaction-templates/upcoming-dues": {
+      "get": {
+        "description": "List owner-scoped templates with a due in the upcoming reminder window.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    templates_service: Injected templates service.\n    filters: ``as_of`` / ``window_days`` / ``include_paid`` query bundle.\n\nReturns:\n    Upcoming dues sorted by the model service (due date, then name/id).\n\nRaises:\n    HTTPException: 422 when ``window_days`` is rejected by the service.",
+        "operationId": "list_upcoming_dues_api_v1_transaction_templates_upcoming_dues_get",
+        "parameters": [
+          {
+            "description": "Window anchor date (UTC today when omitted)",
+            "in": "query",
+            "name": "as_of",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Window anchor date (UTC today when omitted)",
+              "title": "As Of"
+            }
+          },
+          {
+            "description": "Inclusive days after as_of",
+            "in": "query",
+            "name": "window_days",
+            "required": false,
+            "schema": {
+              "default": 14,
+              "description": "Inclusive days after as_of",
+              "minimum": 0,
+              "title": "Window Days",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Include dues already marked paid",
+            "in": "query",
+            "name": "include_paid",
+            "required": false,
+            "schema": {
+              "default": true,
+              "description": "Include dues already marked paid",
+              "title": "Include Paid",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpcomingDuesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Upcoming Dues",
+        "tags": [
+          "Transaction templates"
+        ]
+      }
+    },
+    "/api/v1/transaction-templates/{template_id}": {
+      "delete": {
+        "description": "Soft-delete a tenant-owned transaction template.\n\nRaises:\n    HTTPException: 404 when missing or not owned by ``owner``.",
+        "operationId": "delete_transaction_template_api_v1_transaction_templates__template_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Transaction Template",
+        "tags": [
+          "Transaction templates"
+        ]
+      },
+      "get": {
+        "description": "Retrieve a tenant-owned transaction template by id.\n\nRaises:\n    HTTPException: 404 when missing or not owned by ``owner``.",
+        "operationId": "get_transaction_template_api_v1_transaction_templates__template_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionTemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Transaction Template",
+        "tags": [
+          "Transaction templates"
+        ]
+      },
+      "put": {
+        "description": "Update a tenant-owned transaction template.\n\nRaises:\n    HTTPException: 404 when missing or not owned by ``owner``.",
+        "operationId": "update_transaction_template_api_v1_transaction_templates__template_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionTemplateUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionTemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Transaction Template",
+        "tags": [
+          "Transaction templates"
+        ]
+      }
+    },
+    "/api/v1/transaction-templates/{template_id}/clear-paid": {
+      "post": {
+        "description": "Soft-delete the linked posting for the template due period.\n\nRaises:\n    HTTPException: 404 / 409 / 422 from mapped service ValueErrors.",
+        "operationId": "clear_template_paid_api_v1_transaction_templates__template_id__clear_paid_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ClearPaidRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Clear Template Paid",
+        "tags": [
+          "Transaction templates"
+        ]
+      }
+    },
+    "/api/v1/transaction-templates/{template_id}/mark-paid": {
+      "post": {
+        "description": "Post a linked EXPENSE/INCOME for the template due (mark paid).\n\nRaises:\n    HTTPException: 404 / 409 / 422 from mapped service ValueErrors.",
+        "operationId": "mark_template_paid_api_v1_transaction_templates__template_id__mark_paid_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MarkPaidRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Mark Template Paid",
+        "tags": [
+          "Transaction templates"
         ]
       }
     },

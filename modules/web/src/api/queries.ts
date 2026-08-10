@@ -8,6 +8,13 @@ import { getMovement, listMovements, type ListMovementsParams } from "@/api/move
 import { queryKeys } from "@/api/queryKeys";
 import { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";
 import { getTransaction, listTransactions, type ListTransactionsParams } from "@/api/transactions";
+import {
+  getTransactionTemplate,
+  listTransactionTemplates,
+  listUpcomingDues,
+  type ListTransactionTemplatesParams,
+  type ListUpcomingDuesParams,
+} from "@/api/transactionTemplates";
 
 /** Shared query definition for PPT-044 client-contract discovery. */
 export function clientContractQueryOptions() {
@@ -174,5 +181,53 @@ export function spendingReportQueryOptions(
   return queryOptions({
     queryKey: queryKeys.reports.spending(spendingReportFilters(params)),
     queryFn: ({ signal }) => getSpendingReport({ ...params, signal }),
+  });
+}
+
+function transactionTemplatesListFilters(
+  params: Omit<ListTransactionTemplatesParams, "signal">,
+): Record<string, string | number | boolean | undefined> {
+  return {
+    category_id: params.category_id,
+    is_active: params.is_active,
+    skip: params.skip,
+    limit: params.limit,
+  };
+}
+
+function upcomingDuesFilters(
+  params: Omit<ListUpcomingDuesParams, "signal">,
+): Record<string, string | number | boolean | undefined> {
+  return {
+    as_of: params.as_of,
+    window_days: params.window_days,
+    include_paid: params.include_paid,
+  };
+}
+
+/** Shared query definition for paginated transaction templates (payment dues). */
+export function transactionTemplatesListQueryOptions(
+  params: Omit<ListTransactionTemplatesParams, "signal"> = {},
+) {
+  return queryOptions({
+    queryKey: queryKeys.transactionTemplates.list(transactionTemplatesListFilters(params)),
+    queryFn: ({ signal }) => listTransactionTemplates({ ...params, signal }),
+  });
+}
+
+/** Shared query definition for a single transaction template. */
+export function transactionTemplateDetailQueryOptions(templateId: string) {
+  return queryOptions({
+    queryKey: queryKeys.transactionTemplates.detail(templateId),
+    queryFn: ({ signal }) => getTransactionTemplate(templateId, signal),
+    enabled: templateId.length > 0,
+  });
+}
+
+/** Shared query definition for ``GET /transaction-templates/upcoming-dues``. */
+export function upcomingDuesQueryOptions(params: Omit<ListUpcomingDuesParams, "signal"> = {}) {
+  return queryOptions({
+    queryKey: queryKeys.transactionTemplates.upcomingDues(upcomingDuesFilters(params)),
+    queryFn: ({ signal }) => listUpcomingDues({ ...params, signal }),
   });
 }

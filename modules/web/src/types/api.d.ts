@@ -1486,6 +1486,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transaction-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Transaction Templates
+         * @description List tenant transaction templates with optional filters.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         pagination: Skip/limit window for the response page.
+         *         templates_service: Injected templates service.
+         *         category_id: Optional category filter.
+         *         is_active: Optional soft-active filter.
+         *
+         *     Returns:
+         *         Paginated ``TransactionTemplateResponse`` items owned by ``owner``.
+         */
+        get: operations["list_transaction_templates_api_v1_transaction_templates_get"];
+        put?: never;
+        /**
+         * Create Transaction Template
+         * @description Create a tenant-owned transaction template.
+         */
+        post: operations["create_transaction_template_api_v1_transaction_templates_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transaction-templates/upcoming-dues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Upcoming Dues
+         * @description List owner-scoped templates with a due in the upcoming reminder window.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         templates_service: Injected templates service.
+         *         filters: ``as_of`` / ``window_days`` / ``include_paid`` query bundle.
+         *
+         *     Returns:
+         *         Upcoming dues sorted by the model service (due date, then name/id).
+         *
+         *     Raises:
+         *         HTTPException: 422 when ``window_days`` is rejected by the service.
+         */
+        get: operations["list_upcoming_dues_api_v1_transaction_templates_upcoming_dues_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transaction-templates/{template_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Transaction Template
+         * @description Retrieve a tenant-owned transaction template by id.
+         *
+         *     Raises:
+         *         HTTPException: 404 when missing or not owned by ``owner``.
+         */
+        get: operations["get_transaction_template_api_v1_transaction_templates__template_id__get"];
+        /**
+         * Update Transaction Template
+         * @description Update a tenant-owned transaction template.
+         *
+         *     Raises:
+         *         HTTPException: 404 when missing or not owned by ``owner``.
+         */
+        put: operations["update_transaction_template_api_v1_transaction_templates__template_id__put"];
+        post?: never;
+        /**
+         * Delete Transaction Template
+         * @description Soft-delete a tenant-owned transaction template.
+         *
+         *     Raises:
+         *         HTTPException: 404 when missing or not owned by ``owner``.
+         */
+        delete: operations["delete_transaction_template_api_v1_transaction_templates__template_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transaction-templates/{template_id}/clear-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clear Template Paid
+         * @description Soft-delete the linked posting for the template due period.
+         *
+         *     Raises:
+         *         HTTPException: 404 / 409 / 422 from mapped service ValueErrors.
+         */
+        post: operations["clear_template_paid_api_v1_transaction_templates__template_id__clear_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transaction-templates/{template_id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Template Paid
+         * @description Post a linked EXPENSE/INCOME for the template due (mark paid).
+         *
+         *     Raises:
+         *         HTTPException: 404 / 409 / 422 from mapped service ValueErrors.
+         */
+        post: operations["mark_template_paid_api_v1_transaction_templates__template_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/transactions": {
         parameters: {
             query?: never;
@@ -2204,6 +2352,14 @@ export interface components {
             parent_id?: string | null;
         };
         /**
+         * ClearPaidRequest
+         * @description Optional body for ``POST …/clear-paid``.
+         */
+        ClearPaidRequest: {
+            /** As Of */
+            as_of?: string | null;
+        };
+        /**
          * CreditCardDetailsSchema
          * @description Credit card extension fields.
          *
@@ -2392,6 +2548,18 @@ export interface components {
             access_token?: string | null;
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * MarkPaidRequest
+         * @description Optional body for ``POST …/mark-paid``.
+         */
+        MarkPaidRequest: {
+            /** Amount */
+            amount?: number | null;
+            /** As Of */
+            as_of?: string | null;
+            /** Transaction Ts */
+            transaction_ts?: string | null;
         };
         /**
          * MonthlyTrendItem
@@ -2610,6 +2778,17 @@ export interface components {
         PaginatedResponse_TransactionResponse_: {
             /** Items */
             items?: components["schemas"]["TransactionResponse"][];
+            /** Limit */
+            limit: number;
+            /** Skip */
+            skip: number;
+            /** Total */
+            total: number;
+        };
+        /** PaginatedResponse[TransactionTemplateResponse] */
+        PaginatedResponse_TransactionTemplateResponse_: {
+            /** Items */
+            items?: components["schemas"]["TransactionTemplateResponse"][];
             /** Limit */
             limit: number;
             /** Skip */
@@ -3083,6 +3262,109 @@ export interface components {
             updated_at?: string | null;
         };
         /**
+         * TransactionTemplateCreate
+         * @description Request body for ``POST /transaction-templates``.
+         */
+        TransactionTemplateCreate: {
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Due Date */
+            due_date?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /** Name */
+            name: string;
+            /** Planned Amount */
+            planned_amount: number;
+            /** Planned Day */
+            planned_day: number;
+            /** Remind Days Before */
+            remind_days_before?: number | null;
+            /** Tags */
+            tags?: string[];
+            /**
+             * Use Month End
+             * @default false
+             */
+            use_month_end: boolean;
+        };
+        /**
+         * TransactionTemplateResponse
+         * @description Transaction-template resource returned by CRUD endpoints.
+         */
+        TransactionTemplateResponse: {
+            /**
+             * Category Id
+             * Format: uuid
+             */
+            category_id: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Description */
+            description: string;
+            /** Due Date */
+            due_date?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Is Active */
+            is_active: boolean;
+            /** Name */
+            name: string;
+            /** Planned Amount */
+            planned_amount: number;
+            /** Planned Day */
+            planned_day: number;
+            /** Remind Days Before */
+            remind_days_before?: number | null;
+            /** Tags */
+            tags?: string[];
+            /** Updated At */
+            updated_at?: string | null;
+            /** Use Month End */
+            use_month_end: boolean;
+        };
+        /**
+         * TransactionTemplateUpdate
+         * @description Partial update body for ``PUT /transaction-templates/{template_id}``.
+         */
+        TransactionTemplateUpdate: {
+            /** Category Id */
+            category_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Due Date */
+            due_date?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /** Is Active */
+            is_active?: boolean | null;
+            /** Name */
+            name?: string | null;
+            /** Planned Amount */
+            planned_amount?: number | null;
+            /** Planned Day */
+            planned_day?: number | null;
+            /** Remind Days Before */
+            remind_days_before?: number | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Use Month End */
+            use_month_end?: boolean | null;
+        };
+        /**
          * TransactionUpdate
          * @description Request body for ``PUT /transactions/{transaction_id}``.
          */
@@ -3135,6 +3417,45 @@ export interface components {
              * @default monthly
              */
             period: string;
+        };
+        /**
+         * UpcomingDueResponse
+         * @description Single upcoming-due row for in-app reminders.
+         */
+        UpcomingDueResponse: {
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Is Paid
+             * @default false
+             */
+            is_paid: boolean;
+            /** Paid Transaction Id */
+            paid_transaction_id?: string | null;
+            /**
+             * Remind Start
+             * Format: date
+             */
+            remind_start: string;
+            template: components["schemas"]["TransactionTemplateResponse"];
+        };
+        /**
+         * UpcomingDuesResponse
+         * @description List payload for ``GET /transaction-templates/upcoming-dues``.
+         */
+        UpcomingDuesResponse: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Items */
+            items?: components["schemas"]["UpcomingDueResponse"][];
+            /** Window Days */
+            window_days: number;
         };
         /**
          * UserResponse
@@ -4813,6 +5134,278 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrendsReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_transaction_templates_api_v1_transaction_templates_get: {
+        parameters: {
+            query?: {
+                /** @description Filter by category */
+                category_id?: string | null;
+                /** @description Filter by active status */
+                is_active?: boolean | null;
+                /** @description Number of records to skip */
+                skip?: number;
+                /** @description Maximum records to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_TransactionTemplateResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_transaction_template_api_v1_transaction_templates_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransactionTemplateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionTemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_upcoming_dues_api_v1_transaction_templates_upcoming_dues_get: {
+        parameters: {
+            query?: {
+                /** @description Window anchor date (UTC today when omitted) */
+                as_of?: string | null;
+                /** @description Inclusive days after as_of */
+                window_days?: number;
+                /** @description Include dues already marked paid */
+                include_paid?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UpcomingDuesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transaction_template_api_v1_transaction_templates__template_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionTemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_transaction_template_api_v1_transaction_templates__template_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransactionTemplateUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionTemplateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_transaction_template_api_v1_transaction_templates__template_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_template_paid_api_v1_transaction_templates__template_id__clear_paid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["ClearPaidRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_template_paid_api_v1_transaction_templates__template_id__mark_paid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                template_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["MarkPaidRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
                 };
             };
             /** @description Validation Error */

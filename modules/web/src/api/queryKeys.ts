@@ -56,4 +56,16 @@ export const queryKeys = {
     spending: (filters: Record<string, string | number | boolean | undefined | null>) =>
       ["papita", "reports", "spending", filters] as const,
   },
+  transactionTemplates: {
+    all: ["papita", "transactionTemplates"] as const,
+    lists: () => ["papita", "transactionTemplates", "list"] as const,
+    list: (filters: Record<string, string | number | boolean | undefined>) =>
+      ["papita", "transactionTemplates", "list", filters] as const,
+    details: () => ["papita", "transactionTemplates", "detail"] as const,
+    detail: (templateId: string) =>
+      ["papita", "transactionTemplates", "detail", templateId] as const,
+    upcomingDuesAll: () => ["papita", "transactionTemplates", "upcomingDues"] as const,
+    upcomingDues: (filters: Record<string, string | number | boolean | undefined>) =>
+      ["papita", "transactionTemplates", "upcomingDues", filters] as const,
+  },
 } as const;

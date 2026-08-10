@@ -53,7 +53,7 @@ export {
 } from "@/api/categories";
 export { getHealth, getHealthLive } from "@/api/health";
 export { IDEMPOTENCY_KEY_HEADER, newIdempotencyKey } from "@/api/idempotency";
-export { invalidateAfterLedgerWrite } from "@/api/invalidateLedger";
+export { invalidateAfterLedgerWrite, invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 export { getClientContract } from "@/api/meta";
 export {
   cancelMovement,
@@ -85,8 +85,23 @@ export {
   movementsListQueryOptions,
   spendingReportQueryOptions,
   transactionDetailQueryOptions,
+  transactionTemplateDetailQueryOptions,
+  transactionTemplatesListQueryOptions,
   transactionsListQueryOptions,
+  upcomingDuesQueryOptions,
 } from "@/api/queries";
 export { createAppQueryClient } from "@/api/queryClient";
 export { queryKeys } from "@/api/queryKeys";
 export { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";
+export {
+  clearTemplatePaid,
+  createTransactionTemplate,
+  deleteTransactionTemplate,
+  getTransactionTemplate,
+  listTransactionTemplates,
+  listUpcomingDues,
+  markTemplatePaid,
+  updateTransactionTemplate,
+  type ListTransactionTemplatesParams,
+  type ListUpcomingDuesParams,
+} from "@/api/transactionTemplates";
