@@ -94,19 +94,31 @@ class TestTransactionTemplatesLiveDb:
 
     @pytest.fixture(scope="class")
     def live_client(self):
-        """API client bound to live Postgres via ``DATABASE_URL``."""
+        """API client bound to live Postgres via ``DATABASE_URL``.
+
+        Pin ``REDIS_ENABLED=false`` so JWT denylist does not fail-closed when the
+        developer ``.env`` enables Redis but TestClient has no Redis pool
+        (Compose API uses Redis; B0 pytest posture matches unit tests).
+        """
+        previous_redis = os.environ.get("REDIS_ENABLED")
         SQLDatabaseConnector.close()
         SQLDatabaseConnector.establish(connection={"url": POSTGRES_URL})
         UsersService.ensure_password_manager()
-        get_settings.cache_clear()
         clear_transactions_service_cache()
         clear_transaction_templates_service_cache()
         os.environ["DATABASE_URL"] = str(POSTGRES_URL)
         os.environ.setdefault("AUTH_PROVIDER", "local")
+        os.environ["REDIS_ENABLED"] = "false"
+        get_settings.cache_clear()
         yield TestClient(create_app())
         SQLDatabaseConnector.close()
         clear_transactions_service_cache()
         clear_transaction_templates_service_cache()
+        if previous_redis is None:
+            os.environ.pop("REDIS_ENABLED", None)
+        else:
+            os.environ["REDIS_ENABLED"] = previous_redis
+        get_settings.cache_clear()
 
     def test_templates_crud_lifecycle(self, live_client: TestClient) -> None:
         """Create, list (with filter), get, update, and soft-delete a template."""
