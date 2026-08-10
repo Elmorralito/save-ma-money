@@ -19,6 +19,7 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 | Change local register/login or `AUTH_AUTO_CONFIRM_EMAIL`     | [local-supabase-email-confirm.md](learnings/local-supabase-email-confirm.md) |
 | Commit under `modules/api/src`                               | [api-pre-commit-lint.md](learnings/api-pre-commit-lint.md)                   |
 | Commit when `modules/` or `bin/` changed                     | [strata-strict-pairing.md](learnings/strata-strict-pairing.md)               |
+| Parse DataFrames → DTOs with optional int/date columns       | [pandas-optional-int-nan.md](learnings/pandas-optional-int-nan.md)           |
 | Wire `/reports/*` or ReportService                           | [report-tenant-scoping.md](learnings/report-tenant-scoping.md)               |
 | Add transactions/movements/bulk UI in `modules/web`          | [web-ledger-ui-no-domain.md](learnings/web-ledger-ui-no-domain.md)           |
 | Add or refactor SPA forms / Zod / RHF / mutation errors      | [web-forms-ux-kit.md](learnings/web-forms-ux-kit.md)                         |

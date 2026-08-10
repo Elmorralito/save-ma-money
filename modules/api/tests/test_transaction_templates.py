@@ -248,6 +248,26 @@ class TestUpcomingDuesAndMarkPaid:
         assert mock_service.mark_paid.call_args.kwargs["owner"] is owner
         assert mock_service.mark_paid.call_args.kwargs["as_of"] == date(2026, 8, 1)
 
+    def test_mark_paid_flattens_nested_template_dto(
+        self,
+        templates_client: tuple[TestClient, object, MagicMock],
+    ) -> None:
+        """LinkedEntitiesService.create hydrates template_id as a nested DTO."""
+        client, owner, mock_service = templates_client
+        template = _sample_template(owner.id)
+        assert template.id is not None
+        posted = _sample_transaction(owner.id, template_id=template.id)
+        posted.template_id = template  # type: ignore[assignment]
+        mock_service.mark_paid.return_value = posted
+
+        response = client.post(
+            f"/api/v1/transaction-templates/{template.id}/mark-paid",
+            json={},
+        )
+
+        assert response.status_code == 201, response.text
+        assert response.json()["template_id"] == str(template.id)
+
     def test_mark_paid_already_paid_returns_409(
         self,
         templates_client: tuple[TestClient, object, MagicMock],

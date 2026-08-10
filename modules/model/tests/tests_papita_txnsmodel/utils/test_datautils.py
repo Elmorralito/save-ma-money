@@ -143,6 +143,31 @@ def test_standardize_dataframe_handles_type_error_on_drop_duplicates(sample_pyda
         assert len(result) == len(df)
 
 
+def test_standardize_dataframe_coerces_nan_optional_ints_to_none() -> None:
+    """Mixed int/None columns become float64+nan in pandas; coerce before validate."""
+
+    class OptionalIntModel(BaseModel):
+        name: str
+        remind_days_before: int | None = None
+
+    # Mimic SQL list frames: one row set, one NULL → float64 with nan.
+    df = pd.DataFrame(
+        [
+            {"name": "Rent", "remind_days_before": 3},
+            {"name": "Noise", "remind_days_before": None},
+        ]
+    )
+    assert df["remind_days_before"].dtype == float
+
+    # First pass must not raise; expanded output may reintroduce nan via pandas dtypes.
+    result = datautils.standardize_dataframe(OptionalIntModel, df)
+    assert len(result) == 2
+    cleaned = [datautils.mapping_without_missing(row) for row in result.to_dict(orient="records")]
+    assert cleaned[0]["remind_days_before"] == 3
+    assert cleaned[1]["remind_days_before"] is None
+    assert OptionalIntModel.model_validate(cleaned[1]).remind_days_before is None
+
+
 def test_convert_dto_obj_on_serialize_extracts_nested_attribute(sample_pydantic_object):
     """Test that convert_dto_obj_on_serialize correctly extracts nested object attribute."""
     # Arrange

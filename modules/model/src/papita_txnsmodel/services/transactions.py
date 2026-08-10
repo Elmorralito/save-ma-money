@@ -42,6 +42,7 @@ from papita_txnsmodel.services.dues import (
     select_upcoming_due,
 )
 from papita_txnsmodel.services.extends import CategorizedEntitiesService, LinkedEntitiesService, LinkedEntity
+from papita_txnsmodel.utils.datautils import mapping_without_missing
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,7 @@ class TransactionTemplatesService(CategorizedEntitiesService):
         """Parse an owner-scoped templates DataFrame into DTOs."""
         if getattr(frame, "empty", True):
             return []
-        return [self.dto_type.model_validate(row) for row in frame.to_dict(orient="records")]
+        return [self.dto_type.model_validate(mapping_without_missing(row)) for row in frame.to_dict(orient="records")]
 
     @staticmethod
     def _txn_sort_key(item: TransactionsDTO) -> tuple[datetime, str]:

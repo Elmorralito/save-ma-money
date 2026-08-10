@@ -15,19 +15,19 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from papita_txnsapi.config.settings import MAX_DESCRIPTION_LENGTH, MAX_TAG_LENGTH, MAX_TAGS_PER_TRANSACTION
-from papita_txnsmodel.access.accounts.dto import AccountsDTO
-from papita_txnsmodel.access.categories.dto import CategoriesDTO
+from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.transactions.dto import TransactionTemplatesDTO
 from papita_txnsmodel.services.dues import UpcomingDueDTO
+from papita_txnsmodel.utils.datautils import dataframe_row_to_mapping
 
 
 def _relation_uuid(value: uuid.UUID | Any | None) -> uuid.UUID | None:
-    """Extract a UUID from a relation field that may be a DTO."""
+    """Extract a UUID from a relation field that may be a nested DTO."""
     if value is None:
         return None
     if isinstance(value, uuid.UUID):
         return value
-    if isinstance(value, (AccountsDTO, CategoriesDTO, TransactionTemplatesDTO)):
+    if isinstance(value, TableDTO):
         return value.id
     return uuid.UUID(str(value))
 
@@ -241,7 +241,7 @@ def templates_from_dataframe(df: pd.DataFrame) -> list[TransactionTemplatesDTO]:
     dao_type = TransactionTemplatesDTO.__dao_type__
     templates: list[TransactionTemplatesDTO] = []
     for _, row in df.iterrows():
-        row_dict = row.to_dict()
+        row_dict = dataframe_row_to_mapping(row)
         if "TransactionTemplates" in row_dict and isinstance(row_dict["TransactionTemplates"], dao_type):
             templates.append(TransactionTemplatesDTO.from_dao(row_dict["TransactionTemplates"]))
             continue

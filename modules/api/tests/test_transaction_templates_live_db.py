@@ -152,7 +152,7 @@ class TestTransactionTemplatesLiveDb:
         assert noise.status_code == 201, noise.text
 
         list_response = live_client.get("/api/v1/transaction-templates", headers=headers)
-        assert list_response.status_code == 200
+        assert list_response.status_code == 200, list_response.text
         list_payload = list_response.json()
         assert list_payload["total"] >= 2
         assert any(item["id"] == template_id for item in list_payload["items"])
