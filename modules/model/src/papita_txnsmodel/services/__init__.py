@@ -18,6 +18,7 @@ from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.balance_reports import BalanceReportsService
 from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
 from papita_txnsmodel.services.categories import CategoriesService
+from papita_txnsmodel.services.dues import UpcomingDueDTO
 from papita_txnsmodel.services.owner_period_balances import OwnerPeriodBalancesService
 from papita_txnsmodel.services.owner_yearly_balances import OwnerYearlyBalancesService
 from papita_txnsmodel.services.reports import ReportService
@@ -40,6 +41,7 @@ __all__ = [
     "TradingAccountDetailsService",
     "TransactionTemplatesService",
     "TransactionsService",
+    "UpcomingDueDTO",
     "UsersService",
     "refresh_balance_materialized_views",
 ]

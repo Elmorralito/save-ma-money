@@ -44,8 +44,9 @@ class TransactionTemplatesDTO(OwnedTableDTO, CoreTableDTO):
         planned_day (int): Day of the month when the transaction is expected (1-31).
         use_month_end (bool): Whether to schedule on the last day of the month.
         due_date (datetime.date | None): Optional one-off calendar due date (PPT-071).
-        remind_days_before (int | None): Optional lead days before due for in-app reminders.
-        from_account_id (uuid.UUID | AccountsDTO | None): Optional pay-from account.
+        remind_days_before (int | None): Optional lead days before due; null means 0 (surface on due day).
+        from_account_id (uuid.UUID | AccountsDTO | None): Pay-from account for EXPENSE mark-paid;
+            deposit account (``to_account_id``) for INCOME mark-paid.
     """
 
     __dao_type__ = TransactionTemplates
@@ -61,11 +62,13 @@ class TransactionTemplatesDTO(OwnedTableDTO, CoreTableDTO):
     remind_days_before: int | None = Field(
         default=None,
         ge=0,
-        description="Days before due to surface an in-app reminder; null means no lead window",
+        description=(
+            "Days before due to surface an in-app reminder; null is treated as 0 " "(reminder starts on the due date)"
+        ),
     )
     from_account_id: uuid.UUID | AccountsDTO | None = Field(
         default=None,
-        description="Optional account to pay from when marking a due as paid",
+        description=("Account used when marking paid: pay-from for EXPENSE, deposit (to_account) for INCOME"),
     )
 
     @field_serializer("category_id", "from_account_id")
