@@ -88,11 +88,11 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 | Schemas / deps | `schemas/*`, `dependencies/auth.py`, `pagination.py`, `services.py`, `tenant.py`                |
 | Tests          | `modules/api/tests/` — unit + B0 live-DB; Auth mock + `make auth-smoke`                         |
 
-| Remaining (post-MVP / epic hygiene) | Track via                                                                                                                                                                                                           |
-| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Formal epic #42 close               | Maintainer AC on [#42](https://github.com/Elmorralito/save-ma-money/issues/42)                                                                                                                                      |
-| Payment dues epic #163 close        | PPT-075 / [#168](https://github.com/Elmorralito/save-ma-money/issues/168) — docs/OpenAPI close-out; children #164–#167 closed                                                                                       |
-| Redis / rate-limit / packaging      | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043, [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044, [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045 |
+| Remaining (post-MVP / epic hygiene) | Track via                                                                                                                                                                                                                               |
+| :---------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Formal epic #42 close               | Maintainer AC on [#42](https://github.com/Elmorralito/save-ma-money/issues/42)                                                                                                                                                          |
+| Payment dues epic #163              | Closed ([#163](https://github.com/Elmorralito/save-ma-money/issues/163)) — children #164–#168 / PRs #197–#207; index [`docs/issues/README.md` Part VIII](../../docs/issues/README.md#part-viii--ppt-070-payment-due-date-reminders-163) |
+| Redis / rate-limit / packaging      | [#83](https://github.com/Elmorralito/save-ma-money/issues/83) PPT-043, [#89](https://github.com/Elmorralito/save-ma-money/issues/89) PPT-044, [#93](https://github.com/Elmorralito/save-ma-money/issues/93) PPT-045                     |
 
 **Model readiness (PPT-041):** closed — routers call `papita-txnsmodel` services only (no duplicate business logic).
 

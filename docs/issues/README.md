@@ -18,16 +18,16 @@ Live issue status (open/closed, closing PR summaries) is mirrored in the root [C
 
 ## Table of contents
 
-| Part                                                       | Topic                                       | Issue                                                           | Status                                           |
-| ---------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
-| [I](#part-i--ppt-031-simplify-requirements-28)             | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)   | Closed                                           |
-| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31)    | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)   | Complete (G7 superseded)                         |
-| [III](#part-iii--ppt-032-api-epic-42)                      | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42)   | Open (children #43–#50 closed)                   |
-| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)           | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                                           |
-| [V](#part-v--ppt-043-redis-integration-83)                 | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                                  |
-| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)       | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                                           |
-| [VII](#part-vii--ppt-046-web-spa-epic-112)                 | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Closed (children delivered)                      |
-| [VIII](#part-viii--ppt-070-payment-due-date-reminders-163) | Payment due-date reminders (in-app)         | [#163](https://github.com/Elmorralito/save-ma-money/issues/163) | Open (children #164–#167 closed; #168 close-out) |
+| Part                                                       | Topic                                       | Issue                                                           | Status                                |
+| ---------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------- | ------------------------------------- |
+| [I](#part-i--ppt-031-simplify-requirements-28)             | PPT-031 simplify requirements               | [#28](https://github.com/Elmorralito/save-ma-money/issues/28)   | Closed                                |
+| [II](#part-ii--ppt-031-c-supabase--fastapi-decision-31)    | Supabase × FastAPI decision (G7 Auth-first) | [#31](https://github.com/Elmorralito/save-ma-money/issues/31)   | Complete (G7 superseded)              |
+| [III](#part-iii--ppt-032-api-epic-42)                      | FastAPI MVP epic body                       | [#42](https://github.com/Elmorralito/save-ma-money/issues/42)   | Open (children #43–#50 closed)        |
+| [IV](#part-iv--ppt-039-supabase-auth-reissue-49)           | Supabase Auth reissue                       | [#49](https://github.com/Elmorralito/save-ma-money/issues/49)   | Closed                                |
+| [V](#part-v--ppt-043-redis-integration-83)                 | Redis integration brief                     | [#83](https://github.com/Elmorralito/save-ma-money/issues/83)   | Open (post-MVP)                       |
+| [VI](#part-vi--ppt-045-uvicorn-process-packaging-93)       | Uvicorn process packaging                   | [#93](https://github.com/Elmorralito/save-ma-money/issues/93)   | Closed                                |
+| [VII](#part-vii--ppt-046-web-spa-epic-112)                 | React SPA epic (modules/web)                | [#112](https://github.com/Elmorralito/save-ma-money/issues/112) | Closed (children delivered)           |
+| [VIII](#part-viii--ppt-070-payment-due-date-reminders-163) | Payment due-date reminders (in-app)         | [#163](https://github.com/Elmorralito/save-ma-money/issues/163) | Closed (children #164–#168 delivered) |
 
 **Merged sources (removed):** `PPT-031-simplify-requirements.md`, `PPT-031-C-supabase-decision-brief.md`, `_gh_body_PPT-032-epic.md`, `_gh_body_PPT-039.md`, `PPT-039-supabase-auth-reissue.md`, `PPT-043-redis-integration-brief.md`, `PPT-045-uvicorn-process-packaging-brief.md` — content lives in this README only.
 
@@ -2076,6 +2076,7 @@ Full dependency graph and deferred scope (budgets, splits, browser JWTs, Vercel)
 > Post-MVP **in-app** payment due-date reminders on `transaction_templates` (not a new obligations package). Live body: [#163](https://github.com/Elmorralito/save-ma-money/issues/163) (PPT-070).
 > Operator SSOT: [`modules/api/README.md`](../../modules/api/README.md) (templates/dues catalog) · [`modules/web/README.md`](../../modules/web/README.md) (Payment dues + Due soon) · model dues helpers in [`modules/model/README.md`](../../modules/model/README.md).
 > Design context: [`docs/design/ARCHITECTURE.md`](../design/ARCHITECTURE.md) FR-05 / templates + Part IV mapping (templates routes shipped under PPT-073).
+> **Close-out:** children [#164](https://github.com/Elmorralito/save-ma-money/issues/164)–[#168](https://github.com/Elmorralito/save-ma-money/issues/168) closed; PRs [#197](https://github.com/Elmorralito/save-ma-money/pull/197)–[#207](https://github.com/Elmorralito/save-ma-money/pull/207) on `main`. Epic ACs met (in-app dues only; email/push/RRULE/obligations remain deferred).
 
 **Parent program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) (PPT-031) · **PPT-070** · **Step:** Post-MVP payment due-date reminders (in-app)
 
@@ -2110,7 +2111,7 @@ Tenants set **recurring** and **one-off** payment dues (deadlines / ETAs) backed
 | 1    | PPT-072 | [#165](https://github.com/Elmorralito/save-ma-money/issues/165) | Upcoming dues / mark-paid services | Closed |
 | 2    | PPT-073 | [#166](https://github.com/Elmorralito/save-ma-money/issues/166) | API CRUD + upcoming dues endpoints | Closed |
 | 3    | PPT-074 | [#167](https://github.com/Elmorralito/save-ma-money/issues/167) | Web dues UI + Due soon             | Closed |
-| 4    | PPT-075 | [#168](https://github.com/Elmorralito/save-ma-money/issues/168) | Tests, OpenAPI sync, docs index    | Open   |
+| 4    | PPT-075 | [#168](https://github.com/Elmorralito/save-ma-money/issues/168) | Tests, OpenAPI sync, docs index    | Closed |
 
 Order: `#164 → #165 → #166 → #167 → #168`. Full dependency graph and deferred scope live on the GitHub epic — this Part is an **index**, not a second epic SSOT.
 
