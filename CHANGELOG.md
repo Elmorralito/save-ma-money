@@ -44,9 +44,223 @@
 
 - [ ] [_**[#166](https://github.com/Elmorralito/save-ma-money/issues/166)**_] :: **feat/PPT-073: [api] Transaction-templates CRUD and upcoming dues endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:31+00:00</sub>_ :weary:
 
-- [ ] [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary:
-
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 17:13:49+00:00</sub>_
+
+  > **Closed by** [_**#204**](https://github.com/Elmorralito/save-ma-money/pull/204): **feat/PPT-072: [model] Upcoming dues query and mark-paid services**
+
+  > **Branch:** feat/PPT-072 · **Base:** main · **1 commit** · **7 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-072: [model] Upcoming dues query and mark-paid services
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Implements PPT-072 model services for in-app payment due reminders on top of closed PPT-071 schema columns. Tenants get an owner-scoped upcoming-dues window query plus mark-paid / clear-paid paths that post or soft-delete linked EXPENSE/INCOME rows via template_id, keeping business rules in papita_txnsmodel for PPT-073 API wiring.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - HTTP routers / OpenAPI (PPT-073 / #166)
+
+  > - SPA Due soon UI (PPT-074 / #167)
+
+  > - Email/push notify, RRULE engine, obligations package
+
+  > - New Alembic revisions (schema already landed in PPT-071)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Paid state remains derived from linked transactions.template_id (no template paid flag)
+
+  > - Month-batched paid lookups for list_upcoming_dues (one frame read per calendar period)
+
+  > - B0 integration test included (skips when Postgres is unavailable)
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Model services**
+
+  >
+
+  > - Due helpers: one-off due_date precedence, recurring planned_day / use_month_end clamp, remind-window overlap
+
+  > - TransactionTemplatesService.list_upcoming_dues → UpcomingDueDTO
+
+  > - mark_paid posts EXPENSE (from_account_id) or INCOME (to_account_id from the same template field) with owner-checked account
+
+  > - clear_paid soft-deletes the period’s latest linked posting
+
+  >
+
+  > **DTO / docs**
+
+  >
+
+  > - Align remind_days_before=null with runtime (= 0, surface on due day)
+
+  > - Document mark-paid account-leg mapping on from_account_id
+
+  >
+
+  > **Tests / memory**
+
+  >
+
+  > - Unit coverage for helpers, batching, mark/clear paths
+
+  > - Live B0 round-trip + cross-tenant isolation test
+
+  > - .strata project_state advanced to PPT-072
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~7 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/project_state.md | 10 +-
+
+  > .../papita_txnsmodel/access/transactions/dto.py | 11 +-
+
+  > .../src/papita_txnsmodel/services/**init**.py | 2 +
+
+  > .../model/src/papita_txnsmodel/services/dues.py | 168 ++++++++
+
+  > .../src/papita_txnsmodel/services/transactions.py | 349 ++++++++++++++++-
+
+  > .../integration/test_ppt072_dues_live_db.py | 149 ++++++++
+
+  > .../services/test_ppt072_dues.py | 421 +++++++++++++++++++++
+
+  > 7 files changed, 1097 insertions(+), 13 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 88ca105 feat/PPT-072: [model] Add upcoming dues query and mark-paid services
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - poetry run pytest modules/model/tests/tests_papita_txnsmodel/services/test_ppt072_dues.py — **18 passed**
+
+  > - B0 integration test_ppt072_dues_live_db.py — **skipped locally** (Docker daemon unavailable); will run in CI when Postgres is configured
+
+  > - Pre-commit (isort/black/flake8/pylint/mypy/strata) — **passed** on commit
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] CI model unit suite green for PPT-072 tests
+
+  > - [ ] CI/B0: integration test runs when DATABASE_URL Postgres is available (mark-paid → list paid → clear-paid → unpaid)
+
+  > - [ ] Confirm no API/web files changed
+
+  > - [ ] Spot-check handoff methods for PPT-073: list_upcoming_dues, mark_paid, clear_paid
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Nested TransactionsService is auto-wired on TransactionTemplatesService construction (separate from API DI cache) — intentional for mark-paid FK validation
+
+  > > - Recurring period matching keys off the resolved due’s calendar month and default transaction_ts (noon UTC on due) — callers overriding transaction_ts outside that month can miss paid detection
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - remind_days_before=null is treated as 0 (reminder starts on due day), not “never remind”
+
+  > > - INCOME mark-paid reuses template from_account_id as deposit (to_account_id)
+
+  > > - Overdue dues (as_of after due) are excluded from upcoming window by design
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #165 (PPT-072)
+
+  > - Parent epic: #163 (PPT-070)
+
+  > - Depends on: #164 (PPT-071) — closed
+
+  > - Blocks: #166 (PPT-073)
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 16:07:22+00:00</sub>_
 
