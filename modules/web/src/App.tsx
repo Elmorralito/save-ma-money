@@ -51,6 +51,10 @@ const ReportsPage = lazy(async () => {
   const mod = await import("@/pages/ReportsPage");
   return { default: mod.ReportsPage };
 });
+const PaymentDuesPage = lazy(async () => {
+  const mod = await import("@/pages/PaymentDuesPage");
+  return { default: mod.PaymentDuesPage };
+});
 
 function RouteFallback() {
   return (
@@ -87,6 +91,7 @@ function App() {
             <Route path="/accounts/:accountId" element={<AccountDetailPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/payment-dues" element={<PaymentDuesPage />} />
             <Route path="/movements" element={<MovementsPage />} />
             <Route path="/reports" element={<ReportsPage />} />
           </Route>

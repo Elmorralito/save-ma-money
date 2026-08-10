@@ -1,31 +1,60 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 
-import { accountsListQueryOptions, movementsListQueryOptions } from "@/api/queries";
+import { invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
+import {
+  accountsListQueryOptions,
+  movementsListQueryOptions,
+  upcomingDuesQueryOptions,
+} from "@/api/queries";
+import { markTemplatePaid } from "@/api/transactionTemplates";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
 import { Button } from "@/components/ui/button";
+import { formatApiError } from "@/lib/formatApiError";
 import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
 import { formatRemainingDuration, secondsUntil } from "@/lib/formatRemainingDuration";
-import type { AccountResponse, MovementResponse } from "@/types/domain";
+import type { AccountResponse, MovementResponse, UpcomingDueResponse } from "@/types/domain";
 
 const QUICK_LINKS = APP_NAV_ITEMS.filter((item) => item.to !== "/dashboard");
 const SNAPSHOT_PARAMS = { limit: 5, skip: 0 } as const;
 const PENDING_PARAMS = { ...SNAPSHOT_PARAMS, status: "pending" } as const;
+const DUE_SOON_PARAMS = { window_days: 14, include_paid: false } as const;
+const DUE_SOON_LIMIT = 5;
 
 /** Authenticated landing with session TTL, ledger snapshots, and quick links. */
 export function DashboardPage() {
+  const queryClient = useQueryClient();
   const sessionQuery = useQuery(bffSessionQueryOptions());
   const accountsQuery = useQuery(accountsListQueryOptions(SNAPSHOT_PARAMS));
   const pendingQuery = useQuery(movementsListQueryOptions(PENDING_PARAMS));
+  const duesQuery = useQuery(upcomingDuesQueryOptions(DUE_SOON_PARAMS));
+
+  const markPaidMutation = useMutation({
+    mutationFn: (templateId: string) => markTemplatePaid(templateId),
+    onSuccess: async (txn, templateId) => {
+      await invalidateAfterTemplateWrite(queryClient, {
+        templateId,
+        markPaid: true,
+        transactionId: txn.id,
+      });
+      toast.success("Marked paid");
+    },
+    onError: (err: unknown) => {
+      toast.error(formatApiError(err));
+    },
+  });
 
   const user = sessionQuery.data?.user;
   const greetingName =
     user?.display_name?.trim() || user?.username?.trim() || user?.email?.split("@")[0] || null;
   const accounts = accountsQuery.data?.items ?? [];
   const pendingMovements = pendingQuery.data?.items ?? [];
+  const dueSoonAll = duesQuery.data?.items ?? [];
+  const dueSoon = dueSoonAll.slice(0, DUE_SOON_LIMIT);
   const accountsTotal = accountsQuery.data?.total ?? accounts.length;
   const pendingTotal = pendingQuery.data?.total ?? pendingMovements.length;
 
@@ -36,7 +65,7 @@ export function DashboardPage() {
           {greetingName ? `Welcome back, ${greetingName}` : "Dashboard"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Session status, account balances, and pending transfers — then jump into the ledger.
+          Session status, balances, due soon, and pending transfers — then jump into the ledger.
         </p>
       </div>
 
@@ -93,6 +122,37 @@ export function DashboardPage() {
           </ul>
         </SnapshotPanel>
       </div>
+
+      <SnapshotPanel
+        title="Due soon"
+        viewAllTo="/payment-dues"
+        isPending={duesQuery.isPending}
+        isError={duesQuery.isError}
+        itemCount={dueSoon.length}
+        emptyLabel="Nothing due in the next 14 days"
+        emptyActionTo="/payment-dues"
+        emptyActionLabel="Add a payment due"
+        footer={
+          dueSoonAll.length > dueSoon.length
+            ? `Showing ${String(dueSoon.length)} of ${String(dueSoonAll.length)}`
+            : dueSoonAll.length > 0
+              ? `${String(dueSoonAll.length)} in the next ${String(DUE_SOON_PARAMS.window_days)} days`
+              : null
+        }
+      >
+        <ul className="divide-y divide-border">
+          {dueSoon.map((due) => (
+            <DueSoonRow
+              key={`${due.template.id}-${due.due_date}`}
+              due={due}
+              markPaidPending={markPaidMutation.isPending}
+              onMarkPaid={() => {
+                markPaidMutation.mutate(due.template.id);
+              }}
+            />
+          ))}
+        </ul>
+      </SnapshotPanel>
 
       <section aria-label="Quick links" className="grid gap-3 sm:grid-cols-2">
         {QUICK_LINKS.map((item) => (
@@ -247,6 +307,44 @@ function PendingMovementRow({ movement }: { movement: MovementResponse }) {
   );
 }
 
+function DueSoonRow({
+  due,
+  markPaidPending,
+  onMarkPaid,
+}: {
+  due: UpcomingDueResponse;
+  markPaidPending: boolean;
+  onMarkPaid: () => void;
+}) {
+  return (
+    <li className="space-y-1 py-2 text-sm">
+      <div className="flex items-baseline justify-between gap-3">
+        <Link
+          to="/payment-dues"
+          className="truncate font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {due.template.name}
+        </Link>
+        <span className="shrink-0 tabular-nums text-muted-foreground">
+          {formatMoney(due.template.planned_amount, "USD")}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">Due {formatDate(due.due_date)}</p>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={markPaidPending || due.is_paid}
+          onClick={onMarkPaid}
+        >
+          {due.is_paid ? "Paid" : "Mark paid"}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 function quickLinkHint(path: string): string {
   switch (path) {
     case "/accounts":
@@ -255,6 +353,8 @@ function quickLinkHint(path: string): string {
       return "Income and expense labels";
     case "/transactions":
       return "Income and expenses";
+    case "/payment-dues":
+      return "Bills and payment deadlines";
     case "/movements":
       return "Transfers between accounts";
     case "/reports":

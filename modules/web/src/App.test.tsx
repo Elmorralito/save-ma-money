@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as authApi from "@/api/auth";
 import * as accountsApi from "@/api/accounts";
 import * as movementsApi from "@/api/movements";
+import * as templatesApi from "@/api/transactionTemplates";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
@@ -36,6 +37,17 @@ vi.mock("@/api/movements", () => ({
   updateMovement: vi.fn(),
   executeMovement: vi.fn(),
   cancelMovement: vi.fn(),
+}));
+
+vi.mock("@/api/transactionTemplates", () => ({
+  listTransactionTemplates: vi.fn(),
+  listUpcomingDues: vi.fn(),
+  getTransactionTemplate: vi.fn(),
+  createTransactionTemplate: vi.fn(),
+  updateTransactionTemplate: vi.fn(),
+  deleteTransactionTemplate: vi.fn(),
+  markTemplatePaid: vi.fn(),
+  clearTemplatePaid: vi.fn(),
 }));
 
 vi.mock("@/api/health", () => ({
@@ -152,7 +164,7 @@ describe("auth routing", () => {
 });
 
 describe("DashboardPage (authenticated)", () => {
-  it("renders welcome, session TTL, accounts, and pending transfers", async () => {
+  it("renders welcome, session TTL, accounts, due soon, and pending transfers", async () => {
     const expiresAt = Math.floor(Date.now() / 1000) + 3600;
     vi.mocked(authApi.getBffSession).mockResolvedValue({
       authenticated: true,
@@ -205,6 +217,32 @@ describe("DashboardPage (authenticated)", () => {
       skip: 0,
       limit: 5,
     });
+    vi.mocked(templatesApi.listUpcomingDues).mockResolvedValue({
+      as_of: "2026-08-10",
+      window_days: 14,
+      items: [
+        {
+          due_date: "2026-08-15",
+          remind_start: "2026-08-12",
+          is_paid: false,
+          paid_transaction_id: null,
+          template: {
+            id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            name: "Electric bill",
+            description: "",
+            tags: [],
+            category_id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+            planned_amount: 90,
+            planned_day: 15,
+            use_month_end: false,
+            due_date: null,
+            remind_days_before: 3,
+            from_account_id: null,
+            is_active: true,
+          },
+        },
+      ],
+    });
 
     render(
       <QueryTestProvider>
@@ -224,8 +262,10 @@ describe("DashboardPage (authenticated)", () => {
     expect(screen.getByRole("region", { name: "Pending transfers" })).toHaveTextContent(
       "Rent hold",
     );
+    expect(screen.getByRole("region", { name: "Due soon" })).toHaveTextContent("Electric bill");
     expect(screen.getByRole("region", { name: "Quick links" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Balances and account details/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Bills and payment deadlines/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /View spending report/i })).toBeInTheDocument();
   });
 });

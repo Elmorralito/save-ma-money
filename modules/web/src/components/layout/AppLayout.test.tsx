@@ -37,6 +37,21 @@ vi.mock("@/api/movements", () => ({
   cancelMovement: vi.fn(),
 }));
 
+vi.mock("@/api/transactionTemplates", () => ({
+  listTransactionTemplates: vi.fn(async () => ({ items: [], total: 0, skip: 0, limit: 100 })),
+  listUpcomingDues: vi.fn(async () => ({
+    items: [],
+    as_of: "2026-08-10",
+    window_days: 14,
+  })),
+  getTransactionTemplate: vi.fn(),
+  createTransactionTemplate: vi.fn(),
+  updateTransactionTemplate: vi.fn(),
+  deleteTransactionTemplate: vi.fn(),
+  markTemplatePaid: vi.fn(),
+  clearTemplatePaid: vi.fn(),
+}));
+
 vi.mock("@/api/health", () => ({
   getHealth: vi.fn(async () => ({
     status: "healthy",

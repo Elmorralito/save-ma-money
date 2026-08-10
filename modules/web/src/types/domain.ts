@@ -37,6 +37,16 @@ export type TransactionBulkCreate = ApiSchemas["TransactionBulkCreate"];
 export type TransactionBulkResponse = ApiSchemas["TransactionBulkResponse"];
 export type PaginatedTransactions = ApiSchemas["PaginatedResponse_TransactionResponse_"];
 
+export type TransactionTemplateCreate = ApiSchemas["TransactionTemplateCreate"];
+export type TransactionTemplateUpdate = ApiSchemas["TransactionTemplateUpdate"];
+export type TransactionTemplateResponse = ApiSchemas["TransactionTemplateResponse"];
+export type PaginatedTransactionTemplates =
+  ApiSchemas["PaginatedResponse_TransactionTemplateResponse_"];
+export type UpcomingDueResponse = ApiSchemas["UpcomingDueResponse"];
+export type UpcomingDuesResponse = ApiSchemas["UpcomingDuesResponse"];
+export type MarkPaidRequest = ApiSchemas["MarkPaidRequest"];
+export type ClearPaidRequest = ApiSchemas["ClearPaidRequest"];
+
 export type MovementCreate = ApiSchemas["MovementCreate"];
 export type MovementUpdate = ApiSchemas["MovementUpdate"];
 export type MovementResponse = ApiSchemas["MovementResponse"];

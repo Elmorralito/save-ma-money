@@ -13,6 +13,7 @@ describe("queryKeys", () => {
     expect(queryKeys.transactions.all).toEqual(["papita", "transactions"]);
     expect(queryKeys.movements.all).toEqual(["papita", "movements"]);
     expect(queryKeys.reports.all).toEqual(["papita", "reports"]);
+    expect(queryKeys.transactionTemplates.all).toEqual(["papita", "transactionTemplates"]);
   });
 
   it("builds distinct leaf keys for meta, health, auth, and feature resources", () => {
@@ -60,6 +61,24 @@ describe("queryKeys", () => {
       "reports",
       "spending",
       { start_date: "2026-01-01", end_date: "2026-01-31" },
+    ]);
+    expect(queryKeys.transactionTemplates.list({ limit: 100 })).toEqual([
+      "papita",
+      "transactionTemplates",
+      "list",
+      { limit: 100 },
+    ]);
+    expect(queryKeys.transactionTemplates.detail("tmpl-1")).toEqual([
+      "papita",
+      "transactionTemplates",
+      "detail",
+      "tmpl-1",
+    ]);
+    expect(queryKeys.transactionTemplates.upcomingDues({ window_days: 14 })).toEqual([
+      "papita",
+      "transactionTemplates",
+      "upcomingDues",
+      { window_days: 14 },
     ]);
   });
 });
