@@ -38,11 +38,267 @@
 
 - [ ] [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
 
-- [ ] [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary:
-
-- [ ] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#168](https://github.com/Elmorralito/save-ma-money/issues/168)**_] :: **test/PPT-075: [model] Dues tests, OpenAPI sync, and docs index** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:36+00:00</sub>_ :weary:
 
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+
+- [x] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 20:22:58+00:00</sub>_
+
+  > **Closed by** [_**#206**](https://github.com/Elmorralito/save-ma-money/pull/206): **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel**
+
+  > **Branch:** feat/PPT-074 · **Base:** main · **1 commit** · **21 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Ship the SPA surfaces for in-app payment due reminders (PPT-074 / #167) over the closed PPT-073 transaction-templates API. Authenticated users can manage recurring and one-off payment dues and see a dashboard **Due soon** panel, using BFF cookies + TanStack Query only (no TypeScript domain logic).
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Model/API implementation (PPT-071–073; already on main)
+
+  > - Full docs / OpenAPI sync gate and epic hardening (PPT-075 / #168)
+
+  > - Email / push / calendar notify channels
+
+  > - Epic-wide a11y polish beyond including /payment-dues in the existing axe route list
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Committed OpenAPI artifact regenerated so web types include /transaction-templates*
+
+  > - Dashboard Due soon (14-day window) + mark paid from the panel
+
+  > - /payment-dues list/create/edit/delete + mark/clear paid
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Web / OpenAPI types**
+
+  >
+
+  > - Regenerated openapi/openapi.json + api.d.ts; domain aliases for template/dues schemas
+
+  > - New transactionTemplates API client, query keys/options, and template cache invalidation helpers
+
+  >
+
+  > **Web / UI**
+
+  >
+
+  > - /payment-dues page and form dialog (recurring vs one-off)
+
+  > - Dashboard **Due soon** SnapshotPanel with mark-paid
+
+  > - Nav + route wiring
+
+  >
+
+  > **Tests / strata**
+
+  >
+
+  > - Unit tests for client helpers, form mapping, query keys; dashboard/layout mocks updated
+
+  > - a11y e2e route list includes /payment-dues
+
+  > - .strata/memory/project_state.md updated for strict-mode pairing
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~21 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/project_state.md | 20 +-
+
+  > modules/web/e2e/a11y.spec.ts | 1 +
+
+  > modules/web/openapi/openapi.json | 3980 ++++++++++++--------
+
+  > modules/web/src/App.test.tsx | 42 +-
+
+  > modules/web/src/App.tsx | 5 +
+
+  > modules/web/src/api/index.ts | 17 +-
+
+  > modules/web/src/api/invalidateLedger.ts | 45 +
+
+  > modules/web/src/api/queries.ts | 55 +
+
+  > modules/web/src/api/queryKeys.test.ts | 19 +
+
+  > modules/web/src/api/queryKeys.ts | 12 +
+
+  > modules/web/src/api/transactionTemplates.test.ts | 79 +
+
+  > modules/web/src/api/transactionTemplates.ts | 161 +
+
+  > .../web/src/components/layout/AppLayout.test.tsx | 15 +
+
+  > modules/web/src/components/layout/navItems.ts | 3 +-
+
+  > .../paymentDues/PaymentDueFormDialog.tsx | 327 ++
+
+  > .../paymentDues/paymentDueFormState.test.ts | 86 +
+
+  > .../components/paymentDues/paymentDueFormState.ts | 179 +
+
+  > modules/web/src/pages/DashboardPage.tsx | 108 +-
+
+  > modules/web/src/pages/PaymentDuesPage.tsx | 290 ++
+
+  > modules/web/src/types/api.d.ts | 593 +++
+
+  > modules/web/src/types/domain.ts | 10 +
+
+  > 21 files changed, 4552 insertions(+), 1495 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - acf90ab feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Pre-commit on commit (web eslint/prettier/tsc/vitest-related, strata validate) — pass
+
+  > - pnpm --filter @papita/web exec vitest run (templates client, form state, queryKeys, App/Dashboard, AppLayout) — pass
+
+  > - pnpm --filter @papita/web exec tsc --noEmit — pass
+
+  > - pnpm --filter @papita/web run lint — pass
+
+  > - GitHub Actions CI on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Web CI green (pnpm web:test:coverage / lint / check-types / build)
+
+  > - [ ] Manual: create recurring + one-off due on /payment-dues; confirm Due soon on /dashboard
+
+  > - [ ] Manual: mark paid / clear paid refreshes dues + ledger lists
+
+  > - [ ] Confirm BFF session still required (no JWTs in WebStorage)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - OpenAPI artifact is large/regenerated — reviewers should confirm paths for /transaction-templates* and that unrelated contract drift is intentional from offline export
+
+  > > - Mark-paid requires a usable pay-from account when the API/model enforces from_account_id; UI surfaces API errors rather than inventing defaults
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Planned amounts display with USD formatting in the SPA (templates have no currency field)
+
+  > > - Formal OpenAPI/docs index close-out remains PPT-075 / #168
+
+  >
+
+  > ## Web security checklist (PPT-056 / #121)
+
+  >
+
+  > - [x] No JWTs / access tokens in localStorage / sessionStorage (BFF HttpOnly papita_sid only)
+
+  > - [x] Cookie flags reviewed for the touched path (HttpOnly / Secure when not DEBUG / SameSite) — no cookie/auth path changes in this PR
+
+  > - [x] CSRF: mutations send X-Papita-CSRF; token stays in memory (not WebStorage) — uses existing apiFetch
+
+  > - [x] No secrets in VITE_* (public bundle only); gitleaks-aware for accidental embeds
+
+  > - [ ] pnpm web:audit considered (or Dependabot npm-web); no known high prod vulns left untracked — CI soft audit still applies
+
+  > - [x] CSP: nginx SPA headers reviewed when touching docker/web/** (PPT-063 / #128; Vite :5173 has no CSP meta) — docker/web/** not touched
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #167
+
+  > - Parent epic: #163 (PPT-070)
+
+  > - Depends on closed #166 (PPT-073)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#166](https://github.com/Elmorralito/save-ma-money/issues/166)**_] :: **feat/PPT-073: [api] Transaction-templates CRUD and upcoming dues endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:31+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 19:59:11+00:00</sub>_
 
