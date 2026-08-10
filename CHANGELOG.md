@@ -46,9 +46,227 @@
 
 - [ ] [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary:
-
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#164](https://github.com/Elmorralito/save-ma-money/issues/164)**_] :: **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:28+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 16:07:22+00:00</sub>_
+
+  > **Closed by** [_**#197**](https://github.com/Elmorralito/save-ma-money/pull/197): **feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates**
+
+  > **Branch:** feat/PPT-071 · **Base:** main · **1 commit** · **6 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-071: [model] Schema and migration for payment dues on transaction_templates
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Delivers **PPT-071 / #164** (epic [#163](https://github.com/Elmorralito/save-ma-money/issues/163) step 0): additive payment-due fields on transaction_templates so later steps can query upcoming dues and mark paid without inventing schema. Templates previously only had planned_day / use_month_end; they now also support one-off due_date, remind_days_before, and optional pay-from from_account_id, with a reversible Alembic revision on B0 Postgres.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Upcoming-dues / mark-paid services ([#165](https://github.com/Elmorralito/save-ma-money/issues/165) PPT-072)
+
+  > - API routers ([#166](https://github.com/Elmorralito/save-ma-money/issues/166)) and SPA ([#167](https://github.com/Elmorralito/save-ma-money/issues/167))
+
+  > - v4.2 recurrence_* / RRULE and paid-state columns on templates
+
+  > - Owner-match CHECK for from_account_id (service-owned in PPT-072)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Additive nullable columns only — no backfill; Compose/local can still build without registry
+
+  > - Index (owner_id, due_date) ready for one-off due listings
+
+  > - Paid state remains derived from posted transactions.template_id
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Model**
+
+  >
+
+  > - TransactionTemplates: due_date (DATE), remind_days_before (SMALLINT), from_account_id FK → accounts
+
+  > - Keep planned_day / use_month_end; due-resolution precedence documented as PPT-072-owned
+
+  >
+
+  > **DTO**
+
+  >
+
+  > - TransactionTemplatesDTO mirrors new fields; remind_days_before >= 0; serialize from_account_id
+
+  >
+
+  > **Migrations**
+
+  >
+
+  > - Alembic j7e8f9a0b1c2 after i6d7e8f9a0b1: columns + FK + ix_transaction_templates_owner_due_date; reversible downgrade
+
+  >
+
+  > **Tests**
+
+  >
+
+  > - Index assertion + DTO unit coverage (defaults, negative remind rejection, from_dao round-trip)
+
+  >
+
+  > **Ops / memory**
+
+  >
+
+  > - Strata project_state marks PPT-071 in progress and hands off to PPT-072
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (6 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/project_state.md | 8 ++-
+
+  > .../2026_08_06_1500-j7e8f9a0b1c2_ppt_071_transaction_templates_payment_dues.py | 82 ++++++++++++++++++++++
+
+  > modules/model/src/papita_txnsmodel/access/transactions/dto.py | 30 +++++---
+
+  > modules/model/src/papita_txnsmodel/model/transactions.py | 12 +++-
+
+  > .../access/transactions/test_transaction_templates_dto.py | 77 ++++++++++++++++++++
+
+  > modules/model/tests/tests_papita_txnsmodel/model/test_model_indexes.py | 5 ++
+
+  > 6 files changed, 202 insertions(+), 12 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 0d342bc feat/PPT-071: [model] Add payment-due columns on transaction_templates
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - Pre-commit on commit — pass (black/isort/flake8/pylint/mypy/interrogate/strata validate)
+
+  > - poetry run pytest focused model index + DTO tests — 10 passed (this session)
+
+  > - Fresh-volume B0 migration_check.sh (upgrade → downgrade -1 → upgrade → alembic check) — pass (this session)
+
+  > - CI on this PR — not observed yet
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Migration Check workflow green on the PR
+
+  > - [ ] Code Quality / model tests green on the PR
+
+  > - [ ] Confirm Alembic head is j7e8f9a0b1c2 after upgrade on a clean B0 DB
+
+  > - [ ] Spot-check that existing template rows migrate with NULL due fields
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - **Migration:** new Alembic head j7e8f9a0b1c2 must run on every environment before PPT-072 code expects the columns
+
+  > > - **Semantics:** one-off due_date vs recurring planned_day precedence is not enforced in DB — PPT-072 must own it
+
+  > > - **Tenant safety:** from_account_id is FK-only; cross-owner misuse must be rejected in PPT-072 services
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - No upcoming-dues or mark-paid behavior in this PR
+
+  > > - planned_day remains NOT NULL for one-offs (product convention until PPT-072 documents precedence)
+
+  > > - ARCHITECTURE.md schema tables not updated here (docs pass deferred toward PPT-075)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#164](https://github.com/Elmorralito/save-ma-money/issues/164) (PPT-071)
+
+  > - Parent epic [#163](https://github.com/Elmorralito/save-ma-money/issues/163) (PPT-070)
+
+  > - Blocks [#165](https://github.com/Elmorralito/save-ma-money/issues/165) (PPT-072)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#131](https://github.com/Elmorralito/save-ma-money/issues/131)**_] :: **ci/PPT-066: [infra] Language-prefixed release tags for polyglot modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-07-28 01:01:28+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-06 19:40:19+00:00</sub>_
 
