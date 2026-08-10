@@ -42,9 +42,9 @@
 
 - [ ] [_**[#167](https://github.com/Elmorralito/save-ma-money/issues/167)**_] :: **feat/PPT-074: [web] Payment dues UI and dashboard Due soon panel** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:33+00:00</sub>_ :weary:
 
-- [ ] [_**[#166](https://github.com/Elmorralito/save-ma-money/issues/166)**_] :: **feat/PPT-073: [api] Transaction-templates CRUD and upcoming dues endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:31+00:00</sub>_ :weary:
-
 - [ ] [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#166](https://github.com/Elmorralito/save-ma-money/issues/166)**_] :: **feat/PPT-073: [api] Transaction-templates CRUD and upcoming dues endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:31+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 19:59:11+00:00</sub>_
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#165](https://github.com/Elmorralito/save-ma-money/issues/165)**_] :: **feat/PPT-072: [model] Upcoming dues query and mark-paid services** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:08:30+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 17:13:49+00:00</sub>_
 
