@@ -27,9 +27,9 @@ Capture with `/strata:capture` only for work in flight.
 
 ### In progress (ACTIVE)
 
-- **PPT-073 / #166:** transaction-templates CRUD + upcoming-dues / mark-paid / clear-paid
-  FastAPI routers (`modules/api`); DI `get_transaction_templates_service`; unit + B0 live
-  tests (live skips without Postgres). Branch `feat/PPT-073`.
+- **PPT-073 / #166:** [PR #205](https://github.com/Elmorralito/save-ma-money/pull/205) —
+  transaction-templates CRUD + upcoming-dues / mark-paid / clear-paid FastAPI routers;
+  restore model path version **1.0.3** (PSR had rewritten to 1.0.1, breaking API `>=1.0.3`).
 - **[PR #193](https://github.com/Elmorralito/save-ma-money/pull/193):** GHA Dependabot bumps +
   e2e login/nav hardening + Hadolint HEALTHCHECK JSON / DL3066 ignore (if still open).
 
