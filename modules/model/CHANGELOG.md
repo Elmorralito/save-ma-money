@@ -30,7 +30,6 @@ This file is **not** the monorepo issue tracker changelog. Root
 - Update CI adoption badge [skip ci]
   ([`c41fda7`](https://github.com/Elmorralito/save-ma-money/commit/c41fda7c9f4610dd4714712506f463bdbe5b4643))
 
-
 ## v1.0.3 (2026-08-03)
 
 ### Bug Fixes

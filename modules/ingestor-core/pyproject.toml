@@ -19,7 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "pydantic-settings>=2.15.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+prefect = ["prefect>=3.0,<4.0"]
 
 [project.urls]
 Homepage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/ingestor-core"
@@ -34,6 +39,11 @@ include = [{ path = "pyproject.toml", format = ["sdist"] }]
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 papita-transactions-model = { path = "../model", develop = true }
+pydantic-settings = ">=2.15.0,<3.0.0"
+prefect = { version = ">=3.0,<4.0", optional = true }
+
+[tool.poetry.extras]
+prefect = ["prefect"]
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.1.1"
