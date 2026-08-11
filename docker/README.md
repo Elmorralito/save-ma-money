@@ -133,8 +133,7 @@ Git tags (`py-api-v*`, `js-web-v*`) remain a **source/package** convention; they
 **First-time GHCR / Environments**
 
 1. Set package visibility for `save-ma-money-api` and `save-ma-money-web` (often private until first push).
-2. Environments **`ghcr`** (stable; deployment branches limited to `main`) and **`ghcr-dev`** (PR previews).
-3. Optional: add a **human** required reviewer on `ghcr` after Trivy passes.
+2. Environments **`ghcr`** (stable; deployment branches limited to `main`; no required reviewers — Trivy is the gate) and **`ghcr-dev`** (PR previews).
 
 ## Local B0 (no registry)
 
