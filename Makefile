@@ -3,7 +3,9 @@ VIRTUAL_ENV ?=
 VERSION ?= prerelease
 MOD ?= ALL
 PYTHON_CMD := $(shell if [ "$(POETRY_ACTIVE)" = "1" ] || [ -n "$(VIRTUAL_ENV)" ]; then echo "python"; else echo "python -m poetry"; fi)
-POETRY_CMD := $(shell if [ "$(POETRY_ACTIVE)" = "1" ] || [ -n "$(VIRTUAL_ENV)" ]; then echo "python -m poetry"; else echo "python -m poetry"; fi) # Always use python -m poetry for safety
+# Prefer the Poetry CLI when present (snok/install-poetry in CI); fall back to
+# `python -m poetry` for local installs that only expose the module entrypoint.
+POETRY_CMD := $(shell if command -v poetry >/dev/null 2>&1; then echo poetry; else echo "python -m poetry"; fi)
 PBCOPY_COMMAND := $(shell if test -e "$(shell which pbcopy)"; then echo "pbcopy"; else echo "xclip -selection clipboard"; fi)
 
 prep:
