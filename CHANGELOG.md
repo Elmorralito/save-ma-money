@@ -30,11 +30,251 @@
 
 - [ ] [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary:
 
-- [ ] [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary:
-
-- [ ] [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 20:07:14+00:00</sub>_
+
+  > **Closed by** [_**#212**](https://github.com/Elmorralito/save-ma-money/pull/212): **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge**
+
+  > **Branch:** feat/PPT-078 · **Base:** main · **1 commit** · **19 files**
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Adds model-owned ingest provenance for PPT-078 / #172 so idempotent loads do not rely on a unique key on partitioned transactions (PK is (id, transaction_ts)). Ships a non-partitioned sidecar, thin DLQ, upsert conflict extensions, and a trusted-owner IngestionBridgeService that creates/updates/reactivates via sidecar-first lookup.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - API routers / OpenAPI (downstream)
+
+  > - Prefetch/Prefect orchestration, Gmail OAuth, email parsers (PPT-076 later children)
+
+  > - Ingestor-core contract packages (PPT-079 / related)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Partial unique (owner_id, ingestion_source, source_ref) WHERE source_ref IS NOT NULL on the sidecar
+
+  > - Soft-delete **reactivate-in-place** (unique slot kept across soft-delete)
+
+  > - Composite FK (transaction_id, transaction_ts) → partitioned ledger
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Model / schema**
+
+  >
+
+  > - IngestionSource enum (MANUAL|CSV|EMAIL|API)
+
+  > - Tables: transaction_ingestion_provenance, ingestion_dead_letters
+
+  > - Alembic revision k8f9a0b1c2d3 (revises j7e8f9a0b1c2)
+
+  >
+
+  > **Access / services**
+
+  >
+
+  > - Ingestion DTOs + owned repositories (get_by_source_ref, include soft-deleted)
+
+  > - IngestionBridgeService + IngestTransactionRequest (kind/account validation; trusted owner only)
+
+  > - record_dead_letter() for thin failure storage
+
+  >
+
+  > **Database**
+
+  >
+
+  > - PostgreSQLUpserter: conflict_index_elements, conflict_index_where, immutable_update_columns
+
+  >
+
+  > **Tests / strata**
+
+  >
+
+  > - Unit + B0 live idempotency/reactivate coverage
+
+  > - .strata project_state + learning for partitioned uniqueness sidecar
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~19 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/MEMORY.md | 7 +-
+
+  > .strata/memory/learnings/INDEX.md | 21 +-
+
+  > .../learnings/ingestion-provenance-sidecar.md | 12 +
+
+  > .strata/memory/project_state.md | 24 +-
+
+  > docs/interrogate_badge.svg | 8 +-
+
+  > ...00-k8f9a0b1c2d3_ppt_078_ingestion_provenance.py | 170 +++++++++++
+
+  > .../papita_txnsmodel/access/ingestion/**init**.py | 14 +
+
+  > .../src/papita_txnsmodel/access/ingestion/dto.py | 34 +++
+
+  > .../access/ingestion/repository.py | 51 ++++
+
+  > .../model/src/papita_txnsmodel/database/upsert.py | 45 ++-
+
+  > .../model/src/papita_txnsmodel/model/**init**.py | 1 +
+
+  > .../model/src/papita_txnsmodel/model/contstants.py | 2 +
+
+  > modules/model/src/papita_txnsmodel/model/enums.py | 9 +
+
+  > .../model/src/papita_txnsmodel/model/ingestion.py | 83 +++++
+
+  > .../src/papita_txnsmodel/services/**init**.py | 8 +
+
+  > .../src/papita_txnsmodel/services/ingestion.py | 333 +++++++++++++++++++++
+
+  > .../tests_papita_txnsmodel/database/test_upsert.py | 58 ++++
+
+  > .../integration/test_ppt078_ingestion_live_db.py | 177 +++++++++++
+
+  > .../services/test_ingestion_bridge.py | 253 ++++++++++++++++
+
+  > 19 files changed, 1269 insertions(+), 41 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 729301f feat/PPT-078: [model] Add provenance schema and ingestion upsert bridge
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - poetry run pytest on PPT-078 unit + upsert + B0 live tests — **pass** (local)
+
+  > - ./bin/bash/alembic.sh upgrade / downgrade to j7e8f9a0b1c2 / upgrade — **pass** (local B0)
+
+  > - Pre-commit on commit (black/isort/flake8/pylint/mypy/interrogate/strata) — **pass**
+
+  > - GitHub CI on this PR — **not yet observed** (post-create)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Migration Check applies k8f9a0b1c2d3 cleanly on CI Postgres
+
+  > - [ ] Model unit + integration jobs green
+
+  > - [ ] Confirm no API / OpenAPI contract drift (expected: none)
+
+  > - [ ] Spot-check: re-ingest same source_ref keeps id + transaction_ts; soft-delete then re-ingest → reactivated
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - **Migration:** new enum + two tables + composite FK to partitioned transactions; downgrade drops them
+
+  > > - **Idempotency semantics:** soft-deleted provenance rows still occupy the unique slot (WHERE source_ref IS NOT NULL without deleted_at filter) — intentional for reactivate-in-place
+
+  > > - Downstream ingestors (#173+) must call the bridge with trusted owner (never take tenant from payload)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Null source_ref skips idempotency (always creates a new ledger row)
+
+  > > - Thin DLQ stores raw payload text only — no retry worker in this PR
+
+  > > - IngestionBridgeService wires LinkedEntity collaborators; callers should prefer the bridge over bare TransactionsService.create for ingest paths
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #172
+
+  > - Parent epic: #170 (PPT-076)
+
+  > - Depends on: #171 (PPT-077) — closed
+
+  > - Blocks: #173, #176, #177
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 03:13:43+00:00</sub>_
 
