@@ -30,9 +30,217 @@
 
 - [ ] [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 22:13:07+00:00</sub>_
+
+  > **Closed by** [_**#213**](https://github.com/Elmorralito/save-ma-money/pull/213): **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner**
+
+  > **Branch:** feat/PPT-079 · **Base:** main · **1 commit** · **34 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Implements PPT-079 / #173 source-agnostic ingestion contracts inside papita-ingestor-core: DTOs, source/parser ABCs and registries, typed errors, bridge mapping, settings, optional Prefect flow factory, and IngestionRunner. Plugins can register and run with fakes without core importing Gmail/IMAP/HTML libraries; persist goes only through the PPT-078 IngestionBridgeService.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Concrete Gmail source / bank parsers / email flow (PPT-080–082 / #174–#176)
+
+  > - Live B0 Postgres integration coverage (deferred; mocked persist here; ≥80% cov PPT-084 / #178)
+
+  > - API routers / Compose worker packaging
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Locked runner semantics: persist-then-ack; DLQ-then-ack poison-message path; dry_run / fetch_limit; required source_ref
+
+  > - Open/Closed registries (duplicate id rejected; parser priority + per-run instance cache)
+
+  > - AST import guard blocks google/imap/bs4/papita_ingestor_email in core
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **ingestor-core contracts**
+
+  >
+
+  > - DTOs: RawRecord, ParsedRecord, FetchFilter, RunResult (+ per-record failures)
+
+  > - ABCs: BaseIngestorSource, BaseRecordParser
+
+  > - Registries: SourceRegistry / ParserRegistry
+
+  > - Errors + opaque DLQ encode + FK-shaped bridge mapper
+
+  > - IngestionRunner streams fetch; continues after ack errors; unknown bridge outcome = persist failure (no ack)
+
+  > - BaseIngestorSettings (PAPITA_INGESTOR_*) honored by runner
+
+  > - Optional build_base_ingestion_flow() behind poetry install -E prefect
+
+  >
+
+  > **tests / docs / strata**
+
+  >
+
+  > - Fake source/parser E2E tests, mapping/registry/runner/import-guard coverage
+
+  > - README plugin handoff + locked semantics; CHANGELOG note
+
+  > - .strata project_state + learning for DLQ-then-ack
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~34 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/MEMORY.md
+
+  > .strata/memory/learnings/INDEX.md
+
+  > .strata/memory/learnings/ingestor-runner-poison-ack.md
+
+  > .strata/memory/project_state.md
+
+  > modules/ingestor-core/CHANGELOG.md
+
+  > modules/ingestor-core/README.md
+
+  > modules/ingestor-core/pyproject.toml
+
+  > modules/ingestor-core/src/papita_ingestor_core/** (errors, flows, mapping, parsers, registry, runner, settings, sources, types)
+
+  > modules/ingestor-core/tests/{conftest,fakes,test_mapping,test_no_plugin_imports,test_registry,test_runner}.py
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - e6f512a feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make ingestor-test — pass (29 tests)
+
+  > - make ingestor-lint — pass (black / isort / flake8 / pylint)
+
+  > - Pre-commit on commit — pass (incl. strata strict + mypy)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm ingestor-ci runs and is green on this PR
+
+  > - [ ] Spot-check README runner semantics table vs IngestionRunner behavior
+
+  > - [ ] Confirm no provider imports leak into papita_ingestor_core (import-guard test)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Runner treats owner as trusted worker input (must be bound correctly in PPT-082)
+
+  > > - DLQ-then-ack stops redelivery amplification; DLQ table still lacks upsert-by-source_ref (model follow-up if needed)
+
+  > > - Optional Prefect extra not installed in default CI path (factory ImportError is intentional)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - parsers=[] is rejected at run start; omit parsers to use the registry
+
+  > > - Coverage ≥80% gate remains PPT-084 / #178
+
+  > > - No live Docker Postgres bridge test in this PR (mocked bridge)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#173](https://github.com/Elmorralito/save-ma-money/issues/173) (PPT-079)
+
+  > - Parent epic [#170](https://github.com/Elmorralito/save-ma-money/issues/170) (PPT-076)
+
+  > - Depends on [#171](https://github.com/Elmorralito/save-ma-money/issues/171) / [#172](https://github.com/Elmorralito/save-ma-money/issues/172) (closed)
+
+  > - Downstream consumers: [#174](https://github.com/Elmorralito/save-ma-money/issues/174) / [#175](https://github.com/Elmorralito/save-ma-money/issues/175) / [#176](https://github.com/Elmorralito/save-ma-money/issues/176)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 20:07:14+00:00</sub>_
 
