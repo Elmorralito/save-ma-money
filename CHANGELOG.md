@@ -34,9 +34,9 @@
 
 - [ ] [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary:
 
-- [ ] [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary:
 
-- [ ] [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 21:01:48+00:00</sub>_
 
