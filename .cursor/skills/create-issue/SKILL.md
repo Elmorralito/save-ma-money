@@ -198,9 +198,9 @@ Prefer `--repo Elmorralito/save-ma-money` (or the current `gh` remote) so the is
 
 Return the issue **URL** and number. Do not close or edit other issues unless asked.
 
-After creating a **child** (or when the user asks what to do next), offer
-[`.cursor/skills/plan-issue/`](../plan-issue/) (`/plan-issue`) to check Depends on
-readiness and produce an Architect → PM/BA → SME action plan before implementation.
+This skill is **independent** of `/plan-issue`. Do not invoke, chain, or suggest
+`plan-issue` as part of create-issue. Stop after the issue URL unless the user
+explicitly asks for something else.
 
 ## Rules
 
@@ -219,4 +219,3 @@ readiness and produce an Architect → PM/BA → SME action plan before implemen
 - [reference.md](reference.md) — field checklist by type + example titles
 - Conventions: `.cursor/rules/gen-custom/github_issue_conventions.mdc`
 - Briefs index: `docs/issues/README.md`
-- Plan before implement: [../plan-issue/](../plan-issue/) (`/plan-issue`)

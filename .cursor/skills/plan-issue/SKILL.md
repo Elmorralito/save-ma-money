@@ -17,10 +17,13 @@ Turn a **child issue + parent epic** into a dependency-aware implementation plan
 
 This skill lives at `.cursor/skills/plan-issue/` (repo-only).
 
-**Linked from:** [`.cursor/AGENTS.md`](../../AGENTS.md) · [`.cursor/README.md`](../../README.md) ·
+**Independent of `/create-issue`.** Do not invoke, chain, or require issue creation
+as part of this skill. Plan only against an existing child + epic the user names.
+
+**Indexed from:** [`.cursor/AGENTS.md`](../../AGENTS.md) · [`.cursor/README.md`](../../README.md) ·
 [`project_adapters.mdc`](../../rules/gen-custom/project_adapters.mdc) ·
 [`github_issue_conventions.mdc`](../../rules/gen-custom/github_issue_conventions.mdc) ·
-[`docs/issues/README.md`](../../../docs/issues/README.md) · sibling [`../create-issue/`](../create-issue/).
+[`docs/issues/README.md`](../../../docs/issues/README.md).
 
 ## Inputs
 

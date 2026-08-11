@@ -4,7 +4,12 @@ Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papi
 
 **New GitHub issues:** use the chooser templates under [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — epic (`01-epic.md`), program issue (`02-program-issue.md`), child under epic (`03-child-issue.md`), bug (`04-bug-report.md`). Shape references: [#42](https://github.com/Elmorralito/save-ma-money/issues/42), [#52](https://github.com/Elmorralito/save-ma-money/issues/52), [#89](https://github.com/Elmorralito/save-ma-money/issues/89), [#93](https://github.com/Elmorralito/save-ma-money/issues/93), children of #42.
 
-**Agent skills (Cursor):** file issues with [`.cursor/skills/create-issue/`](../../.cursor/skills/create-issue/) (`/create-issue`); plan a child against its epic (dependency go/no-go → Architect → PM/BA → SME audit) with [`.cursor/skills/plan-issue/`](../../.cursor/skills/plan-issue/) (`/plan-issue`). Title/body conventions: [`.cursor/rules/gen-custom/github_issue_conventions.mdc`](../../.cursor/rules/gen-custom/github_issue_conventions.mdc).
+**Agent skills (Cursor, independent — do not chain):**
+
+- File issues: [`.cursor/skills/create-issue/`](../../.cursor/skills/create-issue/) (`/create-issue`)
+- Plan an existing child vs epic: [`.cursor/skills/plan-issue/`](../../.cursor/skills/plan-issue/) (`/plan-issue`)
+
+Title/body conventions: [`.cursor/rules/gen-custom/github_issue_conventions.mdc`](../../.cursor/rules/gen-custom/github_issue_conventions.mdc).
 
 Live issue status (open/closed, closing PR summaries) is mirrored in the root [CHANGELOG.md](../../CHANGELOG.md), updated by the [Auto Updates](../../.github/workflows/auto-updates.yml) workflow.
 

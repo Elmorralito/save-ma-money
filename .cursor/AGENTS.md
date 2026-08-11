@@ -23,10 +23,13 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 
 ### Repo Cursor skills
 
+Skills are **independent** — invoke only the one the user asked for; do not chain
+`/create-issue` and `/plan-issue`.
+
 | Skill                                       | Command         | Use when                                                                                             |
 | ------------------------------------------- | --------------- | ---------------------------------------------------------------------------------------------------- |
 | [`create-issue/`](skills/create-issue/)     | `/create-issue` | File epic / program / child / bug from [`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/)       |
-| [`plan-issue/`](skills/plan-issue/)         | `/plan-issue`   | Plan a child vs its epic: dep go/no-go → Architect → PM/BA roadmap → SME audit                       |
+| [`plan-issue/`](skills/plan-issue/)         | `/plan-issue`   | Plan an existing child vs its epic: dep go/no-go → Architect → PM/BA roadmap → SME audit             |
 | [`pr-description/`](skills/pr-description/) | (PR body draft) | Fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) from full branch diff |
 
 Index also: [`.cursor/README.md`](README.md) · rules: [`project_adapters.mdc`](rules/gen-custom/project_adapters.mdc) · [`github_issue_conventions.mdc`](rules/gen-custom/github_issue_conventions.mdc).
