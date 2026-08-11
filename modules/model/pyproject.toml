@@ -1,6 +1,6 @@
 [project]
 name = "papita-transactions-model"
-version = "1.0.3"
+version = "1.0.4"
 description = "SQLModel/PostgreSQL domain layer for Papita financial transactions (papita_txnsmodel)."
 readme = "README.md"
 license = { file = "LICENSE" }

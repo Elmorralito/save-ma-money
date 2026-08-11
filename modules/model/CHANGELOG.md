@@ -10,6 +10,27 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.4 (2026-08-11)
+
+### Bug Fixes
+
+- Silence alembic check noise for partition FKs (PPT-078)
+  ([`a190357`](https://github.com/Elmorralito/save-ma-money/commit/a190357a9c814b7e7133a93b29a267574352f618))
+
+- **ci**: Prefer Poetry CLI in Makefile for ingestor-ci
+  ([`c41fda7`](https://github.com/Elmorralito/save-ma-money/commit/c41fda7c9f4610dd4714712506f463bdbe5b4643))
+
+### Chores
+
+- Retrigger CI with skip-migrations labels
+  ([`5423a39`](https://github.com/Elmorralito/save-ma-money/commit/5423a39004a452b7cd3dfad9b3fafba6196b22eb))
+
+### Continuous Integration
+
+- Update CI adoption badge [skip ci]
+  ([`c41fda7`](https://github.com/Elmorralito/save-ma-money/commit/c41fda7c9f4610dd4714712506f463bdbe5b4643))
+
+
 ## v1.0.3 (2026-08-03)
 
 ### Bug Fixes
