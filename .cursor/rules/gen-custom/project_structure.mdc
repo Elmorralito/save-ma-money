@@ -117,7 +117,7 @@ Canonical B0 API start: `make api-up` (uvicorn in-container). nginx SPA: `make w
 | Design program | `docs/design/` (`ARCHITECTURE.md`, `README.md`) |
 | Issue briefs | `docs/issues/README.md` (merged SSOT; no separate PPT-044/045 brief files) |
 | Agent ops | `.cursor/AGENTS.md` |
-| Agent Cursor skills | `.cursor/skills/` (`create-issue`, `plan-issue`, `pr-description`) — index in `.cursor/README.md` / `project_adapters.mdc` |
+| Agent Cursor skills | `.cursor/skills/` (`create-issue`, `plan-issue`, `pr-description`); symlinked at `.agents/skills/` — see `.agents/README.md` |
 | Agent memory | `.strata/MANIFEST.md` |
 
 ### Dependency Management

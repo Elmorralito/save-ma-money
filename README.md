@@ -231,7 +231,7 @@ Each package has its own README with layer-specific setup, architecture, and ref
 | [`.strata/docs/ARCHITECTURE.md`](./.strata/docs/ARCHITECTURE.md)                         | Live implementation codemap (complements design doc)                                                                                                   |
 | [`.github/CI.md`](./.github/CI.md)                                                       | CI workflows, pre-commit, PR checklist                                                                                                                 |
 | [`AGENTS.md`](./.agents/AGENTS.md)                                                       | Agent and contributor operational guide                                                                                                                |
-| [`.cursor/skills/`](./.cursor/skills/)                                                   | Cursor agent skills (independent) — `/create-issue`, `/plan-issue`, PR descriptions ([index](./.cursor/README.md))                                     |
+| [`.cursor/skills/`](./.cursor/skills/)                                                   | Project agent skills (independent) — also via [`.agents/skills/`](./.agents/skills/) symlinks ([`.agents/README.md`](./.agents/README.md))             |
 | [CHANGELOG.md](./CHANGELOG.md)                                                           | Issue tracker and merged PR summaries                                                                                                                  |
 
 **`ARCHITECTURE.md` parts (quick links):**

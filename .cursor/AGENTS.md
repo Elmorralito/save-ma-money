@@ -23,6 +23,11 @@ Code-style enforcement stays in [`.cursor/rules/gen-custom/`](rules/gen-custom/)
 
 ### Repo Cursor skills
 
+Canonical content lives under [`.cursor/skills/`](skills/). The same three project
+skills are **symlinked** into [`.agents/skills/`](../.agents/skills/) for Codex /
+Agents discovery (see [`.agents/README.md`](../.agents/README.md)). Native Supabase
+skills stay only under `.agents/skills/`.
+
 Skills are **independent** — invoke only the one the user asked for; do not chain
 `/create-issue` and `/plan-issue`.
 
@@ -32,7 +37,7 @@ Skills are **independent** — invoke only the one the user asked for; do not ch
 | [`plan-issue/`](skills/plan-issue/)         | `/plan-issue`   | Plan an existing child vs its epic: dep go/no-go → Architect → PM/BA roadmap → SME audit             |
 | [`pr-description/`](skills/pr-description/) | (PR body draft) | Fill [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) from full branch diff |
 
-Index also: [`.cursor/README.md`](README.md) · rules: [`project_adapters.mdc`](rules/gen-custom/project_adapters.mdc) · [`github_issue_conventions.mdc`](rules/gen-custom/github_issue_conventions.mdc).
+Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents/README.md) · rules: [`project_adapters.mdc`](rules/gen-custom/project_adapters.mdc) · [`github_issue_conventions.mdc`](rules/gen-custom/github_issue_conventions.mdc).
 
 ---
 
@@ -84,7 +89,7 @@ save-ma-money/
 ├── docker/                     # README (GHCR SSOT PPT-067), database/, api/, redis/, web/, docker-compose.yml
 ├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
 ├── .cursor/                    # adapters, gen-custom rules, skills
-├── .agents/                    # symlinks to .cursor/ adapters (Codex)
+├── .agents/                    # symlinks to .cursor/ adapters + skills (Codex/Agents)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
 └── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, publish)
 ```
