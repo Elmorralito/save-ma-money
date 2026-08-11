@@ -98,10 +98,13 @@ GitHub issue chooser templates live under [`.github/ISSUE_TEMPLATE/`](../../.git
 
 Prefer those files when creating or editing issues via `gh issue create` / `gh issue edit`. Do not invent alternate section orders.
 
-**Agent automation:**
+**Agent automation (independent skills — do not chain):**
 
-- Issues: [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`)
+- Issues: [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`) — file from ISSUE_TEMPLATE only
+- Issue plans: [`.cursor/skills/plan-issue/`](../skills/plan-issue/) (`/plan-issue`) — plan an existing child vs epic (Architect → PM/BA → SME); not part of create-issue
 - PR bodies: [`.cursor/skills/pr-description/`](../skills/pr-description/) + [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md)
+
+Briefs index: [`docs/issues/README.md`](../../docs/issues/README.md).
 
 ### Program issue skeleton (summary)
 

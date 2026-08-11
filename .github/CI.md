@@ -872,7 +872,8 @@ pre-commit run --all-files
 - Keep the branch current with `main` (`git fetch origin && git merge origin/main` — Branch sync CI gate)
 - Keep PR scope focused
 - Use the PR body template: [`.github/PULL_REQUEST_TEMPLATE.md`](./PULL_REQUEST_TEMPLATE.md)
-- New issues: use [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (epic / program / child / bug)
+- New issues: use [`.github/ISSUE_TEMPLATE/`](./ISSUE_TEMPLATE/) (epic / program / child / bug); agent: [`.cursor/skills/create-issue/`](../.cursor/skills/create-issue/) (`/create-issue`) — do not chain `/plan-issue`
+- Plan an existing child vs its epic (separate skill): [`.cursor/skills/plan-issue/`](../.cursor/skills/plan-issue/) (`/plan-issue`) — do not chain `/create-issue`
 
 Full agent-oriented checklist: [`.agents/AGENTS.md` — PR checklist](../.agents/AGENTS.md#pr-checklist).
 

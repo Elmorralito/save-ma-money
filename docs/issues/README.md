@@ -4,17 +4,26 @@ Canonical in-repo copies of GitHub issue bodies and decision briefs for the Papi
 
 **New GitHub issues:** use the chooser templates under [`.github/ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) — epic (`01-epic.md`), program issue (`02-program-issue.md`), child under epic (`03-child-issue.md`), bug (`04-bug-report.md`). Shape references: [#42](https://github.com/Elmorralito/save-ma-money/issues/42), [#52](https://github.com/Elmorralito/save-ma-money/issues/52), [#89](https://github.com/Elmorralito/save-ma-money/issues/89), [#93](https://github.com/Elmorralito/save-ma-money/issues/93), children of #42.
 
+**Agent skills (Cursor, independent — do not chain):**
+
+- File issues: [`.cursor/skills/create-issue/`](../../.cursor/skills/create-issue/) (`/create-issue`)
+- Plan an existing child vs epic: [`.cursor/skills/plan-issue/`](../../.cursor/skills/plan-issue/) (`/plan-issue`)
+
+Title/body conventions: [`.cursor/rules/gen-custom/github_issue_conventions.mdc`](../../.cursor/rules/gen-custom/github_issue_conventions.mdc).
+
 Live issue status (open/closed, closing PR summaries) is mirrored in the root [CHANGELOG.md](../../CHANGELOG.md), updated by the [Auto Updates](../../.github/workflows/auto-updates.yml) workflow.
 
 **Operator / design SSOT (not duplicated here):**
 
-| Doc                                                        | Role                                                   |
-| ---------------------------------------------------------- | ------------------------------------------------------ |
-| [`modules/api/README.md`](../../modules/api/README.md)     | API reference, setup, endpoint catalog                 |
-| [`modules/web/README.md`](../../modules/web/README.md)     | Web SPA setup (Node 22 + pnpm; no JS domain logic)     |
-| [`docs/design/ARCHITECTURE.md`](../design/ARCHITECTURE.md) | Design body (schema, mapping, auth Part VI, migration) |
-| [`docs/design/README.md`](../design/README.md)             | Design program index + gates                           |
-| [`environments/README.md`](../../environments/README.md)   | `PAPITA_ENV` / secrets layout                          |
+| Doc                                                              | Role                                                             |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [`modules/api/README.md`](../../modules/api/README.md)           | API reference, setup, endpoint catalog                           |
+| [`modules/web/README.md`](../../modules/web/README.md)           | Web SPA setup (Node 22 + pnpm; no JS domain logic)               |
+| [`docs/design/ARCHITECTURE.md`](../design/ARCHITECTURE.md)       | Design body (schema, mapping, auth Part VI, migration)           |
+| [`docs/design/README.md`](../design/README.md)                   | Design program index + gates                                     |
+| [`environments/README.md`](../../environments/README.md)         | `PAPITA_ENV` / secrets layout                                    |
+| [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md)                   | Agent ops + Cursor skills index (`/create-issue`, `/plan-issue`) |
+| [`.cursor/skills/plan-issue/`](../../.cursor/skills/plan-issue/) | Plan child issues vs epic before implementation                  |
 
 ## Table of contents
 

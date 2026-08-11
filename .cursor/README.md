@@ -7,7 +7,8 @@ Agent operational instructions are **canonical in this directory**.
 | `AGENTS.md`              | Operational guide — build, test, API status, CI                                               |
 | `CLAUDE.md`              | Thin Claude Code adapter → `AGENTS.md`                                                        |
 | `rules/gen-custom/*.mdc` | Always-applied / glob code-style and conventions                                              |
-| `skills/create-issue/`   | `/create-issue` — GitHub issues from ISSUE_TEMPLATE                                           |
+| `skills/create-issue/`   | `/create-issue` — file GitHub issues from ISSUE_TEMPLATE (isolated)                           |
+| `skills/plan-issue/`     | `/plan-issue` — plan existing child vs epic; Architect → PM/BA → SME (isolated)               |
 | `skills/pr-description/` | PR body drafts from [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) |
 
 **Strata / Codex entry point:** [`.agents/AGENTS.md`](../.agents/AGENTS.md) and [`.agents/CLAUDE.md`](../.agents/CLAUDE.md) symlink here. `strata_check.sh` validates those paths. Edit files in **`.cursor/`** only.

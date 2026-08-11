@@ -16,7 +16,8 @@ Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.
 
 | Skill | Use when |
 | ----- | -------- |
-| [`create-issue/`](../skills/create-issue/) | New GitHub issues from ISSUE_TEMPLATE (`/create-issue`) |
+| [`create-issue/`](../skills/create-issue/) | New GitHub issues from ISSUE_TEMPLATE (`/create-issue`) — isolated; do not chain `/plan-issue` |
+| [`plan-issue/`](../skills/plan-issue/) | Plan an existing child vs epic (`/plan-issue`) — isolated; do not chain `/create-issue` |
 | [`pr-description/`](../skills/pr-description/) | Paste-ready PR bodies from [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) |
 
 ### When something changes
@@ -24,6 +25,7 @@ Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.
 | Change | Update |
 | ------ | ------ |
 | API routers, auth, setup, CI, PR checklist | `.cursor/AGENTS.md` (+ thin notes in `CLAUDE.md` if needed) |
+| New/changed Cursor skills under `.cursor/skills/` | `.cursor/AGENTS.md` skills table, `.cursor/README.md`, `project_adapters.mdc`, `github_issue_conventions.mdc` when issue-related; `docs/issues/README.md` / root `README.md` docs hub when operators should discover them |
 | Code-style / structure / migrations / issue titles | Matching `gen-custom/*.mdc` |
 | Architecture decisions, backlog, learnings | `.strata/` via `/strata:capture` / `/strata:save` |
 | `modules/**` or `bin/**` code | Pair with `.strata/` (strata strict mode) |

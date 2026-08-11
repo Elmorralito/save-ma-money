@@ -198,6 +198,10 @@ Prefer `--repo Elmorralito/save-ma-money` (or the current `gh` remote) so the is
 
 Return the issue **URL** and number. Do not close or edit other issues unless asked.
 
+This skill is **independent** of `/plan-issue`. Do not invoke, chain, or suggest
+`plan-issue` as part of create-issue. Stop after the issue URL unless the user
+explicitly asks for something else.
+
 ## Rules
 
 - Interactive first: type → fields → optional context → draft → **gh auth** → confirm → create.
