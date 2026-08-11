@@ -5,10 +5,10 @@
 
 set -euo pipefail
 
-PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../bin/utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
+# shellcheck source=../../bin/bash/utils.sh
+source "$(cd "${SCRIPT_DIR}/../../bin/bash" && pwd)/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 cd "${PROJECT_PATH}" || exit 1
 

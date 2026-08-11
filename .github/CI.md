@@ -131,6 +131,7 @@ Durable **functional** labels (not `PPT-*`). Apply on a **PR** to skip the match
 | `skip-web-image-dev` | Publish Web image (PR dev GHCR)      | [`publish-web-image.yml`](./workflows/publish-web-image.yml) |
 | `skip-strata`        | Strata Check                         | [`strata-check.yml`](./workflows/strata-check.yml)           |
 | `skip-web-ci`        | Web CI (lint / Vitest / build)       | [`web-ci.yml`](./workflows/web-ci.yml)                       |
+| `skip-ingestor-ci`   | Ingestor CI (lint / smoke tests)     | [`ingestor-ci.yml`](./workflows/ingestor-ci.yml)             |
 | `skip-web-e2e`       | Web E2E (Playwright / axe / LHCI)    | [`web-e2e.yml`](./workflows/web-e2e.yml)                     |
 | `skip-quality`       | Code Quality Control (Python gate)   | [`quality-control.yml`](./workflows/quality-control.yml)     |
 | `skip-migrations`    | Migration Check                      | [`migration-check.yml`](./workflows/migration-check.yml)     |
@@ -151,8 +152,9 @@ gh pr edit 123 --add-label skip-dev-release
 
 | Workflow              | File                                                                           | Triggers                                                                                                                        | Purpose                                                                                                                                           |
 | :-------------------- | :----------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Code Quality Control  | [`workflows/quality-control.yml`](./workflows/quality-control.yml)             | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web                                                                       | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
-| Web CI                | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                               | PR + push to `main` (`modules/web/**`, `docker/web/**`, pnpm lock/workspace)                                                    | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
+| Code Quality Control  | [`workflows/quality-control.yml`](./workflows/quality-control.yml)             | PR + push to `main`; Mon 07:00 UTC; skips `docs/**` + web + ingestor trees                                                      | pre-commit, pytest, Postgres live tests (B0), Codecov                                                                                             |
+| Web CI                | [`workflows/web-ci.yml`](./workflows/web-ci.yml)                               | PR + push to `main` (`modules/web/**`, `docker/web/**`, `bin/make/web.mk`, pnpm lock/workspace)                                 | pnpm lint / Vitest+coverage / audit (soft) / build + OpenAPI `check-types` + nginx image (tar export→load) + SPA header smoke (PPT-057 / PPT-063) |
+| Ingestor CI           | [`workflows/ingestor-ci.yml`](./workflows/ingestor-ci.yml)                     | PR + push to `main` (`modules/ingestor-core/**`, `modules/ingestors/**`, `bin/make/ingestor.mk`)                                | Poetry install + `make ingestor-lint` / `ingestor-test` (PPT-077 / #171); coverage ≥80% deferred to PPT-084                                       |
 | Web E2E               | [`workflows/web-e2e.yml`](./workflows/web-e2e.yml)                             | Nightly Mon 07:30 UTC; `workflow_dispatch`; PRs touching e2e/seed                                                               | Compose API (`AUTH_PROVIDER=local`) + Playwright/axe + Lighthouse lab (PPT-056 / #121)                                                            |
 | OpenAPI Web Contract  | [`workflows/openapi-contract.yml`](./workflows/openapi-contract.yml)           | PR + push (API src, model model/access, web OpenAPI artifact)                                                                   | Offline OpenAPI dump vs committed `modules/web/openapi/openapi.json` (PPT-065)                                                                    |
 | Migration Check       | [`workflows/migration-check.yml`](./workflows/migration-check.yml)             | PR + push to `main` (model/migration/integration paths)                                                                         | PostgreSQL Alembic round-trip + drift check                                                                                                       |
@@ -213,7 +215,7 @@ Mirror CI before pushing:
 pre-commit run --all-files
 
 # Tests + coverage report → docs/coverage.xml (same entry point as CI)
-/bin/bash ./bin/test.sh
+./bin/bash/test.sh
 
 # Supply chain (deps or workflow script changes)
 /bin/bash .github/scripts/supply_chain_check.sh
@@ -242,7 +244,7 @@ pnpm install --frozen-lockfile && make check-types
 
 # Bash security gate (ShellCheck security codes + Semgrep; Docker required for Semgrep)
 SECURITY_CODES='SC2046,SC2048,SC2068,SC2086,SC2115,SC2145,SC2154,SC2164,SC2206,SC2207,SC2294,SC2479'
-shellcheck -S warning -i "$SECURITY_CODES" bin/*.sh .github/scripts/*.sh
+shellcheck -S warning -i "$SECURITY_CODES" bin/bash/*.sh .github/scripts/*.sh
 docker run --rm -v "$PWD:/src" -w /src \
   semgrep/semgrep:1.128.1@sha256:fca58525689355641019c05ab49dcc5bc3a1eb7e044f35014ee39594b5aa4fc1 \
   semgrep scan --config=.github/semgrep/bash-security.yml --config=p/trailofbits \
@@ -290,7 +292,7 @@ Checks out the PR head SHA (not the temporary merge commit) so the behind-count 
 |             |                                                                                                                                                                                                                                                                                                                                |
 | :---------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Trigger** | `workflow_call` (from release / dev); tags `py-model-v*` (canonical) or `model-v*` (legacy dual-trigger) → PyPI; `workflow_dispatch` with `target=testpypi` \| `pypi`                                                                                                                                                          |
-| **Package** | `papita-transactions-model` (`./bin/package.sh --mod model`)                                                                                                                                                                                                                                                                   |
+| **Package** | `papita-transactions-model` (`./bin/bash/package.sh --mod model`)                                                                                                                                                                                                                                                              |
 | **Auth**    | GitHub OIDC → PyPI **Trusted Publisher** (environments `testpypi` / `pypi`). Publish steps set `attestations: false` because PEP 740 attestations use the **caller** workflow as Build Config URI while the publisher is registered as `publish-model.yml` ([warehouse#11096](https://github.com/pypi/warehouse/issues/11096)) |
 | **Gates**   | Tag/ref semver via [`strip_model_release_tag.sh`](./scripts/strip_model_release_tag.sh) must match `modules/model/pyproject.toml` (stable tag push **and** `workflow_call` with `ref=py-model-v*` / legacy `model-v*`); clean-venv wheel import smoke                                                                          |
 
@@ -377,7 +379,7 @@ pip install \
    SKIP: strata-validate,mcp-config-validate,web-eslint,web-prettier,web-tsc,web-vitest-related
    ```
 
-4. **Pytest + coverage** via [`bin/test.sh`](../bin/test.sh)
+4. **Pytest + coverage** via [`bin/bash/test.sh`](../bin/bash/test.sh)
    - `testpaths`: `modules/model/tests`, `modules/api/tests`
    - Coverage measured on **source packages**: `--cov=./modules/model/src --cov=./modules/api/src` (aligned with Codecov)
    - Env: `AUTH_PROVIDER=local` (Supabase is Auth-only; JWT smoke is manual: `make auth-smoke`)
@@ -402,7 +404,7 @@ pip install \
 - `modules/model/alembic/**`
 - `modules/model/src/papita_txnsmodel/model/**`
 - `docker/database/**`
-- `bin/alembic.sh`
+- `bin/bash/alembic.sh`
 - `.github/scripts/migration_check.sh`
 - `.github/workflows/migration-check.yml`
 
@@ -419,7 +421,7 @@ pip install \
 
 ```bash
 # Docker Postgres via bin/ wrapper (upgrade only — not the full CI round-trip)
-/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
+./bin/bash/alembic.sh upgrade --docker-local --docker-rm
 
 # Full CI parity (Postgres must be reachable)
 export DB_URL="postgresql+psycopg2://user:pass@localhost:5432/papita_transactions"
@@ -650,7 +652,7 @@ The [`ci-badge.yml`](./workflows/ci-badge.yml) workflow maintains a dynamic shie
 | Workflow keywords | `test`, `lint`, `deploy`, `security`, `coverage`                                             | +1 each per file | Semantic regex in workflow YAML (v2 — ignores `ubuntu-latest` false positives) |
 | Config            | Test coverage, linting, pre-commit, Dependabot, security scans, Docker, bin/ scripts, Strata |          +33 max | File/config presence (same as v1)                                              |
 | **Runtime**       | Postgres CI service                                                                          |               +2 | `quality-control.yml` has `services.postgres`                                  |
-| **Runtime**       | Live DB integration tests                                                                    |               +2 | QC sets `DATABASE_URL`, runs Alembic + `bin/test.sh`                           |
+| **Runtime**       | Live DB integration tests                                                                    |               +2 | QC sets `DATABASE_URL`, runs Alembic + `bin/bash/test.sh`                      |
 | **Runtime**       | Codecov upload gate                                                                          |               +1 | `fail_ci_if_error: true` when `CODECOV_TOKEN` is configured                    |
 | **Runtime**       | Supply chain audit                                                                           |               +1 | `pip-audit` in `supply_chain_check.sh`                                         |
 | **Runtime**       | Scheduled quality control                                                                    |               +1 | `schedule` cron in QC workflow                                                 |
@@ -843,7 +845,7 @@ Missing file → skip with success (project may not use MCP).
 | [`changelog_template.jinja`](./scripts/changelog_template.jinja)     | update_todos.py          | CHANGELOG section template                                               |
 | [`issue_template.jinja`](./scripts/issue_template.jinja)             | update_todos.py          | Per-issue CHANGELOG entry template                                       |
 
-Shared shell helpers: [`bin/utils.sh`](../bin/utils.sh) (`log`, `run_command`).
+Shared shell helpers: [`bin/bash/utils.sh`](../bin/bash/utils.sh) (`log`, `run_command`).
 
 ---
 
@@ -853,7 +855,7 @@ Before opening or marking a PR ready:
 
 ```bash
 pre-commit run --all-files
-/bin/bash ./bin/test.sh
+./bin/bash/test.sh
 ```
 
 **When paths change, also run:**

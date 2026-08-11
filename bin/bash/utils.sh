@@ -1,4 +1,11 @@
 #!/bin/bash
+# Shared helpers for bin/bash/* and .github/scripts/*.
+#
+# Bootstrap from a sibling script under bin/bash/:
+#   _BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+#   # shellcheck source=utils.sh
+#   source "${_BIN_BASH_DIR}/utils.sh"
+#   PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 GREEN_TEXT='\033[0;32m'
 RED_TEXT='\033[0;31m'
@@ -36,12 +43,28 @@ get_python_cmd() {
     fi
 }
 
+# Locate monorepo root (directory with pyproject.toml + modules/).
+# Walks upward from this file so callers stay correct if bin/ deepens again.
+resolve_repo_root() {
+    local dir
+    dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    while [[ "${dir}" != "/" ]]; do
+        if [[ -f "${dir}/pyproject.toml" && -d "${dir}/modules" ]]; then
+            printf '%s\n' "${dir}"
+            return 0
+        fi
+        dir="$(dirname "${dir}")"
+    done
+    log ERROR "Could not locate repo root (pyproject.toml + modules/) from ${BASH_SOURCE[0]}"
+    return 1
+}
+
 # Resolve environments/<PAPITA_ENV>/.env (default local). Optional override: first arg.
 # Usage: resolve_papita_env_file [name]  → prints absolute path; exits 1 on unknown name.
 resolve_papita_env_file() {
     local name="${1:-${PAPITA_ENV:-local}}"
     local root
-    root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    root="$(resolve_repo_root)" || return 1
     case "${name}" in
         local | staging | production) ;;
         *)

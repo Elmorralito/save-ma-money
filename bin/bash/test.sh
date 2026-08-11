@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
-PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
-source "${PROJECT_PATH}/bin/utils.sh"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 usage() {
     USAGE="$(cat <<EOM

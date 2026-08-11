@@ -19,7 +19,17 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+
+def resolve_repo_root() -> Path:
+    """Walk upward from this file to the monorepo root."""
+    here = Path(__file__).resolve().parent
+    for candidate in (here, *here.parents):
+        if (candidate / "pyproject.toml").is_file() and (candidate / "modules").is_dir():
+            return candidate
+    raise RuntimeError(f"Could not locate repo root from {Path(__file__).resolve()}")
+
+
+REPO_ROOT = resolve_repo_root()
 DEFAULT_OUT = REPO_ROOT / "modules" / "web" / "openapi" / "openapi.json"
 
 

@@ -13,8 +13,8 @@ on:
       - "modules/model/src/papita_txnsmodel/model/**"
       - "modules/model/src/papita_txnsmodel/access/**"
       - "modules/web/openapi/**"
-      - "bin/export_openapi.py"
-      - "bin/export_openapi.sh"
+      - "bin/python/export_openapi.py"
+      - "bin/bash/export_openapi.sh"
       - ".github/workflows/openapi-contract.yml"
   push:
     branches:
@@ -24,8 +24,8 @@ on:
       - "modules/model/src/papita_txnsmodel/model/**"
       - "modules/model/src/papita_txnsmodel/access/**"
       - "modules/web/openapi/**"
-      - "bin/export_openapi.py"
-      - "bin/export_openapi.sh"
+      - "bin/python/export_openapi.py"
+      - "bin/bash/export_openapi.sh"
       - ".github/workflows/openapi-contract.yml"
   workflow_dispatch:
 
@@ -60,4 +60,4 @@ jobs:
         run: poetry install --no-interaction
 
       - name: Check committed OpenAPI artifact
-        run: /bin/bash ./bin/export_openapi.sh --check
+        run: ./bin/bash/export_openapi.sh --check

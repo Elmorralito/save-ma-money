@@ -7,7 +7,10 @@
 
 set -euo pipefail
 
-PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 cd "${PROJECT_PATH}"
 
 POETRY_ACTIVE="${POETRY_ACTIVE:-0}"
@@ -25,9 +28,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-# shellcheck source=bin/utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
 
 export PAPITA_ENV="${PAPITA_ENV_NAME}"
 ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV}")" || exit 1

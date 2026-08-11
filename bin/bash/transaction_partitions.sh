@@ -3,10 +3,10 @@
 # Ensure monthly transaction partitions exist and drop partitions older than retention.
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-source "${SCRIPT_DIR}/utils.sh"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+ROOT_DIR="$(resolve_repo_root)" || exit 1
 
 cd "${ROOT_DIR}"
 DATABASE_URL="${DATABASE_URL:-${DB_URL:-}}"

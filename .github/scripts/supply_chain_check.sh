@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1090,SC1091
 
-PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../../bin/utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
+# shellcheck source=../../bin/bash/utils.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/bash" && pwd)/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 cd "${PROJECT_PATH}" || exit
 

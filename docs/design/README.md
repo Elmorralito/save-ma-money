@@ -98,7 +98,7 @@ make api-up && make redis-smoke
 | ------------------------------ | ------------------------------------------------------------------ |
 | Redis image + volume           | `docker/docker-compose.yml` / `docker/database/docker-compose.yml` |
 | Server config (AOF, maxmemory) | `docker/redis/redis.conf`                                          |
-| Smoke                          | `bin/redis_smoke.sh` / `make redis-smoke`                          |
+| Smoke                          | `bin/bash/redis_smoke.sh` / `make redis-smoke`                     |
 
 **B1 — Managed Redis**
 
@@ -128,7 +128,7 @@ Not an epic acceptance gate. Auth MVP is Supabase Auth ([#49](https://github.com
 ```bash
 # Migrations (direct URL)
 set -a && source environments/staging/.env && set +a
-/bin/bash ./bin/alembic.sh upgrade --env staging --url "$DATABASE_URL_MIGRATIONS"
+./bin/bash/alembic.sh upgrade --env staging --url "$DATABASE_URL_MIGRATIONS"
 
 # Optional pooler smoke
 PAPITA_ENV=staging make b1-smoke

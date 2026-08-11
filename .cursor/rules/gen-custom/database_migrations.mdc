@@ -36,7 +36,7 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 
 ### Environment Configuration
 
-- Prefer `environments/<name>/.env` via `PAPITA_ENV` (default `local`) or `bin/alembic.sh --env <name>`.
+- Prefer `environments/<name>/.env` via `PAPITA_ENV` (default `local`) or `bin/bash/alembic.sh --env <name>`.
 - Primary URL: `DATABASE_URL` (PostgreSQL). Optional fall-back construction from `DB_DRIVER`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`, `DB_NAME`.
 - **B1 hosted Postgres:** migrate with the **direct** URL (`DATABASE_URL_MIGRATIONS`, port `:5432`). Never run Alembic through the transaction pooler (`:6543`).
 
@@ -53,13 +53,13 @@ NOTE: This rule file was generated or updated by the `/rules-architect` command.
 
 ```bash
 # Docker Postgres (local B0)
-/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
+./bin/bash/alembic.sh upgrade --env local --docker-rm
 
 # Explicit URL
-/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+./bin/bash/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 
 # B1 — direct migrations URL only
-PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
+PAPITA_ENV=staging ./bin/bash/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
 ```
 
 Operator notes: [`docs/design/README.md` § Ops](../../docs/design/README.md#optional-b1-hosted-postgres-pooler), [`environments/README.md`](../../environments/README.md).

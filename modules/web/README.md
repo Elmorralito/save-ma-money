@@ -62,11 +62,11 @@ Package-local: `pnpm --filter @papita/web <script>`.
 
 **Decision:** commit a schema artifact and generate TypeScript from that file. Web CI does **not** boot the API.
 
-| Layer        | Mechanism                                                                                   | Catches                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Artifact     | `modules/web/openapi/openapi.json`                                                          | Checked into git                                                                                                          |
-| Types        | `openapi-typescript` → `src/types/api.d.ts`                                                 | `pnpm web:check-types` in [web-ci.yml](../../.github/workflows/web-ci.yml)                                                |
-| API↔artifact | Offline `create_app().openapi()` via [`bin/export_openapi.py`](../../bin/export_openapi.py) | [openapi-contract.yml](../../.github/workflows/openapi-contract.yml) on `modules/api/src/**` + model `model/` / `access/` |
+| Layer        | Mechanism                                                                                                 | Catches                                                                                                                   |
+| ------------ | --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Artifact     | `modules/web/openapi/openapi.json`                                                                        | Checked into git                                                                                                          |
+| Types        | `openapi-typescript` → `src/types/api.d.ts`                                                               | `pnpm web:check-types` in [web-ci.yml](../../.github/workflows/web-ci.yml)                                                |
+| API↔artifact | Offline `create_app().openapi()` via [`bin/python/export_openapi.py`](../../bin/python/export_openapi.py) | [openapi-contract.yml](../../.github/workflows/openapi-contract.yml) on `modules/api/src/**` + model `model/` / `access/` |
 
 The exporter normalizes `info.version` so API package semver bumps alone do not force artifact regen. Optional `make sync-openapi-live` only allows `localhost` / `127.0.0.1`.
 
@@ -203,12 +203,12 @@ MVP vs deferred for Supabase Auth behind the BFF. Cookie posture above is unchan
 
 **Locked strategy: A — API seed script** (HTTP against running Compose API). Playwright `globalSetup` only invokes the seed; SQL dumps are out of scope.
 
-| Piece       | Location                                           | Notes                                                                 |
-| ----------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| Runner      | [`bin/web_e2e_seed.py`](../../bin/web_e2e_seed.py) | Bearer register/login → accounts → categories → optional baseline txn |
-| Wrapper     | [`bin/web_e2e_seed.sh`](../../bin/web_e2e_seed.sh) | Loads `environments/<env>/.env`; supports `RESET=1`                   |
-| Artifact    | `modules/web/e2e/.auth/seed.json`                  | **Gitignored** — email/password + IDs for Playwright                  |
-| Make / pnpm | `make web-e2e-seed` / `pnpm web:seed-e2e`          | Requires healthy API (`make api-all`)                                 |
+| Piece       | Location                                                         | Notes                                                                 |
+| ----------- | ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Runner      | [`bin/python/web_e2e_seed.py`](../../bin/python/web_e2e_seed.py) | Bearer register/login → accounts → categories → optional baseline txn |
+| Wrapper     | [`bin/bash/web_e2e_seed.sh`](../../bin/bash/web_e2e_seed.sh)     | Loads `environments/<env>/.env`; supports `RESET=1`                   |
+| Artifact    | `modules/web/e2e/.auth/seed.json`                                | **Gitignored** — email/password + IDs for Playwright                  |
+| Make / pnpm | `make web-e2e-seed` / `pnpm web:seed-e2e`                        | Requires healthy API (`make api-all`)                                 |
 
 **Why not B/C:** Seed logic must not live only inside Playwright (harder to run standalone). SQL fixtures bypass API validation and do not create auth users correctly for local/Supabase.
 
