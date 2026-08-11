@@ -77,6 +77,15 @@ class TransactionStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class IngestionSource(str, Enum):
+    """How a posted transaction entered the ledger (PPT-078 provenance)."""
+
+    MANUAL = "MANUAL"
+    CSV = "CSV"
+    EMAIL = "EMAIL"
+    API = "API"
+
+
 class RealEstateOwnership(str, Enum):
     """Real estate ownership mode."""
 

@@ -79,12 +79,14 @@ class Upserter(metaclass=abc.ABCMeta):
 
     _insert: Callable
     _pks: set[str]
+    _conflict_index_where: Any | None
+    _immutable_update_columns: set[str]
     _upsert_method: Callable[[Any, Engine | Connection, Sequence[str], Iterator], int]
     _table_cols: Sequence[str]
     _table_name: str = ""
 
     @classmethod
-    def upsert(
+    def upsert(  # pylint: disable=too-many-arguments
         cls,
         *,
         schema_name: str,
@@ -93,6 +95,9 @@ class Upserter(metaclass=abc.ABCMeta):
         df: pd.DataFrame,
         db_session: Session,
         on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
+        conflict_index_elements: Sequence[str] | None = None,
+        conflict_index_where: Any | None = None,
+        immutable_update_columns: Sequence[str] | None = None,
         **to_sql_kwargs,
     ) -> int:
         """
@@ -105,6 +110,9 @@ class Upserter(metaclass=abc.ABCMeta):
             df (pd.DataFrame): DataFrame containing the data to upsert.
             db_session (DBSession): SQLAlchemy session object.
             on_conflict_do (OnUpsertConflictDo): Action to take on conflict.
+            conflict_index_elements: Alternate unique columns for ON CONFLICT (defaults to ``pks``).
+            conflict_index_where: Optional partial-index predicate for ON CONFLICT.
+            immutable_update_columns: Columns excluded from ON CONFLICT DO UPDATE SET.
             **to_sql_kwargs: Additional arguments for the `to_sql` method.
 
         Returns:
@@ -114,7 +122,12 @@ class Upserter(metaclass=abc.ABCMeta):
             AssertionError: If the SQL dialect is not supported.
         """
         assert db_session.bind.dialect.name == cls.__supported_dialect__, "Dialect not supported."
-        cls._pks = set(list(pks))
+        conflict_keys = list(conflict_index_elements) if conflict_index_elements is not None else list(pks)
+        if not conflict_keys:
+            raise ValueError("Upsert requires primary keys or conflict_index_elements.")
+        cls._pks = set(conflict_keys)
+        cls._conflict_index_where = conflict_index_where
+        cls._immutable_update_columns = set(immutable_update_columns or ())
         cls._upsert_method = getattr(cls, f"_on_conflict_do_{on_conflict_do.value.lower()}")
         match table:
             case str():
@@ -307,7 +320,10 @@ class PostgreSQLUpserter(Upserter):
         except Exception:
             data_ = [dict(zip(keys, row)) for row in data_iter]
 
-        stmt = cls._insert(getattr(table, "table", table)).values(data_).on_conflict_do_nothing(index_elements=cls._pks)
+        conflict_kwargs: dict[str, Any] = {"index_elements": list(cls._pks)}
+        if getattr(cls, "_conflict_index_where", None) is not None:
+            conflict_kwargs["index_where"] = cls._conflict_index_where
+        stmt = cls._insert(getattr(table, "table", table)).values(data_).on_conflict_do_nothing(**conflict_kwargs)
         result = conn.execute(stmt)
         try:
             return result.rowcount
@@ -334,10 +350,14 @@ class PostgreSQLUpserter(Upserter):
             data_ = [dict(zip(keys, row)) for row in data_iter]
 
         stmt = cls._insert(getattr(table, "table", table)).values(data_)
-        stmt = stmt.on_conflict_do_update(
-            index_elements=cls._pks,
-            set_={key: getattr(stmt.excluded, key) for key in set(stmt.excluded.keys()) - set(cls._pks)},
-        )
+        excluded_from_set = set(cls._pks) | getattr(cls, "_immutable_update_columns", set())
+        conflict_kwargs: dict[str, Any] = {
+            "index_elements": list(cls._pks),
+            "set_": {key: getattr(stmt.excluded, key) for key in set(stmt.excluded.keys()) - excluded_from_set},
+        }
+        if getattr(cls, "_conflict_index_where", None) is not None:
+            conflict_kwargs["index_where"] = cls._conflict_index_where
+        stmt = stmt.on_conflict_do_update(**conflict_kwargs)
         result = conn.execute(stmt)
         try:
             return result.rowcount
@@ -360,7 +380,7 @@ class DuckDBUpserter(PostgreSQLUpserter):
         _warn_duckdb_upserter_deprecated()
 
     @classmethod
-    def upsert(
+    def upsert(  # pylint: disable=too-many-arguments
         cls,
         *,
         schema_name: str,
@@ -369,6 +389,9 @@ class DuckDBUpserter(PostgreSQLUpserter):
         df: pd.DataFrame,
         db_session: Session,
         on_conflict_do: OnUpsertConflictDo = OnUpsertConflictDo.NOTHING,
+        conflict_index_elements: Sequence[str] | None = None,
+        conflict_index_where: Any | None = None,
+        immutable_update_columns: Sequence[str] | None = None,
         **to_sql_kwargs,
     ) -> int:
         """[DEPRECATED]
@@ -381,6 +404,9 @@ class DuckDBUpserter(PostgreSQLUpserter):
             df (pd.DataFrame): DataFrame containing the data to upsert.
             db_session (DBSession): SQLAlchemy session object.
             on_conflict_do (OnUpsertConflictDo): Action to take on conflict.
+            conflict_index_elements: Alternate unique columns for ON CONFLICT.
+            conflict_index_where: Optional partial-index predicate for ON CONFLICT.
+            immutable_update_columns: Columns excluded from ON CONFLICT DO UPDATE SET.
             **to_sql_kwargs: Additional arguments for the `to_sql` method.
 
         Returns:
@@ -394,6 +420,9 @@ class DuckDBUpserter(PostgreSQLUpserter):
             df=df,
             db_session=db_session,
             on_conflict_do=on_conflict_do,
+            conflict_index_elements=conflict_index_elements,
+            conflict_index_where=conflict_index_where,
+            immutable_update_columns=immutable_update_columns,
             **to_sql_kwargs,
         )
 

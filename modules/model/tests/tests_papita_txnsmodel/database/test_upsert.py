@@ -111,6 +111,29 @@ class TestUpserter:
             mock_fallback.assert_called_once()
         Upserter.__supported_dialect__ = ""
 
+    def test_upsert_accepts_alternate_conflict_index(self, mock_session, sample_dataframe):
+        """PPT-078: conflict_index_elements / immutable columns configure ON CONFLICT."""
+        Upserter.__supported_dialect__ = "postgresql"
+        with patch.object(Upserter, "_upsert_fallback", return_value=1) as mock_fallback:
+            result = Upserter.upsert(
+                schema_name="test_schema",
+                table="test_table",
+                pks=["id"],
+                df=sample_dataframe,
+                db_session=mock_session,
+                conflict_index_elements=["owner_id", "ingestion_source", "source_ref"],
+                conflict_index_where="source_ref IS NOT NULL",
+                immutable_update_columns=["transaction_id", "transaction_ts"],
+            )
+            assert result == 1
+            mock_fallback.assert_called_once()
+        assert Upserter._pks == {"owner_id", "ingestion_source", "source_ref"}
+        assert Upserter._conflict_index_where == "source_ref IS NOT NULL"
+        assert Upserter._immutable_update_columns == {"transaction_id", "transaction_ts"}
+        Upserter.__supported_dialect__ = ""
+        Upserter._conflict_index_where = None
+        Upserter._immutable_update_columns = set()
+
     def test_upsert_handles_table_object(self, mock_session, sample_dataframe, mock_table):
         """Test that upsert correctly handles SQLAlchemy Table object."""
         Upserter.__supported_dialect__ = "postgresql"
@@ -246,6 +269,8 @@ class TestPostgreSQLUpserter:
     def test_on_conflict_do_update_executes_update_statement(self, mock_insert, mock_engine):
         """Test that _on_conflict_do_update executes PostgreSQL update statement."""
         PostgreSQLUpserter._pks = {"id"}
+        PostgreSQLUpserter._conflict_index_where = None
+        PostgreSQLUpserter._immutable_update_columns = set()
         mock_table = MagicMock()
         mock_table.table = mock_table
         mock_stmt = MagicMock()
@@ -263,6 +288,39 @@ class TestPostgreSQLUpserter:
 
         assert result == 2
         mock_engine.execute.assert_called_once()
+        _, kwargs = mock_stmt.on_conflict_do_update.call_args
+        assert "index_where" not in kwargs
+        assert set(kwargs["set_"]) == {"name", "value"}
+
+    @patch("papita_txnsmodel.database.upsert.PostgreSQLUpserter._insert")
+    def test_on_conflict_do_update_honors_immutable_and_partial_index(self, mock_insert, mock_engine):
+        """PPT-078: immutable columns and index_where are passed through."""
+        PostgreSQLUpserter._pks = {"owner_id", "source_ref"}
+        PostgreSQLUpserter._conflict_index_where = "source_ref IS NOT NULL"
+        PostgreSQLUpserter._immutable_update_columns = {"transaction_ts"}
+        mock_table = MagicMock()
+        mock_table.table = mock_table
+        mock_stmt = MagicMock()
+        mock_insert.return_value = mock_stmt
+        mock_stmt.values.return_value = mock_stmt
+        mock_stmt.excluded = MagicMock()
+        mock_stmt.excluded.keys.return_value = ["owner_id", "source_ref", "transaction_ts", "active"]
+        mock_stmt.on_conflict_do_update.return_value = mock_stmt
+        mock_result = MagicMock()
+        mock_result.rowcount = 1
+        mock_engine.execute.return_value = mock_result
+        data_iter = iter([{"owner_id": 1, "source_ref": "a", "transaction_ts": "t", "active": True}])
+
+        result = PostgreSQLUpserter._on_conflict_do_update(
+            mock_table, mock_engine, ["owner_id", "source_ref", "transaction_ts", "active"], data_iter
+        )
+
+        assert result == 1
+        _, kwargs = mock_stmt.on_conflict_do_update.call_args
+        assert kwargs["index_where"] == "source_ref IS NOT NULL"
+        assert set(kwargs["set_"]) == {"active"}
+        PostgreSQLUpserter._conflict_index_where = None
+        PostgreSQLUpserter._immutable_update_columns = set()
 
     @patch("papita_txnsmodel.database.upsert.PostgreSQLUpserter._insert")
     def test_on_conflict_do_update_returns_negative_one_on_error(self, mock_insert, mock_engine):
