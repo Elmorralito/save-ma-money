@@ -62,9 +62,39 @@ target_metadata = SQLModel.metadata
 logger = logging.getLogger("alembic.env")
 
 
+# DB-only CHECK constraints (DDL in migrations / partition helpers; not on SQLModel tables).
+_KNOWN_DB_ONLY_CHECK_CONSTRAINTS = frozenset(
+    {
+        "chk_transaction_kind_accounts",
+        "chk_financing_share",
+        "accounts_ledger_side_matches_kind",
+    }
+)
+
+
+def _fk_refers_to_transactions_partition(object_) -> bool:
+    """Return True when a reflected FK targets a monthly transactions partition."""
+    referred = getattr(object_, "referred_table", None)
+    if referred is not None and is_transactions_partition_table(getattr(referred, "name", None) or ""):
+        return True
+    for element in getattr(object_, "elements", ()) or ():
+        column = getattr(element, "column", None)
+        table = getattr(column, "table", None) if column is not None else None
+        if table is not None and is_transactions_partition_table(getattr(table, "name", None) or ""):
+            return True
+    return False
+
+
 def include_object(object_, name, type_, reflected, compare_to):
-    """Ignore monthly child partitions when autogenerating or running alembic check."""
+    """Ignore partition noise and known DB-only CHECKs during alembic check/autogenerate."""
     if type_ == "table" and is_transactions_partition_table(name):
+        return False
+    # FK to a partitioned parent is reflected once per child partition; keep the parent FK only.
+    if type_ == "foreign_key_constraint" and _fk_refers_to_transactions_partition(object_):
+        return False
+    if type_ == "unique_constraint" and _fk_refers_to_transactions_partition(object_):
+        return False
+    if type_ == "check_constraint" and name in _KNOWN_DB_ONLY_CHECK_CONSTRAINTS:
         return False
     return True
 

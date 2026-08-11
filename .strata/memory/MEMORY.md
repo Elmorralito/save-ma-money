@@ -4,9 +4,9 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — PPT-070 / #163 closed (dues #164–#168 on main); see Part VIII index.
-- [Active issues](../issues/ACTIVE.md) — refresh against GitHub; prefer project_state for in-flight PR.
-- [Open backlog](../issues/OPEN.md) — PPT-070 children when starting dues work.
+- [Project state](project_state.md) — PPT-078 / #172 in progress (provenance bridge); PPT-070 closed.
+- [Active issues](../issues/ACTIVE.md) — prefer project_state for in-flight PR (PPT-078).
+- [Open backlog](../issues/OPEN.md) — PPT-076 epic children after #172.
 - Closed work — GitHub issues + `git log` (no `.strata/issues/archive/`).
 
 ## Rules by trigger
@@ -24,3 +24,4 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 | Add transactions/movements/bulk UI in `modules/web`          | [web-ledger-ui-no-domain.md](learnings/web-ledger-ui-no-domain.md)           |
 | Add or refactor SPA forms / Zod / RHF / mutation errors      | [web-forms-ux-kit.md](learnings/web-forms-ux-kit.md)                         |
 | Add Playwright / web-e2e / Vitest coverage for `modules/web` | [web-e2e-ppt056.md](learnings/web-e2e-ppt056.md)                             |
+| Add ingest uniqueness / ledger upsert conflict keys          | [ingestion-provenance-sidecar.md](learnings/ingestion-provenance-sidecar.md) |
