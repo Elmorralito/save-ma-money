@@ -85,16 +85,16 @@ A second pass against the live codebase identified **gaps not fully covered** in
 
 #### Highest-risk gaps (must resolve before #25)
 
-| Priority | Gap                                                                                                            | Impact if ignored                                |
-| -------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| P0       | Auth not wired (`AuthSecurityManager` has no credential verifier; `PasswordManagerFactory` never bootstrapped) | Register/login will fail at runtime              |
-| P0       | `TypesDTO` deterministic IDs ignore `owner_id` + global unique `name`                                          | Cross-tenant type ID collisions                  |
-| P0       | API spec fields absent from model (`balance`, `currency`, `category_type`, `transaction_type`, etc.)           | Phantom columns or broken endpoints              |
-| P1       | Pre-user PostgreSQL data: `owner_id NOT NULL` migrations without backfill                                      | `./bin/alembic.sh upgrade` fails on legacy dumps |
-| P1       | `/reports/*` in spec with no read-model strategy                                                               | MVP item #5 cannot be implemented                |
-| P1       | Dual API specs (`API_Endpoints.md.md` + `API_Documentation.md.md`)                                             | Implementers follow conflicting sources          |
-| P2       | Package version drift ([#11](https://github.com/Elmorralito/save-ma-money/issues/11))                          | v3 model/API releases out of sync                |
-| P2       | CI has no Alembic PostgreSQL gate                                                                              | Schema regressions ship undetected               |
+| Priority | Gap                                                                                                            | Impact if ignored                                     |
+| -------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| P0       | Auth not wired (`AuthSecurityManager` has no credential verifier; `PasswordManagerFactory` never bootstrapped) | Register/login will fail at runtime                   |
+| P0       | `TypesDTO` deterministic IDs ignore `owner_id` + global unique `name`                                          | Cross-tenant type ID collisions                       |
+| P0       | API spec fields absent from model (`balance`, `currency`, `category_type`, `transaction_type`, etc.)           | Phantom columns or broken endpoints                   |
+| P1       | Pre-user PostgreSQL data: `owner_id NOT NULL` migrations without backfill                                      | `./bin/bash/alembic.sh upgrade` fails on legacy dumps |
+| P1       | `/reports/*` in spec with no read-model strategy                                                               | MVP item #5 cannot be implemented                     |
+| P1       | Dual API specs (`API_Endpoints.md.md` + `API_Documentation.md.md`)                                             | Implementers follow conflicting sources               |
+| P2       | Package version drift ([#11](https://github.com/Elmorralito/save-ma-money/issues/11))                          | v3 model/API releases out of sync                     |
+| P2       | CI has no Alembic PostgreSQL gate                                                                              | Schema regressions ship undetected                    |
 
 #### Sub-issues (created)
 
@@ -296,7 +296,7 @@ Before implementing [#25](https://github.com/Elmorralito/save-ma-money/issues/25
 - Provide backfill SQL/scripts for `accounts_indexer` → simplified account structure.
 - **FR-14:** Legacy `owner_id` backfill for pre-#26 PostgreSQL data (default user seed or documented wipe-and-reload).
 - Run regression on model handlers and `modules/model/tests/`.
-- Validate `./bin/alembic.sh upgrade` on **Docker Postgres** and **Supabase** connection strings.
+- Validate `./bin/bash/alembic.sh upgrade` on **Docker Postgres** and **Supabase** connection strings.
 - Regenerate PostgreSQL ER diagram. [#17](https://github.com/Elmorralito/save-ma-money/issues/17) (DuckDB FK gaps) is **superseded** by this platform decision.
 
 ---
@@ -623,7 +623,7 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 **Developer notes:**
 
 - Name migrations with date prefix convention already in repo.
-- Test: `./bin/alembic.sh upgrade` and `downgrade -1` on Docker Postgres and Supabase staging.
+- Test: `./bin/bash/alembic.sh upgrade` and `downgrade -1` on Docker Postgres and Supabase staging.
 - Large data backfills: separate data migration script, not only DDL.
 - Remove or deprecate DuckDB-specific Alembic branches in a follow-up cleanup PR (out of PPT-031 design scope).
 
@@ -717,7 +717,7 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 
 **Developer notes:**
 
-- After v3 migration, run `./bin/alembic.sh upgrade` against Docker Postgres and Supabase staging.
+- After v3 migration, run `./bin/bash/alembic.sh upgrade` against Docker Postgres and Supabase staging.
 - Regenerate ER diagram; verify all expected FKs exist.
 - Supersedes [#17](https://github.com/Elmorralito/save-ma-money/issues/17) (DuckDB FK gaps — no longer applicable).
 
@@ -741,7 +741,7 @@ The API spec lists read-only reports that require aggregation, not CRUD tables.
 
 **Requirement:** CI must reflect modules that exist and gate schema changes on PostgreSQL where feasible.
 
-**Why:** Root `pyproject.toml` references `./modules/api/tests` and `./modules/registrar/tests` but only `modules/model/tests/` exists. No CI job runs `./bin/alembic.sh upgrade` on PostgreSQL.
+**Why:** Root `pyproject.toml` references `./modules/api/tests` and `./modules/registrar/tests` but only `modules/model/tests/` exists. No CI job runs `./bin/bash/alembic.sh upgrade` on PostgreSQL.
 
 **Developer notes:**
 
@@ -862,7 +862,7 @@ Tracks **E** (auth) and **F** (reports) are scoped in this issue; implement via 
 - Settings: `modules/api/src/papita_txnsapi/config/settings.py`
 - Auth: `modules/api/src/papita_txnsapi/core/security.py`
 - ER (current): `docs/postgres_papita_transactions.png`
-- Alembic: `modules/model/alembic/`, `bin/alembic.sh`
+- Alembic: `modules/model/alembic/`, `bin/bash/alembic.sh`
 
 ---
 
@@ -912,10 +912,10 @@ Canonical reissue write-up: [Part IV](#part-iv--ppt-039-supabase-auth-reissue-49
 | Status         | Detail                                                                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Supported**  | **PostgreSQL only** — Docker Postgres locally (B0); Supabase for hosted/staging/production (B1)                                                                                |
-| **Deprecated** | DuckDB file/in-memory backends, `DuckDBUpserter` (runtime rejection via `UpserterFactory`), `bin/setup_duckdb.py`, and connector fallbacks that default to `duckdb://`         |
+| **Deprecated** | DuckDB file/in-memory backends, `DuckDBUpserter` (runtime rejection via `UpserterFactory`), `bin/python/setup_duckdb.py`, and connector fallbacks that default to `duckdb://`  |
 | **Superseded** | [#17](https://github.com/Elmorralito/save-ma-money/issues/17) (DuckDB FK gaps) — Postgres FK validation lives in [#34](https://github.com/Elmorralito/save-ma-money/issues/34) |
 
-Legacy DuckDB code may remain in the repo until a cleanup PR removes it; that removal is **out of scope** for this decision record. **All new configuration must use `postgresql+psycopg2://` URLs** (see §2). Legacy tooling still referencing DuckDB (not authoritative): `bin/alembic.sh` (`--duckdb-path`), `modules/model/alembic/env.py` (`AlembicDuckDBImpl`), and `SQLDatabaseConnector` fallback when `DATABASE_URL` is unset (see §4.1).
+Legacy DuckDB code may remain in the repo until a cleanup PR removes it; that removal is **out of scope** for this decision record. **All new configuration must use `postgresql+psycopg2://` URLs** (see §2). Legacy tooling still referencing DuckDB (not authoritative): `bin/bash/alembic.sh` (`--duckdb-path`), `modules/model/alembic/env.py` (`AlembicDuckDBImpl`), and `SQLDatabaseConnector` fallback when `DATABASE_URL` is unset (see §4.1).
 
 ~~Former option: Self-hosted Postgres + DuckDB~~ — **removed permanently**. Do not document, evaluate, or recommend DuckDB paths.
 
@@ -1029,13 +1029,13 @@ DATABASE_URL="postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabas
 
 #### 2.3 SQLAlchemy engine guidance
 
-| Concern             | Transaction pooler (6543)                                                                                                                                   | Session / direct (5432)                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| Connection pooling  | Modest `pool_size=DATABASE_POOL_SIZE` (default 5) + `max_overflow=0` on pooler URLs (PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)) | Standard SQLAlchemy pool                    |
-| Prepared statements | **psycopg2** (current driver): modest QueuePool is the default; switch to `NullPool` if PgBouncer timeouts appear; `prepare_threshold` is **psycopg3 only** | Default OK                                  |
-| Health checks       | `pool_pre_ping=True` on API engine (wired in Settings → `establish`, PPT-039)                                                                               | Same                                        |
-| Migrations          | **Avoid** transaction pooler — use direct URL or session mode                                                                                               | **Required** for `./bin/alembic.sh upgrade` |
-| SSL                 | Supabase requires TLS in production                                                                                                                         | Add `?sslmode=require` if not implicit      |
+| Concern             | Transaction pooler (6543)                                                                                                                                   | Session / direct (5432)                          |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Connection pooling  | Modest `pool_size=DATABASE_POOL_SIZE` (default 5) + `max_overflow=0` on pooler URLs (PPT-039 [#49](https://github.com/Elmorralito/save-ma-money/issues/49)) | Standard SQLAlchemy pool                         |
+| Prepared statements | **psycopg2** (current driver): modest QueuePool is the default; switch to `NullPool` if PgBouncer timeouts appear; `prepare_threshold` is **psycopg3 only** | Default OK                                       |
+| Health checks       | `pool_pre_ping=True` on API engine (wired in Settings → `establish`, PPT-039)                                                                               | Same                                             |
+| Migrations          | **Avoid** transaction pooler — use direct URL or session mode                                                                                               | **Required** for `./bin/bash/alembic.sh upgrade` |
+| SSL                 | Supabase requires TLS in production                                                                                                                         | Add `?sslmode=require` if not implicit           |
 
 **Implementation note (PPT-039):** API `Settings` passes `pool_pre_ping=True`, `pool_size=DATABASE_POOL_SIZE`, and (on transaction-pooler URLs) `max_overflow=0` into `SQLDatabaseConnector.establish()`. Use `DATABASE_URL_MIGRATIONS` for Alembic-only direct connections while the API uses the transaction pooler. Checklist: [`docs/design/README.md` § Ops](../design/README.md#optional-b1-hosted-postgres-pooler).
 
@@ -1045,7 +1045,7 @@ DATABASE_URL="postgresql+psycopg2://postgres:<password>@db.<project-ref>.supabas
 
 Template: [`environments/<name>/.env.example`](../../environments/README.md) — **copy to `environments/<name>/.env`** and set `PAPITA_ENV`. **Never commit real `.env` files.**
 
-`papita_txnsapi.Settings` loads from `environments/$PAPITA_ENV/.env`. Alembic / Docker use the same file via `bin/alembic.sh --env` and `docker compose --env-file`.
+`papita_txnsapi.Settings` loads from `environments/$PAPITA_ENV/.env`. Alembic / Docker use the same file via `bin/bash/alembic.sh --env` and `docker compose --env-file`.
 
 #### 3.1 Variable reference
 
@@ -1298,12 +1298,12 @@ Design tracks A–E are complete under PPT-031 (#30, #31, #32, #33, #34). **PPT-
 
 ### Platform integration model
 
-| Layer           | Local / CI                     | Staging / prod                            | Deferred                   |
-| --------------- | ------------------------------ | ----------------------------------------- | -------------------------- |
-| **Database**    | Docker Postgres 15             | Any Postgres URL (Supabase PG _optional_) | —                          |
-| **API runtime** | FastAPI + Uvicorn              | Same app                                  | —                          |
-| **Auth (MVP)**  | Supabase Auth (JWT verify)     | Supabase Auth                             | Extra OAuth providers      |
-| **Migrations**  | `./bin/alembic.sh --env local` | Direct Postgres URL                       | RLS policy migrations (B3) |
+| Layer           | Local / CI                          | Staging / prod                            | Deferred                   |
+| --------------- | ----------------------------------- | ----------------------------------------- | -------------------------- |
+| **Database**    | Docker Postgres 15                  | Any Postgres URL (Supabase PG _optional_) | —                          |
+| **API runtime** | FastAPI + Uvicorn                   | Same app                                  | —                          |
+| **Auth (MVP)**  | Supabase Auth (JWT verify)          | Supabase Auth                             | Extra OAuth providers      |
+| **Migrations**  | `./bin/bash/alembic.sh --env local` | Direct Postgres URL                       | RLS policy migrations (B3) |
 
 **Rule:** Domain sub-issues validate on Docker Postgres (B0). Staging Auth must validate **Supabase Auth JWTs** (PPT-039). Supabase-hosted Postgres is **not** an epic gate.
 
@@ -1519,7 +1519,7 @@ Replace local HS256 issuance (`AuthSecurityManager` + `JWT_SECRET_KEY`) with **S
 | -------------- | -------------------------------------- | ------------------------------------------------------------------------ |
 | **Database**   | Docker Postgres (or any PG URL)        | Same app; **any** hosted Postgres (Supabase PG _optional_, not required) |
 | **Auth**       | Supabase Auth (project or local stack) | Supabase Auth                                                            |
-| **Migrations** | `./bin/alembic.sh --env local`         | Direct PG URL — independent of Auth                                      |
+| **Migrations** | `./bin/bash/alembic.sh --env local`    | Direct PG URL — independent of Auth                                      |
 
 ### Disposition of prior B1 DB work (landed)
 

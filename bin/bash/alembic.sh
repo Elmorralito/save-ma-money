@@ -8,10 +8,12 @@ ENV_FILE=
 PAPITA_ENV_NAME=
 ALEMBIC_VERSION=
 MESSAGE=
-PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
 DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
-source "${PROJECT_PATH}/bin/utils.sh"
 
 usage() {
     USAGE="$(cat <<EOM

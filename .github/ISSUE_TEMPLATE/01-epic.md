@@ -26,7 +26,7 @@ References: #42 (PPT-032 epic shape).
 | **Database**    | Docker Postgres 15 (B0)              | <!-- URL strategy --> | <!-- e.g. RLS B3 --> |
 | **API runtime** | <!-- FastAPI + uvicorn -->           | Same app              | —                    |
 | **Auth (MVP)**  | <!-- Supabase Auth / local tests --> | <!-- -->              | <!-- -->             |
-| **Migrations**  | `./bin/alembic.sh --env local`       | Direct Postgres URL   | <!-- -->             |
+| **Migrations**  | `./bin/bash/alembic.sh --env local`  | Direct Postgres URL   | <!-- -->             |
 
 **Rule:** <!-- e.g. Domain children validate on B0; Supabase Auth for staging Auth; pooler PG not an epic gate. -->
 

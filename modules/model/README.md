@@ -160,7 +160,7 @@ flowchart TB
 SQLModel tables on **`BaseSQLModel`**: `active`, `deleted_at`, `created_at`, `updated_at`, schema `papita_transactions`.
 
 - Enums in `model/enums.py` — `AccountKind`, `LedgerSide`, `TransactionKind`, `TransactionStatus`, `CategoryKind`
-- **Partitioning** — `transactions` uses monthly RANGE partitions (`config/transaction_partitions.py`; ops script `bin/transaction_partitions.sh`)
+- **Partitioning** — `transactions` uses monthly RANGE partitions (`config/transaction_partitions.py`; ops script `bin/bash/transaction_partitions.sh`)
 - **Intentional denormalizations** — e.g. `transactions.owner_id` for hot-path tenant scans; documented in schema §6
 
 ### 2. Access layer (`src/papita_txnsmodel/access/`)
@@ -342,7 +342,7 @@ txns.upsert_records(
 
 **PyPI name:** [`papita-transactions-model`](https://pypi.org/project/papita-transactions-model/) · **Import:** `papita_txnsmodel` · **Requires:** Python `>=3.10,<3.15`
 
-The published wheel is the **importable library**. Alembic migrations stay in this git checkout (`modules/model/alembic/`) and are applied with [`bin/alembic.sh`](../../bin/alembic.sh) (or Docker) from the monorepo — they are not a separate installable console script in the wheel.
+The published wheel is the **importable library**. Alembic migrations stay in this git checkout (`modules/model/alembic/`) and are applied with [`bin/bash/alembic.sh`](../../bin/bash/alembic.sh) (or Docker) from the monorepo — they are not a separate installable console script in the wheel.
 
 ### Quick start (PyPI)
 
@@ -406,9 +406,9 @@ pip install \
 2. From a **clone of this repository**, run migrations (wheel alone does not ship runnable Alembic env wiring for ops):
 
 ```bash
-/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
+./bin/bash/alembic.sh upgrade --docker-local --docker-rm
 # or:
-/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+./bin/bash/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 ```
 
 3. Establish the connector in application code (see [Database integration](#database-integration)).
@@ -439,11 +439,11 @@ fix(model): correct soft-delete filter
 
 ```bash
 # From repository root — model-only sdist + wheel → dist/
-./bin/package.sh --mod model
+./bin/bash/package.sh --mod model
 # or: make package-model
 
 # Manual version bump (escape hatch; prefer PSR on main)
-./bin/version.sh --mod model --version 1.0.2 --skip-install
+./bin/bash/version.sh --mod model --version 1.0.2 --skip-install
 
 # Local smoke
 python -m venv /tmp/model-smoke
@@ -451,7 +451,7 @@ python -m venv /tmp/model-smoke
 /tmp/model-smoke/bin/python -c "import papita_txnsmodel; print(papita_txnsmodel.__version__)"
 ```
 
-`bin/package.sh` prefers the `poetry` CLI on `PATH` (as in CI via `snok/install-poetry`), with a `python -m poetry` fallback.
+`bin/bash/package.sh` prefers the `poetry` CLI on `PATH` (as in CI via `snok/install-poetry`), with a `python -m poetry` fallback.
 
 #### Release triggers
 
@@ -493,11 +493,11 @@ Alembic targets schema `papita_transactions` on PostgreSQL. v3 seed baseline: **
 
 ```bash
 # From repository root — Docker Postgres
-/bin/bash ./bin/alembic.sh upgrade --docker-local --docker-rm
+./bin/bash/alembic.sh upgrade --docker-local --docker-rm
 
 # Explicit URL (local or Supabase session/direct — not transaction pooler)
-/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
-/bin/bash ./bin/alembic.sh downgrade --url "..."   # defaults to head^1
+./bin/bash/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+./bin/bash/alembic.sh downgrade --url "..."   # defaults to head^1
 ```
 
 Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [`docker/database/docker-compose.yml`](../../docker/database/docker-compose.yml).
@@ -521,7 +521,7 @@ Environment templates: [`.env.example`](../../.env.example) · Docker Compose: [
 ```bash
 # Standard gate (from repo root)
 poetry run pytest modules/model/tests
-/bin/bash ./bin/test.sh
+./bin/bash/test.sh
 
 # Live-DB tenancy suite
 DATABASE_URL="postgresql+psycopg2://user:pass@localhost:5435/papita" \

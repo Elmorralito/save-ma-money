@@ -20,6 +20,8 @@ Poetry workspace (`package-mode = false` at root) for Python packages, plus a pn
 | `modules/model/` | `papita-transactions-model` | `papita_txnsmodel` | Active; published to PyPI / TestPyPI |
 | `modules/api/` | `papita-transactions-api` | `papita_txnsapi` | Active FastAPI MVP (PPT-032) |
 | `modules/web/` | `@papita/web` | (Vite/React app; `@/*` alias) | Active SPA (PPT-046 / #112); presentation only — **no JS domain logic** |
+| `modules/ingestor-core/` | `papita-ingestor-core` | `papita_ingestor_core` | Scaffold (PPT-077 / #171); contracts only — plugins under `modules/ingestors/` |
+| `modules/ingestors/email/` | `papita-ingestor-email` | `papita_ingestor_email` | Scaffold (PPT-077 / #171); Gmail plugin shell — **no OAuth/parsers yet** |
 
 **Database:** PostgreSQL only. Schema: `papita_transactions`.
 
@@ -76,7 +78,8 @@ modules/web/
 
 - Absolute imports from package roots: `from papita_txnsmodel.access.accounts.dto import AccountDTO`.
 - Add `src/` to `sys.path` in tests via `conftest.py` / pytest config.
-- isort `known_first_party`: `papita_txnsapi`, `papita_txnsmodel`.
+- isort `known_first_party`: `papita_txnsapi`, `papita_txnsmodel`, `papita_ingestor_core`, `papita_ingestor_email`.
+- Ingestor graph (one-way): plugins → `papita_ingestor_core` → `papita_txnsmodel`. API/web must not import plugins.
 
 ### Environments and secrets
 
@@ -85,12 +88,25 @@ modules/web/
 - Select with `PAPITA_ENV` (default `local`) or `--env` on `bin/` scripts.
 - Supabase is **Auth-only** for MVP (`AUTH_PROVIDER=supabase`); `AUTH_PROVIDER=local` is B0 pytest only.
 
-### Repo scripts (`bin/`)
+### Repo scripts (`bin/` by language)
 
 Developer/ops entrypoints (CI wrappers stay under `.github/scripts/`):
 
-- `alembic.sh`, `test.sh`, `package.sh`, `utils.sh`, `version.sh`
-- Smokes: `auth_smoke.sh`, `b1_smoke.sh`, `redis_smoke.sh`
+| Folder | Contents |
+| ------ | -------- |
+| `bin/bash/` | Shell entrypoints: `alembic.sh`, `test.sh`, `package.sh`, `utils.sh` (`resolve_repo_root`), smokes, OpenAPI/E2E wrappers |
+| `bin/python/` | Python helpers: `export_openapi.py`, `web_e2e_seed.py`, legacy `setup_duckdb.py` (each uses `resolve_repo_root()`) |
+| `bin/make/` | Make fragments included from root `Makefile` (`./bin/bash/…` invocations) |
+
+### Make fragments (`bin/make/*.mk`)
+
+| File | Role |
+| ---- | ---- |
+| `bin/make/api.mk` | API Compose/runtime targets (`api-up`, `api-all`, smokes); path filter for `publish-api-image.yml` |
+| `bin/make/web.mk` | Web SPA targets; path filter for `web-ci.yml` |
+| `bin/make/ingestor.mk` | `ingestor-install` / `ingestor-test` / `ingestor-lint`; path filter for `ingestor-ci.yml` |
+
+Root `Makefile` includes all three. Do not retarget domain CI to the whole root Makefile.
 
 ### Docker / Compose
 
@@ -130,5 +146,5 @@ Canonical B0 API start: `make api-up` (uvicorn in-container). nginx SPA: `make w
 ### Code Quality
 
 - Pre-commit: Black, isort, mypy, pylint, flake8, pytest; interrogate target 90%+.
-- Coverage: `docs/coverage.xml` from `modules/{model,api}/src`.
+- Coverage: `docs/coverage.xml` from `modules/{model,api}/src` (ingestor ≥80% deferred to PPT-084 / #178; gate is `ingestor-ci.yml`).
 - Semantic versioning in `__meta__.py` / module `pyproject.toml`.

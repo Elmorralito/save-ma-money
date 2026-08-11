@@ -1,25 +1,22 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC1091
 
-
 AWS_MFA_DURATION=43200
 ADDRESSING_STYLE=path
 
 usage() {
-    echo "Usage: $0 [-d <aws_mfa_duration>] [-f] [-s <addressing_style>] [-p <project_path>]"
+    echo "Usage: $0 [-d <aws_mfa_duration>] [-f] [-s <addressing_style>] [-b <project_path>] [-p <aws_profile>]"
     echo "  -d: Set AWS MFA duration (default: 43200 seconds)"
     echo "  -f: Force reload of MFA credentials"
     echo "  -s: Set S3 addressing style (default: path)"
-    echo "  -p: Specify project path"
+    echo "  -b: Override project/repo path (default: auto-detected)"
+    echo "  -p: AWS profile name"
 }
 
-source "${PROJECT_PATH}/bin/utils.sh"
-POETRY_ACTIVE="${POETRY_ACTIVE:-0}"
-VIRTUAL_ENV="${VIRTUAL_ENV:-}"
-ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV:-local}")" || exit 1
-log "INFO" "Loading env vars from ${ENV_FILE}"
-# shellcheck source=/dev/null
-source "${ENV_FILE}"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 while getopts ":e:d:s:p:b:fh" opt; do
     case $opt in
@@ -40,16 +37,24 @@ while getopts ":e:d:s:p:b:fh" opt; do
     esac
 done
 
-if [ ! -d "${PROJECT_PATH}" ] ; then
-    PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+if [[ ! -d "${PROJECT_PATH}" ]]; then
+    log ERROR "PROJECT_PATH is not a directory: ${PROJECT_PATH}"
+    exit 1
 fi
+
+POETRY_ACTIVE="${POETRY_ACTIVE:-0}"
+VIRTUAL_ENV="${VIRTUAL_ENV:-}"
+ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV:-local}")" || exit 1
+log "INFO" "Loading env vars from ${ENV_FILE}"
+# shellcheck source=/dev/null
+source "${ENV_FILE}"
 
 COMMAND="aws-mfa --device ${AWS_MFA_DEVICE} --duration ${AWS_MFA_DURATION}"
 if [ "${FORCE:-0}" -eq "1" ]; then
     COMMAND="${COMMAND} --force"
 fi
 
-if [ -n "${AWS_PROFILE}" ]; then
+if [ -n "${AWS_PROFILE:-}" ]; then
     COMMAND="${COMMAND} --profile ${AWS_PROFILE}"
 fi
 

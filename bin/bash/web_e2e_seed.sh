@@ -13,7 +13,10 @@
 
 set -euo pipefail
 
-PROJECT_PATH="$(dirname "$(dirname "$(realpath "$0")")")"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+# shellcheck source=utils.sh
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 cd "${PROJECT_PATH}"
 
 PAPITA_ENV_NAME="${PAPITA_ENV:-local}"
@@ -43,9 +46,6 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# shellcheck source=bin/utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
-
 export PAPITA_ENV="${PAPITA_ENV_NAME}"
 ENV_FILE="$(resolve_papita_env_file "${PAPITA_ENV}")" || exit 1
 
@@ -64,7 +64,7 @@ if [[ -z "${E2E_API_BASE:-}" ]]; then
   export E2E_API_BASE="http://127.0.0.1:${API_PORT}"
 fi
 
-ARGS=(python3 "${PROJECT_PATH}/bin/web_e2e_seed.py" --api-base "${E2E_API_BASE}")
+ARGS=(python3 "${PROJECT_PATH}/bin/python/web_e2e_seed.py" --api-base "${E2E_API_BASE}")
 if [[ "${RESET_FLAG}" == "1" ]]; then
   ARGS+=(--reset)
   log INFO "RESET=1 — soft-deleting baseline txns + E2E accounts (categories reused)"

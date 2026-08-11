@@ -3,9 +3,10 @@
 # shellcheck disable=SC1091
 set -euo pipefail
 
-PROJECT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+_BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
+source "${_BIN_BASH_DIR}/utils.sh"
+PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
 usage() {
     cat <<EOM
@@ -36,7 +37,7 @@ for arg in "$@"; do
 done
 
 if [[ "${POETRY_ACTIVE:-0}" == "1" || -n "${VIRTUAL_ENV:-}" ]]; then
-    run_command 1 "cd \"${PROJECT_PATH}\" && python \"${PROJECT_PATH}/bin/export_openapi.py\" ${quoted_args[*]-}"
+    run_command 1 "cd \"${PROJECT_PATH}\" && python \"${PROJECT_PATH}/bin/python/export_openapi.py\" ${quoted_args[*]-}"
 else
-    run_command 1 "cd \"${PROJECT_PATH}\" && poetry run python \"${PROJECT_PATH}/bin/export_openapi.py\" ${quoted_args[*]-}"
+    run_command 1 "cd \"${PROJECT_PATH}\" && poetry run python \"${PROJECT_PATH}/bin/python/export_openapi.py\" ${quoted_args[*]-}"
 fi

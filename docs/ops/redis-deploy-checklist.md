@@ -24,7 +24,7 @@ Compose `CMD` must not use `--reload`.
 | ------------------------------ | ------------------------------------------------------------------ |
 | Redis image + volume           | `docker/docker-compose.yml` / `docker/database/docker-compose.yml` |
 | Server config (AOF, maxmemory) | `docker/redis/redis.conf`                                          |
-| Smoke script                   | `bin/redis_smoke.sh`                                               |
+| Smoke script                   | `bin/bash/redis_smoke.sh`                                          |
 
 ## B1 — Managed Redis
 

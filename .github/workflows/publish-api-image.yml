@@ -24,6 +24,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     paths:
       - "docker/api/**"
+      - "bin/make/api.mk"
       - "modules/api/**"
       - "modules/model/pyproject.toml"
       - "modules/model/src/**"
@@ -61,7 +62,7 @@ env:
 jobs:
   # ---------------------------------------------------------------------------
   # Detect API/model runtime path changes (main + PR).
-  # PR publish-dev: runtime only (docker/api, modules/api, modules/model, .dockerignore).
+  # PR publish-dev: runtime only (docker/api, bin/make/api.mk, modules/api, modules/model, .dockerignore).
   # Main stable: also treat workflow/smoke script edits as publish-relevant.
   # ---------------------------------------------------------------------------
   changes:
@@ -106,6 +107,7 @@ jobs:
             count=$((count + 1))
             case "${f}" in
               docker/api/* | \
+              bin/make/api.mk | \
               modules/api/* | \
               modules/model/pyproject.toml | \
               modules/model/src/* | \

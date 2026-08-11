@@ -10,7 +10,7 @@ on:
       - "modules/model/tests/**/integration/**"
       - "modules/api/tests/**"
       - "docker/database/**"
-      - "bin/alembic.sh"
+      - "bin/bash/alembic.sh"
       - ".github/scripts/migration_check.sh"
       - ".github/workflows/migration-check.yml"
   push:
@@ -22,7 +22,7 @@ on:
       - "modules/model/tests/**/integration/**"
       - "modules/api/tests/**"
       - "docker/database/**"
-      - "bin/alembic.sh"
+      - "bin/bash/alembic.sh"
       - ".github/scripts/migration_check.sh"
       - ".github/workflows/migration-check.yml"
 

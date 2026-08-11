@@ -13,8 +13,8 @@ on:
       - "modules/web/e2e/**"
       - "modules/web/playwright.config.ts"
       - "modules/web/lighthouserc.cjs"
-      - "bin/web_e2e_seed.py"
-      - "bin/web_e2e_seed.sh"
+      - "bin/python/web_e2e_seed.py"
+      - "bin/bash/web_e2e_seed.sh"
       - ".github/workflows/web-e2e.yml"
 
 concurrency:

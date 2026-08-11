@@ -13,7 +13,7 @@
     "web:build": "pnpm --filter @papita/web build",
     "web:generate-types": "pnpm --filter @papita/web generate-types",
     "web:check-types": "pnpm --filter @papita/web check-types",
-    "web:seed-e2e": "bash ./bin/web_e2e_seed.sh",
+    "web:seed-e2e": "bash ./bin/bash/web_e2e_seed.sh",
     "web:test:coverage": "pnpm --filter @papita/web test:coverage",
     "web:test:e2e": "pnpm --filter @papita/web test:e2e",
     "web:lhci": "pnpm --filter @papita/web lhci",

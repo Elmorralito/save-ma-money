@@ -193,7 +193,7 @@ RUNTIME_SIGNAL_DEFS: list[RuntimeSignalDef] = [
         "name": "Live DB integration tests",
         "score": 2,
         "file": ".github/workflows/quality-control.yml",
-        "required": ["database_url", "bin/test.sh", "alembic"],
+        "required": ["database_url", "bin/bash/test.sh", "alembic"],
     },
     {
         "name": "Codecov upload gate",

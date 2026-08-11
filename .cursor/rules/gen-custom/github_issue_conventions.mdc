@@ -67,6 +67,7 @@ Apply durable domain labels (`API`, `frontend`, `CI/CD`, `documentation`, `enhan
 | `skip-web-image-dev` | Skip Publish Web image (PR dev GHCR) |
 | `skip-strata` | Skip Strata Check |
 | `skip-web-ci` | Skip Web CI |
+| `skip-ingestor-ci` | Skip Ingestor CI |
 | `skip-web-e2e` | Skip Web E2E |
 | `skip-quality` | Skip Code Quality Control |
 | `skip-migrations` | Skip Migration Check |

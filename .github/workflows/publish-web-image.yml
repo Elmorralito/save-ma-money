@@ -17,6 +17,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     paths:
       - "docker/web/**"
+      - "bin/make/web.mk"
       - "modules/web/**"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -97,6 +98,7 @@ jobs:
               # Playwright / docs do not change the nginx runtime image.
               modules/web/e2e/* | modules/web/docs/* | modules/web/README.md) ;;
               docker/web/* | \
+              bin/make/web.mk | \
               modules/web/* | \
               package.json | \
               pnpm-lock.yaml | \

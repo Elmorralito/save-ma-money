@@ -48,7 +48,7 @@ Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents
 | Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer, shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25)), and web client ([#112](https://github.com/Elmorralito/save-ma-money/issues/112))                                                                                                                                                                                 |
-| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**)                                                                                                                                                                                                  |
+| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**); `papita-ingestor-core` / `papita-ingestor-email` (`modules/ingestor-core`, `modules/ingestors/email` — PPT-077 scaffold; gate `ingestor-ci.yml`)                                                |
 | Database        | **PostgreSQL only** ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)). Do not add DuckDB URLs or dialect work.                                                                                                                                                                                                                                                                                        |
 | Auth direction  | **Supabase project owns user management + Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)): register/login via Supabase Auth; API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`). Compose must inject `SUPABASE_*`. See `docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49` and learning `supabase-auth-ownership`. |
 | Web epic        | PPT-046 / [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — index in [`docs/issues/README.md` Part VII](../docs/issues/README.md#part-vii--ppt-046-web-spa-epic-112); setup SSOT [`modules/web/README.md`](../modules/web/README.md)                                                                                                                                                                |
@@ -80,18 +80,20 @@ save-ma-money/
 │   │       ├── routers/v1/     # health, auth, accounts, categories, txns, movements, reports, budgets
 │   │       ├── schemas/        # request/response, query_params, converters
 │   │       └── middleware/
-│   └── web/                    # @papita/web — Vite + React SPA (PPT-046 / #112)
-│       ├── README.md           # Node 22 + pnpm setup SSOT
-│       ├── openapi/            # committed OpenAPI artifact (strategy B)
-│       └── src/                # presentation only — no domain logic
+│   ├── web/                    # @papita/web — Vite + React SPA (PPT-046 / #112)
+│   │   ├── README.md           # Node 22 + pnpm setup SSOT
+│   │   ├── openapi/            # committed OpenAPI artifact (strategy B)
+│   │   └── src/                # presentation only — no domain logic
+│   ├── ingestor-core/          # papita_ingestor_core — PPT-077 scaffold
+│   └── ingestors/email/        # papita_ingestor_email — plugin scaffold
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
-├── bin/                        # alembic.sh, test.sh, smokes, utils.sh, web_e2e_seed.*
+├── bin/                        # bash/ · python/ · make/ (language folders; path-filtered CI)
 ├── docker/                     # README (GHCR SSOT PPT-067), database/, api/, redis/, web/, docker-compose.yml
 ├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
 ├── .cursor/                    # adapters, gen-custom rules, skills
 ├── .agents/                    # symlinks to .cursor/ adapters + skills (Codex/Agents)
 ├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, publish)
+└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, ingestor-ci, publish)
 ```
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).
@@ -168,8 +170,9 @@ pnpm install
 # Full local gate (mirrors CI quality-control)
 pre-commit run --all-files
 poetry run pytest
-/bin/bash ./bin/test.sh
+./bin/bash/test.sh
 make web-lint && make web-test   # Node gate locally; web-ci.yml in Actions
+make ingestor-install && make ingestor-lint && make ingestor-test  # PPT-077; ingestor-ci.yml
 
 # Supply chain (poetry check, version metadata, pip-audit)
 /bin/bash .github/scripts/supply_chain_check.sh
@@ -192,13 +195,13 @@ Alembic lives under `modules/model/`. Use the `bin/` wrapper:
 
 ```bash
 # Docker Postgres (local)
-/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
+./bin/bash/alembic.sh upgrade --env local --docker-rm
 
 # Explicit URL
-/bin/bash ./bin/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
+./bin/bash/alembic.sh upgrade --url "postgresql+psycopg2://user:pass@host:5432/db"
 
 # B1 Supabase: always use the direct migrations URL (never transaction pooler :6543)
-PAPITA_ENV=staging /bin/bash ./bin/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
+PAPITA_ENV=staging ./bin/bash/alembic.sh upgrade --url "$DATABASE_URL_MIGRATIONS"
 ```
 
 CI runs upgrade → downgrade → upgrade → `alembic check` when model/migration paths change (`.github/workflows/migration-check.yml`).
@@ -271,9 +274,9 @@ Workflow triggers, local commands, pre-commit inventory, PR gate matrix, and tro
 Before opening or marking ready for review (commands in [`.github/CI.md`](../.github/CI.md#pr-checklist)):
 
 1. `pre-commit run --all-files`
-2. `poetry run pytest` (or `./bin/test.sh`)
+2. `poetry run pytest` (or `./bin/bash/test.sh`)
 3. If dependencies changed: `.github/scripts/supply_chain_check.sh`
-4. If model/schema changed: migration + `./bin/alembic.sh` locally
+4. If model/schema changed: migration + `./bin/bash/alembic.sh` locally
 5. If architecture/decisions/backlog shifted: `/strata:capture` during work, `/strata:save` at end
 6. No secrets, `.env` files, or credentials in the diff
 7. Keep scope focused — avoid drive-by refactors

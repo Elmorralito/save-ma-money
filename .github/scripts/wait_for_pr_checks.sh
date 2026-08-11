@@ -24,9 +24,8 @@
 
 set -euo pipefail
 
-PROJECT_PATH="$(dirname "$(dirname "$(dirname "$(realpath "$0")")")")"
-# shellcheck source=../../bin/utils.sh
-source "${PROJECT_PATH}/bin/utils.sh"
+# shellcheck source=../../bin/bash/utils.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")/../../bin/bash" && pwd)/utils.sh"
 
 COMMIT_SHA="${COMMIT_SHA:-}"
 EXCLUDE_WORKFLOW_NAME="${EXCLUDE_WORKFLOW_NAME:-Publish model (dev)}"

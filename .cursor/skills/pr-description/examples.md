@@ -34,7 +34,7 @@ Reissues **PPT-039 / #49** as **Supabase Auth ownership** (not pooler DB): FastA
 
 - `environments/{local,staging,production}/.env.example`, `environments/README.md`, settings/`PAPITA_ENV` loading
 - Compose injects `SUPABASE_*` (incl. service role / OAuth) into the API service
-- `bin/auth_smoke.sh`, B1/deploy helpers, untrack generated `docs/coverage.xml`
+- `bin/bash/auth_smoke.sh`, B1/deploy helpers, untrack generated `docs/coverage.xml`
 
 **Model / migrations**
 
@@ -100,7 +100,7 @@ Observed in development on this branch (not claiming remote CI green — `gh` Gr
 
 ## QA / test plan
 
-- [ ] `./bin/alembic.sh --env local` (B0) applies both new Auth migrations cleanly
+- [ ] `./bin/bash/alembic.sh --env local` (B0) applies both new Auth migrations cleanly
 - [ ] Register + login with email/password against real Supabase Auth; JWT works on a protected route (`GET /auth/me`)
 - [ ] Soft-deleted / inactive Auth-linked user cannot be reactivated via provision
 - [ ] Google (and/or GitHub) OAuth: `GET /auth/oauth/{provider}?follow=true` → callback → tokens; PKCE cookies cleared

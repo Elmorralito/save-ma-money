@@ -172,12 +172,12 @@ poetry lock && poetry install
 
 ```bash
 # PostgreSQL (Docker)
-/bin/bash ./bin/alembic.sh upgrade --env local --docker-rm
+./bin/bash/alembic.sh upgrade --env local --docker-rm
 
 # Unit and integration tests (model package)
 poetry run pytest
 # or
-/bin/bash ./bin/test.sh
+./bin/bash/test.sh
 ```
 
 Model-layer setup, Alembic usage, and test layout: [`modules/model/README.md`](./modules/model/README.md).
