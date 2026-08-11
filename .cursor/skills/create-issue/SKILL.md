@@ -198,6 +198,10 @@ Prefer `--repo Elmorralito/save-ma-money` (or the current `gh` remote) so the is
 
 Return the issue **URL** and number. Do not close or edit other issues unless asked.
 
+After creating a **child** (or when the user asks what to do next), offer
+[`.cursor/skills/plan-issue/`](../plan-issue/) (`/plan-issue`) to check Depends on
+readiness and produce an Architect → PM/BA → SME action plan before implementation.
+
 ## Rules
 
 - Interactive first: type → fields → optional context → draft → **gh auth** → confirm → create.
@@ -215,3 +219,4 @@ Return the issue **URL** and number. Do not close or edit other issues unless as
 - [reference.md](reference.md) — field checklist by type + example titles
 - Conventions: `.cursor/rules/gen-custom/github_issue_conventions.mdc`
 - Briefs index: `docs/issues/README.md`
+- Plan before implement: [../plan-issue/](../plan-issue/) (`/plan-issue`)

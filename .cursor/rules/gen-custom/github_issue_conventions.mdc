@@ -101,8 +101,10 @@ Prefer those files when creating or editing issues via `gh issue create` / `gh i
 **Agent automation:**
 
 - Issues: [`.cursor/skills/create-issue/`](../skills/create-issue/) (`/create-issue`)
-- Issue plans: [`.cursor/skills/plan-issue/`](../skills/plan-issue/) (`/plan-issue`) — dependency readiness before implementation plans
+- Issue plans: [`.cursor/skills/plan-issue/`](../skills/plan-issue/) (`/plan-issue`) — dependency readiness before implementation plans (Architect → PM/BA → SME)
 - PR bodies: [`.cursor/skills/pr-description/`](../skills/pr-description/) + [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md)
+
+Prefer `/plan-issue` on a **child** after `/create-issue` (or when picking up an open child) so Depends on / Blocks and layering are checked before coding. Briefs index: [`docs/issues/README.md`](../../docs/issues/README.md).
 
 ### Program issue skeleton (summary)
 

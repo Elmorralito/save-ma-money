@@ -11,6 +11,7 @@ Must link Parent epic. Keep scope to one step in the epic implementation order.
 Business logic stays in papita_txnsmodel; API children wire routers/schemas/deps only.
 Labels: apply the **parent epic’s** `EPIC: PPT-*` track label (do not create a label for this child’s PPT id).
 References: #42 children (#43–#50), e.g. #45 scaffold.
+Before implementing: Cursor `/plan-issue` (.cursor/skills/plan-issue/) vs Parent epic — dep go/no-go first.
 -->
 
 **Parent epic:** [#42](https://github.com/Elmorralito/save-ma-money/issues/42) · **Program:** [#28](https://github.com/Elmorralito/save-ma-money/issues/28) · **Step:** <!-- N --> · **PPT-{NNN}**
