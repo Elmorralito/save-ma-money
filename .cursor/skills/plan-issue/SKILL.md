@@ -21,6 +21,7 @@ This skill lives at `.cursor/skills/plan-issue/` (repo-only).
 as part of this skill. Plan only against an existing child + epic the user names.
 
 **Indexed from:** [`.cursor/AGENTS.md`](../../AGENTS.md) · [`.cursor/README.md`](../../README.md) ·
+[`.agents/skills/plan-issue`](../../../.agents/skills/plan-issue) (symlink) ·
 [`project_adapters.mdc`](../../rules/gen-custom/project_adapters.mdc) ·
 [`github_issue_conventions.mdc`](../../rules/gen-custom/github_issue_conventions.mdc) ·
 [`docs/issues/README.md`](../../../docs/issues/README.md).

@@ -8,11 +8,11 @@ NOTE: Operational agent instructions are **canonical under `.cursor/`**:
 - [`.cursor/AGENTS.md`](../../.cursor/AGENTS.md) — build, test, architecture, API status, PR checklist
 - [`.cursor/CLAUDE.md`](../../.cursor/CLAUDE.md) — thin Claude adapter → AGENTS.md
 
-Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.cursor/AGENTS.md` (same for `CLAUDE.md`).
+Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.cursor/AGENTS.md` (same for `CLAUDE.md`). Project skills: [`.agents/skills/create-issue`](../../.agents/skills/create-issue) (etc.) → [`.cursor/skills/`](../skills/) — see [`.agents/README.md`](../../.agents/README.md).
 
 **Do not duplicate or edit adapter content in this rule file.** Code-style enforcement stays in sibling `gen-custom/*.mdc` rules. Project memory and routing live in [`.strata/MANIFEST.md`](../../.strata/MANIFEST.md).
 
-### Repo skills (under `.cursor/skills/`)
+### Repo skills (canonical under `.cursor/skills/`; symlinked into `.agents/skills/`)
 
 | Skill | Use when |
 | ----- | -------- |
@@ -25,7 +25,7 @@ Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.
 | Change | Update |
 | ------ | ------ |
 | API routers, auth, setup, CI, PR checklist | `.cursor/AGENTS.md` (+ thin notes in `CLAUDE.md` if needed) |
-| New/changed Cursor skills under `.cursor/skills/` | `.cursor/AGENTS.md` skills table, `.cursor/README.md`, `project_adapters.mdc`, `github_issue_conventions.mdc` when issue-related; `docs/issues/README.md` / root `README.md` docs hub when operators should discover them |
+| New/changed Cursor skills under `.cursor/skills/` | Edit under `.cursor/skills/` only; ensure `.agents/skills/<name>` symlink exists (see `.agents/README.md`); update `.cursor/AGENTS.md` skills table, `.cursor/README.md`, `project_adapters.mdc`, `github_issue_conventions.mdc` when issue-related; docs hubs when operators should discover them |
 | Code-style / structure / migrations / issue titles | Matching `gen-custom/*.mdc` |
 | Architecture decisions, backlog, learnings | `.strata/` via `/strata:capture` / `/strata:save` |
 | `modules/**` or `bin/**` code | Pair with `.strata/` (strata strict mode) |

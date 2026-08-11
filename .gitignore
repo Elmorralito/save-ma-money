@@ -62,8 +62,12 @@ docs/coverage-codecov-sync.xml
 duckdb:*
 *.duckdb
 
-# Local agent skill installs (Cursor / strata adapters); keep AGENTS.md / CLAUDE.md
-.agents/skills/
+# Local/marketplace agent skill installs under .agents/skills/ (e.g. supabase).
+# Committed project skill symlinks → .cursor/skills/ are force-included below.
+.agents/skills/*
+!.agents/skills/create-issue
+!.agents/skills/plan-issue
+!.agents/skills/pr-description
 skills-lock.json
 
 .data/

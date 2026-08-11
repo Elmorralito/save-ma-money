@@ -21,7 +21,7 @@ Project memory is repo-owned under `.strata/` (strata format, `layout_version: 3
 | Design docs   | `docs/design/` (PPT-031 program), `docs/issues/` (briefs incl. PPT-046 Part VII)                                                                                                                                                   |
 | Agent memory  | `.strata/` — use strata plugin commands below                                                                                                                                                                                      |
 | Adapters      | Canonical: `.cursor/AGENTS.md` + `.cursor/CLAUDE.md`; Strata validates `.agents/` symlinks                                                                                                                                         |
-| Cursor skills | Independent: `/create-issue` **or** `/plan-issue` (do not chain); PR body via `.cursor/skills/` — [AGENTS.md § Repo Cursor skills](AGENTS.md#repo-cursor-skills)                                                                   |
+| Cursor skills | Canonical `.cursor/skills/`; mirrored at `.agents/skills/` via symlink — [AGENTS.md § Repo Cursor skills](AGENTS.md#repo-cursor-skills) · [`.agents/README.md`](../.agents/README.md)                                              |
 
 ---
 
