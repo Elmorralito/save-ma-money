@@ -33,7 +33,9 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Land PPT-079 / #173; keep plugins consuming contracts (do not redefine them).
+- Land PPT-079 / #173 ([PR #213](https://github.com/Elmorralito/save-ma-money/pull/213));
+  keep plugins consuming contracts (do not redefine them).
+  QC note: prettier blank-line fix in `modules/model/CHANGELOG.md` for `--all-files`.
 
 ### Uncommitted / staging notes
 
