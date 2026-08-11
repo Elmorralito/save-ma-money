@@ -12,6 +12,7 @@ Operation-keyed behavioral rules: one lesson per file, fired by trigger, origin 
 | before git commit when modules/ or bin/ changed                | modules/\*\*, bin/\*\*                                       | success | [strata-strict-pairing.md](strata-strict-pairing.md)               |
 | before adding or wiring modules/ingestor\* packages            | modules/ingestor-core/\*\*, modules/ingestors/\*\*, bin/make | success | [ingestor-scaffold-ci-split.md](ingestor-scaffold-ci-split.md)     |
 | before adding ingest uniqueness or ledger upsert conflict keys | modules/model/\*\*/ingestion\*, upsert.py, alembic/\*\*      | success | [ingestion-provenance-sidecar.md](ingestion-provenance-sidecar.md) |
+| before changing IngestionRunner ack / DLQ / dry_run semantics  | modules/ingestor-core/\*\*/runner/\*\*, mapping/\*\*         | success | [ingestor-runner-poison-ack.md](ingestor-runner-poison-ack.md)     |
 | before parsing DataFrames with optional int/date into DTOs     | modules/model/\*\*/datautils\*, api schemas / list paths     | failure | [pandas-optional-int-nan.md](pandas-optional-int-nan.md)           |
 | before wiring or changing /reports endpoints or ReportService  | modules/api/\*\*/reports\*, modules/model/\*\*/reports.py    | success | [report-tenant-scoping.md](report-tenant-scoping.md)               |
 | before adding transactions, movements, or bulk create UI       | modules/web/\*\*/transactions\*, movements\*; api/txns/movs  | success | [web-ledger-ui-no-domain.md](web-ledger-ui-no-domain.md)           |
