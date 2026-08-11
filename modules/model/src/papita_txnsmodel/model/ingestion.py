@@ -49,7 +49,8 @@ class TransactionIngestionProvenance(BaseSQLModel, table=True):  # type: ignore
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+    # Indexes live in ``__table_args__`` (avoid duplicate Field(index=True) autogen names).
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
     transaction_id: uuid.UUID = Field(nullable=False)
     transaction_ts: datetime = Field(sa_column=Column(TIMESTAMP, nullable=False))
     ingestion_source: IngestionSource = Field(
@@ -71,7 +72,7 @@ class IngestionDeadLetter(BaseSQLModel, table=True):  # type: ignore
     )
 
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False, index=True)
+    owner_id: uuid.UUID = Field(foreign_key=f"{USERS__TABLENAME}.id", nullable=False)
     ingestion_source: IngestionSource = Field(
         sa_column=Column(
             SAEnum(IngestionSource, name="ingestion_source", schema=SCHEMA_NAME, create_type=False),
