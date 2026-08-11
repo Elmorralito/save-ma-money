@@ -34,9 +34,223 @@
 
 - [ ] [_**[#172](https://github.com/Elmorralito/save-ma-money/issues/172)**_] :: **feat/PPT-078: [model] Provenance schema and ingestion upsert bridge** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:48+00:00</sub>_ :weary:
 
-- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#171](https://github.com/Elmorralito/save-ma-money/issues/171)**_] :: **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages in monorepo** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:46+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 03:13:43+00:00</sub>_
+
+  > **Closed by** [_**#211**](https://github.com/Elmorralito/save-ma-money/pull/211): **chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages**
+
+  > **Branch:** chore/PPT-077 · **Base:** main · **1 commit** · **77 files**
+
+  >
+
+  > **Suggested title:** chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Phase 0 of the PPT-076 ingestion epic (#170): scaffold first-class Poetry packages papita-ingestor-core and papita-ingestor-email, wire them into the monorepo, and add path-filtered CI — without implementing Gmail, parsers, or Prefect yet. Also reorganize bin/ by language (bash / python / make) so domain Make targets and CI path filters stay decoupled from the root Makefile.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Gmail OAuth, bank parsers, Prefect flows (PPT-080+ / later children)
+
+  > - modules/ingestors/bank-api/ (post-MVP)
+
+  > - Model provenance migrations / upsert bridge (PPT-078 / #172)
+
+  > - Core contracts + runner (PPT-079 / #173)
+
+  > - Ingestion API routers (PPT-083 / #177)
+
+  > - Coverage ≥80% on ingestor src/ (PPT-084 / #178)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - One-way dependency graph documented and enforced by path deps: plugins → core → model
+
+  > - ingestor-ci.yml owns the scaffold gate; QC paths-ignore avoids double-gating ingestor-only PRs
+
+  > - Shared resolve_repo_root after bin/ language split (bash + Python)
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ingestor packages (PPT-077 / #171)**
+
+  >
+
+  > - Add modules/ingestor-core (papita_ingestor_core) and modules/ingestors/email (papita_ingestor_email) with PEP 621 + poetry-core, smoke import tests, READMEs (Python ≥3.12 CI/dev), CHANGELOG, LICENSE, names-only .env.example
+
+  > - Register path deps in root pyproject.toml; extend isort known_first_party and pylint init-hook paths (no root --cov / testpaths / interrogate expansion)
+
+  >
+
+  > **Make / ops**
+
+  >
+
+  > - Split domain targets into bin/make/{api,web,ingestor}.mk; root Makefile keeps prep/dev + COMPOSE_LOCAL + includes
+
+  > - Move scripts to bin/bash/ and bin/python/; bootstrap via sibling utils.sh + resolve_repo_root
+
+  >
+
+  > **CI / docs**
+
+  >
+
+  > - Add .github/workflows/ingestor-ci.yml (skip-ingestor-ci); retarget web-ci / publish image path filters to bin/make/*.mk
+
+  > - QC ignores ingestor trees + bin/make/ingestor.mk when those are the only changes
+
+  > - Update AGENTS / project_structure / CI.md and operator docs for new paths
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (77 files)</summary>
+
+  >
+
+  >
+
+  > modules/ingestor-core/** # new package scaffold
+
+  > modules/ingestors/** # email plugin scaffold + hub README
+
+  > bin/bash/**, bin/python/** # language-organized ops scripts
+
+  > bin/make/{api,web,ingestor}.mk # domain Make fragments
+
+  > .github/workflows/ingestor-ci.yml # path-filtered gate
+
+  > Makefile, pyproject.toml # includes + workspace path deps
+
+  > .cursor/**, .github/CI.md, docs/**, environments/**/*.env.example
+
+  > .strata/memory/learnings/ingestor-scaffold-ci-split.md
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - aca90fb chore/PPT-077: [ingestor] Scaffold ingestor-core + email packages
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make ingestor-test — pass (3 import smoke tests)
+
+  > - make ingestor-lint — pass (black / isort / flake8 / pylint)
+
+  > - poetry install --with development — packages resolve as path deps
+
+  > - Local pre-commit on commit — pass (after ShellCheck SC2034 fix on unused PROJECT_PATH)
+
+  > - GitHub Actions on this PR — not observed yet at create time
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm ingestor-ci runs and is green on this PR
+
+  > - [ ] Confirm QC / web-ci do not spuriously fail solely due to ingestor path moves when unrelated
+
+  > - [ ] Spot-check ./bin/bash/alembic.sh --help / make api-up dry-run still resolve after bin/ move
+
+  > - [ ] Confirm no secrets landed (.env.example names only)
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Operator scripts moved under bin/bash/ and bin/python/ — bookmarks / local aliases using flat bin/*.sh will break until updated (docs updated in-repo)
+
+  > > - web-ci / publish image workflows now watch bin/make/*.mk instead of the root Makefile; root-only Make edits no longer retrigger those workflows (intentional)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Scaffold only: packages export **version**; no contracts, OAuth, or Prefect yet
+
+  > > - Coverage ≥80% for ingestor src/ is deferred to PPT-084 / #178; root pytest --cov remains model/api
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes #171 (PPT-077)
+
+  > - Parent epic: #170 (PPT-076)
+
+  > - Follow-ups: #172–#178
+
+  >
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#163](https://github.com/Elmorralito/save-ma-money/issues/163)**_] :: **feat/PPT-070: [EPIC][model] Payment due-date reminders (in-app)** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 00:07:44+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-10 21:01:48+00:00</sub>_
 
