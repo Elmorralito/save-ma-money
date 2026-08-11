@@ -17,6 +17,7 @@ Strata-validated symlinks: [`.agents/AGENTS.md`](../../.agents/AGENTS.md) → `.
 | Skill | Use when |
 | ----- | -------- |
 | [`create-issue/`](../skills/create-issue/) | New GitHub issues from ISSUE_TEMPLATE (`/create-issue`) |
+| [`plan-issue/`](../skills/plan-issue/) | Child + epic plan: dep go/no-go, Architect → PM/BA → SME gates (`/plan-issue`) |
 | [`pr-description/`](../skills/pr-description/) | Paste-ready PR bodies from [`.github/PULL_REQUEST_TEMPLATE.md`](../../.github/PULL_REQUEST_TEMPLATE.md) |
 
 ### When something changes
