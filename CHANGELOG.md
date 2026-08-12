@@ -28,9 +28,247 @@
 
 - [ ] [_**[#175](https://github.com/Elmorralito/save-ma-money/issues/175)**_] :: **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:49+00:00</sub>_ :weary:
 
-- [ ] [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-12 01:41:14+00:00</sub>_
+
+  > **Closed by** [_**#214**](https://github.com/Elmorralito/save-ma-money/pull/214): **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin**
+
+  > **Branch:** feat/PPT-080 · **Base:** main · **1 commit** · **17 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-080: [ingestor] Gmail OAuth2 source plugin
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Implements GmailSource in papita-ingestor-email against papita_ingestor_core contracts (PPT-080 / #174). Headless refresh-token env (GMAIL_*, R2) is the default runtime path; CI stays fully mocked with no live Google credentials. Operators can optionally bootstrap a refresh token for local smoke only.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Outlook / IMAP providers
+
+  > - Bank body parsers (PPT-081 / #175)
+
+  > - Prefect email flow packaging (PPT-082 / #176)
+
+  > - SPA mailbox linking UI
+
+  > - End-to-end ledger ingestion (needs parsers + bridge owner wiring)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - Self-registers as "gmail" via @SourceRegistry.register + registry_id (matches core; not the issue draft’s unsupported positional form)
+
+  > - Compose GmailSettings with BaseIngestorSettings so GMAIL_* and PAPITA_INGESTOR_* stay distinct
+
+  > - Query exclusion of processed label + optional GMAIL_TOKEN_FILE secondary path
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ingestor email plugin**
+
+  >
+
+  > - GmailSource: connect (refresh-token or authorized-user file), ensure processed label, fetch list→get raw MIME → RawRecord, acknowledge via label
+
+  > - build_gmail_query: -label:…, since/until, sender/subject/raw q
+
+  > - Google client libraries added to email pyproject.toml
+
+  >
+
+  > **Secrets / hygiene**
+
+  >
+
+  > - Root + module .gitignore for token.json / credentials.json / client_secret*.json
+
+  > - .env.example names-only; README documents R2 + OAuth bootstrap
+
+  > - .gitleaks.toml allowlists email README / .env.example
+
+  >
+
+  > **Tests / docs / strata**
+
+  >
+
+  > - Mocked unit tests for settings, query, source lifecycle
+
+  > - .strata memory pointers updated for PPT-080 in progress
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~17 files)</summary>
+
+  >
+
+  >
+
+  > .gitignore | 9 +
+
+  > .gitleaks.toml | 2 +
+
+  > .strata/memory/MEMORY.md | 6 +-
+
+  > .strata/memory/project_state.md | 17 +-
+
+  > modules/ingestors/email/.env.example | 9 +-
+
+  > modules/ingestors/email/.gitignore | 5 +
+
+  > modules/ingestors/email/README.md | 113 ++++++++-
+
+  > modules/ingestors/email/pyproject.toml | 9 +-
+
+  > .../email/src/papita_ingestor_email/**init**.py | 12 +-
+
+  > .../email/src/papita_ingestor_email/settings.py | 51 ++++
+
+  > .../src/papita_ingestor_email/sources/**init**.py | 15 ++
+
+  > .../src/papita_ingestor_email/sources/gmail.py | 273 +++++++++++++++++++++
+
+  > .../src/papita_ingestor_email/sources/query.py | 50 ++++
+
+  > modules/ingestors/email/tests/conftest.py | 13 +
+
+  > modules/ingestors/email/tests/test_gmail_query.py | 36 +++
+
+  > .../ingestors/email/tests/test_gmail_settings.py | 67 +++++
+
+  > modules/ingestors/email/tests/test_gmail_source.py | 253 +++++++++++++++++++
+
+  > 17 files changed, 918 insertions(+), 22 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 0020161 feat/PPT-080: [ingestor] Gmail OAuth2 source plugin
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make ingestor-test — pass (49 tests)
+
+  > - make ingestor-lint — pass
+
+  > - Pre-commit on commit — pass (including strata strict pairing)
+
+  > - Live Gmail fetch/ack smoke — not run in this PR path (optional local only)
+
+  > - GitHub Actions CI — not observed yet at PR open
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Ingestor CI green on the PR
+
+  > - [ ] Confirm SourceRegistry.get("gmail") works after import papita_ingestor_email in a clean env
+
+  > - [ ] Optional local: with GMAIL_* in environments/local/.env, fetch a few messages (no ack) and verify metadata
+
+  > - [ ] Confirm no token.json / credentials.json / client secrets committed
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Live Gmail needs GMAIL_CLIENT_ID / GMAIL_CLIENT_SECRET / GMAIL_REFRESH_TOKEN (or readable GMAIL_TOKEN_FILE); values must stay in gitignored environments/<env>/.env
+
+  > > - acknowledge applies GMAIL_PROCESSED_LABEL (default PAPITA_PROCESSED) and excludes those messages from later fetches — use carefully on real mailboxes
+
+  > > - OAuth consent app in Testing must list the mailbox as a test user (403 access_denied otherwise)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Issue #174 draft typos (raw_content, acknowledge(record_id), @register("gmail)", subclassing BaseIngestorSettings) are intentionally followed as **core ABC** / R2 compose instead
+
+  > > - Full ingest → parse → persist needs PPT-081 parsers; this PR is source-only
+
+  > > - poetry update papita-ingestor-email (or make ingestor-install) needed locally so root venv picks up Google transitive deps (poetry.lock is gitignored)
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#174](https://github.com/Elmorralito/save-ma-money/issues/174) (PPT-080)
+
+  > - Parent epic [#170](https://github.com/Elmorralito/save-ma-money/issues/170) (PPT-076)
+
+  > - Depends on [#173](https://github.com/Elmorralito/save-ma-money/issues/173) (PPT-079) — already on main
+
+  > - Soft downstream: [#175](https://github.com/Elmorralito/save-ma-money/issues/175); hard: [#176](https://github.com/Elmorralito/save-ma-money/issues/176)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#173](https://github.com/Elmorralito/save-ma-money/issues/173)**_] :: **feat/PPT-079: [ingestor] Core contracts, registries, and IngestionRunner** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-11 22:13:07+00:00</sub>_
 
