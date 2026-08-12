@@ -14,28 +14,27 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
+- **PPT-079 / #173:** core contracts, registries, `IngestionRunner` on main (#213).
 - **PPT-078 / #172:** provenance sidecar + `IngestionBridgeService` on main (#212).
 - **PPT-077 / #171:** ingestor-core + email package scaffolds on main (#211).
-- **PPT-070 / #163:** epic closed — payment dues #164–#168
-  (PRs [#197](https://github.com/Elmorralito/save-ma-money/pull/197)–[#207](https://github.com/Elmorralito/save-ma-money/pull/207)).
 
 ### In progress (ACTIVE)
 
-- **PPT-079 / #173:** core contracts, registries, `IngestionRunner` on `feat/PPT-079`
-  (persist-then-ack; DLQ-then-ack poison semantics; `source_ref` required).
-  Parent epic **PPT-076 / #170**. Downstream: #174 / #175 / #176.
+- **PPT-080 / #174:** `GmailSource` + `GmailSettings` on `feat/PPT-080`
+  (R2 headless `GMAIL_*` refresh-token; mocked CI; optional local live smoke).
+  Parent epic **PPT-076 / #170**. Downstream soft: #175 parsers; hard: #176 Prefect.
 
 ### Open (backlog)
 
-- **PPT-076** remaining children after #173 (Gmail source, bank parsers, email flow, etc.).
+- **PPT-076** remaining children after #174 (bank parsers #175, email flow #176, etc.).
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 - Alembic/`alembic check` SQLModel CHECK alignment (`chk_financing_share`, etc.).
 
 ### Next action
 
-- Land PPT-079 / #173 ([PR #213](https://github.com/Elmorralito/save-ma-money/pull/213));
-  keep plugins consuming contracts (do not redefine them).
-  QC note: prettier blank-line fix in `modules/model/CHANGELOG.md` for `--all-files`.
+- Land PPT-080 / #174; keep plugins on core ABC (`content`, `acknowledge(RawRecord)`,
+  `registry_id`) — ignore issue draft typos. Compose `GmailSettings` with
+  `BaseIngestorSettings` (do not subclass; dual env prefixes).
 
 ### Uncommitted / staging notes
 

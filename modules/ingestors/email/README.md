@@ -13,9 +13,11 @@ Email / Gmail source plugin for Papita ingestion (`papita_ingestor_email`).
 
 ## Role
 
-Plugin package under `modules/ingestors/`. Implements (in later children) Gmail
-fetch + bank-specific parsers. This scaffold is importable smoke only — **no
-OAuth, no parsers, no Prefect**.
+Plugin package under `modules/ingestors/`. Hosts the Gmail OAuth2 source
+(PPT-080 / [#174](https://github.com/Elmorralito/save-ma-money/issues/174)) and
+later bank-specific parsers (PPT-081). Prefect packaging is PPT-082 — not this
+package’s job. CI for the Gmail source uses **mocks only** (no live Google
+credentials in Actions).
 
 ## Dependency graph (one-way)
 
@@ -24,6 +26,26 @@ papita-ingestor-email  →  papita-ingestor-core  →  papita-transactions-model
 ```
 
 `papita_txnsapi` / `@papita/web` **must not** import this package.
+
+## Gmail source (PPT-080 / #174)
+
+`GmailSource` implements `BaseIngestorSource` and self-registers as `"gmail"`:
+
+```python
+from papita_ingestor_core import FetchFilter, SourceRegistry
+from papita_ingestor_email import GmailSettings, create_gmail_source
+
+# After `import papita_ingestor_email` (or create_gmail_source):
+assert SourceRegistry.get("gmail") is not None
+
+with create_gmail_source(GmailSettings()) as source:  # reads GMAIL_* from env
+    for record in source.fetch(FetchFilter(limit=10, extra={"sender": "bank@example.com"})):
+        # record.content = raw MIME bytes; metadata has subject/sender/headers
+        source.acknowledge(record)  # applies GMAIL_PROCESSED_LABEL
+```
+
+CI uses **mocked** `googleapiclient` only. Live smoke needs `GMAIL_*` in
+`environments/local/.env` (see bootstrap below).
 
 ## Local commands
 
@@ -35,4 +57,87 @@ make ingestor-lint
 
 ## Secrets
 
-See [`.env.example`](.env.example). Real OAuth tokens never belong in git.
+**R2 locked (PPT-080 / #174):** headless refresh-token env is the default runtime
+path. Interactive `InstalledAppFlow` is bootstrap-only (to mint
+`GMAIL_REFRESH_TOKEN`). If `GMAIL_TOKEN_FILE` points at a readable authorized-user
+JSON, that file is preferred at connect time; otherwise
+`GMAIL_CLIENT_ID` / `GMAIL_CLIENT_SECRET` / `GMAIL_REFRESH_TOKEN` are required.
+
+`GmailSettings` composes with (does not subclass) `BaseIngestorSettings` so
+`GMAIL_*` and `PAPITA_INGESTOR_*` prefixes stay distinct.
+
+Names only in [`.env.example`](.env.example). Put real values in
+`environments/<env>/.env` (gitignored). Never commit `token.json`,
+`credentials.json`, `client_secret*.json`, or refresh tokens — ignored via root
+and module `.gitignore`.
+
+| Variable                | Purpose                                                   |
+| ----------------------- | --------------------------------------------------------- |
+| `GMAIL_CLIENT_ID`       | OAuth Desktop client ID                                   |
+| `GMAIL_CLIENT_SECRET`   | OAuth Desktop client secret                               |
+| `GMAIL_REFRESH_TOKEN`   | Long-lived refresh token (headless default)               |
+| `GMAIL_TOKEN_URI`       | Usually `https://oauth2.googleapis.com/token`             |
+| `GMAIL_PROCESSED_LABEL` | Label applied on acknowledge (default `PAPITA_PROCESSED`) |
+| `GMAIL_TOKEN_FILE`      | Optional secondary path to a token JSON (not the default) |
+
+Runner knobs such as `fetch_limit` / `dry_run` stay on `PAPITA_INGESTOR_*`
+(`BaseIngestorSettings`) — do not remap them to `GMAIL_*`. Compose both settings
+objects at the runner/plugin boundary.
+
+## Local Gmail OAuth bootstrap
+
+Use this once to obtain `GMAIL_REFRESH_TOKEN` for **optional local live smoke**.
+Unit tests do not require it.
+
+### 1. Google Cloud
+
+1. Create or select a project in [Google Cloud Console](https://console.cloud.google.com/).
+2. Enable **Gmail API** (APIs & Services → Library).
+3. Configure the **OAuth consent screen** (External, or Internal for Workspace).
+   - Add scope `https://www.googleapis.com/auth/gmail.modify` (read + label/modify).
+   - While the app is in Testing, add your mailbox as a **test user**.
+4. Create credentials → **OAuth client ID** → type **Desktop app**.
+   - Note the client ID and secret (or download the client JSON for the bootstrap only).
+
+### 2. One-time consent (refresh token)
+
+With `google-auth-oauthlib` available in this package’s env (dev/bootstrap only):
+
+```bash
+# Run from a throwaway directory. Do not commit credentials.json or printed tokens.
+poetry run python - <<'PY'
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+# force offline access if the library version requires it:
+# flow.authorization_url(access_type="offline", prompt="consent")
+creds = flow.run_local_server(port=0)
+print("GMAIL_REFRESH_TOKEN=", creds.refresh_token)
+print("GMAIL_TOKEN_URI=", creds.token_uri)
+PY
+```
+
+Sign in as the mailbox user, approve scopes, copy the refresh token. Then delete
+local `credentials.json` / any generated `token.json`.
+
+If a later run returns no refresh token: revoke the app under
+[Google Account → Third-party access](https://myaccount.google.com/permissions)
+and consent again with offline access.
+
+### 3. Wire env for local smoke
+
+```bash
+# environments/local/.env  (gitignored)
+GMAIL_CLIENT_ID=....apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=...
+GMAIL_REFRESH_TOKEN=...
+GMAIL_TOKEN_URI=https://oauth2.googleapis.com/token
+GMAIL_PROCESSED_LABEL=PAPITA_PROCESSED
+```
+
+### 4. What not to do
+
+- Do not put Google secrets in GitHub Actions for PPT-080 CI.
+- Do not commit OAuth client JSON or refresh tokens under `modules/` or the repo root.
+- Mailbox OAuth is **not** Supabase JWT / BFF auth; tenancy/`owner_id` is wired later (Prefect/API children).

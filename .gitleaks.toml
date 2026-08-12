@@ -8,7 +8,9 @@ description = "Environment templates and documented placeholder values"
 paths = [
   '''(?i)(^|/)\.env\.example$''',
   '''(?i)environments/.+/\.env\.example$''',
+  '''(?i)modules/ingestors/email/\.env\.example$''',
   '''(?i)modules/api/README\.md$''',
+  '''(?i)modules/ingestors/email/README\.md$''',
   # Fake PKCE verifier fixtures in Auth unit tests (not live secrets).
   '''(?i)modules/api/tests/test_auth_supabase\.py$''',
 ]
