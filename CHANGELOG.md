@@ -22,11 +22,271 @@
 
 - [ ] [_**[#178](https://github.com/Elmorralito/save-ma-money/issues/178)**_] :: **test/PPT-084: [ingestor] Tests, secrets templates, and provider onboarding docs** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:08:15+00:00</sub>_ :weary:
 
-- [ ] [_**[#177](https://github.com/Elmorralito/save-ma-money/issues/177)**_] :: **feat/PPT-083: [api] Ingestion connection and run-status endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:08:13+00:00</sub>_ :weary:
-
-- [ ] [_**[#176](https://github.com/Elmorralito/save-ma-money/issues/176)**_] :: **feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:51+00:00</sub>_ :weary:
+- [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#177](https://github.com/Elmorralito/save-ma-money/issues/177)**_] :: **feat/PPT-083: [api] Ingestion connection and run-status endpoints** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:08:13+00:00</sub>_ :weary:
 
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] [_**[#176](https://github.com/Elmorralito/save-ma-money/issues/176)**_] :: **feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:51+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-12 22:38:50+00:00</sub>_
+
+  > **Closed by** [_**#216**](https://github.com/Elmorralito/save-ma-money/pull/216): **feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging**
+
+  > **Branch:** 176-featppt-082-ingestor-prefect-hourly-flow-and-compose-packaging · **Base:** main · **1 commit** · **27 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Ships the email ingestion Prefect flow and optional Compose worker for PPT-082 / #176 so B0 can run hourly Gmail→parse→bridge beside Postgres. Root package-mode=false cannot use poetry install -E, so Prefect is installed via Poetry group ingestor-prefect / make ingestor-flow-install. CLI loads environments/$PAPITA_ENV/.env, establishes SQLDatabaseConnector, and preflights Gmail auth env + active users.id.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Live account/category FK enricher (**H1=B** — bank parsers leave FKs None; live runs DLQ-then-ack)
+
+  > - Airflow/Dagster/K8s packaging
+
+  > - PPT-083 API run-status surface (#177)
+
+  > - Ingestor coverage ≥80% gate (PPT-084 / #178)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - EmailFlowDeps wiring + runner/serve/--once entrypoint
+
+  > - Compose profile ingestor with Prefect runner /health HEALTHCHECK
+
+  > - Ingestor CI installs ingestor-prefect and smokes docker build for the worker image
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Email plugin / Prefect**
+
+  >
+
+  > - build_email_runner / build_email_ingestion_flow / serve_email_ingestion via build_base_ingestion_flow
+
+  > - Owner from PAPITA_INGESTOR_OWNER_ID only (never MIME); DB-backed resolve on live runs
+
+  > - Runtime: env file load, DB establish, Gmail env check, H1 warning
+
+  >
+
+  > **Core**
+
+  >
+
+  > - build_base_ingestion_flow gains retries + default_fetch_filter_factory
+
+  >
+
+  > **Ops / CI**
+
+  >
+
+  > - Make targets: ingestor-flow-install|flow|flow-serve|up|down
+
+  > - Optional Compose service (not started by make api-up)
+
+  > - CI: prefect group + Dockerfile build smoke; QC ignores docker/ingestor/**
+
+  >
+
+  > **Tests / docs**
+
+  >
+
+  > - Flow + runtime unit tests (mocked source/bridge; H1 inject-FK / DLQ paths)
+
+  > - Module README + .env.example + local env template updates
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (27 files)</summary>
+
+  >
+
+  >
+
+  > .github/CI.md | 2 +-
+
+  > .github/workflows/ingestor-ci.yml | 8 +-
+
+  > .github/workflows/quality-control.yml | 2 +
+
+  > .strata/memory/project_state.md | 21 +-
+
+  > bin/make/ingestor.mk | 26 +++
+
+  > docker/README.md | 6 +-
+
+  > docker/docker-compose.yml | 36 +++
+
+  > docker/ingestor/Dockerfile | 53 +++++
+
+  > environments/local/.env.example | 14 ++
+
+  > modules/ingestor-core/.env.example | 18 +-
+
+  > modules/ingestor-core/CHANGELOG.md | 3 +
+
+  > modules/ingestor-core/README.md | 26 ++-
+
+  > .../src/papita_ingestor_core/flows/base.py | 20 +-
+
+  > modules/ingestors/README.md | 8 +-
+
+  > modules/ingestors/email/.env.example | 12 +
+
+  > modules/ingestors/email/CHANGELOG.md | 4 +
+
+  > modules/ingestors/email/README.md | 64 +++++-
+
+  > .../src/papita_ingestor_email/flow_settings.py | 26 +++
+
+  > .../src/papita_ingestor_email/flows/**init**.py | 19 ++
+
+  > .../src/papita_ingestor_email/flows/email_flow.py | 252 +++++++++++++++++++++
+
+  > .../email/src/papita_ingestor_email/owner.py | 40 ++++
+
+  > .../email/src/papita_ingestor_email/runtime.py | 195 ++++++++++++++++
+
+  > .../email/src/papita_ingestor_email/wiring.py | 30 +++
+
+  > modules/ingestors/email/tests/conftest.py | 4 +
+
+  > modules/ingestors/email/tests/test_email_flow.py | 248 ++++++++++++++++++++
+
+  > modules/ingestors/email/tests/test_runtime.py | 102 +++++++++
+
+  > pyproject.toml | 5 +
+
+  > 27 files changed, 1197 insertions(+), 47 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - dbaca41 feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make ingestor-test — **77 passed** (local)
+
+  > - make ingestor-lint — pass (local)
+
+  > - Pre-commit on commit — pass
+
+  > - GitHub Actions CI — not yet observed on this PR
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Ingestor CI green (lint/test + Docker image smoke)
+
+  > - [ ] make ingestor-flow-install && make ingestor-test on a clean checkout
+
+  > - [ ] Optional: make ingestor-up with PAPITA_INGESTOR_OWNER_ID + Gmail vars set; confirm runner /health and preflight errors when Gmail/owner missing
+
+  > - [ ] Confirm make api-up still does **not** start the ingestor profile
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Live persist requires DATABASE_URL, Gmail auth env, and an **active** users.id for PAPITA_INGESTOR_OWNER_ID (FK on provenance/DLQ)
+
+  > > - Ingestor CI now installs Prefect and builds the worker image — longer CI wall time on ingestor paths
+
+  > > - Follow-up: FK enricher still required before ledger upserts from real bank mail (H1=B)
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - **H1=B:** bank parsers leave account/category FKs unset; live runs DLQ-then-ack without ledger upserts until an enricher lands — prefer PAPITA_INGESTOR_DRY_RUN=true for smoke
+
+  > > - Compose ingestor is opt-in (make ingestor-up / --profile ingestor); not part of make api-up
+
+  > > - Handoff names for PPT-083: flow papita-email-ingestion, deployment papita-email-ingestion-hourly
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#176](https://github.com/Elmorralito/save-ma-money/issues/176) (PPT-082)
+
+  > - Parent epic: [#170](https://github.com/Elmorralito/save-ma-money/issues/170) (PPT-076)
+
+  > - Downstream: [#177](https://github.com/Elmorralito/save-ma-money/issues/177) run-status, [#178](https://github.com/Elmorralito/save-ma-money/issues/178) e2e/coverage
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#175](https://github.com/Elmorralito/save-ma-money/issues/175)**_] :: **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-12 17:28:48+00:00</sub>_
 
