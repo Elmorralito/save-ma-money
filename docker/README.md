@@ -15,7 +15,11 @@ Local B0 still builds from Dockerfiles via Compose (`make api-up` / `make web-up
 
 PyPI wheels for `papita-transactions-model` stay on `publish-model.yml` / `release-model.yml` (PPT-024).
 
-**Custom images in this repo:** only `docker/api` and `docker/web`. Postgres/Redis use upstream (`postgres:15-alpine`, `redis:7-alpine`). Compose `migrate` reuses the API image.
+**Custom images in this repo:** `docker/api`, `docker/web`, and optional
+`docker/ingestor` (PPT-082 / [#176](https://github.com/Elmorralito/save-ma-money/issues/176)
+Prefect worker — Compose profile `ingestor`, not started by `make api-up`).
+Postgres/Redis use upstream (`postgres:15-alpine`, `redis:7-alpine`). Compose
+`migrate` reuses the API image.
 
 ## Locked decisions (PPT-067)
 

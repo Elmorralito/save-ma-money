@@ -18,3 +18,6 @@ This file is **not** the monorepo issue tracker changelog. Root
   `IngestionRunner` (persist-then-ack; DLQ-then-ack poison semantics),
   `BaseIngestorSettings` (`fetch_limit` / `dry_run`), optional Prefect flow
   factory (`poetry install -E prefect`).
+- PPT-082 / [#176](https://github.com/Elmorralito/save-ma-money/issues/176):
+  `build_base_ingestion_flow` accepts `retries`, `retry_delay_seconds`, and
+  `default_fetch_filter_factory` (monorepo install via `make ingestor-flow-install`).

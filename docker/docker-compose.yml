@@ -4,6 +4,7 @@
 #   cp environments/local/.env.example environments/local/.env
 #   make api-all   # API stack + health wait (or: make api-up / make stack-up)
 #   make web-up    # nginx SPA (:3000) + API deps; same-origin /api → BFF cookies (PPT-057)
+#   make ingestor-up  # optional Prefect email worker (profile ingestor; PPT-082) — not in api-up
 #   # uvicorn runs inside the api image (Dockerfile CMD) — not on the host
 #
 # Image naming / GHCR publish (PPT-067): docker/README.md — B0 builds from Dockerfiles here;
@@ -150,6 +151,41 @@ services:
       postgres-db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Optional email ingestion Prefect worker (PPT-082 / #176). Not started by make api-up.
+  #   make ingestor-up
+  #   # or: docker compose --env-file environments/local/.env -f docker/docker-compose.yml --profile ingestor up -d ingestor
+  ingestor:
+    profiles: ["ingestor"]
+    build:
+      context: ..
+      dockerfile: docker/ingestor/Dockerfile
+    container_name: "${COMPOSE_NAME:-papita-transactions}-ingestor"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    environment:
+      PAPITA_ENV: "${PAPITA_ENV:-local}"
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+      PAPITA_INGESTOR_OWNER_ID: "${PAPITA_INGESTOR_OWNER_ID:?set PAPITA_INGESTOR_OWNER_ID in environments/local/.env}"
+      PAPITA_INGESTOR_LOOKBACK_HOURS: "${PAPITA_INGESTOR_LOOKBACK_HOURS:-24}"
+      PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES: "${PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES:-60}"
+      PAPITA_INGESTOR_DRY_RUN: "${PAPITA_INGESTOR_DRY_RUN:-false}"
+      PAPITA_INGESTOR_FLOW_RETRIES: "${PAPITA_INGESTOR_FLOW_RETRIES:-2}"
+      # Startup preflight also validates Gmail auth (token file OR refresh-token triplet).
+      GMAIL_CLIENT_ID: "${GMAIL_CLIENT_ID:-}"
+      GMAIL_CLIENT_SECRET: "${GMAIL_CLIENT_SECRET:-}"
+      GMAIL_REFRESH_TOKEN: "${GMAIL_REFRESH_TOKEN:-}"
+      GMAIL_TOKEN_URI: "${GMAIL_TOKEN_URI:-https://oauth2.googleapis.com/token}"
+      GMAIL_PROCESSED_LABEL: "${GMAIL_PROCESSED_LABEL:-PAPITA_PROCESSED}"
+      GMAIL_TOKEN_FILE: "${GMAIL_TOKEN_FILE:-}"
+      PREFECT_RUNNER_SERVER_HOST: "127.0.0.1"
+      PREFECT_RUNNER_SERVER_PORT: "8080"
+    depends_on:
+      postgres-db:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully

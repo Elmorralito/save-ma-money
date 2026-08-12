@@ -26,15 +26,15 @@ modules/ingestors/*  →  papita-ingestor-core  →  papita-transactions-model
 
 ## What this package owns (PPT-079)
 
-| Surface                                                    | Role                                                         |
-| ---------------------------------------------------------- | ------------------------------------------------------------ |
-| `RawRecord` / `ParsedRecord` / `FetchFilter` / `RunResult` | Source-agnostic DTOs                                         |
-| `BaseIngestorSource` / `BaseRecordParser`                  | Plugin ABCs                                                  |
-| `SourceRegistry` / `ParserRegistry`                        | Decorator registration (+ parser priority)                   |
-| `IngestionRunner`                                          | stream fetch → parse → validate → **persist** → **ack**      |
-| `to_ingest_transaction_request` / `encode_raw_payload`     | Bridge + DLQ helpers                                         |
-| `BaseIngestorSettings`                                     | `fetch_limit`, `dry_run` (honored by runner; no FK defaults) |
-| `build_base_ingestion_flow()`                              | Optional Prefect factory (`poetry install -E prefect`)       |
+| Surface                                                    | Role                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `RawRecord` / `ParsedRecord` / `FetchFilter` / `RunResult` | Source-agnostic DTOs                                                   |
+| `BaseIngestorSource` / `BaseRecordParser`                  | Plugin ABCs                                                            |
+| `SourceRegistry` / `ParserRegistry`                        | Decorator registration (+ parser priority)                             |
+| `IngestionRunner`                                          | stream fetch → parse → validate → **persist** → **ack**                |
+| `to_ingest_transaction_request` / `encode_raw_payload`     | Bridge + DLQ helpers                                                   |
+| `BaseIngestorSettings`                                     | `fetch_limit`, `dry_run` (honored by runner; no FK defaults)           |
+| `build_base_ingestion_flow()`                              | Optional Prefect factory (`make ingestor-flow-install` / `-E prefect`) |
 
 **Persist** goes only through `IngestionBridgeService.ingest_transaction` /
 `record_dead_letter`. Core does not inspect provider-specific payload shapes.
@@ -78,10 +78,14 @@ make ingestor-test
 make ingestor-lint
 ```
 
-Optional Prefect extra (for `build_base_ingestion_flow`):
+Optional Prefect (for `build_base_ingestion_flow` / email flow):
 
 ```bash
-poetry install -E prefect --with development
+# Monorepo (root package-mode=false — do not use poetry install -E at root)
+make ingestor-flow-install
+
+# Package-local extra still works inside modules/ingestor-core:
+# poetry install -E prefect
 ```
 
 ## Coverage
