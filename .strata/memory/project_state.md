@@ -14,27 +14,27 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
+- **PPT-080 / #174:** `GmailSource` + `GmailSettings` on main (#214).
 - **PPT-079 / #173:** core contracts, registries, `IngestionRunner` on main (#213).
 - **PPT-078 / #172:** provenance sidecar + `IngestionBridgeService` on main (#212).
 - **PPT-077 / #171:** ingestor-core + email package scaffolds on main (#211).
 
 ### In progress (ACTIVE)
 
-- **PPT-080 / #174:** `GmailSource` + `GmailSettings` on `feat/PPT-080`
-  (R2 headless `GMAIL_*` refresh-token; mocked CI; optional local live smoke).
-  Parent epic **PPT-076 / #170**. Downstream soft: #175 parsers; hard: #176 Prefect.
+- **PPT-081 / #175:** Bancolombia + synthetic Nequi email parsers + hybrid
+  `FallbackEmailParser` on `175-featppt-081-…` (R1=B; COP; FKs deferred to #176).
+  Parent epic **PPT-076 / #170**. Downstream hard: #176 Prefect/end-to-end.
 
 ### Open (backlog)
 
-- **PPT-076** remaining children after #174 (bank parsers #175, email flow #176, etc.).
+- **PPT-076** remaining children after #175 (email flow #176, etc.).
 - **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
 - Alembic/`alembic check` SQLModel CHECK alignment (`chk_financing_share`, etc.).
 
 ### Next action
 
-- Land PPT-080 / #174; keep plugins on core ABC (`content`, `acknowledge(RawRecord)`,
-  `registry_id`) — ignore issue draft typos. Compose `GmailSettings` with
-  `BaseIngestorSettings` (do not subclass; dual env prefixes).
+- Land PPT-081 / #175; hand off stable `parser_id`s + unrecognized→DLQ semantics to
+  PPT-082 / #176 (account/category FK resolution). Do not ship Nu under `NequiParser`.
 
 ### Uncommitted / staging notes
 
