@@ -26,6 +26,15 @@ modules/web/.lighthouseci/
 .env.local
 environments/**/.env
 !environments/**/.env.example
+
+# Gmail / Google OAuth artifacts (PPT-080 / #174) — never commit
+token.json
+credentials.json
+client_secret*.json
+**/token.json
+**/credentials.json
+**/client_secret*.json
+
 .dbversion
 # Build files
 build/

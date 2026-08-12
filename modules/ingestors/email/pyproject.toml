@@ -19,7 +19,11 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = []
+dependencies = [
+    "google-auth-oauthlib>=1.4.0,<2.0.0",
+    "google-auth>=2.56.3,<3.0.0",
+    "google-api-python-client>=2.198.0,<3.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/ingestors/email"
@@ -34,6 +38,9 @@ include = [{ path = "pyproject.toml", format = ["sdist"] }]
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 papita-ingestor-core = { path = "../../ingestor-core", develop = true }
+google-auth-oauthlib = ">=1.4.0,<2.0.0"
+google-auth = ">=2.56.3,<3.0.0"
+google-api-python-client = ">=2.198.0,<3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.1.1"

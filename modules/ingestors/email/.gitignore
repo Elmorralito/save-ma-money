@@ -1,0 +1,5 @@
+# Local OAuth bootstrap leftovers (PPT-080 / #174). Root .gitignore also covers these.
+token.json
+credentials.json
+client_secret*.json
+*.apps.googleusercontent.com.json
