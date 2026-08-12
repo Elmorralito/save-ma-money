@@ -26,9 +26,229 @@
 
 - [ ] [_**[#176](https://github.com/Elmorralito/save-ma-money/issues/176)**_] :: **feat/PPT-082: [ingestor] Prefect hourly flow and Compose packaging** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:51+00:00</sub>_ :weary:
 
-- [ ] [_**[#175](https://github.com/Elmorralito/save-ma-money/issues/175)**_] :: **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:49+00:00</sub>_ :weary:
-
 - [ ] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#170](https://github.com/Elmorralito/save-ma-money/issues/170)**_] :: **feat/PPT-076: [EPIC][ingestor] Source-agnostic transaction ingestion modules** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:06:07+00:00</sub>_ :weary:
+
+- [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#175](https://github.com/Elmorralito/save-ma-money/issues/175)**_] :: **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:49+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-12 17:28:48+00:00</sub>_
+
+  > **Closed by** [_**#215**](https://github.com/Elmorralito/save-ma-money/pull/215): **feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers**
+
+  > **Branch:** 175-featppt-081-ingestor-bancolombia-and-nequi-email-parsers · **Base:** main · **1 commit** · **22 files**
+
+  >
+
+  > **Suggested title:** feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers
+
+  >
+
+  > ## Summary
+
+  >
+
+  > Ships MVP bank email parsers in papita-ingestor-email for Bancolombia alerts and synthetic Nequi notifications (BaseRecordParser + ParserRegistry), so Gmail-fetched MIME can become COP ParsedRecords without inventing ledger amounts. Unrecognized or unmatched email goes to typed parse failure / runner DLQ. Account and category FKs stay None for PPT-082.
+
+  >
+
+  > ## Out of scope / Highlights
+
+  >
+
+  > **Out of scope**
+
+  >
+
+  > - Nu payment / Nu monthly extracto (not Nequi)
+
+  > - Davivienda / other banks
+
+  > - Account/category UUID resolution and Prefect end-to-end flow (PPT-082 / #176)
+
+  > - Persist/upsert (model bridge owns that)
+
+  >
+
+  > **Highlights**
+
+  >
+
+  > - R1=B: NequiParser uses synthetic @nequi.com.co fixtures and rejects Nu senders
+
+  > - Hybrid FallbackEmailParser (priority -100) raises IngestorParseError("unrecognized email"); without Fallback, registry LookupError → runner DLQ
+
+  > - Sanitized .eml fixtures only (no live mailbox / no user PDF PII)
+
+  >
+
+  > ## Changes
+
+  >
+
+  > **Ingestor email parsers**
+
+  >
+
+  > - BancolombiaParser: Recibiste → INCOME, transferiste → TRANSFER, Pagaste → EXPENSE; COP; source_ref from RawRecord
+
+  > - NequiParser: synthetic Recibiste/Enviaste templates
+
+  > - FallbackEmailParser: email-shaped leftovers only; never invents amounts / never returns None
+
+  > - MIME → visible text helper + COP amount/date helpers
+
+  > - ensure_parsers_registered() on package import (idempotent after ParserRegistry.clear())
+
+  >
+
+  > **Tests / docs / strata**
+
+  >
+
+  > - Unit fixtures under tests/fixtures/emails/; parser + MIME tests; runner unmatched → DLQ coverage
+
+  > - README / CHANGELOG for PPT-081; .strata project state updated
+
+  >
+
+  > ## File changes
+
+  >
+
+  > <details>
+
+  > <summary>File changes (~22 files)</summary>
+
+  >
+
+  >
+
+  > .strata/memory/MEMORY.md | 6 +-
+
+  > .strata/memory/project_state.md | 14 +-
+
+  > modules/ingestors/email/CHANGELOG.md | 3 +
+
+  > modules/ingestors/email/README.md | 37 +++-
+
+  > .../email/src/papita_ingestor_email/**init**.py | 7 +
+
+  > .../src/papita_ingestor_email/parsers/**init**.py | 34 ++++
+
+  > .../src/papita_ingestor_email/parsers/amounts.py | 69 ++++++++
+
+  > .../papita_ingestor_email/parsers/bancolombia.py | 108 ++++++++++++
+
+  > .../src/papita_ingestor_email/parsers/fallback.py | 45 +++++
+
+  > .../src/papita_ingestor_email/parsers/mime.py | 152 +++++++++++++++++
+
+  > .../src/papita_ingestor_email/parsers/nequi.py | 100 +++++++++++
+
+  > modules/ingestors/email/tests/conftest.py | 9 +
+
+  > .../tests/fixtures/emails/*.eml | 49 +
+
+  > modules/ingestors/email/tests/helpers_records.py | 37 ++++
+
+  > modules/ingestors/email/tests/test_mime_helper.py | 18 ++
+
+  > modules/ingestors/email/tests/test_parsers.py | 190 +++++++++++++++++++++
+
+  > 22 files changed, 865 insertions(+), 13 deletions(-)
+
+  >
+
+  >
+
+  > </details>
+
+  >
+
+  > ## Commits
+
+  >
+
+  > - 8777297 feat/PPT-081: [ingestor] Bancolombia and Nequi email parsers
+
+  >
+
+  > ## Checks, tests, and validation already done
+
+  >
+
+  > - make ingestor-test — 63 passed
+
+  > - make ingestor-lint — passed
+
+  > - Pre-commit on commit — passed (prettier + strata strict pairing)
+
+  >
+
+  > ## QA / test plan
+
+  >
+
+  > - [ ] Confirm CI Ingestor / quality checks green on this PR
+
+  > - [ ] Spot-check fixture parse expectations (Bancolombia three kinds + Nequi income/expense)
+
+  > - [ ] Confirm unrecognized path: LookupError without Fallback; IngestorParseError with Fallback
+
+  > - [ ] Confirm Nu sender is not claimed by NequiParser
+
+  >
+
+  > ## Risks
+
+  >
+
+  > > [!CAUTION]
+
+  > >
+
+  > > ### Risks
+
+  > >
+
+  > > - Template/regex drift vs future real Bancolombia/Nequi HTML may cause claim-then-IngestorParseError (safe DLQ, but ops noise until fixtures update)
+
+  > > - FallbackEmailParser claims any EMAIL record with a From header; bank parsers must keep higher priority
+
+  >
+
+  > ## Caveats
+
+  >
+
+  > > [!WARNING]
+
+  > >
+
+  > > ### Caveats
+
+  > >
+
+  > > - Nequi fixtures are synthetic (issue AC path R1=B); not validated against a live Nequi mailbox
+
+  > > - Parsed FKs are intentionally None until PPT-082 / #176 account resolution
+
+  > > - Nu brand emails remain out of scope for these parsers
+
+  >
+
+  > ## References
+
+  >
+
+  > - Closes [#175](https://github.com/Elmorralito/save-ma-money/issues/175) (PPT-081)
+
+  > - Parent epic [#170](https://github.com/Elmorralito/save-ma-money/issues/170) (PPT-076)
+
+  > - Depends on [#173](https://github.com/Elmorralito/save-ma-money/issues/173) (PPT-079) · soft [#174](https://github.com/Elmorralito/save-ma-money/issues/174) (PPT-080)
+
+  > - Blocks [#176](https://github.com/Elmorralito/save-ma-money/issues/176) (PPT-082)
+
+  >
+
+  > Made with [Cursor](https://cursor.com)
 
 - [x] <img src="https://avatars.githubusercontent.com/u/233175807?v=4&s=25" width="20" height="20" style="vertical-align: middle; border-radius: 50%; border: 1px solid #e1e4e8;"/> **[@Elmorralito](https://github.com/Elmorralito)** [_**[#174](https://github.com/Elmorralito/save-ma-money/issues/174)**_] :: **feat/PPT-080: [ingestor] Gmail OAuth2 source plugin** :: _<sub style="vertical-align: middle; color: #636363;">2026-08-05 01:07:47+00:00</sub>_ :weary: → :laughing: _<sub style="vertical-align: middle; color: #636363;">2026-08-12 01:41:14+00:00</sub>_
 
