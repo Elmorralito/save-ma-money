@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -13,6 +14,9 @@ from papita_ingestor_email.sources.gmail import ensure_registered
 _TESTS_DIR = Path(__file__).resolve().parent
 if str(_TESTS_DIR) not in sys.path:
     sys.path.insert(0, str(_TESTS_DIR))
+
+# Prefect 3 spins an ephemeral API for sync flow runs; keep noise down in CI/local.
+os.environ.setdefault("PREFECT_LOGGING_LEVEL", "WARNING")
 
 
 @pytest.fixture(autouse=True)

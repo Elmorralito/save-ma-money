@@ -74,14 +74,52 @@ Unrecognized path:
 1. Without Fallback in `instances` → `LookupError` → runner DLQ.
 2. With Fallback → typed `IngestorParseError` → same DLQ; never invents amounts / never returns `None`.
 
-Unit fixtures live under `tests/fixtures/emails/` (sanitized MIME). Account /
-category UUID resolution is deferred to PPT-082 / [#176](https://github.com/Elmorralito/save-ma-money/issues/176).
-Nu payment and Nu monthly extracto emails are out of scope for these parsers.
+Unit fixtures live under `tests/fixtures/emails/` (sanitized MIME). Account / category FKs stay `None` from parsers; live FK enricher is out of
+scope for PPT-082 (tests inject FKs or assert DLQ-then-ack). Nu payment and Nu
+monthly extracto emails are out of scope for these parsers.
+
+## Prefect email flow (PPT-082 / #176)
+
+Hourly (configurable) Prefect flow wires `GmailSource` + bank parsers +
+`IngestionBridgeService` via `IngestionRunner`. Owner tenancy is
+`PAPITA_INGESTOR_OWNER_ID` only — never from MIME. Host runs load
+`environments/$PAPITA_ENV/.env` automatically and call
+`SQLDatabaseConnector.establish(DATABASE_URL)` before persist/DLQ.
+
+**Known limit (H1=B / #176):** bank parsers leave account/category FKs `None`.
+A live run against real Gmail will **DLQ-then-ack** parsed mail (no ledger
+upsert) until a FK enricher exists. CLI preflight logs this warning and requires
+Gmail auth env + an **active** `users.id` matching `PAPITA_INGESTOR_OWNER_ID`
+(unless `PAPITA_INGESTOR_DRY_RUN=true`). Use dry-run for safe connect/parse smoke;
+inject FKs only in tests.
+
+```bash
+# Prefect optional (root package-mode=false → Poetry group, not -E)
+make ingestor-flow-install
+
+# One-shot run (needs DATABASE_URL, PAPITA_INGESTOR_OWNER_ID, GMAIL_*)
+# OWNER_ID must exist in users (FK on provenance / dead letters).
+make ingestor-flow
+
+# Serve on interval (default 60 minutes)
+make ingestor-flow-serve
+
+# Optional Compose worker — does not start with make api-up
+make ingestor-up
+make ingestor-down
+```
+
+Entrypoint: `python -m papita_ingestor_email.flows.email_flow` (`--once` or serve).
+Schedule: `PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES` (default `60`).
+Compose already injects env — pass `--skip-env-file` if you need to avoid
+reloading the host `.env` inside the container (default load is harmless when
+vars are already set: `override=False`).
 
 ## Local commands
 
 ```bash
 make ingestor-install
+make ingestor-flow-install   # when working on Prefect flow
 make ingestor-test
 make ingestor-lint
 ```
@@ -111,9 +149,20 @@ and module `.gitignore`.
 | `GMAIL_PROCESSED_LABEL` | Label applied on acknowledge (default `PAPITA_PROCESSED`) |
 | `GMAIL_TOKEN_FILE`      | Optional secondary path to a token JSON (not the default) |
 
-Runner knobs such as `fetch_limit` / `dry_run` stay on `PAPITA_INGESTOR_*`
-(`BaseIngestorSettings`) — do not remap them to `GMAIL_*`. Compose both settings
-objects at the runner/plugin boundary.
+| Variable                                    | Purpose                                                         |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| `PAPITA_INGESTOR_OWNER_ID`                  | Trusted tenant UUID for bridge persist (required for live runs) |
+| `PAPITA_INGESTOR_LOOKBACK_HOURS`            | Fetch window when no explicit `FetchFilter.since` (default 24)  |
+| `PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES` | Prefect serve interval (default 60)                             |
+| `PAPITA_INGESTOR_FETCH_LIMIT` / `DRY_RUN`   | Runner knobs (`BaseIngestorSettings`)                           |
+| `PAPITA_INGESTOR_FLOW_RETRIES`              | Prefect flow retries (default 2)                                |
+| `DATABASE_URL`                              | B0 Postgres for `IngestionBridgeService`                        |
+
+Runner knobs stay on `PAPITA_INGESTOR_*` — do not remap them to `GMAIL_*`.
+Compose `EmailFlowSettings` + `GmailSettings` at the flow boundary.
+
+**Handoff for PPT-083 / #177:** flow name `papita-email-ingestion`; serve
+deployment name `papita-email-ingestion-hourly`.
 
 ## Local Gmail OAuth bootstrap
 
@@ -171,4 +220,5 @@ GMAIL_PROCESSED_LABEL=PAPITA_PROCESSED
 
 - Do not put Google secrets in GitHub Actions for PPT-080 CI.
 - Do not commit OAuth client JSON or refresh tokens under `modules/` or the repo root.
-- Mailbox OAuth is **not** Supabase JWT / BFF auth; tenancy/`owner_id` is wired later (Prefect/API children).
+- Mailbox OAuth is **not** Supabase JWT / BFF auth; set `PAPITA_INGESTOR_OWNER_ID`
+  to an existing `users.id` for persist.

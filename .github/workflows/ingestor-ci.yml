@@ -7,6 +7,7 @@ on:
       - "modules/ingestor-core/**"
       - "modules/ingestors/**"
       - "bin/make/ingestor.mk"
+      - "docker/ingestor/**"
       - "pyproject.toml"
       - ".github/workflows/ingestor-ci.yml"
   push:
@@ -16,6 +17,7 @@ on:
       - "modules/ingestor-core/**"
       - "modules/ingestors/**"
       - "bin/make/ingestor.mk"
+      - "docker/ingestor/**"
       - "pyproject.toml"
       - ".github/workflows/ingestor-ci.yml"
 
@@ -49,10 +51,14 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: poetry install --no-interaction --with development,pre-commit
+        # ingestor-prefect: PPT-082 flow tests need Prefect (root package-mode=false).
+        run: poetry install --no-interaction --with development,pre-commit,ingestor-prefect
 
       - name: Lint ingestor packages
         run: make ingestor-lint
 
       - name: Test ingestor packages
         run: make ingestor-test
+
+      - name: Build ingestor image (smoke)
+        run: docker build -f docker/ingestor/Dockerfile -t papita-ingestor:ci .
