@@ -13,3 +13,6 @@ This file is **not** the monorepo issue tracker changelog. Root
 - Package scaffold for PPT-077 / [#171](https://github.com/Elmorralito/save-ma-money/issues/171)
   (`src/papita_ingestor_email`, smoke tests, path dependency on
   `papita-ingestor-core`).
+- Bank email parsers for PPT-081 / [#175](https://github.com/Elmorralito/save-ma-money/issues/175):
+  `BancolombiaParser`, synthetic `NequiParser`, hybrid `FallbackEmailParser`,
+  MIME helpers, sanitized `.eml` fixtures, and `ensure_parsers_registered()`.

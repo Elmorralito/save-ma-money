@@ -1,0 +1,7 @@
+From: Newsletter <news@example.com>
+To: user@example.com
+Subject: Weekly digest
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Hello, here is your weekly digest with no bank amounts.</p></body></html>

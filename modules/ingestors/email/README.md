@@ -15,9 +15,10 @@ Email / Gmail source plugin for Papita ingestion (`papita_ingestor_email`).
 
 Plugin package under `modules/ingestors/`. Hosts the Gmail OAuth2 source
 (PPT-080 / [#174](https://github.com/Elmorralito/save-ma-money/issues/174)) and
-later bank-specific parsers (PPT-081). Prefect packaging is PPT-082 — not this
-package’s job. CI for the Gmail source uses **mocks only** (no live Google
-credentials in Actions).
+bank-specific email parsers (PPT-081 /
+[#175](https://github.com/Elmorralito/save-ma-money/issues/175)). Prefect
+packaging is PPT-082 — not this package’s job. CI for the Gmail source uses
+**mocks only** (no live Google credentials in Actions).
 
 ## Dependency graph (one-way)
 
@@ -46,6 +47,36 @@ with create_gmail_source(GmailSettings()) as source:  # reads GMAIL_* from env
 
 CI uses **mocked** `googleapiclient` only. Live smoke needs `GMAIL_*` in
 `environments/local/.env` (see bootstrap below).
+
+## Bank email parsers (PPT-081 / #175)
+
+`BancolombiaParser`, `NequiParser`, and hybrid `FallbackEmailParser` implement
+`BaseRecordParser` and register on `ParserRegistry` when the package (or
+`papita_ingestor_email.parsers`) is imported:
+
+```python
+from papita_ingestor_core import ParserRegistry
+from papita_ingestor_email import ensure_parsers_registered
+
+ensure_parsers_registered()  # idempotent after ParserRegistry.clear()
+parser = ParserRegistry.select_for(raw_record)  # bank parsers beat fallback
+parsed = parser.parse(raw_record)  # currency COP; FKs None until PPT-082
+```
+
+| Parser                | `parser_id`         | Priority | Notes                                                                       |
+| --------------------- | ------------------- | -------- | --------------------------------------------------------------------------- |
+| `BancolombiaParser`   | `bancolombia-email` | 100      | Sender `*notificacionesbancolombia.com`; Recibiste / transferiste / Pagaste |
+| `NequiParser`         | `nequi-email`       | 90       | **Synthetic** `@nequi.com.co` fixtures (not Nu / `nu.com.co`)               |
+| `FallbackEmailParser` | `fallback-email`    | -100     | Email-shaped leftovers → `IngestorParseError("unrecognized email")`         |
+
+Unrecognized path:
+
+1. Without Fallback in `instances` → `LookupError` → runner DLQ.
+2. With Fallback → typed `IngestorParseError` → same DLQ; never invents amounts / never returns `None`.
+
+Unit fixtures live under `tests/fixtures/emails/` (sanitized MIME). Account /
+category UUID resolution is deferred to PPT-082 / [#176](https://github.com/Elmorralito/save-ma-money/issues/176).
+Nu payment and Nu monthly extracto emails are out of scope for these parsers.
 
 ## Local commands
 

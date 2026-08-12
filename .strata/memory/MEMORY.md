@@ -4,9 +4,9 @@ Pure hot index: live pointers + the generated rules-by-trigger table. Keep ≤80
 
 ## Live pointers
 
-- [Project state](project_state.md) — PPT-080 / #174 in progress (GmailSource R2); PPT-079 closed.
-- [Active issues](../issues/ACTIVE.md) — prefer project_state for in-flight PR (PPT-080).
-- [Open backlog](../issues/OPEN.md) — PPT-076 epic children after #174.
+- [Project state](project_state.md) — PPT-081 / #175 in progress (bank email parsers); PPT-080 closed.
+- [Active issues](../issues/ACTIVE.md) — prefer project_state for in-flight PR (PPT-081).
+- [Open backlog](../issues/OPEN.md) — PPT-076 epic children after #175.
 - Closed work — GitHub issues + `git log` (no `.strata/issues/archive/`).
 
 ## Rules by trigger
