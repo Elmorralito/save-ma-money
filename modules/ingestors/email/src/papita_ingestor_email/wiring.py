@@ -12,7 +12,7 @@ from papita_ingestor_email.settings import GmailSettings
 
 
 @dataclass(frozen=True, slots=True)
-class EmailFlowDeps:
+class EmailFlowDeps:  # pylint: disable=too-many-instance-attributes
     """Single wiring object for ``build_email_runner`` / ``build_email_ingestion_flow``.
 
     Avoids duplicating the same keyword surface on both factories.
@@ -25,6 +25,10 @@ class EmailFlowDeps:
     owner: OwnerProvider | None = None
     establish_db: bool | None = None
     verify_owner: bool | None = None
+    connection_service: Any | None = None
+    run_service: Any | None = None
+    persist_status: bool | None = None
+    deployment_name: str | None = None
 
 
 __all__ = ["EmailFlowDeps"]

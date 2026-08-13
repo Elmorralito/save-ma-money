@@ -11,7 +11,14 @@ from __future__ import annotations
 from enum import Enum
 from typing import TypeVar
 
-from papita_txnsmodel.model.enums import AccountKind, CategoryKind, LedgerSide, TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import (
+    AccountKind,
+    CategoryKind,
+    IngestionRunStatus,
+    LedgerSide,
+    TransactionKind,
+    TransactionStatus,
+)
 
 E = TypeVar("E", bound=Enum)
 
@@ -122,3 +129,19 @@ def parse_transaction_status(slug: str) -> TransactionStatus:
         ValueError: When the slug is not a valid transaction status.
     """
     return api_slug_to_enum(TransactionStatus, slug)
+
+
+def parse_ingestion_run_status(slug: str) -> IngestionRunStatus:
+    """Parse an API ingestion run ``status`` slug to ``IngestionRunStatus``.
+
+    Args:
+        slug: Lowercase status from request JSON or query params
+            (e.g. ``succeeded``, ``partial``).
+
+    Returns:
+        Corresponding ``IngestionRunStatus`` member.
+
+    Raises:
+        ValueError: When the slug is not a valid ingestion run status.
+    """
+    return api_slug_to_enum(IngestionRunStatus, slug)

@@ -86,6 +86,15 @@ class IngestionSource(str, Enum):
     API = "API"
 
 
+class IngestionRunStatus(str, Enum):
+    """Lifecycle status for an owner-scoped ingestion run (PPT-083 / #177)."""
+
+    STARTED = "STARTED"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    PARTIAL = "PARTIAL"
+
+
 class RealEstateOwnership(str, Enum):
     """Real estate ownership mode."""
 

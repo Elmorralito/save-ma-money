@@ -16,6 +16,7 @@ def build_base_ingestion_flow(
     retries: int = 0,
     retry_delay_seconds: float = 60,
     default_fetch_filter_factory: Callable[[], FetchFilter | None] | None = None,
+    execute: Callable[[IngestionRunner, FetchFilter | None], RunResult] | None = None,
 ) -> Any:
     """Return a Prefect ``@flow`` that runs ``IngestionRunner``.
 
@@ -32,6 +33,8 @@ def build_base_ingestion_flow(
         retry_delay_seconds: Delay between Prefect flow retries.
         default_fetch_filter_factory: Used when the flow is invoked without an
             explicit ``fetch_filter`` (e.g. lookback window).
+        execute: Optional wrapper around ``runner.run`` (e.g. status persistence).
+            Defaults to ``runner.run(fetch_filter)``.
 
     Returns:
         A Prefect flow callable.
@@ -56,6 +59,8 @@ def build_base_ingestion_flow(
         if effective is None and default_fetch_filter_factory is not None:
             effective = default_fetch_filter_factory()
         runner = runner_factory()
+        if execute is not None:
+            return execute(runner, effective)
         return runner.run(effective)
 
     return _ingestion_flow

@@ -194,6 +194,28 @@ def reports_client() -> tuple[TestClient, UsersDTO, MagicMock]:
 
 
 @pytest.fixture
+def ingestion_client() -> tuple[TestClient, UsersDTO, MagicMock, MagicMock]:
+    """Authenticated client with mocked ingestion connection/run services (PPT-083)."""
+    from papita_txnsapi.dependencies.auth import get_current_owner
+    from papita_txnsapi.dependencies.services import (
+        get_ingestion_connection_service,
+        get_ingestion_run_service,
+    )
+
+    _clear_auth_singletons()
+    app = create_app()
+    owner = make_user()
+    mock_connections = MagicMock()
+    mock_runs = MagicMock()
+    app.dependency_overrides[get_current_owner] = lambda: owner
+    app.dependency_overrides[get_ingestion_connection_service] = lambda: mock_connections
+    app.dependency_overrides[get_ingestion_run_service] = lambda: mock_runs
+    test_client = TestClient(app)
+    yield test_client, owner, mock_connections, mock_runs
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture
 def fake_redis():
     """In-memory Redis client for unit tests (decode_responses=True)."""
     import fakeredis

@@ -7,7 +7,8 @@ function is a thin FastAPI dependency over a shared connector.
 Key exports:
     get_connector: Resolve and validate the SQLAlchemy connector class.
     get_users_service, get_accounts_service, get_categories_service,
-    get_transaction_templates_service, get_transactions_service, get_report_service:
+    get_transaction_templates_service, get_transactions_service, get_report_service,
+    get_ingestion_connection_service, get_ingestion_run_service:
     Domain service factories.
     clear_transactions_service_cache / clear_transaction_templates_service_cache:
     Drop module-scoped DI caches.
@@ -24,6 +25,7 @@ from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsmodel.database.connector import SQLDatabaseConnector
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.categories import CategoriesService
+from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
 from papita_txnsmodel.services.reports import ReportService
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.services.users import UsersService
@@ -189,3 +191,33 @@ def get_report_service(connector: Annotated[Type[SQLDatabaseConnector], Depends(
         Configured ``ReportService`` instance.
     """
     return _service_factory(ReportService, connector)
+
+
+def get_ingestion_connection_service(
+    connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
+) -> IngestionConnectionService:
+    """Build ``IngestionConnectionService`` for read-only connection status routes (PPT-083).
+
+    Args:
+        connector: Injected model database connector.
+
+    Returns:
+        Configured ``IngestionConnectionService`` instance.
+    """
+    return _service_factory(IngestionConnectionService, connector)
+
+
+def get_ingestion_run_service(
+    connector: Annotated[Type[SQLDatabaseConnector], Depends(get_connector)],
+) -> IngestionRunService:
+    """Build ``IngestionRunService`` for read-only run-status routes (PPT-083).
+
+    Worker/Prefect remains the writer; API handlers only call list/get helpers.
+
+    Args:
+        connector: Injected model database connector.
+
+    Returns:
+        Configured ``IngestionRunService`` instance.
+    """
+    return _service_factory(IngestionRunService, connector)
