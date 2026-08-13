@@ -36,5 +36,6 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Next action
 
-- Ship PPT-083 PR; apply model migration on B0 (`l9a0b1c2d3e4`). Full OpenAPI/CI
+- Ship PPT-083 PR (#217); Autopilot Black-fix on email `test_status_mapping`
+  for Ingestor CI. Apply model migration on B0 (`l9a0b1c2d3e4`). Full OpenAPI/CI
   web contract refresh deferred to PPT-084 / #178. Live FK enricher still H1=B.

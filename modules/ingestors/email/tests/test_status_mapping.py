@@ -29,9 +29,7 @@ def test_derive_run_status_failed() -> None:
 
 
 def test_summarize_failures_omits_raw_and_truncates_count() -> None:
-    failures = [
-        RecordFailure(source_ref=f"r-{i}", error_type="X", message=f"m{i}") for i in range(7)
-    ]
+    failures = [RecordFailure(source_ref=f"r-{i}", error_type="X", message=f"m{i}") for i in range(7)]
     summary = summarize_failures(RunResult(failures=failures), max_lines=3)
     assert summary is not None
     assert "r-0" in summary
