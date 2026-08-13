@@ -17,6 +17,9 @@ Routes exposed (prefix relative to app mount):
         via :class:`~papita_txnsmodel.services.transactions.TransactionTemplatesService`.
     ``/movements`` — TRANSFER alias over the same transactions service.
     ``/reports`` — FR-12 read models via :class:`~papita_txnsmodel.services.reports.ReportService`.
+    ``/ingestion`` — connection + run-status reads (PPT-083) via
+        :class:`~papita_txnsmodel.services.ingestion_status.IngestionConnectionService` /
+        :class:`~papita_txnsmodel.services.ingestion_status.IngestionRunService`.
     ``/budgets`` — placeholder 501 responses (FR-09 deferred to v4.1).
 
 Tenant scoping:
@@ -34,6 +37,7 @@ from papita_txnsapi.routers.v1 import (
     budgets,
     categories,
     health,
+    ingestion,
     meta,
     movements,
     reports,
@@ -52,4 +56,5 @@ api_v1_router.include_router(transactions.router)
 api_v1_router.include_router(transaction_templates.router)
 api_v1_router.include_router(movements.router)
 api_v1_router.include_router(reports.router)
+api_v1_router.include_router(ingestion.router)
 api_v1_router.include_router(budgets.router)

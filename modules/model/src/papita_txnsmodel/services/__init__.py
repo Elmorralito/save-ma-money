@@ -24,6 +24,12 @@ from papita_txnsmodel.services.ingestion import (
     IngestTransactionRequest,
     IngestTransactionResult,
 )
+from papita_txnsmodel.services.ingestion_status import (
+    IngestionConnectionService,
+    IngestionRunService,
+    RecordIngestionRunRequest,
+    UpsertIngestionConnectionRequest,
+)
 from papita_txnsmodel.services.owner_period_balances import OwnerPeriodBalancesService
 from papita_txnsmodel.services.owner_yearly_balances import OwnerYearlyBalancesService
 from papita_txnsmodel.services.reports import ReportService
@@ -41,7 +47,11 @@ __all__ = [
     "IngestTransactionRequest",
     "IngestTransactionResult",
     "IngestionBridgeService",
+    "IngestionConnectionService",
+    "IngestionRunService",
     "LoanAccountDetailsService",
+    "RecordIngestionRunRequest",
+    "UpsertIngestionConnectionRequest",
     "OwnerPeriodBalancesService",
     "OwnerYearlyBalancesService",
     "RealEstateAccountDetailsService",

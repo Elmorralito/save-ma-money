@@ -15,6 +15,8 @@ TRANSACTION_TEMPLATES__TABLENAME = "transaction_templates"
 TRANSACTIONS__TABLENAME = "transactions"
 TRANSACTION_INGESTION_PROVENANCE__TABLENAME = "transaction_ingestion_provenance"
 INGESTION_DEAD_LETTERS__TABLENAME = "ingestion_dead_letters"
+INGESTION_CONNECTIONS__TABLENAME = "ingestion_connections"
+INGESTION_RUNS__TABLENAME = "ingestion_runs"
 ACCOUNT_FINANCING__TABLENAME = "account_financing"
 
 BANKING_ACCOUNT_DETAILS__TABLENAME = "banking_account_details"

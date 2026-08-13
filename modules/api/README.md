@@ -42,6 +42,7 @@ The API manages personal finance data aligned to the **v3 PostgreSQL schema** (`
 | `/transaction-templates/*`               | `transaction_templates` — CRUD + upcoming-dues / mark-paid / clear-paid (PPT-070 / [#163](https://github.com/Elmorralito/save-ma-money/issues/163))                        | Yes |
 | `/movements/*`                           | **Alias** — same rows where `transaction_kind = TRANSFER`                                                                                                                  | Yes |
 | `/reports/*` (except budget-performance) | `ReportService` aggregations over ledger + categories                                                                                                                      | Yes |
+| `/ingestion/*`                           | Read-only connection + run status (PPT-083 / [#177](https://github.com/Elmorralito/save-ma-money/issues/177)); worker/Prefect writes rows                                  | Yes |
 | `/budgets/*`                             | Deferred — v4.1 ([`ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a`](../../docs/design/ARCHITECTURE.md#part-iii--post-mvp-v4-extensions-ppt-031-track-a)) | 501 |
 | `/auth/refresh`, `/auth/logout`          | **Supabase:** implemented (session rotate / sign-out + optional Redis denylist). **Local HS256:** 501                                                                      | —   |
 | `/bff/auth/*`                            | PPT-049 browser BFF: HttpOnly `papita_sid` session cookie; JWTs server-side; CSRF `X-Papita-CSRF`. Coexists with Bearer `/auth/*` (`make auth-smoke`)                      | Yes |
@@ -84,6 +85,7 @@ Further mapping: [`docs/design/ARCHITECTURE.md#part-iv--api--model-mapping-ppt-0
 | Templates/dues | `routers/v1/transaction_templates.py` — CRUD + upcoming-dues / mark-paid / clear-paid (PPT-073) |
 | Movements      | `routers/v1/movements.py` — TRANSFER alias + execute                                            |
 | Reports        | `routers/v1/reports.py` — budget-performance → 501                                              |
+| Ingestion      | `routers/v1/ingestion.py` — connection + run-status reads (PPT-083); no HTTP run trigger        |
 | Deferred 501   | `routers/v1/budgets.py`; split; budget-performance; refresh/logout when `AUTH_PROVIDER=local`   |
 | Schemas / deps | `schemas/*`, `dependencies/auth.py`, `pagination.py`, `services.py`, `tenant.py`                |
 | Tests          | `modules/api/tests/` — unit + B0 live-DB; Auth mock + `make auth-smoke`                         |
@@ -421,6 +423,7 @@ Webhooks are **not implemented** (future: `transaction.created`, etc.).
 | Transactions   | `/transactions/*`          | GET, POST, PUT, DELETE | ✓ (no split)                |
 | Templates/dues | `/transaction-templates/*` | GET, POST, PUT, DELETE | ✓ (PPT-070; + dues actions) |
 | Movements      | `/movements/*`             | GET, POST, PUT, DELETE | ✓ (alias)                   |
+| Ingestion      | `/ingestion/*`             | GET                    | ✓ (PPT-083; status reads)   |
 | Reports        | `/reports/*`               | GET                    | ✓ (no budget-performance)   |
 
 ---
@@ -1399,6 +1402,34 @@ Tenant-scoped CRUD on `transaction_templates` plus upcoming-dues window and mark
 | POST   | `/transaction-templates/{template_id}/clear-paid` | Soft-deletes the paid posting for the period      |
 
 **Tests:** `modules/api/tests/test_transaction_templates.py` (mocked) · `test_transaction_templates_live_db.py` (B0). OpenAPI: committed `modules/web/openapi/openapi.json` — `make check-openapi`.
+
+---
+
+## Ingestion status endpoints (PPT-083)
+
+Read-only owner-scoped status for ingestion **connections** and **runs**. Routers map schemas + `owner` only; persistence lives in `IngestionConnectionService` / `IngestionRunService` (`papita_txnsmodel`). Responses are allowlisted (no OAuth tokens, Gmail credentials, or DLQ `raw_payload`).
+
+| Method | Path                                     | Notes                                                              |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------ |
+| GET    | `/ingestion/connections`                 | Paginated non-secret connection metadata                           |
+| GET    | `/ingestion/connections/{connection_id}` | Single connection; cross-tenant → **404** (not 403)                |
+| GET    | `/ingestion/runs/latest`                 | Most recently started run; optional `connection_id` query          |
+| GET    | `/ingestion/runs`                        | Paginated recent runs (`skip` / `limit`); optional `connection_id` |
+
+**Auth:** JWT / BFF session via `get_current_owner` → **401** when unauthenticated.
+
+**Run status slugs (API JSON):** `started`, `succeeded`, `failed`, `partial` (DB stores uppercase enums).
+
+**Who writes / who triggers (SSOT):**
+
+| Concern                                | Owner                                                                                     | Not this API                                                            |
+| -------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Upsert connection + append/finish runs | Email Prefect worker (`papita_ingestor_email`) after mapping `RunResult` counters         | No `POST /ingestion/.../run` (or similar)                               |
+| Schedule / one-shot                    | Prefect flow `papita-email-ingestion` · deployment `papita-email-ingestion-hourly`        | Do not add an HTTP “run once” trigger here                              |
+| Local ops                              | `make ingestor-flow` (`--once`) · `make ingestor-flow-serve` · Compose profile `ingestor` | See [`modules/ingestors/email/README.md`](../ingestors/email/README.md) |
+| Packaging / OpenAPI web regen gate     | Deferred to PPT-084 / [#178](https://github.com/Elmorralito/save-ma-money/issues/178)     | Runtime OpenAPI already lists these paths                               |
+
+**Tests:** `modules/api/tests/test_ingestion_schemas.py` · `test_ingestion.py` (mocked auth + services). Full web OpenAPI artifact refresh → PPT-084.
 
 ---
 

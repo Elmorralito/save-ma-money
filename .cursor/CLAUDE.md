@@ -2,7 +2,8 @@
 
 Before memory operations or deep project work, read [`.strata/MANIFEST.md`](../.strata/MANIFEST.md) — the project memory contract (structure, routing rules, load order) — and load per its rules.
 
-Project memory is repo-owned under `.strata/` (strata format, `layout_version: 3`). Do not write project memory to tool-owned paths such as `~/.claude/` or `~/.codex/`.
+Project memory is repo-owned under `.strata/` (strata format, `layout_version: 3`).
+Do not write project memory to tool-owned paths such as `~/.claude/` or `~/.codex/`.
 
 **Operational details** (setup, architecture, CI, PR checklist, code style) live in [`.cursor/AGENTS.md`](AGENTS.md). [`.agents/AGENTS.md`](../.agents/AGENTS.md) symlinks there — edit **only** `.cursor/AGENTS.md`.
 

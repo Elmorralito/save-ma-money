@@ -161,8 +161,13 @@ and module `.gitignore`.
 Runner knobs stay on `PAPITA_INGESTOR_*` — do not remap them to `GMAIL_*`.
 Compose `EmailFlowSettings` + `GmailSettings` at the flow boundary.
 
-**Handoff for PPT-083 / #177:** flow name `papita-email-ingestion`; serve
-deployment name `papita-email-ingestion-hourly`.
+**Status persistence (PPT-083 / #177):** non-dry runs upsert allowlisted connection
+metadata and append/finish run rows via model services (never `GmailSettings`
+secrets). Flow name `papita-email-ingestion`; serve deployment
+`papita-email-ingestion-hourly`. **Trigger SSOT is this Prefect worker**
+(`make ingestor-flow` / serve / Compose `ingestor`) — the API exposes
+**read-only** `GET /api/v1/ingestion/*` status routes only (no HTTP run-once).
+Catalog: [`modules/api/README.md` § Ingestion status](../../api/README.md#ingestion-status-endpoints-ppt-083).
 
 ## Local Gmail OAuth bootstrap
 

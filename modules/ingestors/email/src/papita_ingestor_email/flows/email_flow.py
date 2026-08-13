@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +14,7 @@ from papita_ingestor_core.types.records import FetchFilter, RunResult
 from papita_ingestor_email.flow_settings import EmailFlowSettings
 from papita_ingestor_email.owner import users_dto_for_owner_id
 from papita_ingestor_email.parsers import ensure_parsers_registered
+from papita_ingestor_email.run_status import execute_with_run_status
 from papita_ingestor_email.runtime import (
     establish_database_from_env,
     load_environment_file,
@@ -105,9 +107,14 @@ def build_email_ingestion_flow(
     without an injected enricher will DLQ-then-ack successfully parsed mail —
     they will not upsert ledger rows. Prefer ``PAPITA_INGESTOR_DRY_RUN=true``
     until a FK enricher lands.
+
+    Non-dry runs persist connection + run status (PPT-083) via model services —
+    never Gmail OAuth secrets.
     """
     wiring = deps or EmailFlowDeps()
     settings = wiring.flow_settings or EmailFlowSettings()
+    deployment_name = wiring.deployment_name or _DEPLOYMENT_NAME
+    should_persist_status = wiring.persist_status if wiring.persist_status is not None else not settings.dry_run
 
     def _runner_factory() -> IngestionRunner:
         return build_email_runner(wiring)
@@ -121,12 +128,25 @@ def build_email_ingestion_flow(
         )
         return default_fetch_filter(settings)
 
+    def _execute(runner: IngestionRunner, fetch_filter: FetchFilter | None) -> RunResult:
+        return execute_with_run_status(
+            runner,
+            fetch_filter,
+            settings=settings,
+            flow_name=name,
+            deployment_name=deployment_name,
+            connection_service=wiring.connection_service,
+            run_service=wiring.run_service,
+            persist_status=should_persist_status,
+        )
+
     return build_base_ingestion_flow(
         name=name,
         runner_factory=_runner_factory,
         retries=settings.flow_retries,
         retry_delay_seconds=settings.flow_retry_delay_seconds,
         default_fetch_filter_factory=_default_filter,
+        execute=_execute,
     )
 
 
@@ -140,9 +160,10 @@ def serve_email_ingestion(
     """Serve the email flow on an interval schedule (Prefect ``flow.serve``).
 
     ``webserver=True`` exposes Prefect runner ``/health`` (default port 8080) for
-    Compose HEALTHCHECK.
+    Compose HEALTHCHECK. ``deployment_name`` is persisted on connection/run rows
+    (overrides ``EmailFlowDeps.deployment_name``).
     """
-    wiring = deps or EmailFlowDeps()
+    wiring = replace(deps or EmailFlowDeps(), deployment_name=deployment_name)
     settings = wiring.flow_settings or EmailFlowSettings()
     minutes = interval_minutes if interval_minutes is not None else settings.schedule_interval_minutes
     flow_fn = build_email_ingestion_flow(deps=wiring)
