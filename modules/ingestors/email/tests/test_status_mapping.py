@@ -6,11 +6,7 @@ import uuid
 from datetime import datetime, timezone
 
 from papita_ingestor_core.types.records import RecordFailure, RunResult
-from papita_ingestor_email.status_mapping import (
-    derive_run_status,
-    run_result_to_record_request,
-    summarize_failures,
-)
+from papita_ingestor_email.status_mapping import derive_run_status, run_result_to_record_request, summarize_failures
 from papita_txnsmodel.model.enums import IngestionRunStatus
 
 
