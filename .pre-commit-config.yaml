@@ -42,7 +42,7 @@ repos:
         files: ^modules/model/src/papita_txnsmodel/views/.*\.sql$
 
   - repo: https://github.com/pycqa/isort
-    rev: 8.0.1
+    rev: 9.0.1
     hooks:
       - id: isort
         name: isort (python)
@@ -133,7 +133,7 @@ repos:
         require_serial: true
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.0
+    rev: v2.3.1
     hooks:
       - id: mypy
         exclude: "./tests/.*"
