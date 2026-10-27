@@ -10,6 +10,24 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.5 (2026-10-27)
+
+### Bug Fixes
+
+- **deps**: Pair strata and clear Trivy blockers for CI
+  ([`d66a641`](https://github.com/Elmorralito/save-ma-money/commit/d66a641e39d7568f39a9b1b313ddf6e87f43c9a4))
+
+### Chores
+
+- Prettier-fix model CHANGELOG blank line for QC
+  ([`ce14fef`](https://github.com/Elmorralito/save-ma-money/commit/ce14fef48ddafc1600f6572c797c908035668828))
+
+### Continuous Integration
+
+- Fixing code for CI checks.
+  ([`9eea11a`](https://github.com/Elmorralito/save-ma-money/commit/9eea11a11520fd7543fdfcec13c12f6f045bacb0))
+
+
 ## v1.0.4 (2026-08-11)
 
 ### Bug Fixes
