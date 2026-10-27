@@ -10,6 +10,25 @@ This file is **not** the monorepo issue tracker changelog. Root
 
 <!-- version list -->
 
+## v1.0.7 (2026-10-27)
+
+### Bug Fixes
+
+- **deps**: Bump zod for filesystem Trivy and record dateutil/prefect lesson
+  ([`875e3f7`](https://github.com/Elmorralito/save-ma-money/commit/875e3f7258fb28ba8afa49fcb3c2a91adfe3e150))
+
+- **deps**: Keep python-dateutil on 2.x to avoid Poetry/prefect resolve break
+  ([`875e3f7`](https://github.com/Elmorralito/save-ma-money/commit/875e3f7258fb28ba8afa49fcb3c2a91adfe3e150))
+
+### Code Style
+
+- Prettier-format model CHANGELOG after 1.0.6 merge
+  ([`875e3f7`](https://github.com/Elmorralito/save-ma-money/commit/875e3f7258fb28ba8afa49fcb3c2a91adfe3e150))
+
+- Prettier-format model CHANGELOG from main merge
+  ([`875e3f7`](https://github.com/Elmorralito/save-ma-money/commit/875e3f7258fb28ba8afa49fcb3c2a91adfe3e150))
+
+
 ## v1.0.6 (2026-10-27)
 
 ### Bug Fixes
