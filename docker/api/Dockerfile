@@ -9,7 +9,10 @@ FROM python:3.14-slim-bookworm@sha256:82bc3c539b8813ada9d68c63b40158fa002f7f33de
 
 WORKDIR /app
 
+# Upgrade base OS packages between digest refreshes (Trivy CRITICAL/HIGH gate:
+# libpcre2 / perl-base and friends land via bookworm-security).
 RUN apt-get update \
+    && apt-get upgrade -y --no-install-recommends \
     && apt-get install -y --no-install-recommends libpq5 libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir "pip>=26.1.2" "setuptools>=78.1.1"
