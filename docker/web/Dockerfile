@@ -39,7 +39,7 @@ RUN pnpm --filter @papita/web build
 # -----------------------------------------------------------------------------
 # Base digest pinned for supply-chain stability; Dependabot (docker /docker/web) refreshes it.
 # 1.27-alpine carried fixed Alpine HIGH/CRITICAL (openssl/musl/zlib); keep current mainline.
-FROM nginxinc/nginx-unprivileged:1.31.3-alpine@sha256:a6c3ec0c0d249d68b0682df854d4a9e222b90fb607dc3fcf2f1d2fcbc85d347e
+FROM nginxinc/nginx-unprivileged:1.31.3-alpine@sha256:f972e5322b9797dc2a6b830030094426437b1ae7032e4644496395336ac6fdac
 
 # Apply Alpine security patches between base rebuilds (Trivy CRITICAL/HIGH gate).
 USER root
