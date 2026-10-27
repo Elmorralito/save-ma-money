@@ -27,7 +27,6 @@ This file is **not** the monorepo issue tracker changelog. Root
 - Fixing code for CI checks.
   ([`9eea11a`](https://github.com/Elmorralito/save-ma-money/commit/9eea11a11520fd7543fdfcec13c12f6f045bacb0))
 
-
 ## v1.0.4 (2026-08-11)
 
 ### Bug Fixes
