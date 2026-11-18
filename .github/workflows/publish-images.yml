@@ -1,0 +1,110 @@
+name: Publish Container Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "modules/web/**"
+      - "docker/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/publish-images.yml"
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push images to GHCR (main only)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: api
+            dockerfile: docker/api/Dockerfile
+            image: save-ma-money-api
+            smoke_script: .github/scripts/api_image_smoke.sh
+            build_args: ""
+          - name: web
+            dockerfile: docker/web/Dockerfile
+            image: save-ma-money-web
+            smoke_script: .github/scripts/web_image_smoke.sh
+            build_args: |
+              VITE_APP_TITLE=Papita
+              VITE_PAPITA_BREAKING_CHANGES_ID=ppt-044
+              VITE_API_BASE_URL=
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' || inputs.push == true
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-
+
+      - name: Build image for scan & smoke
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          load: true
+          push: false
+          build-args: ${{ matrix.build_args }}
+          tags: local/${{ matrix.image }}:ci
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: local/${{ matrix.image }}:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Smoke test image
+        run: /bin/bash ${{ matrix.smoke_script }} local/${{ matrix.image }}:ci
+
+      - name: Push image to GHCR
+        if: github.event_name == 'push' || inputs.push == true
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
