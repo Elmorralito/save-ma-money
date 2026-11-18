@@ -13,10 +13,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir "pip>=26.1.2" "setuptools>=78.1.1"
 
-COPY modules/model/pyproject.toml modules/model/README.md modules/model/LICENSE /app/modules/model/
-COPY modules/model/src /app/modules/model/src
-COPY modules/model/alembic /app/modules/model/alembic
-COPY modules/model/alembic.ini /app/modules/model/
+COPY backend/pyproject.toml backend/README.md backend/LICENSE /app/backend/
+COPY backend/src /app/backend/src
+COPY backend/alembic /app/backend/alembic
+COPY backend/alembic.ini /app/backend/
 
 COPY modules/ingestor-core/pyproject.toml modules/ingestor-core/README.md modules/ingestor-core/LICENSE /app/modules/ingestor-core/
 COPY modules/ingestor-core/src /app/modules/ingestor-core/src
@@ -25,7 +25,7 @@ COPY modules/ingestors/email/pyproject.toml modules/ingestors/email/README.md mo
 COPY modules/ingestors/email/src /app/modules/ingestors/email/src
 
 RUN pip install --no-cache-dir \
-        "/app/modules/model" \
+        "/app/backend" \
         "/app/modules/ingestor-core[prefect]" \
         "/app/modules/ingestors/email" \
     && pip install --no-cache-dir --upgrade "setuptools>=78.1.1" \

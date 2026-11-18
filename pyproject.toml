@@ -13,8 +13,7 @@ cryptography = ">=50.0.0,<51.0.0"
 supabase = ">=2.13.0,<3.0.0"
 
 [tool.poetry.group.development.dependencies]
-papita-transactions-api = { path = "modules/api", develop = true }
-papita-transactions-model = { path = "modules/model", develop = true }
+papita-backend = { path = "backend", develop = true }
 papita-ingestor-core = { path = "modules/ingestor-core", develop = true }
 papita-ingestor-email = { path = "modules/ingestors/email", develop = true }
 
@@ -56,10 +55,10 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=./modules/model/src --cov=./modules/api/src --cov-report xml:docs/coverage.xml"
+addopts = "--import-mode=importlib -raqvs --cov=./backend/src --cov-report xml:docs/coverage.xml"
 testpaths = [
-    "./modules/api/tests",
-    "./modules/model/tests",
+    "./backend/tests/api",
+    "./backend/tests/model",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -84,7 +83,7 @@ ignore_errors = true
 branch = true
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["./modules/api/src", "./modules/model/src", "./modules/ingestor-core/src", "./modules/ingestors/email/src"])'
+init-hook = 'import sys; sys.path.extend(["./backend/src", "./modules/ingestor-core/src", "./modules/ingestors/email/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
@@ -145,6 +144,7 @@ namespace_packages = true
 skip = [".gitignore", ".dockerignore"]
 extend_skip = [".md", ".json", ".yaml", ".yml", ".sh"]
 known_first_party = [
+    "backend",
     "papita_txnsapi",
     "papita_txnsmodel",
     "papita_ingestor_core",
@@ -164,8 +164,7 @@ exclude = [
     "__pycache__",
     "dist",
     "*.ipynb",
-    "./modules/api/tests/*",
-    "./modules/model/tests/*",
+    "./backend/tests/*",
     "./modules/ingestor-core/tests/*",
     "./modules/ingestors/email/tests/*",
 ]
@@ -173,7 +172,7 @@ max-line-length = 120
 max-complexity = 18
 
 # SQLFluff — PostgreSQL query standard for materialized-view SQL under
-# modules/model/src/papita_txnsmodel/views/ (enforced via pre-commit sqlfluff hooks).
+# backend/src/papita_txnsmodel/views/ (enforced via pre-commit sqlfluff hooks).
 [tool.sqlfluff.core]
 dialect = "postgres"
 templater = "raw"
@@ -249,11 +248,10 @@ select_clause_trailing_comma = "forbid"
 wildcard_policy = "single"
 
 [tool.interrogate]
-paths = ["./modules/api/src", "./modules/model/src"]
+paths = ["./backend/src"]
 exclude = [
-    "./modules/api/tests",
-    "./modules/model/alembic",
-    "./modules/model/tests",
+    "./backend/tests",
+    "./backend/alembic",
     "venv",
     ".venv",
     "build",

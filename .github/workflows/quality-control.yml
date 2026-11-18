@@ -97,7 +97,7 @@ jobs:
         env:
           DB_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
         run: |
-          poetry run alembic -c modules/model/alembic.ini -x "dbUrl=${DB_URL}" upgrade head
+          poetry run alembic -c backend/alembic.ini -x "dbUrl=${DB_URL}" upgrade head
 
       - name: "Run PyTest with Coverage"
         env:

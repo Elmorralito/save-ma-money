@@ -13,7 +13,7 @@ from pathlib import Path
 from uuid import UUID
 
 from papita_txnsmodel.access.users.dto import UsersDTO
-from papita_txnsmodel.database.connector import SQLDatabaseConnector
+from papita_txnsmodel.database.session import DatabaseSessionManager, configure_database, get_session_manager
 from papita_txnsmodel.services.users import UsersService
 
 logger = logging.getLogger(__name__)
@@ -86,20 +86,11 @@ def _load_env_file_simple(path: Path, *, override: bool) -> None:
             os.environ[key] = value
 
 
-def establish_database_from_env(*, require: bool = True) -> type[SQLDatabaseConnector] | None:
-    """Call ``SQLDatabaseConnector.establish`` from ``DATABASE_URL``.
-
-    The API does this in Settings; the ingestor worker must do it explicitly
-    or bridge persist/DLQ raises ``connection hasn't been established``.
-
-    Args:
-        require: When True, missing ``DATABASE_URL`` raises ``ValueError``.
-
-    Returns:
-        The connector class, or ``None`` when not required and URL unset.
-    """
-    if SQLDatabaseConnector.engine is not None:
-        return SQLDatabaseConnector
+def establish_database_from_env(*, require: bool = True) -> DatabaseSessionManager | None:
+    """Configure ``DatabaseSessionManager`` from ``DATABASE_URL``."""
+    manager = get_session_manager()
+    if manager.engine is not None:
+        return manager
 
     url = (os.environ.get("DATABASE_URL") or "").strip()
     if not url:
@@ -110,9 +101,9 @@ def establish_database_from_env(*, require: bool = True) -> type[SQLDatabaseConn
             )
         return None
 
-    SQLDatabaseConnector.establish(connection=url)
-    logger.info("SQLDatabaseConnector established for ingestion worker")
-    return SQLDatabaseConnector
+    configure_database(connection=url)
+    logger.info("DatabaseSessionManager configured for ingestion worker")
+    return manager
 
 
 def require_gmail_auth_env() -> None:

@@ -8,20 +8,14 @@ on:
     branches:
       - main
     paths:
-      - "modules/model/**"
-      - "modules/api/**"
-      - "modules/model/pyproject.toml"
-      - "modules/api/pyproject.toml"
+      - "backend/**"
       - "pyproject.toml"
       - ".github/workflows/codeql.yml"
   push:
     branches:
       - main
     paths:
-      - "modules/model/**"
-      - "modules/api/**"
-      - "modules/model/pyproject.toml"
-      - "modules/api/pyproject.toml"
+      - "backend/**"
       - "pyproject.toml"
       - ".github/workflows/codeql.yml"
   schedule:

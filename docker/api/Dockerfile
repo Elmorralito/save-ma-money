@@ -17,25 +17,21 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir "pip>=26.1.2" "setuptools>=78.1.1"
 
-# Model package (includes Alembic migrations and config data)
-COPY modules/model/pyproject.toml modules/model/README.md modules/model/LICENSE /app/modules/model/
-COPY modules/model/src /app/modules/model/src
-COPY modules/model/alembic /app/modules/model/alembic
-COPY modules/model/alembic.ini /app/modules/model/
-
-# API package
-COPY modules/api/pyproject.toml modules/api/README.md modules/api/LICENSE /app/modules/api/
-COPY modules/api/src /app/modules/api/src
+# Unified Backend package (includes models, Alembic migrations, and FastAPI app)
+COPY backend/pyproject.toml backend/README.md backend/LICENSE /app/backend/
+COPY backend/src /app/backend/src
+COPY backend/alembic /app/backend/alembic
+COPY backend/alembic.ini /app/backend/
 
 # Upgrade transitive / base tooling after package install so Trivy CRITICAL/HIGH stays green
 # (msgpack via redis stack; setuptools from python:slim base).
-RUN pip install --no-cache-dir /app/modules/model /app/modules/api \
+RUN pip install --no-cache-dir /app/backend \
     && pip install --no-cache-dir --upgrade "msgpack>=1.2.1" "setuptools>=78.1.1" \
     && groupadd --system --gid 1001 appuser \
     && useradd --system --uid 1001 --gid appuser --home-dir /app appuser \
     && chown -R appuser:appuser /app
 
-WORKDIR /app/modules/api/src
+WORKDIR /app/backend/src
 
 ENV PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \

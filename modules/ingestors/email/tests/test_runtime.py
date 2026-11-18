@@ -41,8 +41,9 @@ def test_load_environment_file_sets_vars(tmp_path: Path, monkeypatch: pytest.Mon
 
 def test_establish_database_requires_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    manager = runtime.get_session_manager()
     with (
-        patch.object(runtime.SQLDatabaseConnector, "engine", None),
+        patch.object(manager, "engine", None),
         pytest.raises(ValueError, match="DATABASE_URL"),
     ):
         establish_database_from_env(require=True)
@@ -50,12 +51,13 @@ def test_establish_database_requires_url(monkeypatch: pytest.MonkeyPatch) -> Non
 
 def test_establish_database_from_env_calls_establish(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql+psycopg2://admin:admin@localhost:5435/papita")
+    manager = runtime.get_session_manager()
     with (
-        patch.object(runtime.SQLDatabaseConnector, "engine", None),
-        patch.object(runtime.SQLDatabaseConnector, "establish") as establish,
+        patch.object(manager, "engine", None),
+        patch.object(runtime, "configure_database") as configure,
     ):
         establish_database_from_env(require=True)
-        establish.assert_called_once_with(connection="postgresql+psycopg2://admin:admin@localhost:5435/papita")
+        configure.assert_called_once_with(connection="postgresql+psycopg2://admin:admin@localhost:5435/papita")
 
 
 def test_require_gmail_auth_env_fails_when_empty(monkeypatch: pytest.MonkeyPatch) -> None:

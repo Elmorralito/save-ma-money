@@ -5,7 +5,7 @@
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/bash" && pwd)/utils.sh"
 PROJECT_PATH="$(resolve_repo_root)" || exit 1
 
-ALEMBIC_INI="${PROJECT_PATH}/modules/model/alembic.ini"
+ALEMBIC_INI="${PROJECT_PATH}/backend/alembic.ini"
 ALEMBIC_CMD="cd ${PROJECT_PATH} && poetry run alembic -c ${ALEMBIC_INI}"
 
 usage() {

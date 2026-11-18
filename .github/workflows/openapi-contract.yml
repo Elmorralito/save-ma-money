@@ -9,9 +9,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths:
       # API surface + model types that bleed into OpenAPI via API schemas/enums.
-      - "modules/api/src/**"
-      - "modules/model/src/papita_txnsmodel/model/**"
-      - "modules/model/src/papita_txnsmodel/access/**"
+      - "backend/src/**"
       - "modules/web/openapi/**"
       - "bin/python/export_openapi.py"
       - "bin/bash/export_openapi.sh"
@@ -20,9 +18,7 @@ on:
     branches:
       - main
     paths:
-      - "modules/api/src/**"
-      - "modules/model/src/papita_txnsmodel/model/**"
-      - "modules/model/src/papita_txnsmodel/access/**"
+      - "backend/src/**"
       - "modules/web/openapi/**"
       - "bin/python/export_openapi.py"
       - "bin/bash/export_openapi.sh"

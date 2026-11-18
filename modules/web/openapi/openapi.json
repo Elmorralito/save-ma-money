@@ -42,6 +42,11 @@
             "title": "Description",
             "type": "string"
           },
+          "include_in_balance": {
+            "default": true,
+            "title": "Include In Balance",
+            "type": "boolean"
+          },
           "initial_value": {
             "anyOf": [
               {
@@ -167,6 +172,11 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "include_in_balance": {
+            "default": true,
+            "title": "Include In Balance",
+            "type": "boolean"
           },
           "is_active": {
             "title": "Is Active",
@@ -294,6 +304,17 @@
               }
             ],
             "title": "Description"
+          },
+          "include_in_balance": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Include In Balance"
           },
           "initial_value": {
             "anyOf": [

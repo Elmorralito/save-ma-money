@@ -12,7 +12,7 @@ _BIN_BASH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 # shellcheck source=utils.sh
 source "${_BIN_BASH_DIR}/utils.sh"
 PROJECT_PATH="$(resolve_repo_root)" || exit 1
-ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/modules/model"
+ALEMBIC_PROJECT_PATH="${PROJECT_PATH}/backend"
 DEFAULT_DB_COMPOSE_FILE="${PROJECT_PATH}/docker/database/docker-compose.yml"
 
 usage() {

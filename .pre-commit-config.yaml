@@ -34,12 +34,12 @@ repos:
         name: sqlfluff lint
         entry: poetry run sqlfluff lint
         language: system
-        files: ^modules/model/src/papita_txnsmodel/views/.*\.sql$
+        files: ^backend/src/papita_txnsmodel/views/.*\.sql$
       - id: sqlfluff-fix
         name: sqlfluff format
         entry: poetry run sqlfluff fix
         language: system
-        files: ^modules/model/src/papita_txnsmodel/views/.*\.sql$
+        files: ^backend/src/papita_txnsmodel/views/.*\.sql$
 
   - repo: https://github.com/pycqa/isort
     rev: 9.0.2

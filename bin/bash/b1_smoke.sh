@@ -89,10 +89,10 @@ PY
 MIGRATIONS_URL="${DATABASE_URL_MIGRATIONS:-}"
 if [[ -n "${MIGRATIONS_URL}" ]] && [[ "${MIGRATIONS_URL}" != *"<"* ]]; then
   log INFO "Running Alembic upgrade on DATABASE_URL_MIGRATIONS before B1 smoke..."
-  python -m poetry run alembic -c modules/model/alembic.ini -x "dbUrl=${MIGRATIONS_URL}" upgrade head
+  python -m poetry run alembic -c backend/alembic.ini -x "dbUrl=${MIGRATIONS_URL}" upgrade head
 else
   log INFO "DATABASE_URL_MIGRATIONS unset or placeholder — skipping Alembic (schema must exist on pooler DB)."
 fi
 
-log INFO "Running modules/api/tests/test_supabase_b1_smoke.py"
-python -m poetry run pytest modules/api/tests/test_supabase_b1_smoke.py -q "$@"
+log INFO "Running backend/tests/api/test_supabase_b1_smoke.py"
+python -m poetry run pytest backend/tests/api/test_supabase_b1_smoke.py -q "$@"

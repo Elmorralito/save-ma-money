@@ -87,11 +87,11 @@ services:
     container_name: "${COMPOSE_NAME:-papita-transactions}-migrate"
     networks:
       - papita-local-net
-    working_dir: /app/modules/model
+    working_dir: /app/backend
     command:
       - alembic
       - -c
-      - /app/modules/model/alembic.ini
+      - /app/backend/alembic.ini
       - upgrade
       - head
     environment:

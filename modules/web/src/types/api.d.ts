@@ -1795,6 +1795,11 @@ export interface components {
              * @default
              */
             description: string;
+            /**
+             * Include In Balance
+             * @default true
+             */
+            include_in_balance: boolean;
             /** Initial Value */
             initial_value?: number | null;
             /** Ledger Side */
@@ -1848,6 +1853,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Include In Balance
+             * @default true
+             */
+            include_in_balance: boolean;
             /** Is Active */
             is_active: boolean;
             /** Ledger Side */
@@ -1888,6 +1898,8 @@ export interface components {
             currency?: string | null;
             /** Description */
             description?: string | null;
+            /** Include In Balance */
+            include_in_balance?: boolean | null;
             /** Initial Value */
             initial_value?: number | null;
             /** Is Active */
