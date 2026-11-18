@@ -1731,276 +1731,6 @@
         "title": "MonthlyTrendItem",
         "type": "object"
       },
-      "MovementCreate": {
-        "additionalProperties": false,
-        "description": "Request body for ``POST /movements``.",
-        "properties": {
-          "amount": {
-            "exclusiveMinimum": 0.0,
-            "title": "Amount",
-            "type": "number"
-          },
-          "currency": {
-            "maxLength": 3,
-            "minLength": 3,
-            "title": "Currency",
-            "type": "string"
-          },
-          "description": {
-            "default": "",
-            "maxLength": 2000,
-            "title": "Description",
-            "type": "string"
-          },
-          "destination_account_id": {
-            "format": "uuid",
-            "title": "Destination Account Id",
-            "type": "string"
-          },
-          "movement_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "format": "date-time",
-                "type": "string"
-              }
-            ],
-            "title": "Movement Date"
-          },
-          "scheduled": {
-            "default": false,
-            "title": "Scheduled",
-            "type": "boolean"
-          },
-          "source_account_id": {
-            "format": "uuid",
-            "title": "Source Account Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "source_account_id",
-          "destination_account_id",
-          "amount",
-          "currency",
-          "movement_date"
-        ],
-        "title": "MovementCreate",
-        "type": "object"
-      },
-      "MovementExecuteResponse": {
-        "description": "Response body for ``POST /movements/{movement_id}/execute``.",
-        "properties": {
-          "executed_at": {
-            "format": "date-time",
-            "title": "Executed At",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "status",
-          "executed_at"
-        ],
-        "title": "MovementExecuteResponse",
-        "type": "object"
-      },
-      "MovementResponse": {
-        "description": "Movement (TRANSFER) resource returned by alias CRUD endpoints.",
-        "properties": {
-          "amount": {
-            "title": "Amount",
-            "type": "number"
-          },
-          "created_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Created At"
-          },
-          "currency": {
-            "title": "Currency",
-            "type": "string"
-          },
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "destination_account_id": {
-            "format": "uuid",
-            "title": "Destination Account Id",
-            "type": "string"
-          },
-          "destination_account_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Destination Account Name"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "movement_date": {
-            "format": "date",
-            "title": "Movement Date",
-            "type": "string"
-          },
-          "source_account_id": {
-            "format": "uuid",
-            "title": "Source Account Id",
-            "type": "string"
-          },
-          "source_account_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Account Name"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          },
-          "updated_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated At"
-          }
-        },
-        "required": [
-          "id",
-          "source_account_id",
-          "destination_account_id",
-          "amount",
-          "currency",
-          "status",
-          "description",
-          "movement_date"
-        ],
-        "title": "MovementResponse",
-        "type": "object"
-      },
-      "MovementUpdate": {
-        "additionalProperties": false,
-        "description": "Request body for ``PUT /movements/{movement_id}`` (PENDING only).",
-        "properties": {
-          "amount": {
-            "anyOf": [
-              {
-                "exclusiveMinimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount"
-          },
-          "currency": {
-            "anyOf": [
-              {
-                "maxLength": 3,
-                "minLength": 3,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Currency"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "maxLength": 2000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "destination_account_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Destination Account Id"
-          },
-          "movement_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Movement Date"
-          },
-          "source_account_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Account Id"
-          }
-        },
-        "title": "MovementUpdate",
-        "type": "object"
-      },
       "OAuthCodeExchangeRequest": {
         "additionalProperties": false,
         "description": "JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).\n\nCompletes OAuth when the client holds the authorization ``code`` and the\nPKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``\nwhen the redirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    auth_code: Authorization ``code`` from the OAuth redirect query string.\n    code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.\n    redirect_to: Optional redirect URI that must match the authorize step.\n    display_name: Optional profile override when Auth metadata is incomplete.",
@@ -2212,39 +1942,6 @@
           "limit"
         ],
         "title": "PaginatedResponse[IngestionRunResponse]",
-        "type": "object"
-      },
-      "PaginatedResponse_MovementResponse_": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MovementResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "minimum": 1.0,
-            "title": "Limit",
-            "type": "integer"
-          },
-          "skip": {
-            "minimum": 0.0,
-            "title": "Skip",
-            "type": "integer"
-          },
-          "total": {
-            "minimum": 0.0,
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "total",
-          "skip",
-          "limit"
-        ],
-        "title": "PaginatedResponse[MovementResponse]",
         "type": "object"
       },
       "PaginatedResponse_TransactionResponse_": {
@@ -2924,12 +2621,19 @@
       },
       "TransactionCreate": {
         "additionalProperties": false,
-        "description": "Request body for ``POST /transactions`` (INCOME/EXPENSE only).",
+        "description": "Request body for ``POST /transactions`` (INCOME, EXPENSE, or TRANSFER).",
         "properties": {
           "account_id": {
-            "format": "uuid",
-            "title": "Account Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
           },
           "amount": {
             "exclusiveMinimum": 0.0,
@@ -2937,9 +2641,16 @@
             "type": "number"
           },
           "category_id": {
-            "format": "uuid",
-            "title": "Category Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
           },
           "currency": {
             "default": "USD",
@@ -2954,6 +2665,30 @@
             "title": "Description",
             "type": "string"
           },
+          "destination_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Id"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
           "ingestion_source": {
             "anyOf": [
               {
@@ -2966,6 +2701,22 @@
             ],
             "title": "Ingestion Source"
           },
+          "movement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Date"
+          },
           "reference_number": {
             "anyOf": [
               {
@@ -2977,6 +2728,32 @@
               }
             ],
             "title": "Reference Number"
+          },
+          "scheduled": {
+            "default": false,
+            "title": "Scheduled",
+            "type": "boolean"
+          },
+          "settlement_status": {
+            "default": "settled",
+            "enum": [
+              "settled",
+              "in_transit"
+            ],
+            "title": "Settlement Status",
+            "type": "string"
+          },
+          "source_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Id"
           },
           "source_ref": {
             "anyOf": [
@@ -3009,6 +2786,30 @@
             "title": "Tags",
             "type": "array"
           },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "to_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Account Id"
+          },
           "transaction_date": {
             "anyOf": [
               {
@@ -3018,31 +2819,63 @@
               {
                 "format": "date-time",
                 "type": "string"
+              },
+              {
+                "type": "null"
               }
             ],
             "title": "Transaction Date"
           },
           "transaction_type": {
+            "default": "expense",
             "enum": [
               "income",
-              "expense"
+              "expense",
+              "transfer"
             ],
             "title": "Transaction Type",
             "type": "string"
           }
         },
         "required": [
-          "account_id",
-          "category_id",
-          "transaction_type",
-          "amount",
-          "transaction_date"
+          "amount"
         ],
         "title": "TransactionCreate",
         "type": "object"
       },
+      "TransactionExecuteResponse": {
+        "description": "Response body for ``POST /transactions/{transaction_id}/execute``.",
+        "properties": {
+          "executed_at": {
+            "format": "date-time",
+            "title": "Executed At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "settlement_status": {
+            "default": "settled",
+            "title": "Settlement Status",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "executed_at"
+        ],
+        "title": "TransactionExecuteResponse",
+        "type": "object"
+      },
       "TransactionResponse": {
-        "description": "Transaction resource returned by CRUD endpoints.",
+        "description": "Unified transaction & transfer resource returned by CRUD endpoints.",
         "properties": {
           "account_id": {
             "anyOf": [
@@ -3114,6 +2947,41 @@
             "title": "Description",
             "type": "string"
           },
+          "destination_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Id"
+          },
+          "destination_account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Name"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3123,6 +2991,18 @@
             "default": false,
             "title": "Is Recurring",
             "type": "boolean"
+          },
+          "movement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Date"
           },
           "reference_number": {
             "anyOf": [
@@ -3134,6 +3014,34 @@
               }
             ],
             "title": "Reference Number"
+          },
+          "settlement_status": {
+            "default": "settled",
+            "title": "Settlement Status",
+            "type": "string"
+          },
+          "source_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Id"
+          },
+          "source_account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Name"
           },
           "status": {
             "title": "Status",
@@ -3157,6 +3065,18 @@
               }
             ],
             "title": "Template Id"
+          },
+          "to_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Account Id"
           },
           "transaction_date": {
             "format": "date",
@@ -3608,6 +3528,46 @@
             ],
             "title": "Description"
           },
+          "destination_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Account Id"
+          },
+          "from_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Account Id"
+          },
+          "movement_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Movement Date"
+          },
           "reference_number": {
             "anyOf": [
               {
@@ -3619,6 +3579,33 @@
               }
             ],
             "title": "Reference Number"
+          },
+          "settlement_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "settled",
+                  "in_transit"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settlement Status"
+          },
+          "source_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Id"
           },
           "status": {
             "anyOf": [
@@ -3645,6 +3632,30 @@
               }
             ],
             "title": "Tags"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "to_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Account Id"
           },
           "transaction_date": {
             "anyOf": [
@@ -5782,406 +5793,6 @@
         ]
       }
     },
-    "/api/v1/movements": {
-      "get": {
-        "description": "List tenant transfer rows with optional source/destination and date filters.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    transactions_service: Injected service providing ``list_transfers``.\n    filters: Bundled query parameters mapped to service kwargs.\n\nReturns:\n    Paginated ``MovementResponse`` items for TRANSFER rows owned by ``owner``.",
-        "operationId": "list_movements_api_v1_movements_get",
-        "parameters": [
-          {
-            "description": "Number of records to skip",
-            "in": "query",
-            "name": "skip",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "description": "Number of records to skip",
-              "minimum": 0,
-              "title": "Skip",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Maximum records to return",
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 100,
-              "description": "Maximum records to return",
-              "maximum": 500,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Filter by source account",
-            "in": "query",
-            "name": "source_account_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by source account",
-              "title": "Source Account Id"
-            }
-          },
-          {
-            "description": "Filter by destination account",
-            "in": "query",
-            "name": "destination_account_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by destination account",
-              "title": "Destination Account Id"
-            }
-          },
-          {
-            "description": "Filter by pending/completed/cancelled",
-            "in": "query",
-            "name": "status",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by pending/completed/cancelled",
-              "title": "Status"
-            }
-          },
-          {
-            "description": "Filter by start date",
-            "in": "query",
-            "name": "start_date",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by start date",
-              "title": "Start Date"
-            }
-          },
-          {
-            "description": "Filter by end date",
-            "in": "query",
-            "name": "end_date",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "date",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Filter by end date",
-              "title": "End Date"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_MovementResponse_"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "List Movements",
-        "tags": [
-          "Movements"
-        ]
-      },
-      "post": {
-        "description": "Create a transfer between two tenant-owned accounts.\n\n``create_transfer`` always persists PENDING. When ``scheduled`` is false, the\nhandler immediately calls ``complete_transfer`` so the response reflects COMPLETED\nand balance views are refreshed once. Scheduled (PENDING) creates skip MV refresh.\n\nArgs:\n    body: Transfer create payload (accounts, amount, currency, scheduled flag).\n    owner: Authenticated tenant that will own the transfer.\n    transactions_service: Injected service for create/complete helpers.\n    accounts_service: Injected service used to validate account ownership.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementResponse for the created (and possibly completed) transfer.\n\nRaises:\n    HTTPException: 404/422 from account validation; 401 when owner id is missing.",
-        "operationId": "create_movement_api_v1_movements_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MovementCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MovementResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Create Movement",
-        "tags": [
-          "Movements"
-        ]
-      }
-    },
-    "/api/v1/movements/{movement_id}": {
-      "delete": {
-        "description": "Cancel a pending transfer by setting status to CANCELLED.\n\nNote:\n    This is not a soft-delete of the row; cancelled transfers remain in the ledger.\n    Cancelling PENDING does not change completed MV totals, so views are not refreshed.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service providing ``cancel``.\n    redis: Optional Redis client for cache invalidation.\n\nRaises:\n    HTTPException: 404 when missing or cancel fails; 422 when not PENDING.",
-        "operationId": "delete_movement_api_v1_movements__movement_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "movement_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Movement Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Delete Movement",
-        "tags": [
-          "Movements"
-        ]
-      },
-      "get": {
-        "description": "Retrieve a single transfer with linked account names.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant from JWT.\n    transactions_service: Injected service for owner-scoped get-by-id.\n\nReturns:\n    MovementResponse including source/destination names when linked DTOs load.\n\nRaises:\n    HTTPException: 404 when the transfer is missing, not owned, or not TRANSFER.",
-        "operationId": "get_movement_api_v1_movements__movement_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "movement_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Movement Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MovementResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Movement",
-        "tags": [
-          "Movements"
-        ]
-      },
-      "put": {
-        "description": "Update a pending transfer via upsert of the merged DTO.\n\nPENDING rows do not affect completed ledger MVs, so balance views are not\nrefreshed here (cache versions are still bumped).\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    body: Partial update fields applied onto the existing PENDING transfer.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service for load and upsert.\n    accounts_service: Injected service used to re-validate account legs.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementResponse for the updated transfer row.\n\nRaises:\n    HTTPException: 404 when missing; 422 when not PENDING or legs/currency invalid.",
-        "operationId": "update_movement_api_v1_movements__movement_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "movement_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Movement Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MovementUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MovementResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Update Movement",
-        "tags": [
-          "Movements"
-        ]
-      }
-    },
-    "/api/v1/movements/{movement_id}/execute": {
-      "post": {
-        "description": "Complete a pending scheduled transfer.\n\nArgs:\n    movement_id: Transfer primary key from the path.\n    owner: Authenticated tenant that must own the transfer.\n    transactions_service: Injected service providing ``complete_transfer``.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    MovementExecuteResponse with completed status and execution timestamp.\n\nRaises:\n    HTTPException: 404 when missing or complete fails; 422 when not PENDING.",
-        "operationId": "execute_movement_api_v1_movements__movement_id__execute_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "movement_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Movement Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MovementExecuteResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Execute Movement",
-        "tags": [
-          "Movements"
-        ]
-      }
-    },
     "/api/v1/reports/cash-flow": {
       "get": {
         "description": "Return cash-flow summary for the authenticated tenant.\n\nInflows/outflows include TRANSFER legs. Balance freshness uses\n``refresh_balance_materialized_views`` when ``refresh_balances`` is true\n(defaults to false to avoid authenticated DoS; pass ``true`` for G9 freshness).\n``closing_balance`` maps from service ``portfolio_total``; opening/by-account\nfields may be stubbed in MVP. Cached in Redis when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    filters: Date window, optional ``account_id``, and refresh flag.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    CashFlowReportResponse for the tenant (and optional account filter).\n\nRaises:\n    HTTPException: 401 without JWT; 400 when tenant account validation fails.",
@@ -7156,7 +6767,7 @@
     },
     "/api/v1/transactions": {
       "get": {
-        "description": "List tenant transactions with optional G4 filters.\n\nBy default TRANSFER rows are excluded (``exclude_transfer=True``) unless the\nclient filters ``transaction_type=transfer``. Short-TTL Redis cache-aside when enabled.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    transactions_service: Injected service providing ``list_transactions``.\n    filters: Bundled query parameters mapped to service kwargs.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    Paginated ``TransactionResponse`` items owned by ``owner``.",
+        "description": "List tenant transactions and transfers with optional filters.",
         "operationId": "list_transactions_api_v1_transactions_get",
         "parameters": [
           {
@@ -7206,6 +6817,44 @@
             }
           },
           {
+            "description": "Filter by source account",
+            "in": "query",
+            "name": "source_account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source account",
+              "title": "Source Account Id"
+            }
+          },
+          {
+            "description": "Filter by destination account",
+            "in": "query",
+            "name": "destination_account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by destination account",
+              "title": "Destination Account Id"
+            }
+          },
+          {
             "description": "Filter by category",
             "in": "query",
             "name": "category_id",
@@ -7240,6 +6889,24 @@
               ],
               "description": "Filter by income/expense/transfer",
               "title": "Transaction Type"
+            }
+          },
+          {
+            "description": "Exclude transfer rows when true",
+            "in": "query",
+            "name": "exclude_transfer",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exclude transfer rows when true",
+              "title": "Exclude Transfer"
             }
           },
           {
@@ -7389,7 +7056,7 @@
         ]
       },
       "post": {
-        "description": "Create an INCOME or EXPENSE transaction for the authenticated tenant.\n\nOptional ``Idempotency-Key`` header (when Redis is enabled) makes retries safe:\na repeated key returns the original create response without inserting again.\n\nArgs:\n    body: Create payload (account, category, type, amount, date, optional fields).\n    owner: Authenticated tenant that will own the new row.\n    transactions_service: Injected service providing ``create``.\n    settings: Application settings (idempotency TTL).\n    redis: Optional Redis client for cache invalidation / idempotency.\n    idempotency_key: Optional client key for safe retries.\n\nReturns:\n    TransactionResponse for the persisted row.\n\nRaises:\n    HTTPException: 401 when owner id is missing; 409 when idempotency key is\n        pending; domain errors may surface as 400 via the global handler.",
+        "description": "Create an INCOME, EXPENSE, or TRANSFER transaction for the authenticated tenant.",
         "operationId": "create_transaction_api_v1_transactions_post",
         "parameters": [
           {
@@ -7454,7 +7121,7 @@
     },
     "/api/v1/transactions/bulk": {
       "post": {
-        "description": "Create multiple INCOME/EXPENSE transactions for the authenticated tenant.\n\nEach item is created independently; ``ValueError`` / ``TypeError`` on an item\nincrements ``failed`` without aborting the remainder of the batch. Optional\n``Idempotency-Key`` replays a prior bulk response when Redis is enabled.\n\nArgs:\n    body: Bulk payload containing one or more ``TransactionCreate`` items.\n    owner: Authenticated tenant that will own every created row.\n    transactions_service: Injected service used for per-item ``create``.\n    settings: Application settings (idempotency TTL).\n    redis: Optional Redis client for cache invalidation / idempotency.\n    idempotency_key: Optional client key for safe retries.\n\nReturns:\n    TransactionBulkResponse with counts and successfully created items.\n\nRaises:\n    HTTPException: 401 when the owner context lacks a primary key; 409 when\n        an idempotency key is still pending; 422 when the batch exceeds\n        ``API_BULK_MAX_TRANSACTIONS``.",
+        "description": "Create multiple transactions for the authenticated tenant.",
         "operationId": "bulk_create_transactions_api_v1_transactions_bulk_post",
         "parameters": [
           {
@@ -7519,7 +7186,7 @@
     },
     "/api/v1/transactions/{transaction_id}": {
       "delete": {
-        "description": "Soft-delete a tenant-owned transaction.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    owner: Authenticated tenant that must own the row.\n    transactions_service: Injected service providing soft ``delete``.\n    redis: Optional Redis client for cache invalidation.\n\nRaises:\n    HTTPException: 404 when the row is missing or not owned by ``owner``.",
+        "description": "Soft-delete a tenant-owned transaction or cancel a pending transfer.",
         "operationId": "delete_transaction_api_v1_transactions__transaction_id__delete",
         "parameters": [
           {
@@ -7559,7 +7226,7 @@
         ]
       },
       "get": {
-        "description": "Retrieve a single tenant-owned transaction with linked names.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    owner: Authenticated tenant from JWT.\n    transactions_service: Injected service for owner-scoped get-by-id.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n\nReturns:\n    TransactionResponse including account/category names when linked DTOs load.\n\nRaises:\n    HTTPException: 404 when the row is missing or not owned by ``owner``.",
+        "description": "Retrieve a single tenant-owned transaction or transfer with linked names.",
         "operationId": "get_transaction_api_v1_transactions__transaction_id__get",
         "parameters": [
           {
@@ -7606,7 +7273,7 @@
         ]
       },
       "put": {
-        "description": "Update a tenant-owned INCOME/EXPENSE transaction via upsert.\n\nTRANSFER rows must be updated through ``PUT /movements`` instead.\n\nArgs:\n    transaction_id: Ledger primary key from the path.\n    body: Partial update fields applied onto the existing DTO.\n    owner: Authenticated tenant that must own the row.\n    transactions_service: Injected service for get and upsert.\n    redis: Optional Redis client for cache invalidation.\n\nReturns:\n    TransactionResponse for the updated row.\n\nRaises:\n    HTTPException: 404 when missing; 422 when the row is a TRANSFER.",
+        "description": "Update a tenant-owned transaction or pending transfer via upsert.",
         "operationId": "update_transaction_api_v1_transactions__transaction_id__put",
         "parameters": [
           {
@@ -7658,6 +7325,55 @@
           }
         ],
         "summary": "Update Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transaction_id}/execute": {
+      "post": {
+        "description": "Complete a pending scheduled transfer.",
+        "operationId": "execute_transaction_api_v1_transactions__transaction_id__execute_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Execute Transaction",
         "tags": [
           "Transactions"
         ]

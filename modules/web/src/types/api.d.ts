@@ -1141,157 +1141,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/movements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Movements
-         * @description List tenant transfer rows with optional source/destination and date filters.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT.
-         *         pagination: Skip/limit window for the response page.
-         *         transactions_service: Injected service providing ``list_transfers``.
-         *         filters: Bundled query parameters mapped to service kwargs.
-         *
-         *     Returns:
-         *         Paginated ``MovementResponse`` items for TRANSFER rows owned by ``owner``.
-         */
-        get: operations["list_movements_api_v1_movements_get"];
-        put?: never;
-        /**
-         * Create Movement
-         * @description Create a transfer between two tenant-owned accounts.
-         *
-         *     ``create_transfer`` always persists PENDING. When ``scheduled`` is false, the
-         *     handler immediately calls ``complete_transfer`` so the response reflects COMPLETED
-         *     and balance views are refreshed once. Scheduled (PENDING) creates skip MV refresh.
-         *
-         *     Args:
-         *         body: Transfer create payload (accounts, amount, currency, scheduled flag).
-         *         owner: Authenticated tenant that will own the transfer.
-         *         transactions_service: Injected service for create/complete helpers.
-         *         accounts_service: Injected service used to validate account ownership.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementResponse for the created (and possibly completed) transfer.
-         *
-         *     Raises:
-         *         HTTPException: 404/422 from account validation; 401 when owner id is missing.
-         */
-        post: operations["create_movement_api_v1_movements_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/movements/{movement_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Movement
-         * @description Retrieve a single transfer with linked account names.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant from JWT.
-         *         transactions_service: Injected service for owner-scoped get-by-id.
-         *
-         *     Returns:
-         *         MovementResponse including source/destination names when linked DTOs load.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the transfer is missing, not owned, or not TRANSFER.
-         */
-        get: operations["get_movement_api_v1_movements__movement_id__get"];
-        /**
-         * Update Movement
-         * @description Update a pending transfer via upsert of the merged DTO.
-         *
-         *     PENDING rows do not affect completed ledger MVs, so balance views are not
-         *     refreshed here (cache versions are still bumped).
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         body: Partial update fields applied onto the existing PENDING transfer.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service for load and upsert.
-         *         accounts_service: Injected service used to re-validate account legs.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementResponse for the updated transfer row.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing; 422 when not PENDING or legs/currency invalid.
-         */
-        put: operations["update_movement_api_v1_movements__movement_id__put"];
-        post?: never;
-        /**
-         * Delete Movement
-         * @description Cancel a pending transfer by setting status to CANCELLED.
-         *
-         *     Note:
-         *         This is not a soft-delete of the row; cancelled transfers remain in the ledger.
-         *         Cancelling PENDING does not change completed MV totals, so views are not refreshed.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service providing ``cancel``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing or cancel fails; 422 when not PENDING.
-         */
-        delete: operations["delete_movement_api_v1_movements__movement_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/movements/{movement_id}/execute": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Execute Movement
-         * @description Complete a pending scheduled transfer.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service providing ``complete_transfer``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementExecuteResponse with completed status and execution timestamp.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing or complete fails; 422 when not PENDING.
-         */
-        post: operations["execute_movement_api_v1_movements__movement_id__execute_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/reports/cash-flow": {
         parameters: {
             query?: never;
@@ -1602,46 +1451,13 @@ export interface paths {
         };
         /**
          * List Transactions
-         * @description List tenant transactions with optional G4 filters.
-         *
-         *     By default TRANSFER rows are excluded (``exclude_transfer=True``) unless the
-         *     client filters ``transaction_type=transfer``. Short-TTL Redis cache-aside when enabled.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT.
-         *         pagination: Skip/limit window for the response page.
-         *         transactions_service: Injected service providing ``list_transactions``.
-         *         filters: Bundled query parameters mapped to service kwargs.
-         *         settings: Application settings (cache TTL).
-         *         redis: Optional Redis client when ``REDIS_ENABLED``.
-         *         response: FastAPI response used to set ``X-Cache`` status.
-         *
-         *     Returns:
-         *         Paginated ``TransactionResponse`` items owned by ``owner``.
+         * @description List tenant transactions and transfers with optional filters.
          */
         get: operations["list_transactions_api_v1_transactions_get"];
         put?: never;
         /**
          * Create Transaction
-         * @description Create an INCOME or EXPENSE transaction for the authenticated tenant.
-         *
-         *     Optional ``Idempotency-Key`` header (when Redis is enabled) makes retries safe:
-         *     a repeated key returns the original create response without inserting again.
-         *
-         *     Args:
-         *         body: Create payload (account, category, type, amount, date, optional fields).
-         *         owner: Authenticated tenant that will own the new row.
-         *         transactions_service: Injected service providing ``create``.
-         *         settings: Application settings (idempotency TTL).
-         *         redis: Optional Redis client for cache invalidation / idempotency.
-         *         idempotency_key: Optional client key for safe retries.
-         *
-         *     Returns:
-         *         TransactionResponse for the persisted row.
-         *
-         *     Raises:
-         *         HTTPException: 401 when owner id is missing; 409 when idempotency key is
-         *             pending; domain errors may surface as 400 via the global handler.
+         * @description Create an INCOME, EXPENSE, or TRANSFER transaction for the authenticated tenant.
          */
         post: operations["create_transaction_api_v1_transactions_post"];
         delete?: never;
@@ -1661,27 +1477,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk Create Transactions
-         * @description Create multiple INCOME/EXPENSE transactions for the authenticated tenant.
-         *
-         *     Each item is created independently; ``ValueError`` / ``TypeError`` on an item
-         *     increments ``failed`` without aborting the remainder of the batch. Optional
-         *     ``Idempotency-Key`` replays a prior bulk response when Redis is enabled.
-         *
-         *     Args:
-         *         body: Bulk payload containing one or more ``TransactionCreate`` items.
-         *         owner: Authenticated tenant that will own every created row.
-         *         transactions_service: Injected service used for per-item ``create``.
-         *         settings: Application settings (idempotency TTL).
-         *         redis: Optional Redis client for cache invalidation / idempotency.
-         *         idempotency_key: Optional client key for safe retries.
-         *
-         *     Returns:
-         *         TransactionBulkResponse with counts and successfully created items.
-         *
-         *     Raises:
-         *         HTTPException: 401 when the owner context lacks a primary key; 409 when
-         *             an idempotency key is still pending; 422 when the batch exceeds
-         *             ``API_BULK_MAX_TRANSACTIONS``.
+         * @description Create multiple transactions for the authenticated tenant.
          */
         post: operations["bulk_create_transactions_api_v1_transactions_bulk_post"];
         delete?: never;
@@ -1699,58 +1495,40 @@ export interface paths {
         };
         /**
          * Get Transaction
-         * @description Retrieve a single tenant-owned transaction with linked names.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         owner: Authenticated tenant from JWT.
-         *         transactions_service: Injected service for owner-scoped get-by-id.
-         *         settings: Application settings (cache TTL).
-         *         redis: Optional Redis client when ``REDIS_ENABLED``.
-         *         response: FastAPI response used to set ``X-Cache`` status.
-         *
-         *     Returns:
-         *         TransactionResponse including account/category names when linked DTOs load.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the row is missing or not owned by ``owner``.
+         * @description Retrieve a single tenant-owned transaction or transfer with linked names.
          */
         get: operations["get_transaction_api_v1_transactions__transaction_id__get"];
         /**
          * Update Transaction
-         * @description Update a tenant-owned INCOME/EXPENSE transaction via upsert.
-         *
-         *     TRANSFER rows must be updated through ``PUT /movements`` instead.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         body: Partial update fields applied onto the existing DTO.
-         *         owner: Authenticated tenant that must own the row.
-         *         transactions_service: Injected service for get and upsert.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         TransactionResponse for the updated row.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing; 422 when the row is a TRANSFER.
+         * @description Update a tenant-owned transaction or pending transfer via upsert.
          */
         put: operations["update_transaction_api_v1_transactions__transaction_id__put"];
         post?: never;
         /**
          * Delete Transaction
-         * @description Soft-delete a tenant-owned transaction.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         owner: Authenticated tenant that must own the row.
-         *         transactions_service: Injected service providing soft ``delete``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the row is missing or not owned by ``owner``.
+         * @description Soft-delete a tenant-owned transaction or cancel a pending transfer.
          */
         delete: operations["delete_transaction_api_v1_transactions__transaction_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/transactions/{transaction_id}/execute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Execute Transaction
+         * @description Complete a pending scheduled transfer.
+         */
+        post: operations["execute_transaction_api_v1_transactions__transaction_id__execute_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2590,116 +2368,6 @@ export interface components {
             total_spending: number;
         };
         /**
-         * MovementCreate
-         * @description Request body for ``POST /movements``.
-         */
-        MovementCreate: {
-            /** Amount */
-            amount: number;
-            /** Currency */
-            currency: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Destination Account Id
-             * Format: uuid
-             */
-            destination_account_id: string;
-            /** Movement Date */
-            movement_date: string;
-            /**
-             * Scheduled
-             * @default false
-             */
-            scheduled: boolean;
-            /**
-             * Source Account Id
-             * Format: uuid
-             */
-            source_account_id: string;
-        };
-        /**
-         * MovementExecuteResponse
-         * @description Response body for ``POST /movements/{movement_id}/execute``.
-         */
-        MovementExecuteResponse: {
-            /**
-             * Executed At
-             * Format: date-time
-             */
-            executed_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Status */
-            status: string;
-        };
-        /**
-         * MovementResponse
-         * @description Movement (TRANSFER) resource returned by alias CRUD endpoints.
-         */
-        MovementResponse: {
-            /** Amount */
-            amount: number;
-            /** Created At */
-            created_at?: string | null;
-            /** Currency */
-            currency: string;
-            /** Description */
-            description: string;
-            /**
-             * Destination Account Id
-             * Format: uuid
-             */
-            destination_account_id: string;
-            /** Destination Account Name */
-            destination_account_name?: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Movement Date
-             * Format: date
-             */
-            movement_date: string;
-            /**
-             * Source Account Id
-             * Format: uuid
-             */
-            source_account_id: string;
-            /** Source Account Name */
-            source_account_name?: string | null;
-            /** Status */
-            status: string;
-            /** Updated At */
-            updated_at?: string | null;
-        };
-        /**
-         * MovementUpdate
-         * @description Request body for ``PUT /movements/{movement_id}`` (PENDING only).
-         */
-        MovementUpdate: {
-            /** Amount */
-            amount?: number | null;
-            /** Currency */
-            currency?: string | null;
-            /** Description */
-            description?: string | null;
-            /** Destination Account Id */
-            destination_account_id?: string | null;
-            /** Movement Date */
-            movement_date?: string | null;
-            /** Source Account Id */
-            source_account_id?: string | null;
-        };
-        /**
          * OAuthCodeExchangeRequest
          * @description JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).
          *
@@ -2783,17 +2451,6 @@ export interface components {
         PaginatedResponse_IngestionRunResponse_: {
             /** Items */
             items?: components["schemas"]["IngestionRunResponse"][];
-            /** Limit */
-            limit: number;
-            /** Skip */
-            skip: number;
-            /** Total */
-            total: number;
-        };
-        /** PaginatedResponse[MovementResponse] */
-        PaginatedResponse_MovementResponse_: {
-            /** Items */
-            items?: components["schemas"]["MovementResponse"][];
             /** Limit */
             limit: number;
             /** Skip */
@@ -3200,21 +2857,15 @@ export interface components {
         };
         /**
          * TransactionCreate
-         * @description Request body for ``POST /transactions`` (INCOME/EXPENSE only).
+         * @description Request body for ``POST /transactions`` (INCOME, EXPENSE, or TRANSFER).
          */
         TransactionCreate: {
-            /**
-             * Account Id
-             * Format: uuid
-             */
-            account_id: string;
+            /** Account Id */
+            account_id?: string | null;
             /** Amount */
             amount: number;
-            /**
-             * Category Id
-             * Format: uuid
-             */
-            category_id: string;
+            /** Category Id */
+            category_id?: string | null;
             /**
              * Currency
              * @default USD
@@ -3225,27 +2876,74 @@ export interface components {
              * @default
              */
             description: string;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
             /** Ingestion Source */
             ingestion_source?: string | null;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /**
+             * Scheduled
+             * @default false
+             */
+            scheduled: boolean;
+            /**
+             * Settlement Status
+             * @default settled
+             * @enum {string}
+             */
+            settlement_status: "settled" | "in_transit";
+            /** Source Account Id */
+            source_account_id?: string | null;
             /** Source Ref */
             source_ref?: string | null;
             /** Status */
             status?: string | null;
             /** Tags */
             tags?: string[];
+            /** Template Id */
+            template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /** Transaction Date */
-            transaction_date: string;
+            transaction_date?: string | null;
             /**
              * Transaction Type
+             * @default expense
              * @enum {string}
              */
-            transaction_type: "income" | "expense";
+            transaction_type: "income" | "expense" | "transfer";
+        };
+        /**
+         * TransactionExecuteResponse
+         * @description Response body for ``POST /transactions/{transaction_id}/execute``.
+         */
+        TransactionExecuteResponse: {
+            /**
+             * Executed At
+             * Format: date-time
+             */
+            executed_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Settlement Status
+             * @default settled
+             */
+            settlement_status: string;
+            /** Status */
+            status: string;
         };
         /**
          * TransactionResponse
-         * @description Transaction resource returned by CRUD endpoints.
+         * @description Unified transaction & transfer resource returned by CRUD endpoints.
          */
         TransactionResponse: {
             /** Account Id */
@@ -3264,6 +2962,12 @@ export interface components {
             currency: string;
             /** Description */
             description: string;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** Destination Account Name */
+            destination_account_name?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -3274,14 +2978,27 @@ export interface components {
              * @default false
              */
             is_recurring: boolean;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /**
+             * Settlement Status
+             * @default settled
+             */
+            settlement_status: string;
+            /** Source Account Id */
+            source_account_id?: string | null;
+            /** Source Account Name */
+            source_account_name?: string | null;
             /** Status */
             status: string;
             /** Tags */
             tags?: string[];
             /** Template Id */
             template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /**
              * Transaction Date
              * Format: date
@@ -3410,12 +3127,26 @@ export interface components {
             currency?: string | null;
             /** Description */
             description?: string | null;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /** Settlement Status */
+            settlement_status?: ("settled" | "in_transit") | null;
+            /** Source Account Id */
+            source_account_id?: string | null;
             /** Status */
             status?: string | null;
             /** Tags */
             tags?: string[] | null;
+            /** Template Id */
+            template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /** Transaction Date */
             transaction_date?: string | null;
             /** Transaction Type */
@@ -4731,209 +4462,6 @@ export interface operations {
             };
         };
     };
-    list_movements_api_v1_movements_get: {
-        parameters: {
-            query?: {
-                /** @description Number of records to skip */
-                skip?: number;
-                /** @description Maximum records to return */
-                limit?: number;
-                /** @description Filter by source account */
-                source_account_id?: string | null;
-                /** @description Filter by destination account */
-                destination_account_id?: string | null;
-                /** @description Filter by pending/completed/cancelled */
-                status?: string | null;
-                /** @description Filter by start date */
-                start_date?: string | null;
-                /** @description Filter by end date */
-                end_date?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedResponse_MovementResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_movement_api_v1_movements_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MovementCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_movement_api_v1_movements__movement_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_movement_api_v1_movements__movement_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MovementUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_movement_api_v1_movements__movement_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    execute_movement_api_v1_movements__movement_id__execute_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementExecuteResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     get_cash_flow_report_api_v1_reports_cash_flow_get: {
         parameters: {
             query: {
@@ -5377,10 +4905,16 @@ export interface operations {
                 limit?: number;
                 /** @description Filter by primary account (from or to) */
                 account_id?: string | null;
+                /** @description Filter by source account */
+                source_account_id?: string | null;
+                /** @description Filter by destination account */
+                destination_account_id?: string | null;
                 /** @description Filter by category */
                 category_id?: string | null;
                 /** @description Filter by income/expense/transfer */
                 transaction_type?: string | null;
+                /** @description Exclude transfer rows when true */
+                exclude_transfer?: boolean | null;
                 /** @description Filter by pending/completed/cancelled */
                 status?: string | null;
                 /** @description Filter by start date */
@@ -5573,6 +5107,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    execute_transaction_api_v1_transactions__transaction_id__execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionExecuteResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

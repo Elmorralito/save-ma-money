@@ -1,9 +1,11 @@
 import type { TransactionCreate, TransactionResponse, TransactionUpdate } from "@/types/domain";
 
-export type TransactionTypeSlug = "income" | "expense";
+export type TransactionTypeSlug = "income" | "expense" | "transfer";
 
 export type TransactionFormState = {
   account_id: string;
+  source_account_id: string;
+  destination_account_id: string;
   category_id: string;
   transaction_type: TransactionTypeSlug;
   amount: string;
@@ -13,6 +15,8 @@ export type TransactionFormState = {
   reference_number: string;
   tags: string;
   status: string;
+  scheduled: boolean;
+  settlement_status: "settled" | "in_transit";
 };
 
 function todayDateInput(): string {
@@ -24,6 +28,8 @@ export function emptyTransactionFormState(
 ): TransactionFormState {
   return {
     account_id: "",
+    source_account_id: "",
+    destination_account_id: "",
     category_id: "",
     transaction_type: "expense",
     amount: "",
@@ -33,14 +39,23 @@ export function emptyTransactionFormState(
     reference_number: "",
     tags: "",
     status: "",
+    scheduled: false,
+    settlement_status: "settled",
     ...overrides,
   };
 }
 
 export function transactionFormFromResponse(txn: TransactionResponse): TransactionFormState {
-  const type: TransactionTypeSlug = txn.transaction_type === "income" ? "income" : "expense";
+  const type: TransactionTypeSlug =
+    txn.transaction_type === "income"
+      ? "income"
+      : txn.transaction_type === "transfer"
+        ? "transfer"
+        : "expense";
   return emptyTransactionFormState({
     account_id: txn.account_id ?? "",
+    source_account_id: txn.source_account_id ?? txn.from_account_id ?? "",
+    destination_account_id: txn.destination_account_id ?? txn.to_account_id ?? "",
     category_id: txn.category_id ?? "",
     transaction_type: type,
     amount: String(txn.amount),
@@ -50,6 +65,8 @@ export function transactionFormFromResponse(txn: TransactionResponse): Transacti
     reference_number: txn.reference_number ?? "",
     tags: (txn.tags ?? []).join(", "),
     status: txn.status,
+    scheduled: txn.status === "pending",
+    settlement_status: txn.settlement_status === "in_transit" ? "in_transit" : "settled",
   });
 }
 
@@ -75,14 +92,36 @@ function parseTags(value: string): string[] | undefined {
 
 /** Map form state → OpenAPI ``TransactionCreate``. */
 export function toTransactionCreate(state: TransactionFormState): TransactionCreate {
+  if (!state.transaction_date.trim()) {
+    throw new Error("Transaction date is required");
+  }
+
+  if (state.transaction_type === "transfer") {
+    if (!state.source_account_id) {
+      throw new Error("Source account is required");
+    }
+    if (!state.destination_account_id) {
+      throw new Error("Destination account is required");
+    }
+    const create: TransactionCreate = {
+      source_account_id: state.source_account_id,
+      destination_account_id: state.destination_account_id,
+      transaction_type: "transfer",
+      amount: parseRequiredAmount(state.amount),
+      currency: state.currency.trim().toUpperCase() || "USD",
+      description: state.description.trim(),
+      transaction_date: state.transaction_date.trim(),
+      scheduled: state.scheduled,
+      settlement_status: state.settlement_status,
+    };
+    return create;
+  }
+
   if (!state.account_id) {
     throw new Error("Account is required");
   }
   if (!state.category_id) {
     throw new Error("Category is required");
-  }
-  if (!state.transaction_date.trim()) {
-    throw new Error("Transaction date is required");
   }
 
   const create: TransactionCreate = {
@@ -112,14 +151,37 @@ export function toTransactionCreate(state: TransactionFormState): TransactionCre
 
 /** Map form state → OpenAPI ``TransactionUpdate`` (omit empties that would wipe server fields). */
 export function toTransactionUpdate(state: TransactionFormState): TransactionUpdate {
+  if (!state.transaction_date.trim()) {
+    throw new Error("Transaction date is required");
+  }
+
+  if (state.transaction_type === "transfer") {
+    if (!state.source_account_id) {
+      throw new Error("Source account is required");
+    }
+    if (!state.destination_account_id) {
+      throw new Error("Destination account is required");
+    }
+    const update: TransactionUpdate = {
+      source_account_id: state.source_account_id,
+      destination_account_id: state.destination_account_id,
+      transaction_type: "transfer",
+      amount: parseRequiredAmount(state.amount),
+      currency: state.currency.trim().toUpperCase() || "USD",
+      transaction_date: state.transaction_date.trim(),
+      settlement_status: state.settlement_status,
+    };
+    if (state.description.trim() !== "") {
+      update.description = state.description.trim();
+    }
+    return update;
+  }
+
   if (!state.account_id) {
     throw new Error("Account is required");
   }
   if (!state.category_id) {
     throw new Error("Category is required");
-  }
-  if (!state.transaction_date.trim()) {
-    throw new Error("Transaction date is required");
   }
 
   const update: TransactionUpdate = {

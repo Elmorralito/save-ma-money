@@ -1,28 +1,12 @@
-"""Transaction CRUD routes — PPT-037.
+"""Unified transaction & transfer CRUD routes — PPT-037 / PPT-099.
 
-Exposes tenant-scoped INCOME/EXPENSE transaction management under ``/transactions``.
-All handlers require JWT auth via ``get_current_owner`` and delegate persistence to
-:class:`~papita_txnsmodel.services.transactions.TransactionsService`. TRANSFER rows
-are excluded from default list responses; use ``/movements`` or
-``?transaction_type=transfer`` to include them.
-
-Routes:
-    ``GET /transactions`` — paginated list with G4 filters; excludes TRANSFER by default.
-    ``GET /transactions/{transaction_id}`` — single transaction with linked names.
-    ``POST /transactions`` — create INCOME/EXPENSE row (optional ``Idempotency-Key``).
-    ``POST /transactions/bulk`` — bulk create INCOME/EXPENSE rows (optional ``Idempotency-Key``).
-    ``PUT /transactions/{transaction_id}`` — update tenant-owned transaction.
-    ``DELETE /transactions/{transaction_id}`` — soft-delete tenant-owned transaction.
-    ``POST /transactions/{transaction_id}/split`` — deferred 501 (v4).
-
-Tenant scoping:
-    Every mutating and read path passes ``owner=`` so ledger rows never leak across
-    tenants. Cross-tenant ids resolve as not found (404).
+Exposes tenant-scoped INCOME, EXPENSE, and TRANSFER management under ``/transactions``.
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
@@ -51,20 +35,23 @@ from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
 from papita_txnsapi.dependencies.redis import get_optional_redis
-from papita_txnsapi.dependencies.services import get_transactions_service
+from papita_txnsapi.dependencies.services import get_accounts_service, get_transactions_service
 from papita_txnsapi.schemas.common import PaginatedResponse
 from papita_txnsapi.schemas.query_params import TransactionListQuery, get_transaction_list_query
 from papita_txnsapi.schemas.transactions import (
     TransactionBulkCreate,
     TransactionBulkResponse,
     TransactionCreate,
+    TransactionExecuteResponse,
     TransactionResponse,
     TransactionUpdate,
+    _relation_uuid,
     transactions_from_dataframe,
 )
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
-from papita_txnsmodel.model.enums import TransactionKind
+from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.ingestion import IngestionBridgeService
 from papita_txnsmodel.services.transactions import TransactionsService
 
@@ -90,44 +77,19 @@ def _invalidate_ledger_caches(redis: Redis | None, owner: UsersDTO) -> None:
 
 
 def _transaction_not_found() -> HTTPException:
-    """Build a 404 response for a missing or inaccessible transaction.
-
-    Returns:
-        HTTPException: 404 with a generic detail that avoids leaking cross-tenant
-            existence of ledger rows.
-    """
+    """Build a 404 response for a missing or inaccessible transaction."""
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
 
 
 def _require_uuid(value: uuid.UUID | None) -> uuid.UUID:
-    """Return a persisted UUID or raise when the DTO has no primary key.
-
-    Args:
-        value: Primary key from a DTO that may not yet be persisted.
-
-    Returns:
-        The non-``None`` UUID value.
-
-    Raises:
-        HTTPException: 404 when ``value`` is ``None``.
-    """
+    """Return a persisted UUID or raise when the DTO has no primary key."""
     if value is None:
         raise _transaction_not_found()
     return value
 
 
 def _require_owner_id(owner: UsersDTO) -> uuid.UUID:
-    """Return the authenticated owner's primary key.
-
-    Args:
-        owner: Authenticated tenant DTO from JWT resolution.
-
-    Returns:
-        Non-null tenant UUID used when constructing create DTOs.
-
-    Raises:
-        HTTPException: 401 when ``owner.id`` is missing (invalid auth context).
-    """
+    """Return the authenticated owner's primary key."""
     if owner.id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid owner context")
     return owner.id
@@ -150,6 +112,43 @@ def _idempotency_body_mismatch() -> HTTPException:
     )
 
 
+def _validate_transfer_accounts(
+    accounts_service: AccountsService,
+    owner: UsersDTO,
+    *,
+    source_account_id: uuid.UUID,
+    destination_account_id: uuid.UUID,
+    currency: str,
+) -> None:
+    """Ensure both accounts exist for the tenant and share the requested currency."""
+    if source_account_id == destination_account_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Source and destination accounts must differ.",
+        )
+
+    source = accounts_service.get(obj=source_account_id, owner=owner)
+    destination = accounts_service.get(obj=destination_account_id, owner=owner)
+    if source is None or destination is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Account not found")
+
+    normalized_currency = currency.upper()
+    if source.currency != destination.currency or source.currency != normalized_currency:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Currency must match both accounts.",
+        )
+
+
+def _require_pending_transfer(transfer: TransactionsDTO) -> None:
+    """Reject mutations on non-pending transfers."""
+    if transfer.status != TransactionStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Only pending transfers can be modified.",
+        )
+
+
 @router.get("", response_model=PaginatedResponse[TransactionResponse])
 def list_transactions(  # pylint: disable=too-many-positional-arguments,too-many-locals
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
@@ -160,23 +159,7 @@ def list_transactions(  # pylint: disable=too-many-positional-arguments,too-many
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
     response: Response,
 ) -> PaginatedResponse[TransactionResponse]:
-    """List tenant transactions with optional G4 filters.
-
-    By default TRANSFER rows are excluded (``exclude_transfer=True``) unless the
-    client filters ``transaction_type=transfer``. Short-TTL Redis cache-aside when enabled.
-
-    Args:
-        owner: Authenticated tenant from JWT.
-        pagination: Skip/limit window for the response page.
-        transactions_service: Injected service providing ``list_transactions``.
-        filters: Bundled query parameters mapped to service kwargs.
-        settings: Application settings (cache TTL).
-        redis: Optional Redis client when ``REDIS_ENABLED``.
-        response: FastAPI response used to set ``X-Cache`` status.
-
-    Returns:
-        Paginated ``TransactionResponse`` items owned by ``owner``.
-    """
+    """List tenant transactions and transfers with optional filters."""
     cache_params = {
         "skip": pagination.skip,
         "limit": pagination.limit,
@@ -230,28 +213,7 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,t
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TransactionBulkResponse:
-    """Create multiple INCOME/EXPENSE transactions for the authenticated tenant.
-
-    Each item is created independently; ``ValueError`` / ``TypeError`` on an item
-    increments ``failed`` without aborting the remainder of the batch. Optional
-    ``Idempotency-Key`` replays a prior bulk response when Redis is enabled.
-
-    Args:
-        body: Bulk payload containing one or more ``TransactionCreate`` items.
-        owner: Authenticated tenant that will own every created row.
-        transactions_service: Injected service used for per-item ``create``.
-        settings: Application settings (idempotency TTL).
-        redis: Optional Redis client for cache invalidation / idempotency.
-        idempotency_key: Optional client key for safe retries.
-
-    Returns:
-        TransactionBulkResponse with counts and successfully created items.
-
-    Raises:
-        HTTPException: 401 when the owner context lacks a primary key; 409 when
-            an idempotency key is still pending; 422 when the batch exceeds
-            ``API_BULK_MAX_TRANSACTIONS``.
-    """
+    """Create multiple transactions for the authenticated tenant."""
     if len(body.transactions) > settings.API_BULK_MAX_TRANSACTIONS:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -282,7 +244,12 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,t
     created_items: list[TransactionResponse] = []
     failed = 0
 
-    account_ids = {item.account_id for item in body.transactions if item.account_id is not None}
+    account_ids = {
+        acc_id
+        for item in body.transactions
+        for acc_id in (item.account_id, item.resolved_source_account_id(), item.resolved_destination_account_id())
+        if acc_id is not None
+    }
     category_ids = {item.category_id for item in body.transactions if item.category_id is not None}
     linked_dto_cache = transactions_service.prefetch_link_dtos(
         owner=owner,
@@ -294,7 +261,6 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,t
         for item in body.transactions:
             try:
                 dto = item.to_transactions_dto(owner_id=owner_id)
-                # Defer MV refresh to once after the batch (avoid N× refresh).
                 result = transactions_service.create(
                     obj=dto,
                     owner=owner,
@@ -334,22 +300,7 @@ def get_transaction(  # pylint: disable=too-many-positional-arguments
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
     response: Response,
 ) -> TransactionResponse:
-    """Retrieve a single tenant-owned transaction with linked names.
-
-    Args:
-        transaction_id: Ledger primary key from the path.
-        owner: Authenticated tenant from JWT.
-        transactions_service: Injected service for owner-scoped get-by-id.
-        settings: Application settings (cache TTL).
-        redis: Optional Redis client when ``REDIS_ENABLED``.
-        response: FastAPI response used to set ``X-Cache`` status.
-
-    Returns:
-        TransactionResponse including account/category names when linked DTOs load.
-
-    Raises:
-        HTTPException: 404 when the row is missing or not owned by ``owner``.
-    """
+    """Retrieve a single tenant-owned transaction or transfer with linked names."""
     cache_params = {"transaction_id": str(transaction_id)}
     owner_id = owner.id
     if owner_id is not None:
@@ -386,30 +337,12 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
     body: TransactionCreate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
     settings: Annotated[Settings, Depends(get_settings)],
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> TransactionResponse:
-    """Create an INCOME or EXPENSE transaction for the authenticated tenant.
-
-    Optional ``Idempotency-Key`` header (when Redis is enabled) makes retries safe:
-    a repeated key returns the original create response without inserting again.
-
-    Args:
-        body: Create payload (account, category, type, amount, date, optional fields).
-        owner: Authenticated tenant that will own the new row.
-        transactions_service: Injected service providing ``create``.
-        settings: Application settings (idempotency TTL).
-        redis: Optional Redis client for cache invalidation / idempotency.
-        idempotency_key: Optional client key for safe retries.
-
-    Returns:
-        TransactionResponse for the persisted row.
-
-    Raises:
-        HTTPException: 401 when owner id is missing; 409 when idempotency key is
-            pending; domain errors may surface as 400 via the global handler.
-    """
+    """Create an INCOME, EXPENSE, or TRANSFER transaction for the authenticated tenant."""
     owner_id = _require_owner_id(owner)
     request_digest = request_body_digest(body.model_dump(mode="json"))
     begun = begin_idempotency(
@@ -427,8 +360,33 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
     if begun.state == "conflict":
         raise _idempotency_conflict()
 
+    should_refresh_mv = True
     try:
-        if body.source_ref and body.source_ref.strip():
+        if body.transaction_type == "transfer":
+            src = body.resolved_source_account_id()
+            dst = body.resolved_destination_account_id()
+            if src is None or dst is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Transfer requires both source and destination accounts.",
+                )
+            _validate_transfer_accounts(
+                accounts_service,
+                owner,
+                source_account_id=src,
+                destination_account_id=dst,
+                currency=body.currency,
+            )
+            dto = body.to_transactions_dto(owner_id=owner_id)
+            created = transactions_service.create_transfer(obj=dto, owner=owner, refresh_balances=False)
+            is_pending = body.scheduled or (body.status and body.status.lower() == "pending")
+            if is_pending:
+                should_refresh_mv = False
+            else:
+                created = transactions_service.complete_transfer(
+                    transaction_id=created, owner=owner, refresh_balances=False
+                )
+        elif body.source_ref and body.source_ref.strip():
             bridge = IngestionBridgeService(transactions_service=transactions_service)
             ingested = bridge.ingest_transaction(
                 owner=owner,
@@ -443,7 +401,8 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
         clear_idempotency_pending(redis, owner_id, scope=_IDEMPOTENCY_CREATE, key=idempotency_key)
         raise
 
-    transactions_service.refresh_balance_views()
+    if should_refresh_mv:
+        transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     result = TransactionResponse.from_dto(created)
     complete_idempotency(
@@ -460,44 +419,73 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
 
 
 @router.put("/{transaction_id}", response_model=TransactionResponse)
-def update_transaction(
+def update_transaction(  # pylint: disable=too-many-positional-arguments
     transaction_id: uuid.UUID,
     body: TransactionUpdate,
     owner: Annotated[UsersDTO, Depends(get_current_owner)],
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    accounts_service: Annotated[AccountsService, Depends(get_accounts_service)],
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> TransactionResponse:
-    """Update a tenant-owned INCOME/EXPENSE transaction via upsert.
-
-    TRANSFER rows must be updated through ``PUT /movements`` instead.
-
-    Args:
-        transaction_id: Ledger primary key from the path.
-        body: Partial update fields applied onto the existing DTO.
-        owner: Authenticated tenant that must own the row.
-        transactions_service: Injected service for get and upsert.
-        redis: Optional Redis client for cache invalidation.
-
-    Returns:
-        TransactionResponse for the updated row.
-
-    Raises:
-        HTTPException: 404 when missing; 422 when the row is a TRANSFER.
-    """
+    """Update a tenant-owned transaction or pending transfer via upsert."""
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()
-    if existing.transaction_kind == TransactionKind.TRANSFER:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Use PUT /movements to update transfer transactions.",
-        )
 
     merged = body.apply_to(existing)
+    if merged.transaction_kind == TransactionKind.TRANSFER:
+        _require_pending_transfer(existing)
+        source_id = _relation_uuid(merged.from_account_id)
+        destination_id = _relation_uuid(merged.to_account_id)
+        if source_id is None or destination_id is None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid account legs.")
+        _validate_transfer_accounts(
+            accounts_service,
+            owner,
+            source_account_id=source_id,
+            destination_account_id=destination_id,
+            currency=merged.currency,
+        )
+        updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
+        _invalidate_ledger_caches(redis, owner)
+        return TransactionResponse.from_dto(updated)
+
     updated = transactions_service.create(obj=merged, owner=owner, refresh_balances=False)
     transactions_service.refresh_balance_views()
     _invalidate_ledger_caches(redis, owner)
     return TransactionResponse.from_dto(updated)
+
+
+@router.post("/{transaction_id}/execute", response_model=TransactionExecuteResponse)
+def execute_transaction(
+    transaction_id: uuid.UUID,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+) -> TransactionExecuteResponse:
+    """Complete a pending scheduled transfer."""
+    existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
+    if existing is None or existing.transaction_kind != TransactionKind.TRANSFER:
+        raise _transaction_not_found()
+    _require_pending_transfer(existing)
+    try:
+        completed = transactions_service.complete_transfer(
+            transaction_id=transaction_id, owner=owner, refresh_balances=False
+        )
+    except ValueError as exc:
+        raise _transaction_not_found() from exc
+
+    executed_at = completed.transaction_ts
+    if executed_at.tzinfo is None:
+        executed_at = executed_at.replace(tzinfo=timezone.utc)
+    transactions_service.refresh_balance_views()
+    _invalidate_ledger_caches(redis, owner)
+    return TransactionExecuteResponse(
+        id=_require_uuid(completed.id),
+        status="completed",
+        settlement_status="settled",
+        executed_at=executed_at,
+    )
 
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -507,20 +495,18 @@ def delete_transaction(
     transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
     redis: Annotated[Redis | None, Depends(get_optional_redis)],
 ) -> None:
-    """Soft-delete a tenant-owned transaction.
-
-    Args:
-        transaction_id: Ledger primary key from the path.
-        owner: Authenticated tenant that must own the row.
-        transactions_service: Injected service providing soft ``delete``.
-        redis: Optional Redis client for cache invalidation.
-
-    Raises:
-        HTTPException: 404 when the row is missing or not owned by ``owner``.
-    """
+    """Soft-delete a tenant-owned transaction or cancel a pending transfer."""
     existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
     if existing is None:
         raise _transaction_not_found()
+    if existing.transaction_kind == TransactionKind.TRANSFER and existing.status == TransactionStatus.PENDING:
+        try:
+            transactions_service.cancel(transaction_id=transaction_id, owner=owner, refresh_balances=False)
+        except ValueError as exc:
+            raise _transaction_not_found() from exc
+        _invalidate_ledger_caches(redis, owner)
+        return
+
     transactions_service.delete(
         obj=TransactionsDTO.model_construct(id=transaction_id),
         owner=owner,

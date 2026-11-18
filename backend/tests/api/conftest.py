@@ -127,7 +127,7 @@ def categories_client() -> tuple[TestClient, UsersDTO, MagicMock]:
 def transactions_client() -> tuple[TestClient, UsersDTO, MagicMock]:
     """Authenticated client with mocked TransactionsService."""
     from papita_txnsapi.dependencies.auth import get_current_owner
-    from papita_txnsapi.dependencies.services import get_transactions_service
+    from papita_txnsapi.dependencies.services import get_accounts_service, get_transactions_service
 
     _clear_auth_singletons()
     app = create_app()
@@ -135,6 +135,7 @@ def transactions_client() -> tuple[TestClient, UsersDTO, MagicMock]:
     mock_service = MagicMock()
     app.dependency_overrides[get_current_owner] = lambda: owner
     app.dependency_overrides[get_transactions_service] = lambda: mock_service
+    app.dependency_overrides[get_accounts_service] = lambda: MagicMock()
     test_client = TestClient(app)
     yield test_client, owner, mock_service
     app.dependency_overrides.clear()

@@ -38,7 +38,6 @@ from papita_txnsapi.routers.v1 import (
     health,
     ingestion,
     meta,
-    movements,
     reports,
     transaction_templates,
     transactions,
@@ -53,6 +52,5 @@ api_v1_router.include_router(accounts.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(categories.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(transactions.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(transaction_templates.router, dependencies=[Depends(get_db)])
-api_v1_router.include_router(movements.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(reports.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(ingestion.router, dependencies=[Depends(get_db)])

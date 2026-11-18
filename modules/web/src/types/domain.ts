@@ -33,6 +33,7 @@ export type CategorySubcategoryResponse = ApiSchemas["CategorySubcategoryRespons
 export type TransactionCreate = ApiSchemas["TransactionCreate"];
 export type TransactionUpdate = ApiSchemas["TransactionUpdate"];
 export type TransactionResponse = ApiSchemas["TransactionResponse"];
+export type TransactionExecuteResponse = ApiSchemas["TransactionExecuteResponse"];
 export type TransactionBulkCreate = ApiSchemas["TransactionBulkCreate"];
 export type TransactionBulkResponse = ApiSchemas["TransactionBulkResponse"];
 export type PaginatedTransactions = ApiSchemas["PaginatedResponse_TransactionResponse_"];
@@ -46,12 +47,6 @@ export type UpcomingDueResponse = ApiSchemas["UpcomingDueResponse"];
 export type UpcomingDuesResponse = ApiSchemas["UpcomingDuesResponse"];
 export type MarkPaidRequest = ApiSchemas["MarkPaidRequest"];
 export type ClearPaidRequest = ApiSchemas["ClearPaidRequest"];
-
-export type MovementCreate = ApiSchemas["MovementCreate"];
-export type MovementUpdate = ApiSchemas["MovementUpdate"];
-export type MovementResponse = ApiSchemas["MovementResponse"];
-export type MovementExecuteResponse = ApiSchemas["MovementExecuteResponse"];
-export type PaginatedMovements = ApiSchemas["PaginatedResponse_MovementResponse_"];
 
 export type ReportPeriod = ApiSchemas["ReportPeriod"];
 export type SpendingBreakdownItem = ApiSchemas["SpendingBreakdownItem"];

@@ -103,10 +103,11 @@ class TransactionListServiceKwargs(TypedDict):
 
     Attributes:
         account_id: Optional primary account filter (from or to side).
+        source_account_id: Optional source (from) account filter.
+        destination_account_id: Optional destination (to) account filter.
         category_id: Optional category filter.
         transaction_kind: Parsed ``TransactionKind``, or ``None`` when omitted.
-        exclude_transfer: When ``True``, omit transfer rows (default list behavior
-            when ``transaction_type`` was not provided on the query).
+        exclude_transfer: When ``True``, omit transfer rows.
         status: Parsed ``TransactionStatus``, or ``None`` when omitted.
         start_date: Inclusive lower bound as a calendar date, if any.
         end_date: Inclusive upper bound as a calendar date, if any.
@@ -116,6 +117,8 @@ class TransactionListServiceKwargs(TypedDict):
     """
 
     account_id: uuid.UUID | None
+    source_account_id: uuid.UUID | None
+    destination_account_id: uuid.UUID | None
     category_id: uuid.UUID | None
     transaction_kind: TransactionKind | None
     exclude_transfer: bool
@@ -127,47 +130,15 @@ class TransactionListServiceKwargs(TypedDict):
     search: str | None
 
 
-class MovementListServiceKwargs(TypedDict):
-    """Keyword arguments accepted by ``TransactionsService.list_transfers``.
-
-    Attributes:
-        source_account_id: Optional source (from) account filter.
-        destination_account_id: Optional destination (to) account filter.
-        status: Parsed ``TransactionStatus``, or ``None`` when omitted.
-        start_date: Inclusive lower bound as a calendar date, if any.
-        end_date: Inclusive upper bound as a calendar date, if any.
-    """
-
-    source_account_id: uuid.UUID | None
-    destination_account_id: uuid.UUID | None
-    status: TransactionStatus | None
-    start_date: date | None
-    end_date: date | None
-
-
 class TransactionListQuery(BaseModel):
-    """Bundled query parameters for ``GET /transactions``.
-
-    Holds OpenAPI-facing filter fields, then maps them to service kwargs via
-    ``service_kwargs()``. Enum-like strings are parsed with schema converters;
-    omitting ``transaction_type`` sets ``exclude_transfer=True`` so the default
-    list hides pure transfers (use movements for those).
-
-    Attributes:
-        account_id: Filter by primary account (from or to).
-        category_id: Filter by category.
-        transaction_type: Raw kind filter (``income`` / ``expense`` / ``transfer``).
-        status: Raw status filter (``pending`` / ``completed`` / ``cancelled``).
-        start_date: Inclusive start date filter.
-        end_date: Inclusive end date filter.
-        min_amount: Minimum amount (must be ``>= 0`` when set).
-        max_amount: Maximum amount (must be ``>= 0`` when set).
-        search: Substring search against transaction description.
-    """
+    """Bundled query parameters for ``GET /transactions``."""
 
     account_id: uuid.UUID | None = Field(default=None, description="Filter by primary account (from or to)")
+    source_account_id: uuid.UUID | None = Field(default=None, description="Filter by source (from) account")
+    destination_account_id: uuid.UUID | None = Field(default=None, description="Filter by destination (to) account")
     category_id: uuid.UUID | None = Field(default=None, description="Filter by category")
     transaction_type: str | None = Field(default=None, description="Filter by income/expense/transfer")
+    exclude_transfer: bool | None = Field(default=None, description="Exclude transfer rows when true")
     status: str | None = Field(default=None, description="Filter by pending/completed/cancelled")
     start_date: date | None = Field(default=None, description="Filter by start date")
     end_date: date | None = Field(default=None, description="Filter by end date")
@@ -180,24 +151,23 @@ class TransactionListQuery(BaseModel):
     )
 
     def service_kwargs(self) -> TransactionListServiceKwargs:
-        """Map API query parameters to ``TransactionsService.list_transactions`` kwargs.
-
-        Parses optional kind/status strings and sets ``exclude_transfer`` when no
-        ``transaction_type`` was supplied so the default ledger view omits transfers.
-
-        Returns:
-            Typed keyword arguments ready for ``list_transactions``.
-
-        Raises:
-            ValueError: When ``transaction_type`` or ``status`` cannot be parsed by
-                the shared converters.
-        """
+        """Map API query parameters to ``TransactionsService.list_transactions`` kwargs."""
         transaction_kind = parse_transaction_kind(self.transaction_type) if self.transaction_type else None
+        if self.exclude_transfer is not None:
+            resolved_exclude_transfer = self.exclude_transfer
+        else:
+            resolved_exclude_transfer = (
+                self.transaction_type is None
+                and self.source_account_id is None
+                and self.destination_account_id is None
+            )
         return TransactionListServiceKwargs(
             account_id=self.account_id,
+            source_account_id=self.source_account_id,
+            destination_account_id=self.destination_account_id,
             category_id=self.category_id,
             transaction_kind=transaction_kind,
-            exclude_transfer=self.transaction_type is None,
+            exclude_transfer=resolved_exclude_transfer,
             status=parse_transaction_status(self.status) if self.status else None,
             start_date=self.start_date,
             end_date=self.end_date,
@@ -207,48 +177,14 @@ class TransactionListQuery(BaseModel):
         )
 
 
-class MovementListQuery(BaseModel):
-    """Bundled query parameters for ``GET /movements``.
-
-    Filters transfer-only rows by source/destination accounts, status, and date.
-
-    Attributes:
-        source_account_id: Filter by source account.
-        destination_account_id: Filter by destination account.
-        status: Raw status filter (``pending`` / ``completed`` / ``cancelled``).
-        start_date: Inclusive start date filter.
-        end_date: Inclusive end date filter.
-    """
-
-    source_account_id: uuid.UUID | None = Field(default=None, description="Filter by source account")
-    destination_account_id: uuid.UUID | None = Field(default=None, description="Filter by destination account")
-    status: str | None = Field(default=None, description="Filter by pending/completed/cancelled")
-    start_date: date | None = Field(default=None, description="Filter by start date")
-    end_date: date | None = Field(default=None, description="Filter by end date")
-
-    def service_kwargs(self) -> MovementListServiceKwargs:
-        """Map API query parameters to ``TransactionsService.list_transfers`` kwargs.
-
-        Returns:
-            Typed keyword arguments ready for ``list_transfers``.
-
-        Raises:
-            ValueError: When ``status`` is set but cannot be parsed.
-        """
-        return MovementListServiceKwargs(
-            source_account_id=self.source_account_id,
-            destination_account_id=self.destination_account_id,
-            status=parse_transaction_status(self.status) if self.status else None,
-            start_date=self.start_date,
-            end_date=self.end_date,
-        )
-
-
 def get_transaction_list_query(  # pylint: disable=too-many-arguments
     *,
     account_id: Annotated[uuid.UUID | None, Query(description="Filter by primary account (from or to)")] = None,
+    source_account_id: Annotated[uuid.UUID | None, Query(description="Filter by source account")] = None,
+    destination_account_id: Annotated[uuid.UUID | None, Query(description="Filter by destination account")] = None,
     category_id: Annotated[uuid.UUID | None, Query(description="Filter by category")] = None,
     transaction_type: Annotated[str | None, Query(description="Filter by income/expense/transfer")] = None,
+    exclude_transfer: Annotated[bool | None, Query(description="Exclude transfer rows when true")] = None,
     status: Annotated[str | None, Query(description="Filter by pending/completed/cancelled")] = None,
     start_date: Annotated[date | None, Query(description="Filter by start date")] = None,
     end_date: Annotated[date | None, Query(description="Filter by end date")] = None,
@@ -259,61 +195,20 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
         Query(description="Search in description", max_length=MAX_SEARCH_LENGTH),
     ] = None,
 ) -> TransactionListQuery:
-    """Collect ``GET /transactions`` query parameters for FastAPI dependency injection.
-
-    Args:
-        account_id: Filter by primary account (from or to).
-        category_id: Filter by category.
-        transaction_type: Filter by income/expense/transfer.
-        status: Filter by pending/completed/cancelled.
-        start_date: Inclusive start date.
-        end_date: Inclusive end date.
-        min_amount: Minimum amount (``>= 0``).
-        max_amount: Maximum amount (``>= 0``).
-        search: Description search string (max ``MAX_SEARCH_LENGTH``).
-
-    Returns:
-        Populated ``TransactionListQuery`` for the route handler.
-    """
+    """Collect ``GET /transactions`` query parameters for FastAPI dependency injection."""
     return TransactionListQuery(
         account_id=account_id,
+        source_account_id=source_account_id,
+        destination_account_id=destination_account_id,
         category_id=category_id,
         transaction_type=transaction_type,
+        exclude_transfer=exclude_transfer,
         status=status,
         start_date=start_date,
         end_date=end_date,
         min_amount=min_amount,
         max_amount=max_amount,
         search=search,
-    )
-
-
-def get_movement_list_query(
-    *,
-    source_account_id: Annotated[uuid.UUID | None, Query(description="Filter by source account")] = None,
-    destination_account_id: Annotated[uuid.UUID | None, Query(description="Filter by destination account")] = None,
-    status: Annotated[str | None, Query(description="Filter by pending/completed/cancelled")] = None,
-    start_date: Annotated[date | None, Query(description="Filter by start date")] = None,
-    end_date: Annotated[date | None, Query(description="Filter by end date")] = None,
-) -> MovementListQuery:
-    """Collect ``GET /movements`` query parameters for FastAPI dependency injection.
-
-    Args:
-        source_account_id: Filter by source account.
-        destination_account_id: Filter by destination account.
-        status: Filter by pending/completed/cancelled.
-        start_date: Inclusive start date.
-        end_date: Inclusive end date.
-
-    Returns:
-        Populated ``MovementListQuery`` for the route handler.
-    """
-    return MovementListQuery(
-        source_account_id=source_account_id,
-        destination_account_id=destination_account_id,
-        status=status,
-        start_date=start_date,
-        end_date=end_date,
     )
 
 

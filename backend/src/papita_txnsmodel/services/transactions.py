@@ -27,7 +27,7 @@ from papita_txnsmodel.access.transactions.query_filters import TransactionListFi
 from papita_txnsmodel.access.transactions.repository import TransactionsRepository, TransactionTemplatesRepository
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
-from papita_txnsmodel.model.enums import CategoryKind, TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import CategoryKind, SettlementStatus, TransactionKind, TransactionStatus
 from papita_txnsmodel.model.transactions import Transactions
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
@@ -565,6 +565,8 @@ class TransactionsService(BaseService):
         *,
         owner: UsersDTO,
         account_id: uuid.UUID | None = None,
+        source_account_id: uuid.UUID | None = None,
+        destination_account_id: uuid.UUID | None = None,
         category_id: uuid.UUID | None = None,
         transaction_kind: TransactionKind | None = None,
         exclude_transfer: bool = True,
@@ -585,6 +587,8 @@ class TransactionsService(BaseService):
                 exclude_transfer=exclude_transfer,
                 status=status,
                 account_id=account_id,
+                source_account_id=source_account_id,
+                destination_account_id=destination_account_id,
                 category_id=category_id,
                 start_date=start_date,
                 end_date=end_date,
@@ -698,9 +702,10 @@ class TransactionsService(BaseService):
         owner: UsersDTO | None = None,
         **kwargs,
     ) -> TransactionsDTO:
-        """Mark a transfer as completed (``POST /movements/{id}/execute``)."""
+        """Mark a transfer as completed (``POST /transactions/{id}/execute``)."""
         transfer = self._get_transfer(transaction_id=transaction_id, owner=owner, **kwargs)
         transfer.status = TransactionStatus.COMPLETED
+        transfer.settlement_status = SettlementStatus.SETTLED
         return self.create(obj=transfer, owner=owner, **kwargs)
 
     def cancel(

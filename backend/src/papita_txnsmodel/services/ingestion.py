@@ -22,7 +22,7 @@ from papita_txnsmodel.access.ingestion.repository import (
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.access.transactions.repository import TransactionsRepository
 from papita_txnsmodel.access.users.dto import UsersDTO
-from papita_txnsmodel.model.enums import IngestionSource, TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import IngestionSource, SettlementStatus, TransactionKind, TransactionStatus
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.base import BaseService
 from papita_txnsmodel.services.categories import CategoriesService
@@ -49,6 +49,7 @@ class IngestTransactionRequest(BaseModel):
     category_id: uuid.UUID | None = None
     template_id: uuid.UUID | None = None
     status: TransactionStatus = TransactionStatus.COMPLETED
+    settlement_status: SettlementStatus = SettlementStatus.SETTLED
     description: str = ""
     reference_number: str | None = Field(default=None, max_length=64)
     tags: list[str] = Field(default_factory=list)
@@ -325,6 +326,7 @@ class IngestionBridgeService(BaseService):
             category_id=payload.category_id,
             template_id=payload.template_id,
             status=payload.status,
+            settlement_status=payload.settlement_status,
             description=payload.description,
             reference_number=payload.reference_number,
             tags=list(payload.tags),

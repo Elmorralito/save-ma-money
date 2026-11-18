@@ -157,7 +157,7 @@ class TestTransactionsMovementsLiveDb:
         assert missing_response.status_code == 404
 
     def test_movements_transfer_lifecycle(self, live_client: TestClient) -> None:
-        """Create an immediate transfer via movements alias and read it back."""
+        """Create an immediate transfer via unified /transactions and read it back."""
         suffix = uuid.uuid4().hex[:8]
         token = _register_and_login(live_client, suffix=suffix, label="mov")
         headers = _auth_headers(token)
@@ -165,9 +165,10 @@ class TestTransactionsMovementsLiveDb:
         dest_id = _create_wallet(live_client, headers, name="Dest Wallet")
 
         create_response = live_client.post(
-            "/api/v1/movements",
+            "/api/v1/transactions",
             headers=headers,
             json={
+                "transaction_type": "transfer",
                 "source_account_id": source_id,
                 "destination_account_id": dest_id,
                 "amount": 75.0,
@@ -183,11 +184,11 @@ class TestTransactionsMovementsLiveDb:
         assert created["amount"] == 75.0
         assert created["status"] == "completed"
 
-        list_response = live_client.get("/api/v1/movements", headers=headers)
+        list_response = live_client.get("/api/v1/transactions?transaction_type=transfer", headers=headers)
         assert list_response.status_code == 200
         assert any(item["id"] == movement_id for item in list_response.json()["items"])
 
-        get_response = live_client.get(f"/api/v1/movements/{movement_id}", headers=headers)
+        get_response = live_client.get(f"/api/v1/transactions/{movement_id}", headers=headers)
         assert get_response.status_code == 200
         assert get_response.json()["source_account_id"] == source_id
         assert get_response.json()["destination_account_id"] == dest_id
@@ -241,7 +242,7 @@ class TestTransactionsMovementsLiveDb:
         assert cross_delete.status_code == 404
 
     def test_cross_tenant_movement_returns_404(self, live_client: TestClient) -> None:
-        """User B cannot read User A's movement through the API."""
+        """User B cannot read User A's transfer through the API."""
         suffix = uuid.uuid4().hex[:8]
         token_a = _register_and_login(live_client, suffix=suffix, label="ma")
         token_b = _register_and_login(live_client, suffix=suffix, label="mb")
@@ -251,9 +252,10 @@ class TestTransactionsMovementsLiveDb:
         source_id = _create_wallet(live_client, headers_a, name="A Source")
         dest_id = _create_wallet(live_client, headers_a, name="A Dest")
         create_response = live_client.post(
-            "/api/v1/movements",
+            "/api/v1/transactions",
             headers=headers_a,
             json={
+                "transaction_type": "transfer",
                 "source_account_id": source_id,
                 "destination_account_id": dest_id,
                 "amount": 25.0,
@@ -265,8 +267,8 @@ class TestTransactionsMovementsLiveDb:
         assert create_response.status_code == 201, create_response.text
         movement_id = create_response.json()["id"]
 
-        cross_get = live_client.get(f"/api/v1/movements/{movement_id}", headers=headers_b)
+        cross_get = live_client.get(f"/api/v1/transactions/{movement_id}", headers=headers_b)
         assert cross_get.status_code == 404
 
-        cross_delete = live_client.delete(f"/api/v1/movements/{movement_id}", headers=headers_b)
+        cross_delete = live_client.delete(f"/api/v1/transactions/{movement_id}", headers=headers_b)
         assert cross_delete.status_code == 404

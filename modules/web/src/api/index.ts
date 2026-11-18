@@ -56,18 +56,10 @@ export { IDEMPOTENCY_KEY_HEADER, newIdempotencyKey } from "@/api/idempotency";
 export { invalidateAfterLedgerWrite, invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 export { getClientContract } from "@/api/meta";
 export {
-  cancelMovement,
-  createMovement,
-  executeMovement,
-  getMovement,
-  listMovements,
-  updateMovement,
-  type ListMovementsParams,
-} from "@/api/movements";
-export {
   bulkCreateTransactions,
   createTransaction,
   deleteTransaction,
+  executeTransaction,
   getTransaction,
   listTransactions,
   updateTransaction,
@@ -81,8 +73,6 @@ export {
   clientContractQueryOptions,
   healthLiveQueryOptions,
   healthQueryOptions,
-  movementDetailQueryOptions,
-  movementsListQueryOptions,
   spendingReportQueryOptions,
   transactionDetailQueryOptions,
   transactionTemplateDetailQueryOptions,

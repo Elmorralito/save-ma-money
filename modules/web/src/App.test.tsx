@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
 import * as accountsApi from "@/api/accounts";
-import * as movementsApi from "@/api/movements";
+import * as transactionsApi from "@/api/transactions";
 import * as templatesApi from "@/api/transactionTemplates";
 import { RequireAuth } from "@/auth/RequireAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -30,13 +30,14 @@ vi.mock("@/api/accounts", () => ({
   deleteAccount: vi.fn(),
 }));
 
-vi.mock("@/api/movements", () => ({
-  listMovements: vi.fn(),
-  getMovement: vi.fn(),
-  createMovement: vi.fn(),
-  updateMovement: vi.fn(),
-  executeMovement: vi.fn(),
-  cancelMovement: vi.fn(),
+vi.mock("@/api/transactions", () => ({
+  listTransactions: vi.fn(),
+  getTransaction: vi.fn(),
+  createTransaction: vi.fn(),
+  updateTransaction: vi.fn(),
+  deleteTransaction: vi.fn(),
+  executeTransaction: vi.fn(),
+  bulkCreateTransactions: vi.fn(),
 }));
 
 vi.mock("@/api/transactionTemplates", () => ({
@@ -198,19 +199,22 @@ describe("DashboardPage (authenticated)", () => {
       skip: 0,
       limit: 5,
     });
-    vi.mocked(movementsApi.listMovements).mockResolvedValue({
+    vi.mocked(transactionsApi.listTransactions).mockResolvedValue({
       items: [
         {
           id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
           amount: 50,
           currency: "USD",
           description: "Rent hold",
+          transaction_date: "2026-08-01",
           movement_date: "2026-08-01",
+          transaction_type: "transfer",
           source_account_id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
           destination_account_id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
           source_account_name: "Checking",
           destination_account_name: "Landlord",
           status: "pending",
+          settlement_status: "in_transit",
         },
       ],
       total: 1,

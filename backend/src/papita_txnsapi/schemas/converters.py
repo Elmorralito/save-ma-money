@@ -16,6 +16,7 @@ from papita_txnsmodel.model.enums import (
     CategoryKind,
     IngestionRunStatus,
     LedgerSide,
+    SettlementStatus,
     TransactionKind,
     TransactionStatus,
 )
@@ -117,18 +118,13 @@ def parse_transaction_kind(slug: str) -> TransactionKind:
 
 
 def parse_transaction_status(slug: str) -> TransactionStatus:
-    """Parse an API ``status`` slug to ``TransactionStatus``.
-
-    Args:
-        slug: Lowercase status from request JSON or query params.
-
-    Returns:
-        Corresponding ``TransactionStatus`` member.
-
-    Raises:
-        ValueError: When the slug is not a valid transaction status.
-    """
+    """Parse an API ``status`` slug to ``TransactionStatus``."""
     return api_slug_to_enum(TransactionStatus, slug)
+
+
+def parse_settlement_status(slug: str) -> SettlementStatus:
+    """Parse an API ``settlement_status`` slug to ``SettlementStatus``."""
+    return api_slug_to_enum(SettlementStatus, slug)
 
 
 def parse_ingestion_run_status(slug: str) -> IngestionRunStatus:

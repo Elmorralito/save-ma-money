@@ -17,7 +17,7 @@ from .contstants import (
     TRANSACTIONS__TABLENAME,
     USERS__TABLENAME,
 )
-from .enums import TransactionKind, TransactionStatus
+from .enums import SettlementStatus, TransactionKind, TransactionStatus
 
 if TYPE_CHECKING:
     from .accounts import Accounts
@@ -98,6 +98,14 @@ class Transactions(BaseSQLModel, table=True):  # type: ignore
             nullable=False,
         ),
         default=TransactionStatus.COMPLETED,
+    )
+    settlement_status: SettlementStatus = Field(
+        sa_column=Column(
+            SAEnum(SettlementStatus, name="settlement_status", schema="papita_transactions", create_type=False),
+            nullable=False,
+            server_default="SETTLED",
+        ),
+        default=SettlementStatus.SETTLED,
     )
     description: str = Field(sa_type=Text, nullable=False, default="")
     reference_number: str | None = Field(sa_type=String(64), nullable=True, default=None)

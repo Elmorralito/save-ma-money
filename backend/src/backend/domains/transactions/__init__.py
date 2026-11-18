@@ -5,6 +5,7 @@ from papita_txnsapi.schemas.transactions import (
     TransactionBulkCreate,
     TransactionBulkResponse,
     TransactionCreate,
+    TransactionExecuteResponse,
     TransactionResponse,
     TransactionUpdate,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "TransactionBulkCreate",
     "TransactionBulkResponse",
     "TransactionCreate",
+    "TransactionExecuteResponse",
     "TransactionResponse",
     "TransactionTemplates",
     "TransactionTemplatesDTO",

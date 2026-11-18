@@ -11,6 +11,7 @@ import {
   toTransactionUpdate,
   transactionFormFromResponse,
   type TransactionFormState,
+  type TransactionTypeSlug,
 } from "@/components/transactions/transactionFormState";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,6 +101,7 @@ function TransactionFormBody({ mode, transaction, onOpenChange }: TransactionFor
   const idPrefix = mode === "create" ? "txn-create" : "txn-edit";
   const accounts = accountsQuery.data?.items ?? [];
   const categories = categoriesQuery.data?.items ?? [];
+  const isTransfer = form.transaction_type === "transfer";
 
   return (
     <form className="space-y-4" onSubmit={onSubmit}>
@@ -110,11 +112,12 @@ function TransactionFormBody({ mode, transaction, onOpenChange }: TransactionFor
             id={`${idPrefix}-type`}
             value={form.transaction_type}
             onChange={(event) => {
-              patch({ transaction_type: event.target.value as "income" | "expense" });
+              patch({ transaction_type: event.target.value as TransactionTypeSlug });
             }}
           >
             <option value="expense">Expense</option>
             <option value="income">Income</option>
+            <option value="transfer">Transfer</option>
           </NativeSelect>
         </div>
         <div className="space-y-2">
@@ -129,42 +132,85 @@ function TransactionFormBody({ mode, transaction, onOpenChange }: TransactionFor
             }}
           />
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-account`}>Account</Label>
-          <NativeSelect
-            id={`${idPrefix}-account`}
-            required
-            value={form.account_id}
-            onChange={(event) => {
-              patch({ account_id: event.target.value });
-            }}
-          >
-            <option value="">Select account</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-category`}>Category</Label>
-          <NativeSelect
-            id={`${idPrefix}-category`}
-            required
-            value={form.category_id}
-            onChange={(event) => {
-              patch({ category_id: event.target.value });
-            }}
-          >
-            <option value="">Select category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        {isTransfer ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}-source-account`}>Source account</Label>
+              <NativeSelect
+                id={`${idPrefix}-source-account`}
+                required
+                value={form.source_account_id}
+                onChange={(event) => {
+                  patch({ source_account_id: event.target.value });
+                }}
+              >
+                <option value="">Select source account</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}-dest-account`}>Destination account</Label>
+              <NativeSelect
+                id={`${idPrefix}-dest-account`}
+                required
+                value={form.destination_account_id}
+                onChange={(event) => {
+                  patch({ destination_account_id: event.target.value });
+                }}
+              >
+                <option value="">Select destination account</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor={`${idPrefix}-account`}>Account</Label>
+              <NativeSelect
+                id={`${idPrefix}-account`}
+                required
+                value={form.account_id}
+                onChange={(event) => {
+                  patch({ account_id: event.target.value });
+                }}
+              >
+                <option value="">Select account</option>
+                {accounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor={`${idPrefix}-category`}>Category</Label>
+              <NativeSelect
+                id={`${idPrefix}-category`}
+                required
+                value={form.category_id}
+                onChange={(event) => {
+                  patch({ category_id: event.target.value });
+                }}
+              >
+                <option value="">Select category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          </>
+        )}
         <div className="space-y-2">
           <Label htmlFor={`${idPrefix}-amount`}>Amount</Label>
           <Input
@@ -197,27 +243,31 @@ function TransactionFormBody({ mode, transaction, onOpenChange }: TransactionFor
             }}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-reference`}>Reference</Label>
-          <Input
-            id={`${idPrefix}-reference`}
-            value={form.reference_number}
-            onChange={(event) => {
-              patch({ reference_number: event.target.value });
-            }}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor={`${idPrefix}-tags`}>Tags</Label>
-          <Input
-            id={`${idPrefix}-tags`}
-            placeholder="comma,separated"
-            value={form.tags}
-            onChange={(event) => {
-              patch({ tags: event.target.value });
-            }}
-          />
-        </div>
+        {!isTransfer ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}-reference`}>Reference</Label>
+              <Input
+                id={`${idPrefix}-reference`}
+                value={form.reference_number}
+                onChange={(event) => {
+                  patch({ reference_number: event.target.value });
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`${idPrefix}-tags`}>Tags</Label>
+              <Input
+                id={`${idPrefix}-tags`}
+                placeholder="comma,separated"
+                value={form.tags}
+                onChange={(event) => {
+                  patch({ tags: event.target.value });
+                }}
+              />
+            </div>
+          </>
+        ) : null}
       </div>
       {error ? (
         <p role="alert" className="text-sm text-destructive">
@@ -256,7 +306,7 @@ export function TransactionFormDialog({
         <DialogHeader>
           <DialogTitle>{mode === "create" ? "Create transaction" : "Edit transaction"}</DialogTitle>
           <DialogDescription>
-            Income and expense only. Transfers use the Movements page. Payloads follow OpenAPI.
+            Unified ledger for income, expenses, and transfers. Payloads follow OpenAPI.
           </DialogDescription>
         </DialogHeader>
         {open ? (

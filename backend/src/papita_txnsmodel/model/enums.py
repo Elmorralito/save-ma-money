@@ -77,6 +77,13 @@ class TransactionStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class SettlementStatus(str, Enum):
+    """Settlement state for ledger transactions and transfers (PPT-099 / PPT-101)."""
+
+    SETTLED = "SETTLED"
+    IN_TRANSIT = "IN_TRANSIT"
+
+
 class IngestionSource(str, Enum):
     """How a posted transaction entered the ledger (PPT-078 provenance)."""
 

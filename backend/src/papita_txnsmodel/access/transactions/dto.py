@@ -18,7 +18,7 @@ from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import CoreTableDTO, TableDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.users.dto import OwnedTableDTO
-from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import SettlementStatus, TransactionKind, TransactionStatus
 from papita_txnsmodel.model.transactions import Transactions, TransactionTemplates
 
 
@@ -116,6 +116,7 @@ class TransactionsDTO(OwnedTableDTO):
     category_id: uuid.UUID | CategoriesDTO | None = None
     template_id: uuid.UUID | TransactionTemplatesDTO | None = None
     status: TransactionStatus = TransactionStatus.COMPLETED
+    settlement_status: SettlementStatus = SettlementStatus.SETTLED
     description: str = ""
     reference_number: str | None = None
     tags: list[str] = Field(default_factory=list)

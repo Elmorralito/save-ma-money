@@ -113,8 +113,7 @@ export function TransactionsPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
           <p className="text-sm text-muted-foreground">
-            Income and expense only by default (transfers live under Movements). No client-side
-            ledger rules.
+            Unified ledger for income, expenses, and transfers. No client-side ledger rules.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -185,6 +184,7 @@ export function TransactionsPage() {
             <option value="">Income &amp; expense</option>
             <option value="income">Income</option>
             <option value="expense">Expense</option>
+            <option value="transfer">Transfer</option>
           </NativeSelect>
         </div>
         <div className="space-y-2">
