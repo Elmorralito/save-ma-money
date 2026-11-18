@@ -22,7 +22,6 @@ from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.auth_errors import auth_error_detail, public_value_error_detail
 from papita_txnsapi.core.client_contract import ERROR_EMAIL_NOT_CONFIRMED, HEADER_ERROR_CODE
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.core.session_store import SessionStore
 from papita_txnsapi.core.supabase_auth import (
     AuthApiError,
     AuthError,
@@ -51,7 +50,6 @@ from papita_txnsapi.dependencies.rate_limit import (
     enforce_tenant_api_rate_limit,
 )
 from papita_txnsapi.dependencies.services import get_users_service
-from papita_txnsapi.dependencies.session_store import get_session_store
 from papita_txnsapi.schemas.auth import (
     LogoutRequest,
     OAuthCodeExchangeRequest,
@@ -1048,48 +1046,15 @@ def logout(
     body: LogoutRequest,
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)],
-    session_store: Annotated[SessionStore, Depends(get_session_store)],
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
 ) -> Response | JSONResponse:
-    """Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.
-
-    * ``AUTH_PROVIDER=supabase`` — calls Supabase ``sign_out``, then denylists the
-      access token when Redis is enabled so remaining JWT TTL cannot be reused.
-    * ``AUTH_PROVIDER=local`` — when Redis is enabled, denylists the access token
-      and returns 204; otherwise returns HTTP 501 (no refresh/session store).
-
-    Access token may be supplied in the JSON body or as ``Authorization: Bearer``.
-    Per-IP OAuth/auth rate limits apply (logout may run before tenant context).
-
-    Args:
-        body: Refresh token (required for Supabase) and optional access token.
-        settings: Application settings selecting Auth provider.
-        credentials: Optional bearer credentials for the access JWT.
-        session_store: Redis-backed JWT denylist (no-op when Redis disabled).
-        _rate_limit: Per-IP auth rate-limit dependency (side effect only).
-
-    Returns:
-        Empty 204 response on success, or deferred JSON with status 501 in local
-        mode without Redis.
-
-    Raises:
-        HTTPException: 400 when access token missing; 401 on Auth errors;
-            429 when the per-IP auth limit is exceeded; 503 when Auth misconfigured.
-    """
+    """Revoke the Supabase Auth session when ``AUTH_PROVIDER=supabase``."""
     access_token = (body.access_token or "").strip() or (
         credentials.credentials.strip() if credentials and credentials.credentials else ""
     )
 
     if settings.AUTH_PROVIDER != "supabase":
-        if not session_store.available:
-            return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
-        if not access_token:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="access_token is required (body.access_token or Authorization: Bearer)",
-            )
-        session_store.revoke(access_token, ttl_seconds=settings.JWT_EXPIRATION_TIME_SECONDS)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
+        return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
 
     _require_supabase_auth_settings(settings)
     if not access_token:
@@ -1115,6 +1080,4 @@ def logout(
             detail=public_value_error_detail(exc, fallback="Logout failed"),
         ) from exc
 
-    if session_store.available:
-        session_store.revoke(access_token, ttl_seconds=settings.JWT_EXPIRATION_TIME_SECONDS)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

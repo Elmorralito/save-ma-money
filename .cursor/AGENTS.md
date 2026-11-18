@@ -47,11 +47,11 @@ Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents
 
 | Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primary outcome | Auditable PostgreSQL-backed financial data with tested model layer, shippable API ([#25](https://github.com/Elmorralito/save-ma-money/issues/25)), and web client ([#112](https://github.com/Elmorralito/save-ma-money/issues/112))                                                                                                                                                                                 |
-| Active packages | `papita-transactions-model` → import `papita_txnsmodel` (`modules/model`, PyPI); `papita-transactions-api` → import `papita_txnsapi` (`modules/api`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**); `papita-ingestor-core` / `papita-ingestor-email` (`modules/ingestor-core`, `modules/ingestors/email` — PPT-077 scaffold; gate `ingestor-ci.yml`)                                                |
+| Primary outcome | Auditable PostgreSQL-backed financial data with tested vertical-slice backend (`backend/`) and web client (`modules/web`) ([#261](https://github.com/Elmorralito/save-ma-money/issues/261))                                                                                                                                                                                                                         |
+| Active packages | `papita-backend` (`backend/` — vertical slices under `backend/domains/{accounts,categories,transactions,reports,ingestion,auth}/`, `backend/core/`, `papita_txnsmodel`, `papita_txnsapi`, `papita_ingestor_core`, `papita_ingestor_email`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**)                                                                                                            |
 | Database        | **PostgreSQL only** ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)). Do not add DuckDB URLs or dialect work.                                                                                                                                                                                                                                                                                        |
-| Auth direction  | **Supabase project owns user management + Auth** (PPT-039 / [#49](https://github.com/Elmorralito/save-ma-money/issues/49)): register/login via Supabase Auth; API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`). Compose must inject `SUPABASE_*`. See `docs/issues/README.md#part-iv--ppt-039-supabase-auth-reissue-49` and learning `supabase-auth-ownership`. |
-| Web epic        | PPT-046 / [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — index in [`docs/issues/README.md` Part VII](../docs/issues/README.md#part-vii--ppt-046-web-spa-epic-112); setup SSOT [`modules/web/README.md`](../modules/web/README.md)                                                                                                                                                                |
+| Auth direction  | **Stateless JWKS Bearer** (PPT-039 / PPT-100): register/login via Supabase Auth (`/api/v1/auth/*`); API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`).                                                                                                                                                                                                           |
+| Web epic        | PPT-046 / [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — setup SSOT [`modules/web/README.md`](../modules/web/README.md)                                                                                                                                                                                                                                                                          |
 
 ---
 
@@ -59,41 +59,34 @@ Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents
 
 ```
 save-ma-money/
-├── pyproject.toml              # Poetry workspace root (package-mode = false)
+├── pyproject.toml              # Poetry workspace root (package-mode = false; ruff + mypy + pytest)
 ├── pnpm-workspace.yaml         # Node workspace → modules/web
+├── backend/                    # Unified Python backend (PPT-097 / PPT-098 / #261)
+│   ├── pyproject.toml          # papita-backend (single deployable Python package)
+│   ├── alembic.ini             # Alembic configuration
+│   ├── alembic/                # PostgreSQL migrations
+│   ├── core/ -> src/backend/core
+│   ├── domains/ -> src/backend/domains
+│   ├── src/
+│   │   ├── backend/
+│   │   │   ├── core/           # Settings, DatabaseSessionManager (get_db), AuthSecurityManager
+│   │   │   └── domains/        # accounts/, categories/, transactions/, reports/, ingestion/, auth/
+│   │   ├── papita_txnsmodel/   # SQLModel tables, DTOs/repositories, services, session.py
+│   │   ├── papita_txnsapi/     # FastAPI app, routers/v1, schemas, dependencies
+│   │   ├── papita_ingestor_core/
+│   │   └── papita_ingestor_email/
+│   └── tests/                  # api/, model/, ingestor_core/, ingestor_email/
 ├── modules/
-│   ├── model/                  # papita_txnsmodel — domain + Alembic
-│   │   ├── src/papita_txnsmodel/
-│   │   │   ├── model/          # SQLModel tables (schema: papita_transactions)
-│   │   │   ├── access/         # DTOs + repositories per domain
-│   │   │   ├── services/       # business logic (BaseService)
-│   │   │   ├── handlers/       # load/dump pipelines
-│   │   │   └── database/       # SQLDatabaseConnector, upsert helpers
-│   │   ├── alembic/            # migrations (alembic.ini in module root)
-│   │   └── tests/
-│   ├── api/                    # papita_txnsapi — FastAPI MVP (PPT-032 epic)
-│   │   └── src/papita_txnsapi/
-│   │       ├── main.py         # create_app, lifespan, ASGI app
-│   │       ├── config/         # settings, environment, logger
-│   │       ├── core/           # security, redis, rate_limit, db_health, …
-│   │       ├── dependencies/   # auth, pagination, services, redis
-│   │       ├── routers/v1/     # health, auth, accounts, categories, txns, movements, reports, budgets
-│   │       ├── schemas/        # request/response, query_params, converters
-│   │       └── middleware/
-│   ├── web/                    # @papita/web — Vite + React SPA (PPT-046 / #112)
-│   │   ├── README.md           # Node 22 + pnpm setup SSOT
-│   │   ├── openapi/            # committed OpenAPI artifact (strategy B)
-│   │   └── src/                # presentation only — no domain logic
-│   ├── ingestor-core/          # papita_ingestor_core — PPT-077 scaffold
-│   └── ingestors/email/        # papita_ingestor_email — plugin scaffold
+│   └── web/                    # @papita/web — Vite + React SPA (presentation only)
+│       ├── openapi/            # committed OpenAPI artifact (strategy B)
+│       └── src/                # UI + TanStack Query + stateless Bearer auth
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
-├── bin/                        # bash/ · python/ · make/ (language folders; path-filtered CI)
-├── docker/                     # README (GHCR SSOT PPT-067), database/, api/, redis/, web/, docker-compose.yml
-├── docs/design/ · docs/issues/ # human design program (PPT-031) + web epic Part VII
-├── .cursor/                    # adapters, gen-custom rules, skills
-├── .agents/                    # symlinks to .cursor/ adapters + skills (Codex/Agents)
-├── .strata/                    # agent memory (hot/warm/cold tiers)
-└── .github/workflows/          # CI (quality, security, migrations, strata, web-ci, ingestor-ci, publish)
+├── bin/                        # bash/ · python/ · make/
+├── docker/                     # database/, api/, redis/, web/, ingestor/, docker-compose.yml
+├── docs/                       # design program + issue briefs
+├── .cursor/ · .agents/         # agent instructions + skills
+├── .strata/                    # agent memory
+└── .github/workflows/          # quality-control, web-ci, web-e2e, migration-check, openapi-contract, security
 ```
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).

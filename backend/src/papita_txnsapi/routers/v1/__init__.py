@@ -33,7 +33,6 @@ from papita_txnsapi.dependencies.services import get_db
 from papita_txnsapi.routers.v1 import (
     accounts,
     auth,
-    bff_auth,
     categories,
     health,
     ingestion,
@@ -47,7 +46,6 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(meta.router)
 api_v1_router.include_router(auth.router, dependencies=[Depends(get_db)])
-api_v1_router.include_router(bff_auth.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(accounts.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(categories.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(transactions.router, dependencies=[Depends(get_db)])

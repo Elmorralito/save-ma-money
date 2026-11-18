@@ -1,5 +1,4 @@
 import { buildApiUrl } from "@/api/config";
-import { getCsrfToken, setCsrfToken } from "@/api/csrf";
 import { isPapitaApiError, papitaApiErrorFromResponse } from "@/api/errors";
 import { parseDiscoveryHeaders, type DiscoveryHeaders } from "@/api/headers";
 
@@ -10,7 +9,7 @@ export type ApiFetchOptions = {
   body?: BodyInit | null;
   /** Override default JSON Accept header. */
   accept?: string;
-  /** Skip one-shot BFF refresh + retry on 401 (auth endpoints). */
+  /** Skip one-shot Bearer refresh + retry on 401 (auth endpoints). */
   skipAuthRefresh?: boolean;
 };
 
@@ -20,41 +19,87 @@ export type ApiFetchResult<T> = {
   discovery: DiscoveryHeaders;
 };
 
-const CSRF_HEADER = "X-Papita-CSRF";
-const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-
 type AuthRedirectHandler = () => void;
 
+let accessToken: string | null = null;
+let refreshToken: string | null = null;
+let accessExpiresAt: number | null = null;
 let onUnauthorized: AuthRedirectHandler | null = null;
 let refreshInFlight: Promise<boolean> | null = null;
 
-/** Register SPA navigation when BFF refresh cannot restore the session. */
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export function getRefreshToken(): string | null {
+  return refreshToken;
+}
+
+export function getAccessExpiresAt(): number | null {
+  return accessExpiresAt;
+}
+
+export function setAuthTokens(input: {
+  accessToken: string;
+  refreshToken?: string | null;
+  expiresIn?: number | null;
+}): void {
+  accessToken = input.accessToken;
+  if (input.refreshToken !== undefined) {
+    refreshToken = input.refreshToken;
+  }
+  const ttl = typeof input.expiresIn === "number" && input.expiresIn > 0 ? input.expiresIn : 3600;
+  accessExpiresAt = Math.floor(Date.now() / 1000) + ttl;
+}
+
+export function clearAuthTokens(): void {
+  accessToken = null;
+  refreshToken = null;
+  accessExpiresAt = null;
+}
+
+/** Register SPA navigation when Bearer refresh cannot restore the session. */
 export function setUnauthorizedHandler(handler: AuthRedirectHandler | null): void {
   onUnauthorized = handler;
 }
 
-async function tryBffRefresh(): Promise<boolean> {
+async function tryTokenRefresh(): Promise<boolean> {
+  if (!refreshToken) {
+    return false;
+  }
   if (refreshInFlight) {
     return refreshInFlight;
   }
   refreshInFlight = (async () => {
     try {
-      const response = await fetch(buildApiUrl("/api/v1/bff/auth/refresh"), {
+      const response = await fetch(buildApiUrl("/api/v1/auth/refresh"), {
         method: "POST",
         credentials: "include",
         headers: {
           Accept: "application/json",
-          ...(getCsrfToken() ? { [CSRF_HEADER]: getCsrfToken() as string } : {}),
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
       if (!response.ok) {
+        clearAuthTokens();
         return false;
       }
-      const body = (await response.json()) as { csrf_token?: string | null };
-      if (typeof body.csrf_token === "string" && body.csrf_token.length > 0) {
-        setCsrfToken(body.csrf_token);
+      const body = (await response.json()) as {
+        access_token?: string;
+        refresh_token?: string | null;
+        expires_in?: number | null;
+      };
+      if (typeof body.access_token === "string" && body.access_token.length > 0) {
+        setAuthTokens({
+          accessToken: body.access_token,
+          refreshToken: body.refresh_token ?? refreshToken,
+          expiresIn: body.expires_in ?? 3600,
+        });
+        return true;
       }
-      return true;
+      clearAuthTokens();
+      return false;
     } catch {
       return false;
     } finally {
@@ -65,12 +110,7 @@ async function tryBffRefresh(): Promise<boolean> {
 }
 
 /**
- * Thin Fetch wrapper for papita_txnsapi / BFF.
- *
- * - Uses same-origin `/api/...` by default (Vite proxy / nginx).
- * - Always sends `credentials: 'include'` for BFF cookie sessions (#115).
- * - Attaches `X-Papita-CSRF` on unsafe methods when a CSRF token is known.
- * - Does **not** attach `Authorization` — JWTs stay server-side.
+ * Thin Fetch wrapper for papita_txnsapi (Stateless Bearer JWT — PPT-100).
  */
 export async function apiFetch<T>(
   path: string,
@@ -81,29 +121,31 @@ export async function apiFetch<T>(
   if (!headers.has("Accept")) {
     headers.set("Accept", options.accept ?? "application/json");
   }
-  if (UNSAFE_METHODS.has(method) && !headers.has(CSRF_HEADER)) {
-    const csrf = getCsrfToken();
-    if (csrf) {
-      headers.set(CSRF_HEADER, csrf);
-    }
+  if (accessToken && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const execute = async (): Promise<Response> =>
-    fetch(buildApiUrl(path), {
+  const execute = async (): Promise<Response> => {
+    if (accessToken) {
+      headers.set("Authorization", `Bearer ${accessToken}`);
+    }
+    return fetch(buildApiUrl(path), {
       method,
       signal: options.signal,
       credentials: "include",
       headers,
       body: options.body,
     });
+  };
 
   let response = await execute();
 
   if (response.status === 401 && !options.skipAuthRefresh) {
-    const refreshed = await tryBffRefresh();
+    const refreshed = await tryTokenRefresh();
     if (refreshed) {
       response = await execute();
     } else {
+      clearAuthTokens();
       onUnauthorized?.();
     }
   }
@@ -111,6 +153,7 @@ export async function apiFetch<T>(
   if (!response.ok) {
     const error = await papitaApiErrorFromResponse(response);
     if (error.status === 401 && !options.skipAuthRefresh) {
+      clearAuthTokens();
       onUnauthorized?.();
     }
     throw error;
@@ -131,5 +174,4 @@ export async function apiFetch<T>(
   return { data: text, response, discovery };
 }
 
-/** Re-export for callers that branch on auth failures. */
 export { isPapitaApiError };
