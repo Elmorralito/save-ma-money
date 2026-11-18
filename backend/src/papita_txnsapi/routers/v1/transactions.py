@@ -65,6 +65,7 @@ from papita_txnsapi.schemas.transactions import (
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import TransactionKind
+from papita_txnsmodel.services.ingestion import IngestionBridgeService
 from papita_txnsmodel.services.transactions import TransactionsService
 
 router = APIRouter(
@@ -427,8 +428,17 @@ def create_transaction(  # pylint: disable=too-many-positional-arguments
         raise _idempotency_conflict()
 
     try:
-        dto = body.to_transactions_dto(owner_id=owner_id)
-        created = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
+        if body.source_ref and body.source_ref.strip():
+            bridge = IngestionBridgeService(transactions_service=transactions_service)
+            ingested = bridge.ingest_transaction(
+                owner=owner,
+                request=body.to_ingest_request(),
+                refresh_balances=False,
+            )
+            created = ingested.transaction
+        else:
+            dto = body.to_transactions_dto(owner_id=owner_id)
+            created = transactions_service.create(obj=dto, owner=owner, refresh_balances=False)
     except Exception:
         clear_idempotency_pending(redis, owner_id, scope=_IDEMPOTENCY_CREATE, key=idempotency_key)
         raise

@@ -3225,8 +3225,12 @@ export interface components {
              * @default
              */
             description: string;
+            /** Ingestion Source */
+            ingestion_source?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /** Source Ref */
+            source_ref?: string | null;
             /** Status */
             status?: string | null;
             /** Tags */

@@ -14,13 +14,6 @@ supabase = ">=2.13.0,<3.0.0"
 
 [tool.poetry.group.development.dependencies]
 papita-backend = { path = "backend", develop = true }
-papita-ingestor-core = { path = "modules/ingestor-core", develop = true }
-papita-ingestor-email = { path = "modules/ingestors/email", develop = true }
-
-# Optional Prefect for email ingestion flow (PPT-082 / #176). Day-to-day
-# `make ingestor-install` stays Prefect-free; use `make ingestor-flow-install`.
-[tool.poetry.group.ingestor-prefect.dependencies]
-prefect = ">=3.0,<4.0"
 
 [tool.poetry.group.ci.dependencies]
 requests = "^2.32.5"
@@ -59,6 +52,8 @@ addopts = "--import-mode=importlib -raqvs --cov=./backend/src --cov-report xml:d
 testpaths = [
     "./backend/tests/api",
     "./backend/tests/model",
+    "./backend/tests/ingestor_core",
+    "./backend/tests/ingestor_email",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -83,7 +78,7 @@ ignore_errors = true
 branch = true
 
 [tool.pylint]
-init-hook = 'import sys; sys.path.extend(["./backend/src", "./modules/ingestor-core/src", "./modules/ingestors/email/src"])'
+init-hook = 'import sys; sys.path.extend(["./backend/src"])'
 ignored-modules = ["psycopg2.errors"]
 max-args = 8
 
@@ -165,8 +160,6 @@ exclude = [
     "dist",
     "*.ipynb",
     "./backend/tests/*",
-    "./modules/ingestor-core/tests/*",
-    "./modules/ingestors/email/tests/*",
 ]
 max-line-length = 120
 max-complexity = 18

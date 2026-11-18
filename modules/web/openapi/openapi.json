@@ -2954,6 +2954,18 @@
             "title": "Description",
             "type": "string"
           },
+          "ingestion_source": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingestion Source"
+          },
           "reference_number": {
             "anyOf": [
               {
@@ -2965,6 +2977,18 @@
               }
             ],
             "title": "Reference Number"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Ref"
           },
           "status": {
             "anyOf": [

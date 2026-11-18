@@ -36,6 +36,9 @@ dependencies = [
     "httpx (>=0.28.1,<0.29.0)",
     "supabase (>=2.33.0,<3.0.0)",
     "redis (>=8.1.0,<9.0.0)",
+    "google-auth-oauthlib (>=1.4.0,<2.0.0)",
+    "google-auth (>=2.56.3,<3.0.0)",
+    "google-api-python-client (>=2.198.0,<3.0.0)",
 ]
 
 [project.urls]
@@ -48,6 +51,8 @@ packages = [
     { include = "backend", from = "src/" },
     { include = "papita_txnsmodel", from = "src/" },
     { include = "papita_txnsapi", from = "src/" },
+    { include = "papita_ingestor_core", from = "src/" },
+    { include = "papita_ingestor_email", from = "src/" },
 ]
 include = [{ path = "pyproject.toml", format = ["sdist"] }]
 

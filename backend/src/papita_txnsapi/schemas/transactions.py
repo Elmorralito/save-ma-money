@@ -26,7 +26,8 @@ from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
-from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import IngestionSource, TransactionKind, TransactionStatus
+from papita_txnsmodel.services.ingestion import IngestTransactionRequest
 
 
 def _relation_uuid(value: uuid.UUID | Any | None) -> uuid.UUID | None:
@@ -85,6 +86,8 @@ class TransactionCreate(BaseModel):
     reference_number: str | None = Field(default=None, max_length=128)
     tags: list[str] = Field(default_factory=list, max_length=MAX_TAGS_PER_TRANSACTION)
     status: str | None = None
+    source_ref: str | None = Field(default=None, max_length=255)
+    ingestion_source: str | None = Field(default=None, max_length=32)
 
     @field_validator("tags")
     @classmethod
@@ -93,6 +96,31 @@ class TransactionCreate(BaseModel):
             if len(tag) > MAX_TAG_LENGTH:
                 raise ValueError(f"each tag must be at most {MAX_TAG_LENGTH} characters")
         return value
+
+    def to_ingest_request(self) -> IngestTransactionRequest:
+        """Build an ``IngestTransactionRequest`` for idempotent provenance-backed writes."""
+        kind = parse_transaction_kind(self.transaction_type)
+        status = TransactionStatus.COMPLETED
+        if self.status is not None:
+            status = parse_transaction_status(self.status)
+        source = IngestionSource.MANUAL
+        if self.ingestion_source is not None:
+            source = IngestionSource(self.ingestion_source.strip().upper())
+        return IngestTransactionRequest(
+            ingestion_source=source,
+            source_ref=self.source_ref,
+            transaction_kind=kind,
+            amount=self.amount,
+            currency=self.currency.upper(),
+            transaction_ts=_parse_transaction_date(self.transaction_date),
+            to_account_id=self.account_id if kind == TransactionKind.INCOME else None,
+            from_account_id=self.account_id if kind == TransactionKind.EXPENSE else None,
+            category_id=self.category_id,
+            status=status,
+            description=self.description,
+            reference_number=self.reference_number[:64] if self.reference_number else None,
+            tags=list(self.tags),
+        )
 
     def to_transactions_dto(self, *, owner_id: uuid.UUID) -> TransactionsDTO:
         """Build a ``TransactionsDTO`` for ``TransactionsService.create``."""

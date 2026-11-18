@@ -7,34 +7,24 @@ on:
     paths-ignore:
       - "docs/**"
       - "modules/web/**"
-      - "modules/ingestor-core/**"
-      - "modules/ingestors/**"
-      - "docker/ingestor/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - ".nvmrc"
       - ".node-version"
       - ".github/workflows/web-ci.yml"
-      - ".github/workflows/ingestor-ci.yml"
-      - "bin/make/ingestor.mk"
   push:
     branches:
       - main
     paths-ignore:
       - "docs/**"
       - "modules/web/**"
-      - "modules/ingestor-core/**"
-      - "modules/ingestors/**"
-      - "docker/ingestor/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
       - ".nvmrc"
       - ".node-version"
       - ".github/workflows/web-ci.yml"
-      - ".github/workflows/ingestor-ci.yml"
-      - "bin/make/ingestor.mk"
 
   schedule:
     - cron: "0 7 * * 1"
