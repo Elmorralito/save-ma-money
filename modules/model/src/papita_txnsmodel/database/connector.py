@@ -1,8 +1,7 @@
 """Database connection management for the Papita Transactions system.
 
-This module provides the `SQLDatabaseConnector` class, which manages database
-connections using SQLAlchemy and SQLModel. It handles connection establishment
-for various database types (including DuckDB), session lifecycle management
+This module provides the `SQLDatabaseConnector` class, which manages PostgreSQL
+database connections using SQLAlchemy and SQLModel, session lifecycle management
 through decorators, and graceful connection shutdown.
 
 Classes:
@@ -13,8 +12,6 @@ Classes:
 import abc
 import functools
 import logging
-import os
-from pathlib import Path
 from typing import Any, Callable, ClassVar, Self, Type
 
 import sqlalchemy as db
@@ -54,29 +51,15 @@ def _dict_connection_to_url(connection: dict) -> str | db.URL:
     return db.URL.create(**connection)
 
 
-def _string_connection_to_url(connection: str) -> str:
-    """Resolve a string connection to a SQLAlchemy URL or DuckDB file path."""
-    if "://" in connection:
-        return connection
-
-    try:
-        url_path = Path(os.path.abspath(connection))
-        url_path = url_path.joinpath("store.duckdb") if url_path.is_dir() else url_path
-        return f"duckdb:///{url_path.absolute().as_posix()}"
-    except OSError:
-        logger.exception("Cannot load duckdb storage due to:")
-        return connection
-
-
 def _coerce_connection_url(connection: dict | str | db.URL) -> str | db.URL:
     """Normalize connection input to a SQLAlchemy URL or URL string."""
     if isinstance(connection, dict):
         return _dict_connection_to_url(connection)
-    if isinstance(connection, str):
-        return _string_connection_to_url(connection)
+    if isinstance(connection, str) and "://" in connection:
+        return connection
     if hasattr(connection, "drivername"):
         return connection
-    return "duckdb:///:memory:"
+    raise ValueError(f"Unsupported database connection configuration: {connection!r}")
 
 
 class AbstractConnector(abc.ABC):
@@ -159,12 +142,12 @@ class SQLDatabaseConnector(AbstractConnector):
     ) -> type["SQLDatabaseConnector"]:
         """Establish a connection to the database based on provided parameters.
 
-        Parses the connection input to determine if it's a direct URL, a dictionary
-        of credentials, or a file path (defaulting to DuckDB).
+        Parses the connection input to determine if it's a direct PostgreSQL URL
+        or a dictionary of credentials.
 
         Args:
             connection: Connection info. Can be a dict (credentials or URL),
-                a str (file path or URL), or an `sqlalchemy.engine.url.URL`.
+                a URL string, or an `sqlalchemy.engine.url.URL`.
             **sql_kwargs: Overrides for SQLAlchemy engine configuration.
 
         Returns:
@@ -172,14 +155,9 @@ class SQLDatabaseConnector(AbstractConnector):
         """
         sql_kwargs = sql_kwargs.pop("sql_kwargs", sql_kwargs)
         logger.info("Loading/Connecting DB using '%s'", type(connection))
-        if not connection:
-            connection = Path(os.getcwd()).joinpath(".tmp").as_posix()
-
-        url = _coerce_connection_url(connection)
+        url = "sqlite:///:memory:" if connection is None else _coerce_connection_url(connection)
         url = db.make_url(url) if isinstance(url, str) else url
         sql_kwargs_ = (cls.sql_kwargs or {}) | sql_kwargs
-        if not sql_kwargs_ and url.drivername == "duckdb":
-            sql_kwargs_ = {"connect_args": {"read_only": False}}
 
         cls.engine = db.create_engine(url, **sql_kwargs_)
         logger.debug("Connection to the database established.")

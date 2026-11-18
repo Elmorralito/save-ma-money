@@ -170,13 +170,6 @@ class TestTransactionsRoutes:
         assert response.status_code == 204
         mock_service.delete.assert_called_once()
 
-    def test_split_transaction_returns_501(self, transactions_client: tuple[TestClient, object, MagicMock]) -> None:
-        client, _owner, _mock_service = transactions_client
-
-        response = client.post(f"/api/v1/transactions/{uuid.uuid4()}/split", json={"splits": []})
-
-        assert response.status_code == 501
-
 
 class TestTransactionsTenancy:
     """Cross-tenant access returns 404."""

@@ -22,7 +22,7 @@ Usage: $0 ACTION [options]
 PostgreSQL migration utility (Alembic via Poetry) with Docker Compose for local dev.
 
 By default, upgrade/downgrade/version start Docker Postgres from docker/database/
-unless --url or --skip-docker is set. DuckDB is not supported.
+unless --url or --skip-docker is set.
 
 Environment files live under environments/<name>/.env (see environments/README.md).
 Default PAPITA_ENV=local. Override with --env NAME or PAPITA_ENV.

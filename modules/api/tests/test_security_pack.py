@@ -218,18 +218,3 @@ class TestHealthOps:
         blocked = client.get("/api/v1/health")
         assert blocked.status_code == 429
         app.dependency_overrides.clear()
-
-
-class TestBudgetsAuthParity:
-    """Deferred budgets require JWT."""
-
-    def test_budgets_without_jwt_is_401(self, security_client: TestClient) -> None:
-        assert security_client.get("/api/v1/budgets").status_code == 401
-
-    def test_budgets_with_jwt_is_501(self) -> None:
-        _clear_singletons()
-        app = create_app()
-        app.dependency_overrides[get_current_owner] = lambda: make_user()
-        client = TestClient(app)
-        assert client.get("/api/v1/budgets").status_code == 501
-        app.dependency_overrides.clear()

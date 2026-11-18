@@ -1220,29 +1220,6 @@
         "title": "DatabaseProbeDetail",
         "type": "string"
       },
-      "DeferredResponse": {
-        "description": "501 response body for deferred MVP endpoints.\n\nAttributes:\n    detail: Default message pointing to the API mapping doc.\n    deferred_reason: Optional override explaining why the route is not implemented.",
-        "properties": {
-          "deferred_reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deferred Reason"
-          },
-          "detail": {
-            "default": "Not implemented in MVP — see docs/design/ARCHITECTURE.md Part IV",
-            "title": "Detail",
-            "type": "string"
-          }
-        },
-        "title": "DeferredResponse",
-        "type": "object"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1362,6 +1339,234 @@
           "database"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "IngestionConnectionResponse": {
+        "additionalProperties": false,
+        "description": "Non-secret connection metadata for status APIs.\n\nAllowlist: identity + provider/flow labels + enabled/lookback only.",
+        "properties": {
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "deployment_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Name"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "flow_name": {
+            "title": "Flow Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lookback_hours": {
+            "minimum": 1.0,
+            "title": "Lookback Hours",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "flow_name",
+          "enabled",
+          "lookback_hours"
+        ],
+        "title": "IngestionConnectionResponse",
+        "type": "object"
+      },
+      "IngestionRunResponse": {
+        "additionalProperties": false,
+        "description": "Owner-scoped ingestion run history for status APIs.\n\nCounters and status only — never per-record failure payloads or DLQ bodies.",
+        "properties": {
+          "acknowledged": {
+            "minimum": 0.0,
+            "title": "Acknowledged",
+            "type": "integer"
+          },
+          "connection_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection Id"
+          },
+          "created": {
+            "minimum": 0.0,
+            "title": "Created",
+            "type": "integer"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "dead_lettered": {
+            "minimum": 0.0,
+            "title": "Dead Lettered",
+            "type": "integer"
+          },
+          "deployment_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Name"
+          },
+          "dry_run_skipped": {
+            "minimum": 0.0,
+            "title": "Dry Run Skipped",
+            "type": "integer"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          },
+          "failed": {
+            "minimum": 0.0,
+            "title": "Failed",
+            "type": "integer"
+          },
+          "fetched": {
+            "minimum": 0.0,
+            "title": "Fetched",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "flow_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flow Name"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reactivated": {
+            "minimum": 0.0,
+            "title": "Reactivated",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updated": {
+            "minimum": 0.0,
+            "title": "Updated",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "started_at",
+          "fetched",
+          "created",
+          "updated",
+          "reactivated",
+          "failed",
+          "dead_lettered",
+          "acknowledged",
+          "dry_run_skipped"
+        ],
+        "title": "IngestionRunResponse",
         "type": "object"
       },
       "LivenessResponse": {
@@ -1920,6 +2125,72 @@
           "limit"
         ],
         "title": "PaginatedResponse[CategoryResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_IngestionConnectionResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionConnectionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[IngestionConnectionResponse]",
+        "type": "object"
+      },
+      "PaginatedResponse_IngestionRunResponse_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionRunResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "minimum": 1.0,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "skip": {
+            "minimum": 0.0,
+            "title": "Skip",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "skip",
+          "limit"
+        ],
+        "title": "PaginatedResponse[IngestionRunResponse]",
         "type": "object"
       },
       "PaginatedResponse_MovementResponse_": {
@@ -4758,294 +5029,6 @@
         ]
       }
     },
-    "/api/v1/budgets": {
-      "get": {
-        "description": "List budgets — deferred post-MVP.\n\nReturns:\n    DeferredResponse: Explains that budget listing is not available in MVP.",
-        "operationId": "list_budgets_api_v1_budgets_get",
-        "responses": {
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "List Budgets",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      },
-      "post": {
-        "description": "Create budget — deferred post-MVP.\n\nReturns:\n    DeferredResponse: Explains that budget creation is not available in MVP.",
-        "operationId": "create_budget_api_v1_budgets_post",
-        "responses": {
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Create Budget",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      }
-    },
-    "/api/v1/budgets/{budget_id}": {
-      "delete": {
-        "description": "Delete budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget deletion is not available in MVP.",
-        "operationId": "delete_budget_api_v1_budgets__budget_id__delete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "budget_id",
-            "required": true,
-            "schema": {
-              "title": "Budget Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Delete Budget",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      },
-      "get": {
-        "description": "Get budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget retrieval is not available in MVP.",
-        "operationId": "get_budget_api_v1_budgets__budget_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "budget_id",
-            "required": true,
-            "schema": {
-              "title": "Budget Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Budget",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      },
-      "put": {
-        "description": "Update budget — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget updates are not available in MVP.",
-        "operationId": "update_budget_api_v1_budgets__budget_id__put",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "budget_id",
-            "required": true,
-            "schema": {
-              "title": "Budget Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Update Budget",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      }
-    },
-    "/api/v1/budgets/{budget_id}/allocations": {
-      "post": {
-        "description": "Budget allocations — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that allocation updates are not available in MVP.",
-        "operationId": "update_budget_allocations_api_v1_budgets__budget_id__allocations_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "budget_id",
-            "required": true,
-            "schema": {
-              "title": "Budget Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Update Budget Allocations",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      }
-    },
-    "/api/v1/budgets/{budget_id}/summary": {
-      "get": {
-        "description": "Budget summary — deferred post-MVP.\n\nArgs:\n    budget_id: Path identifier reserved for future budget primary key.\n\nReturns:\n    DeferredResponse: Explains that budget summaries are not available in MVP.",
-        "operationId": "get_budget_summary_api_v1_budgets__budget_id__summary_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "budget_id",
-            "required": true,
-            "schema": {
-              "title": "Budget Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Budget Summary",
-        "tags": [
-          "Budgets (deferred)"
-        ]
-      }
-    },
     "/api/v1/categories": {
       "get": {
         "description": "List tenant and global seed categories with optional hierarchy nesting.\n\nWhen Redis is enabled, list responses are cache-aside with versioned keys.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    categories_service: Injected categories service scoped to the request lifecycle.\n    settings: Application settings (cache TTL).\n    redis: Optional Redis client when ``REDIS_ENABLED``.\n    response: FastAPI response used to set ``X-Cache`` status.\n    parent_id: Optional parent category id; when omitted, returns top-level categories\n        with nested subcategory summaries.\n    category_type: Optional income/expense slug filter.\n\nReturns:\n    Paginated categories; top-level rows include embedded subcategory lists when\n    ``parent_id`` is not set.",
@@ -5472,6 +5455,264 @@
         ]
       }
     },
+    "/api/v1/ingestion/connections": {
+      "get": {
+        "description": "List non-secret ingestion connections for the authenticated owner.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    connection_service: Injected connection status service.\n\nReturns:\n    Paginated allowlisted connection resources.",
+        "operationId": "list_ingestion_connections_api_v1_ingestion_connections_get",
+        "parameters": [
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_IngestionConnectionResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Ingestion Connections",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/connections/{connection_id}": {
+      "get": {
+        "description": "Return one connection when owned by the caller; else 404.\n\nArgs:\n    connection_id: Connection primary key.\n    owner: Authenticated tenant from JWT.\n    connection_service: Injected connection status service.\n\nReturns:\n    Allowlisted connection resource.",
+        "operationId": "get_ingestion_connection_api_v1_ingestion_connections__connection_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Ingestion Connection",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/runs": {
+      "get": {
+        "description": "List recent ingestion runs for the authenticated owner.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    run_service: Injected run status service.\n    connection_id: Optional filter by connection id.\n\nReturns:\n    Paginated allowlisted run resources, newest first.",
+        "operationId": "list_ingestion_runs_api_v1_ingestion_runs_get",
+        "parameters": [
+          {
+            "description": "Optional filter by connection id",
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional filter by connection id",
+              "title": "Connection Id"
+            }
+          },
+          {
+            "description": "Number of records to skip",
+            "in": "query",
+            "name": "skip",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Number of records to skip",
+              "minimum": 0,
+              "title": "Skip",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum records to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum records to return",
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_IngestionRunResponse_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Ingestion Runs",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/runs/latest": {
+      "get": {
+        "description": "Return the most recently started run for the owner.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    run_service: Injected run status service.\n    connection_id: Optional filter to a single connection.\n\nReturns:\n    Allowlisted run resource.\n\nRaises:\n    HTTPException: 404 when no runs exist for the scope.",
+        "operationId": "get_latest_ingestion_run_api_v1_ingestion_runs_latest_get",
+        "parameters": [
+          {
+            "description": "Optional connection filter for the latest run",
+            "in": "query",
+            "name": "connection_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional connection filter for the latest run",
+              "title": "Connection Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Latest Ingestion Run",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
     "/api/v1/meta/client-contract": {
       "get": {
         "description": "Return the effective PPT-044 client contract and migration checklist.\n\nArgs:\n    settings: Application settings (bulk/window limits and compat flags).\n\nReturns:\n    JSON snapshot of secure defaults, effective values, compat flags, and\n    stable ``X-Papita-Error-Code`` values clients should handle.",
@@ -5893,33 +6134,6 @@
         "summary": "Execute Movement",
         "tags": [
           "Movements"
-        ]
-      }
-    },
-    "/api/v1/reports/budget-performance": {
-      "get": {
-        "description": "Return deferred budget-performance stub (FR-09 / v4.1).\n\nRequires a valid JWT so the deferred surface stays tenant-authenticated even\nthough no report data is produced until budgets exist.\n\nArgs:\n    owner: Authenticated tenant from JWT (required; unused until budgets land).\n\nReturns:\n    DeferredResponse explaining that budget-performance is not in MVP.",
-        "operationId": "get_budget_performance_report_api_v1_reports_budget_performance_get",
-        "responses": {
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Get Budget Performance Report",
-        "tags": [
-          "Reports"
         ]
       }
     },
@@ -7399,55 +7613,6 @@
           }
         ],
         "summary": "Update Transaction",
-        "tags": [
-          "Transactions"
-        ]
-      }
-    },
-    "/api/v1/transactions/{transaction_id}/split": {
-      "post": {
-        "description": "Defer transaction split until v4 ``transaction_splits`` (MVP stub).\n\nArgs:\n    transaction_id: Path identifier reserved for a future split target row.\n\nReturns:\n    DeferredResponse explaining that split is not implemented in MVP.",
-        "operationId": "split_transaction_api_v1_transactions__transaction_id__split_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "transaction_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Transaction Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DeferredResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "security": [
-          {
-            "OAuth2PasswordBearer": []
-          }
-        ],
-        "summary": "Split Transaction",
         "tags": [
           "Transactions"
         ]

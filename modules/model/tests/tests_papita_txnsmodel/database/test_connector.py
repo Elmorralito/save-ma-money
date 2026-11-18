@@ -51,10 +51,10 @@ class TestEstablish:
 
     @patch("papita_txnsmodel.database.connector.db.create_engine")
     @patch("papita_txnsmodel.database.connector.db.make_url")
-    def test_establish_with_none_connection_uses_default_path(self, mock_make_url, mock_create_engine, reset_connector):
-        """Test that establish uses default .tmp path when connection is None."""
+    def test_establish_with_none_connection_uses_in_memory_sqlite(self, mock_make_url, mock_create_engine, reset_connector):
+        """Test that establish uses in-memory sqlite fallback when connection is None."""
         mock_url = MagicMock()
-        mock_url.drivername = "duckdb"
+        mock_url.drivername = "sqlite"
         mock_make_url.return_value = mock_url
         mock_engine = MagicMock()
         mock_create_engine.return_value = mock_engine
@@ -63,6 +63,7 @@ class TestEstablish:
 
         assert result == SQLDatabaseConnector
         assert SQLDatabaseConnector.engine == mock_engine
+        mock_make_url.assert_called_once_with("sqlite:///:memory:")
         mock_create_engine.assert_called_once()
 
     @patch("papita_txnsmodel.database.connector.db.create_engine")
@@ -120,38 +121,15 @@ class TestEstablish:
         assert result == SQLDatabaseConnector
         assert SQLDatabaseConnector.engine == mock_engine
 
-    @patch("papita_txnsmodel.database.connector.db.create_engine")
-    @patch("papita_txnsmodel.database.connector.Path")
-    @patch("papita_txnsmodel.database.connector.os.path.abspath")
-    def test_establish_with_string_path_creates_duckdb_url(self, mock_abspath, mock_path_class, mock_create_engine, reset_connector):
-        """Test that establish creates DuckDB URL from string file path."""
-        mock_abspath.return_value = "/test/path"
-        mock_path = MagicMock()
-        mock_path.is_dir.return_value = False
-        mock_path.absolute.return_value.as_posix.return_value = "/test/path/file.duckdb"
-        mock_path_class.return_value = mock_path
-        mock_engine = MagicMock()
-        mock_create_engine.return_value = mock_engine
+    def test_establish_with_non_url_string_raises_value_error(self, reset_connector):
+        """Test that establish rejects non-URL file path strings."""
+        with pytest.raises(ValueError, match="Unsupported database connection configuration"):
+            SQLDatabaseConnector.establish(connection="/test/path/file.db")
 
-        result = SQLDatabaseConnector.establish(connection="/test/path/file.duckdb")
-
-        assert result == SQLDatabaseConnector
-        assert SQLDatabaseConnector.engine == mock_engine
-
-    @patch("papita_txnsmodel.database.connector.db.create_engine")
-    @patch("papita_txnsmodel.database.connector.db.make_url")
-    def test_establish_with_unknown_type_uses_memory_duckdb(self, mock_make_url, mock_create_engine, reset_connector):
-        """Test that establish defaults to in-memory DuckDB for unknown connection types."""
-        mock_url = MagicMock()
-        mock_url.drivername = "duckdb"
-        mock_make_url.return_value = mock_url
-        mock_engine = MagicMock()
-        mock_create_engine.return_value = mock_engine
-
-        result = SQLDatabaseConnector.establish(connection=12345)
-
-        assert result == SQLDatabaseConnector
-        mock_make_url.assert_called_once_with("duckdb:///:memory:")
+    def test_establish_with_unknown_type_raises_value_error(self, reset_connector):
+        """Test that establish rejects unknown connection types."""
+        with pytest.raises(ValueError, match="Unsupported database connection configuration"):
+            SQLDatabaseConnector.establish(connection=12345)
 
     @patch("papita_txnsmodel.database.connector.db.create_engine")
     @patch("papita_txnsmodel.database.connector.db.make_url")
@@ -170,23 +148,6 @@ class TestEstablish:
         call_kwargs = mock_create_engine.call_args[1]
         assert "pool_size" in call_kwargs
         assert "pool_timeout" in call_kwargs
-
-    @patch("papita_txnsmodel.database.connector.db.create_engine")
-    @patch("papita_txnsmodel.database.connector.db.make_url")
-    def test_establish_adds_duckdb_connect_args_when_missing(self, mock_make_url, mock_create_engine, reset_connector):
-        """Test that establish adds default connect_args for DuckDB when sql_kwargs is empty."""
-        mock_url = MagicMock()
-        mock_url.drivername = "duckdb"
-        mock_make_url.return_value = mock_url
-        mock_engine = MagicMock()
-        mock_create_engine.return_value = mock_engine
-
-        result = SQLDatabaseConnector.establish(connection="duckdb:///test.db")
-
-        assert result == SQLDatabaseConnector
-        call_kwargs = mock_create_engine.call_args[1]
-        assert "connect_args" in call_kwargs
-        assert call_kwargs["connect_args"]["read_only"] is False
 
 
 class TestClose:

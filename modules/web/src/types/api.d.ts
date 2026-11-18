@@ -689,134 +689,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/budgets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Budgets
-         * @description List budgets — deferred post-MVP.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget listing is not available in MVP.
-         */
-        get: operations["list_budgets_api_v1_budgets_get"];
-        put?: never;
-        /**
-         * Create Budget
-         * @description Create budget — deferred post-MVP.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget creation is not available in MVP.
-         */
-        post: operations["create_budget_api_v1_budgets_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget
-         * @description Get budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget retrieval is not available in MVP.
-         */
-        get: operations["get_budget_api_v1_budgets__budget_id__get"];
-        /**
-         * Update Budget
-         * @description Update budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget updates are not available in MVP.
-         */
-        put: operations["update_budget_api_v1_budgets__budget_id__put"];
-        post?: never;
-        /**
-         * Delete Budget
-         * @description Delete budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget deletion is not available in MVP.
-         */
-        delete: operations["delete_budget_api_v1_budgets__budget_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}/allocations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Update Budget Allocations
-         * @description Budget allocations — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that allocation updates are not available in MVP.
-         */
-        post: operations["update_budget_allocations_api_v1_budgets__budget_id__allocations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget Summary
-         * @description Budget summary — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget summaries are not available in MVP.
-         */
-        get: operations["get_budget_summary_api_v1_budgets__budget_id__summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/categories": {
         parameters: {
             query?: never;
@@ -1126,6 +998,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ingestion Connections
+         * @description List non-secret ingestion connections for the authenticated owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         pagination: Skip/limit window for the response page.
+         *         connection_service: Injected connection status service.
+         *
+         *     Returns:
+         *         Paginated allowlisted connection resources.
+         */
+        get: operations["list_ingestion_connections_api_v1_ingestion_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/connections/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ingestion Connection
+         * @description Return one connection when owned by the caller; else 404.
+         *
+         *     Args:
+         *         connection_id: Connection primary key.
+         *         owner: Authenticated tenant from JWT.
+         *         connection_service: Injected connection status service.
+         *
+         *     Returns:
+         *         Allowlisted connection resource.
+         */
+        get: operations["get_ingestion_connection_api_v1_ingestion_connections__connection_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ingestion Runs
+         * @description List recent ingestion runs for the authenticated owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         pagination: Skip/limit window for the response page.
+         *         run_service: Injected run status service.
+         *         connection_id: Optional filter by connection id.
+         *
+         *     Returns:
+         *         Paginated allowlisted run resources, newest first.
+         */
+        get: operations["list_ingestion_runs_api_v1_ingestion_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/runs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Ingestion Run
+         * @description Return the most recently started run for the owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         run_service: Injected run status service.
+         *         connection_id: Optional filter to a single connection.
+         *
+         *     Returns:
+         *         Allowlisted run resource.
+         *
+         *     Raises:
+         *         HTTPException: 404 when no runs exist for the scope.
+         */
+        get: operations["get_latest_ingestion_run_api_v1_ingestion_runs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/client-contract": {
         parameters: {
             query?: never;
@@ -1298,35 +1286,6 @@ export interface paths {
          *         HTTPException: 404 when missing or complete fails; 422 when not PENDING.
          */
         post: operations["execute_movement_api_v1_movements__movement_id__execute_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/budget-performance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget Performance Report
-         * @description Return deferred budget-performance stub (FR-09 / v4.1).
-         *
-         *     Requires a valid JWT so the deferred surface stays tenant-authenticated even
-         *     though no report data is produced until budgets exist.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT (required; unused until budgets land).
-         *
-         *     Returns:
-         *         DeferredResponse explaining that budget-performance is not in MVP.
-         */
-        get: operations["get_budget_performance_report_api_v1_reports_budget_performance_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1792,32 +1751,6 @@ export interface paths {
          *         HTTPException: 404 when the row is missing or not owned by ``owner``.
          */
         delete: operations["delete_transaction_api_v1_transactions__transaction_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/transactions/{transaction_id}/split": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Split Transaction
-         * @description Defer transaction split until v4 ``transaction_splits`` (MVP stub).
-         *
-         *     Args:
-         *         transaction_id: Path identifier reserved for a future split target row.
-         *
-         *     Returns:
-         *         DeferredResponse explaining that split is not implemented in MVP.
-         */
-        post: operations["split_transaction_api_v1_transactions__transaction_id__split_post"];
-        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2410,23 +2343,6 @@ export interface components {
          * @enum {string}
          */
         DatabaseProbeDetail: "api-database link healthy" | "connector not initialized" | "database engine unavailable" | "probe failed";
-        /**
-         * DeferredResponse
-         * @description 501 response body for deferred MVP endpoints.
-         *
-         *     Attributes:
-         *         detail: Default message pointing to the API mapping doc.
-         *         deferred_reason: Optional override explaining why the route is not implemented.
-         */
-        DeferredResponse: {
-            /** Deferred Reason */
-            deferred_reason?: string | null;
-            /**
-             * Detail
-             * @default Not implemented in MVP — see docs/design/ARCHITECTURE.md Part IV
-             */
-            detail: string;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2490,6 +2406,83 @@ export interface components {
             timestamp: string;
             /** Version */
             version: string;
+        };
+        /**
+         * IngestionConnectionResponse
+         * @description Non-secret connection metadata for status APIs.
+         *
+         *     Allowlist: identity + provider/flow labels + enabled/lookback only.
+         */
+        IngestionConnectionResponse: {
+            /** Created At */
+            created_at?: string | null;
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Flow Name */
+            flow_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lookback Hours */
+            lookback_hours: number;
+            /** Provider */
+            provider: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * IngestionRunResponse
+         * @description Owner-scoped ingestion run history for status APIs.
+         *
+         *     Counters and status only — never per-record failure payloads or DLQ bodies.
+         */
+        IngestionRunResponse: {
+            /** Acknowledged */
+            acknowledged: number;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Created */
+            created: number;
+            /** Created At */
+            created_at?: string | null;
+            /** Dead Lettered */
+            dead_lettered: number;
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Dry Run Skipped */
+            dry_run_skipped: number;
+            /** Error Summary */
+            error_summary?: string | null;
+            /** Failed */
+            failed: number;
+            /** Fetched */
+            fetched: number;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Flow Name */
+            flow_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reactivated */
+            reactivated: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Status */
+            status: string;
+            /** Updated */
+            updated: number;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /**
          * LivenessResponse
@@ -2756,6 +2749,28 @@ export interface components {
         PaginatedResponse_CategoryResponse_: {
             /** Items */
             items?: components["schemas"]["CategoryResponse"][];
+            /** Limit */
+            limit: number;
+            /** Skip */
+            skip: number;
+            /** Total */
+            total: number;
+        };
+        /** PaginatedResponse[IngestionConnectionResponse] */
+        PaginatedResponse_IngestionConnectionResponse_: {
+            /** Items */
+            items?: components["schemas"]["IngestionConnectionResponse"][];
+            /** Limit */
+            limit: number;
+            /** Skip */
+            skip: number;
+            /** Total */
+            total: number;
+        };
+        /** PaginatedResponse[IngestionRunResponse] */
+        PaginatedResponse_IngestionRunResponse_: {
+            /** Items */
+            items?: components["schemas"]["IngestionRunResponse"][];
             /** Limit */
             limit: number;
             /** Skip */
@@ -4259,201 +4274,6 @@ export interface operations {
             };
         };
     };
-    list_budgets_api_v1_budgets_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    create_budget_api_v1_budgets_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    get_budget_api_v1_budgets__budget_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    update_budget_api_v1_budgets__budget_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    delete_budget_api_v1_budgets__budget_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    update_budget_allocations_api_v1_budgets__budget_id__allocations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    get_budget_summary_api_v1_budgets__budget_id__summary_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
     list_categories_api_v1_categories_get: {
         parameters: {
             query?: {
@@ -4740,6 +4560,139 @@ export interface operations {
             };
         };
     };
+    list_ingestion_connections_api_v1_ingestion_connections_get: {
+        parameters: {
+            query?: {
+                /** @description Number of records to skip */
+                skip?: number;
+                /** @description Maximum records to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_IngestionConnectionResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ingestion_connection_api_v1_ingestion_connections__connection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionConnectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ingestion_runs_api_v1_ingestion_runs_get: {
+        parameters: {
+            query?: {
+                /** @description Optional filter by connection id */
+                connection_id?: string | null;
+                /** @description Number of records to skip */
+                skip?: number;
+                /** @description Maximum records to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_IngestionRunResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_ingestion_run_api_v1_ingestion_runs_latest_get: {
+        parameters: {
+            query?: {
+                /** @description Optional connection filter for the latest run */
+                connection_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_client_contract_api_v1_meta_client_contract_get: {
         parameters: {
             query?: never;
@@ -4961,26 +4914,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_budget_performance_report_api_v1_reports_budget_performance_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
                 };
             };
         };
@@ -5632,37 +5565,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    split_transaction_api_v1_transactions__transaction_id__split_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                transaction_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
                 };
             };
         };

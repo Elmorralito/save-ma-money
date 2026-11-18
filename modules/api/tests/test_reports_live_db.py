@@ -165,9 +165,6 @@ class TestReportsLiveDb:
         assert export.status_code == 200, export.text
         assert "expense_total" in export.text
 
-        deferred = live_client.get("/api/v1/reports/budget-performance", headers=headers)
-        assert deferred.status_code == 501
-
     def test_foreign_account_id_rejected(self, live_client: TestClient) -> None:
         """User B cannot run reports against User A's account_id."""
         suffix = uuid.uuid4().hex[:8]

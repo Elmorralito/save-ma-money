@@ -14,7 +14,6 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlmodel import Session
 
 from papita_txnsmodel.database.upsert import (
-    DuckDBUpserter,
     OnUpsertConflictDo,
     PostgreSQLUpserter,
     Upserter,
@@ -344,35 +343,6 @@ class TestPostgreSQLUpserter:
         assert result == -1
 
 
-class TestDuckDBUpserter:
-    """Test suite for deprecated DuckDBUpserter class."""
-
-    def test_duckdb_upserter_has_correct_dialect(self):
-        """Test that DuckDBUpserter has correct supported dialect."""
-        assert DuckDBUpserter.__supported_dialect__ == "duckdb"
-
-    def test_duckdb_upserter_inherits_from_postgres_upserter(self):
-        """Test that DuckDBUpserter inherits from PostgreSQLUpserter."""
-        assert issubclass(DuckDBUpserter, PostgreSQLUpserter)
-
-    def test_duckdb_upserter_instantiation_emits_deprecation_warning(self):
-        """Test that instantiating DuckDBUpserter emits DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="DuckDBUpserter is deprecated"):
-            DuckDBUpserter()
-
-    def test_duckdb_upserter_upsert_emits_deprecation_warning(self, mock_session):
-        """Test that calling DuckDBUpserter.upsert emits DeprecationWarning."""
-        with pytest.warns(DeprecationWarning, match="DuckDBUpserter is deprecated"):
-            with pytest.raises(AssertionError, match="Dialect not supported"):
-                DuckDBUpserter.upsert(
-                    schema_name="papita_transactions",
-                    table="users",
-                    pks=["id"],
-                    df=pd.DataFrame([{"id": 1}]),
-                    db_session=mock_session,
-                )
-
-
 class TestUpserterFactory:
     """Test suite for UpserterFactory class."""
 
@@ -381,12 +351,6 @@ class TestUpserterFactory:
         mock_session.bind.dialect.name = "postgresql"
         result = UpserterFactory.get_upserter(mock_session)
         assert result == PostgreSQLUpserter
-
-    def test_get_upserter_raises_for_deprecated_duckdb_dialect(self, mock_session):
-        """Test that get_upserter rejects deprecated DuckDB dialect."""
-        mock_session.bind.dialect.name = "duckdb"
-        with pytest.raises(ValueError, match="DuckDBUpserter is deprecated"):
-            UpserterFactory.get_upserter(mock_session)
 
     def test_get_upserter_handles_case_insensitive_dialect(self, mock_session):
         """Test that get_upserter handles case-insensitive dialect matching."""

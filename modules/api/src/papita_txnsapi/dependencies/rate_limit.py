@@ -19,9 +19,7 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, Request, status
 
 from papita_txnsapi.config.settings import Settings, get_settings
-from papita_txnsapi.core.api_tier import limits_for_tier, resolve_api_tier
 from papita_txnsapi.core.rate_limit import RateLimitResult, get_rate_limiter_for_request
-from papita_txnsapi.core.redis import get_redis_from_app
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsmodel.access.users.dto import UsersDTO
 
@@ -232,31 +230,19 @@ def enforce_tenant_api_rate_limit(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    redis = get_redis_from_app(request.app) if settings.REDIS_ENABLED else None
-    tier = resolve_api_tier(settings, owner.id, redis)
-    limits = limits_for_tier(settings, tier)
-    if limits.unlimited:
-        request.state.rate_limit_headers = {
-            "X-RateLimit-Limit": "0",
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": "0",
-            "X-RateLimit-Tier": tier.value,
-        }
-        return
-
     limiter = get_rate_limiter_for_request(request, settings)
     owner_key = str(owner.id)
     minute = limiter.check(
         f"api:{owner_key}:min",
-        limit=limits.per_minute,
+        limit=settings.API_RATE_LIMIT_FREE_PER_MINUTE,
         window_seconds=60,
     )
     day = limiter.check(
         f"api:{owner_key}:day",
-        limit=limits.per_day,
+        limit=settings.API_RATE_LIMIT_FREE_PER_DAY,
         window_seconds=86_400,
     )
-    headers = {**_merge_limit_headers(minute, day), "X-RateLimit-Tier": tier.value}
+    headers = _merge_limit_headers(minute, day)
     request.state.rate_limit_headers = headers
 
     if not minute.allowed or not day.allowed:

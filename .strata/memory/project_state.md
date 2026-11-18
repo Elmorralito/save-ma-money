@@ -14,28 +14,21 @@ Capture with `/strata:capture` only for work in flight.
 
 ### Last completed (this session)
 
-- **PPT-082 / #176:** Prefect hourly email flow + Compose packaging on main (#216).
-- **PPT-081 / #175:** Bancolombia + synthetic Nequi parsers + Fallback on main.
-- **PPT-080 / #174:** `GmailSource` + `GmailSettings` on main (#214).
-- **PPT-079 / #173:** core contracts, registries, `IngestionRunner` on main (#213).
-- **PPT-078 / #172:** provenance sidecar + `IngestionBridgeService` on main (#212).
+- **PPT-096 (Phase 0 of #261 / PPT-095):** Pruned dead v0 access stubs (`assets`, `indexers`, `liabilities`, `types`), DuckDB remnants (`setup_duckdb.py`, `AlembicDuckDBImpl`, `DuckDBUpserter`, connector DuckDB fallbacks), registrar-era `papita_txnsmodel/handlers/` (~1,910 LOC), and API/Web placeholders (`budgets.py`, `split_transaction`, `budget-performance`, `broker.py`, `api_tier.py`, `StubPage.tsx`, `client_contract.py` header bloat); regenerated OpenAPI types (`openapi.json` + `api.d.ts`).
 
 ### In progress (ACTIVE)
 
-- **PPT-083 / #177:** ingestion connection + run-status — model tables/Alembic,
-  email worker persist hook (`RunResult` mapped at plugin boundary), read-only
-  `GET /api/v1/ingestion/*` (401 / cross-tenant 404; no HTTP run trigger).
-  Soft-delete connection upsert reactivates natural key; serve `deployment_name`
-  wired into deps. Branch `177-featppt-083-…`. Parent epic **PPT-076 / #170**.
+- **PPT-095 / #261:** Vertical-slice baseline reset (`backend/` + `modules/web/`).
+  - Canonical Auth Prerequisite Gate locked: **Stateless JWKS Bearer** (Supabase Auth JWTs + local HS256 for B0 tests; remove BFF cookie/session store in `PPT-100`).
+  - Next phase: **PPT-097 (Phase 1)** — Standardize SQLAlchemy `Session` DI (`Depends(get_db)` / `session_scope()`), flatten `TableDTO` / `extends.py` / `BalanceReports`, add `Accounts.include_in_balance`, and converge `model` + `api` into `backend/`.
 
 ### Open (backlog)
 
-- **PPT-076** remaining: #178 e2e/tests/docs (OpenAPI web regen / packaging gate).
-- **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
-- Alembic/`alembic check` SQLModel CHECK alignment (`chk_financing_share`, etc.).
+- **PPT-097 (Phase 1):** Session DI, flatten layers, converge `model` + `api` into `backend/`.
+- **PPT-098 (Phase 2A):** Merge `ingestor-core` + `ingestors/email` into `backend/domains/ingestion/` (drop Prefect & registries).
+- **PPT-099 (Phase 2B):** Unify `/transactions` + `/movements` API & SPA ledger screens + `settlement_status` (`settled` | `in_transit`).
+- **PPT-100 (Phase 3):** Consolidate auth to stateless JWKS Bearer; replace 6 Python linters with `ruff`; prune `bin/` and CI workflows.
 
 ### Next action
 
-- Ship PPT-083 PR (#217); Autopilot Black-fix on email `test_status_mapping`
-  for Ingestor CI. Apply model migration on B0 (`l9a0b1c2d3e4`). Full OpenAPI/CI
-  web contract refresh deferred to PPT-084 / #178. Live FK enricher still H1=B.
+- Execute **PPT-097 (Phase 1)** on top of the clean Phase 0 baseline.

@@ -78,5 +78,5 @@ TEST_COMMAND="cd ${PROJECT_PATH} && poetry run ${TEST_COMMAND}"
 
 run_command 1 "$TEST_COMMAND"
 
-rm -Rf "duckdb:/*" "MagickMock/getcwd()"
+rm -Rf "MagickMock/getcwd()"
 log "INFO" "Done"

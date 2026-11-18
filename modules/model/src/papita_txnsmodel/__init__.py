@@ -24,15 +24,9 @@ Architecture Overview:
         - Support for bulk operations and upserts
         - Defined in services/ package
 
-    4. Handler Layer:
-        - Application interface components
-        - Error handling strategies
-        - Service management and configuration
-        - Defined in handlers/ package
-
 Key Features:
     - Type-safe database interaction through SQLModel and Pydantic
-    - Support for multiple database dialects (PostgreSQL, DuckDB)
+    - PostgreSQL database dialect support
     - Soft deletion and record tracking
     - Advanced upsert operations with conflict resolution
     - Flexible error handling strategies

@@ -20,7 +20,6 @@ Routes exposed (prefix relative to app mount):
     ``/ingestion`` — connection + run-status reads (PPT-083) via
         :class:`~papita_txnsmodel.services.ingestion_status.IngestionConnectionService` /
         :class:`~papita_txnsmodel.services.ingestion_status.IngestionRunService`.
-    ``/budgets`` — placeholder 501 responses (FR-09 deferred to v4.1).
 
 Tenant scoping:
     Protected routes resolve the authenticated owner through ``get_current_owner`` and
@@ -34,7 +33,6 @@ from papita_txnsapi.routers.v1 import (
     accounts,
     auth,
     bff_auth,
-    budgets,
     categories,
     health,
     ingestion,
@@ -57,4 +55,3 @@ api_v1_router.include_router(transaction_templates.router)
 api_v1_router.include_router(movements.router)
 api_v1_router.include_router(reports.router)
 api_v1_router.include_router(ingestion.router)
-api_v1_router.include_router(budgets.router)

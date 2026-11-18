@@ -33,7 +33,6 @@ class TestReportsAuth:
             ("/api/v1/reports/cash-flow", _SPENDING_PARAMS),
             ("/api/v1/reports/trends", {"months": 3}),
             ("/api/v1/reports/export", _EXPORT_PARAMS),
-            ("/api/v1/reports/budget-performance", None),
         ],
     )
     def test_report_route_without_token_returns_401(
@@ -56,7 +55,6 @@ class TestReportsRoutes:
         assert "/api/v1/reports/cash-flow" in paths
         assert "/api/v1/reports/trends" in paths
         assert "/api/v1/reports/export" in paths
-        assert "/api/v1/reports/budget-performance" in paths
 
     def test_spending_maps_service_payload(
         self,
@@ -258,14 +256,3 @@ class TestReportsRoutes:
         assert response.status_code == 501
         assert "deferred" in response.json()["deferred_reason"].lower()
         mock_service.export.assert_not_called()
-
-    def test_budget_performance_returns_501(
-        self,
-        reports_client: tuple[TestClient, object, MagicMock],
-    ) -> None:
-        client, _, _ = reports_client
-        response = client.get("/api/v1/reports/budget-performance")
-        assert response.status_code == 501
-        body = response.json()
-        assert body["detail"]
-        assert "budget" in (body.get("deferred_reason") or "").lower()

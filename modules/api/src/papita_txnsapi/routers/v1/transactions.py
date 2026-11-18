@@ -52,7 +52,7 @@ from papita_txnsapi.dependencies.pagination import PaginationParams, get_paginat
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
 from papita_txnsapi.dependencies.redis import get_optional_redis
 from papita_txnsapi.dependencies.services import get_transactions_service
-from papita_txnsapi.schemas.common import DeferredResponse, PaginatedResponse
+from papita_txnsapi.schemas.common import PaginatedResponse
 from papita_txnsapi.schemas.query_params import TransactionListQuery, get_transaction_list_query
 from papita_txnsapi.schemas.transactions import (
     TransactionBulkCreate,
@@ -73,7 +73,6 @@ router = APIRouter(
     dependencies=[Depends(enforce_tenant_api_rate_limit)],
 )
 
-_DEFERRED_SPLIT = DeferredResponse(deferred_reason="Transaction split deferred to v4 transaction_splits")
 _IDEMPOTENCY_CREATE = "transactions:create"
 _IDEMPOTENCY_BULK = "transactions:bulk"
 
@@ -323,20 +322,6 @@ def bulk_create_transactions(  # pylint: disable=too-many-positional-arguments,t
         body_digest=request_digest,
     )
     return payload
-
-
-@router.post("/{transaction_id}/split", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def split_transaction(transaction_id: uuid.UUID) -> DeferredResponse:
-    """Defer transaction split until v4 ``transaction_splits`` (MVP stub).
-
-    Args:
-        transaction_id: Path identifier reserved for a future split target row.
-
-    Returns:
-        DeferredResponse explaining that split is not implemented in MVP.
-    """
-    del transaction_id
-    return _DEFERRED_SPLIT
 
 
 @router.get("/{transaction_id}", response_model=TransactionResponse)

@@ -102,10 +102,6 @@ def contract_discovery_headers(settings: Settings) -> dict[str, str]:
     """
     headers = {
         HEADER_BREAKING_CHANGES: BREAKING_CHANGES_ID,
-        HEADER_BULK_MAX: str(settings.API_BULK_MAX_TRANSACTIONS),
-        HEADER_REPORT_WINDOW_MAX_DAYS: str(settings.API_REPORT_WINDOW_MAX_DAYS),
-        HEADER_REFRESH_BALANCES_DEFAULT: "true" if cash_flow_refresh_balances_default(settings) else "false",
-        HEADER_REPORTS_FOREIGN_ACCOUNT_STATUS: str(reports_foreign_account_status(settings)),
     }
     flags = active_compat_flags(settings)
     if flags:

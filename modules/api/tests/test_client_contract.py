@@ -16,11 +16,8 @@ from papita_txnsapi.core.client_contract import (
     ERROR_BULK_TOO_LARGE,
     ERROR_REPORT_ACCOUNT_NOT_FOUND,
     HEADER_BREAKING_CHANGES,
-    HEADER_BULK_MAX,
     HEADER_DEPRECATION,
     HEADER_ERROR_CODE,
-    HEADER_REFRESH_BALANCES_DEFAULT,
-    HEADER_REPORTS_FOREIGN_ACCOUNT_STATUS,
     HEADER_SUNSET,
 )
 from papita_txnsapi.core.security import AuthSecurityManager
@@ -68,9 +65,6 @@ class TestClientContractDiscovery:
         assert payload["effective"]["bulk_max_transactions"] == MAX_BULK_TRANSACTIONS
         assert "report_account_not_found" in payload["error_codes"]
         assert response.headers.get(HEADER_BREAKING_CHANGES) == BREAKING_CHANGES_ID
-        assert response.headers.get(HEADER_BULK_MAX) == str(MAX_BULK_TRANSACTIONS)
-        assert response.headers.get(HEADER_REFRESH_BALANCES_DEFAULT) == "false"
-        assert response.headers.get(HEADER_REPORTS_FOREIGN_ACCOUNT_STATUS) == "404"
 
     def test_health_live_advertises_contract_headers(self) -> None:
         _clear()
@@ -148,7 +142,6 @@ class TestCompatFlags:
         assert response.status_code == 200
         assert mock_service.cash_flow.call_args.kwargs["refresh_balances"] is True
         assert response.headers.get(HEADER_DEPRECATION) == "true"
-        assert response.headers.get(HEADER_REFRESH_BALANCES_DEFAULT) == "true"
         app.dependency_overrides.clear()
 
 

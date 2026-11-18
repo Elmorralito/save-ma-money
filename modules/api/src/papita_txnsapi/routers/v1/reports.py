@@ -59,7 +59,6 @@ router = APIRouter(
     dependencies=[Depends(enforce_tenant_api_rate_limit)],
 )
 
-_DEFERRED_BUDGET = DeferredResponse(deferred_reason="FR-09 / FR-12 budget-performance deferred to v4.1 budgets")
 _DEFERRED_EXPORT = DeferredResponse(deferred_reason="Export formats xlsx/pdf deferred — use csv or json")
 
 
@@ -298,22 +297,3 @@ def export_report(
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
-
-
-@router.get("/budget-performance", status_code=status.HTTP_501_NOT_IMPLEMENTED, response_model=DeferredResponse)
-def get_budget_performance_report(
-    owner: Annotated[UsersDTO, Depends(get_current_owner)],
-) -> DeferredResponse:
-    """Return deferred budget-performance stub (FR-09 / v4.1).
-
-    Requires a valid JWT so the deferred surface stays tenant-authenticated even
-    though no report data is produced until budgets exist.
-
-    Args:
-        owner: Authenticated tenant from JWT (required; unused until budgets land).
-
-    Returns:
-        DeferredResponse explaining that budget-performance is not in MVP.
-    """
-    _ = owner  # tenant context required even for deferred stub
-    return _DEFERRED_BUDGET
