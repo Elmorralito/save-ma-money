@@ -52,14 +52,16 @@ def _ingestion_run_status_type(*, create_type: bool = False) -> postgresql.ENUM:
 
 def upgrade() -> None:
     """Create ingestion_run_status enum, connections table, and runs table."""
-    op.execute(sa.text(f"""
+    op.execute(
+        sa.text(f"""
             DO $$ BEGIN
                 CREATE TYPE {SCHEMA_NAME}.{_INGESTION_RUN_STATUS_ENUM}
                     AS ENUM ('STARTED', 'SUCCEEDED', 'FAILED', 'PARTIAL');
             EXCEPTION
                 WHEN duplicate_object THEN NULL;
             END $$;
-            """))
+            """)
+    )
     run_status = _ingestion_run_status_type(create_type=False)
 
     op.create_table(

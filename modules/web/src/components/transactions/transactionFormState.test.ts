@@ -30,6 +30,8 @@ describe("transactionFormState", () => {
       currency: "USD",
       description: "Lunch",
       transaction_date: "2026-08-01",
+      scheduled: false,
+      settlement_status: "settled",
       tags: ["food", "out"],
     });
   });
@@ -43,6 +45,7 @@ describe("transactionFormState", () => {
       currency: "USD",
       description: "Pay",
       status: "completed",
+      settlement_status: "settled",
       transaction_date: "2026-07-01",
       transaction_type: "income",
       is_recurring: false,

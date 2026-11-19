@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from fastapi.testclient import TestClient
-
 from auth_helpers import VALID_PASSWORD, make_user
+from fastapi.testclient import TestClient
 
 from papita_txnsmodel.model.enums import ProviderType
 

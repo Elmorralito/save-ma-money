@@ -59,9 +59,7 @@ def upgrade() -> None:
     start, end = migration_partition_bounds(bind, legacy_table=LEGACY_TABLE_NAME)
     ensure_monthly_partitions(bind, start=start, end=end)
     op.execute(
-        sa.text(
-            f"INSERT INTO {SCHEMA_NAME}.{TRANSACTIONS__TABLENAME} " f"SELECT * FROM {SCHEMA_NAME}.{LEGACY_TABLE_NAME}"
-        )
+        sa.text(f"INSERT INTO {SCHEMA_NAME}.{TRANSACTIONS__TABLENAME} SELECT * FROM {SCHEMA_NAME}.{LEGACY_TABLE_NAME}")
     )
     op.execute(sa.text(f"DROP TABLE {SCHEMA_NAME}.{LEGACY_TABLE_NAME}"))
     op.execute(sa.text(add_transactions_check_constraint_sql()))
@@ -76,12 +74,10 @@ def downgrade() -> None:
     _drop_balance_materialized_views()
     op.execute(sa.text(create_non_partitioned_table_sql(table_name=STAGING_TABLE_NAME)))
     op.execute(
-        sa.text(
-            f"INSERT INTO {SCHEMA_NAME}.{STAGING_TABLE_NAME} " f"SELECT * FROM {SCHEMA_NAME}.{TRANSACTIONS__TABLENAME}"
-        )
+        sa.text(f"INSERT INTO {SCHEMA_NAME}.{STAGING_TABLE_NAME} SELECT * FROM {SCHEMA_NAME}.{TRANSACTIONS__TABLENAME}")
     )
     op.execute(sa.text(f"DROP TABLE {SCHEMA_NAME}.{TRANSACTIONS__TABLENAME} CASCADE"))
-    op.execute(sa.text(f"ALTER TABLE {SCHEMA_NAME}.{STAGING_TABLE_NAME} " f"RENAME TO {TRANSACTIONS__TABLENAME}"))
+    op.execute(sa.text(f"ALTER TABLE {SCHEMA_NAME}.{STAGING_TABLE_NAME} RENAME TO {TRANSACTIONS__TABLENAME}"))
     op.execute(sa.text(add_transactions_check_constraint_sql()))
     for index_sql in create_legacy_transactions_indexes_sql():
         op.execute(sa.text(index_sql))

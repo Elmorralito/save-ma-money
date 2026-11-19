@@ -3,7 +3,7 @@
 from papita_txnsmodel.model.account_financing import AccountFinancing
 from papita_txnsmodel.model.accounts import Accounts
 from papita_txnsmodel.model.categories import Categories
-from papita_txnsmodel.model.transactions import TransactionTemplates, Transactions
+from papita_txnsmodel.model.transactions import Transactions, TransactionTemplates
 
 
 class TestModelTableIndexes:

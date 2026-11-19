@@ -32,6 +32,7 @@ describe("AccountsPage", () => {
           currency: "USD",
           balance: 42.5,
           is_active: true,
+          include_in_balance: true,
         },
       ],
       limit: 100,
@@ -118,6 +119,7 @@ describe("AccountsPage", () => {
             currency: "USD",
             balance: 100,
             is_active: true,
+            include_in_balance: true,
           },
         ],
         limit: 100,
@@ -132,6 +134,7 @@ describe("AccountsPage", () => {
       currency: "USD",
       balance: 100,
       is_active: true,
+      include_in_balance: true,
     });
 
     render(

@@ -34,6 +34,7 @@ def sample_class():
 
 def test_meta_singleton_creates_single_instance():
     """Test that MetaSingleton ensures only one instance is created per class."""
+
     # Arrange
     class TestSingleton(metaclass=MetaSingleton):
         def __init__(self, value=0):

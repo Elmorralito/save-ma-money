@@ -15,13 +15,13 @@ from sqlmodel import Session
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsmodel.database.session import DatabaseSessionManager, get_session_manager
-from papita_txnsmodel.utils.enums import FallbackAction
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
 from papita_txnsmodel.services.reports import ReportService
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.services.users import UsersService
+from papita_txnsmodel.utils.enums import FallbackAction
 
 ServiceT = TypeVar("ServiceT", bound=BaseModel)
 

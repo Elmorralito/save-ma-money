@@ -9,11 +9,6 @@ from unittest.mock import MagicMock
 import pandas as pd
 from fastapi.testclient import TestClient
 
-from auth_helpers import make_user
-from papita_txnsapi.config.settings import get_settings
-from papita_txnsapi.dependencies.auth import get_current_owner
-from papita_txnsapi.dependencies.services import get_categories_service
-from papita_txnsapi.main import create_app
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.model.enums import CategoryKind
 
@@ -58,9 +53,7 @@ class TestCategoriesRoutes:
             pd.DataFrame([parent.model_dump(mode="python")]),
             1,
         )
-        mock_service.get_categories_for_parents.return_value = pd.DataFrame(
-            [child.model_dump(mode="python")]
-        )
+        mock_service.get_categories_for_parents.return_value = pd.DataFrame([child.model_dump(mode="python")])
 
         response = client.get("/api/v1/categories")
 

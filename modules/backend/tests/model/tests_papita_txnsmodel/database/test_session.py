@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -99,9 +100,7 @@ class TestSessionScopeAndDI:
 
         assert get_active_session() is None
 
-    def test_get_db_generator_yields_request_scoped_session(
-        self, reset_manager: DatabaseSessionManager
-    ) -> None:
+    def test_get_db_generator_yields_request_scoped_session(self, reset_manager: DatabaseSessionManager) -> None:
         configure_database(connection="sqlite:///:memory:")
         gen = get_db()
         session = next(gen)

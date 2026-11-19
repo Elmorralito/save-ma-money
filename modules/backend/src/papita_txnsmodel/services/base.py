@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
 from papita_txnsmodel.access.users.dto import OwnedTableDTO, UsersDTO
-from papita_txnsmodel.database.session import DatabaseSessionManager, get_session_manager
+from papita_txnsmodel.database.session import get_session_manager
 from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.utils.datautils import standardize_dataframe
 

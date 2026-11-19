@@ -7,12 +7,12 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pandas as pd
+from auth_helpers import make_user
 from fastapi.testclient import TestClient
 
-from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.dependencies.auth import get_current_owner
-from papita_txnsapi.dependencies.services import get_accounts_service, get_transactions_service
+from papita_txnsapi.dependencies.services import get_transactions_service
 from papita_txnsapi.main import create_app
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
@@ -83,7 +83,6 @@ class TestTransactionsRoutes:
     ) -> None:
         client, owner, mock_service = transactions_client
         expense = _sample_expense(owner.id)
-        transfer = _sample_transfer(owner.id)
         mock_service.list_transactions.return_value = (
             pd.DataFrame([expense.model_dump(mode="python")]),
             1,
@@ -196,9 +195,7 @@ class TestTransactionsRoutes:
         transfer.from_account_id = source.id
         transfer.to_account_id = destination.id
 
-        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: (
-            source if obj == source.id else destination
-        )
+        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: source if obj == source.id else destination
         mock_transactions.create_transfer.return_value = transfer.model_copy(
             update={"status": TransactionStatus.PENDING, "settlement_status": SettlementStatus.IN_TRANSIT}
         )
@@ -241,9 +238,7 @@ class TestTransactionsRoutes:
         transfer.from_account_id = source.id
         transfer.to_account_id = destination.id
 
-        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: (
-            source if obj == source.id else destination
-        )
+        mock_accounts.get.side_effect = lambda obj, owner=None, **kwargs: source if obj == source.id else destination
         mock_transactions.create_transfer.return_value = transfer
 
         response = client.post(

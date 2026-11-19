@@ -9,7 +9,6 @@ import logging
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-import yaml
 
 from papita_txnsmodel.utils import configutils
 

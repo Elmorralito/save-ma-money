@@ -23,7 +23,6 @@ from papita_txnsapi.core.supabase_auth import (
     supabase_auth_user_created_recently,
     supabase_refresh_session,
     supabase_sign_in,
-    supabase_sign_out,
     supabase_sign_up,
 )
 from papita_txnsapi.core.supabase_auth_local import (
@@ -66,7 +65,6 @@ def test_create_supabase_admin_client_reuses_cached_instance() -> None:
     assert first is second is sentinel
     mock_create.assert_called_once()
     clear_supabase_client_cache()
-
 
 
 def test_classify_supabase_auth_error_conflict() -> None:

@@ -153,9 +153,7 @@ class TestCreate:
             result = service.create(obj=obj_dict)
 
         assert result == mock_dto
-        mock_validate.assert_called_once_with(
-            obj_dict, strict=False, context={"by_alias": False, "by_name": True}
-        )
+        mock_validate.assert_called_once_with(obj_dict, strict=False, context={"by_alias": False, "by_name": True})
         mock_repository.upsert_record.assert_called_once_with(mock_dto, owner=None)
 
     def test_create_removes_db_session_from_kwargs(self, service, mock_dto, mock_repository):
@@ -204,9 +202,7 @@ class TestDelete:
         with patch.object(TableDTO, "model_validate", return_value=mock_dto) as mock_validate:
             service.delete(obj=obj_dict, hard=False)
 
-        mock_validate.assert_called_once_with(
-            obj_dict, strict=False, context={"by_alias": False, "by_name": True}
-        )
+        mock_validate.assert_called_once_with(obj_dict, strict=False, context={"by_alias": False, "by_name": True})
         mock_repository.soft_delete_records.assert_called_once()
 
     def test_delete_removes_db_session_from_kwargs(self, service, mock_dto, mock_repository):
@@ -245,7 +241,9 @@ class TestGet:
 
         assert result is None
 
-    def test_get_with_dict_calls_get_record_from_attributes_when_not_found_by_id(self, service, mock_repository, mock_dto):
+    def test_get_with_dict_calls_get_record_from_attributes_when_not_found_by_id(
+        self, service, mock_repository, mock_dto
+    ):
         """Test that get calls get_record_from_attributes when UUID lookup fails and obj is dict."""
         service._repository = mock_repository
         obj_dict = {"id": uuid.uuid4()}
@@ -258,7 +256,9 @@ class TestGet:
         assert result == mock_dto
         mock_repository.get_record_from_attributes.assert_called_once()
 
-    def test_get_with_dto_calls_get_record_from_attributes_when_not_found_by_id(self, service, mock_repository, mock_dto):
+    def test_get_with_dto_calls_get_record_from_attributes_when_not_found_by_id(
+        self, service, mock_repository, mock_dto
+    ):
         """Test that get calls get_record_from_attributes when UUID lookup fails and obj is DTO."""
         service._repository = mock_repository
         mock_repository.get_record_by_id.return_value = None
@@ -331,7 +331,9 @@ class TestGetRecords:
         mock_standardize.assert_called_once()
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
-    def test_get_records_with_dict_calls_get_records_from_attributes(self, mock_standardize, service, mock_repository, mock_dto):
+    def test_get_records_with_dict_calls_get_records_from_attributes(
+        self, mock_standardize, service, mock_repository, mock_dto
+    ):
         """Test that get_records validates dict and calls get_records_from_attributes."""
         service._repository = mock_repository
         expected_df = pd.DataFrame({"id": [uuid.uuid4()]})
@@ -347,7 +349,9 @@ class TestGetRecords:
         mock_repository.get_records_from_attributes.assert_called_once()
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
-    def test_get_records_with_dto_calls_get_records_from_attributes(self, mock_standardize, service, mock_repository, mock_dto):
+    def test_get_records_with_dto_calls_get_records_from_attributes(
+        self, mock_standardize, service, mock_repository, mock_dto
+    ):
         """Test that get_records calls get_records_from_attributes when given a DTO."""
         service._repository = mock_repository
         expected_df = pd.DataFrame({"id": [uuid.uuid4()]})
@@ -365,7 +369,9 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
     @patch("papita_txnsmodel.services.base.OnUpsertConflictDo")
-    def test_upsert_records_calls_repository_upsert_records(self, mock_enum_class, mock_standardize, service, mock_repository):
+    def test_upsert_records_calls_repository_upsert_records(
+        self, mock_enum_class, mock_standardize, service, mock_repository
+    ):
         """Test that upsert_records standardizes DataFrame and calls repository upsert_records."""
         service._repository = mock_repository
         service.on_conflict_do = OnUpsertConflictDo.NOTHING
@@ -392,7 +398,9 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
     @patch("papita_txnsmodel.services.base.OnUpsertConflictDo")
-    def test_upsert_records_uses_default_on_conflict_do(self, mock_enum_class, mock_standardize, service, mock_repository):
+    def test_upsert_records_uses_default_on_conflict_do(
+        self, mock_enum_class, mock_standardize, service, mock_repository
+    ):
         """Test that upsert_records uses service's default on_conflict_do when not provided."""
         service._repository = mock_repository
         service.on_conflict_do = OnUpsertConflictDo.UPDATE
@@ -418,7 +426,9 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
     @patch("papita_txnsmodel.services.base.OnUpsertConflictDo")
-    def test_upsert_records_raises_error_when_tolerance_exceeded(self, mock_enum_class, mock_standardize, service, mock_repository):
+    def test_upsert_records_raises_error_when_tolerance_exceeded(
+        self, mock_enum_class, mock_standardize, service, mock_repository
+    ):
         """Test that upsert_records raises RuntimeError when upsertions below tolerance threshold."""
         service._repository = mock_repository
         service.on_conflict_do = OnUpsertConflictDo.NOTHING
@@ -443,7 +453,9 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.services.base.standardize_dataframe")
     @patch("papita_txnsmodel.services.base.OnUpsertConflictDo")
-    def test_upsert_records_removes_db_session_from_kwargs(self, mock_enum_class, mock_standardize, service, mock_repository):
+    def test_upsert_records_removes_db_session_from_kwargs(
+        self, mock_enum_class, mock_standardize, service, mock_repository
+    ):
         """Test that upsert_records removes _db_session from kwargs before calling repository."""
         service._repository = mock_repository
         service.on_conflict_do = OnUpsertConflictDo.NOTHING

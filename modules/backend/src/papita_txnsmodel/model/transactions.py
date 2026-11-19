@@ -4,9 +4,8 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, CHAR, DECIMAL, TIMESTAMP, Column, Date
+from sqlalchemy import ARRAY, CHAR, DECIMAL, TIMESTAMP, Column, Date, Index, SmallInteger, String, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Index, SmallInteger, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import SCHEMA_NAME, BaseSQLModel

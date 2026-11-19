@@ -9,9 +9,8 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import TIMESTAMP, Column
+from sqlalchemy import TIMESTAMP, Column, ForeignKeyConstraint, Index, Integer, String, Text, text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKeyConstraint, Index, Integer, String, Text, text
 from sqlmodel import Field
 
 from .base import SCHEMA_NAME, BaseSQLModel

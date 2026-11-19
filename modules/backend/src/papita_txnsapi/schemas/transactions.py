@@ -122,13 +122,14 @@ class TransactionCreate(BaseModel):
             src = self.from_account_id or self.source_account_id
             dst = self.to_account_id or self.destination_account_id
             if src is None or dst is None:
-                raise ValueError("Transfer requires from_account_id/source_account_id and to_account_id/destination_account_id.")
+                raise ValueError(
+                    "Transfer requires from_account_id/source_account_id and to_account_id/destination_account_id."
+                )
             if self.category_id is not None:
                 raise ValueError("Transfer transactions cannot set category_id.")
         else:
-            primary = (
-                self.account_id
-                or (self.to_account_id if self.transaction_type == "income" else self.from_account_id)
+            primary = self.account_id or (
+                self.to_account_id if self.transaction_type == "income" else self.from_account_id
             )
             if primary is None:
                 raise ValueError("Income and expense transactions require account_id.")

@@ -110,4 +110,4 @@ jobs:
 
       - name: Tear down Compose
         if: always()
-        run: make api-all-down
+        run: ./deploy/scripts/deploy-dev.sh down -v

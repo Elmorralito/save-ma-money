@@ -342,9 +342,7 @@ class TestSupabaseAuthRoutes:
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
         monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
 
-    def test_login_cleans_up_recent_auth_user_when_provision_fails(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_login_cleans_up_recent_auth_user_when_provision_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         subject = uuid.uuid4()
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
@@ -368,7 +366,9 @@ class TestSupabaseAuthRoutes:
         auth_result.expires_in = 3600
 
         with (
-            patch("papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result),
+            patch(
+                "papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result
+            ),
             patch("papita_txnsapi.routers.v1.auth.supabase_auth_user_created_recently", return_value=True),
             patch("papita_txnsapi.routers.v1.auth.supabase_admin_delete_user") as mock_delete,
         ):
@@ -420,7 +420,9 @@ class TestSupabaseAuthRoutes:
         auth_result.refresh_token = "supabase-refresh-token"
         auth_result.expires_in = 3600
 
-        with patch("papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result):
+        with patch(
+            "papita_txnsapi.routers.v1.auth.supabase_sign_in_with_optional_auto_confirm", return_value=auth_result
+        ):
             client = TestClient(app)
             response = client.post(
                 "/api/v1/auth/login",
@@ -595,9 +597,7 @@ class TestSupabaseAuthRoutes:
         monkeypatch.delenv("SUPABASE_URL", raising=False)
         monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
-    def test_oauth_callback_get_fails_closed_without_provider_cookie(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_oauth_callback_get_fails_closed_without_provider_cookie(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTH_PROVIDER", "supabase")
         monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
         monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")

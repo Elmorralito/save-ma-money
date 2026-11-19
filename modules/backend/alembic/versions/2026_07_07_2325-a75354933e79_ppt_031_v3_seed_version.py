@@ -496,7 +496,8 @@ def upgrade() -> None:
         schema="papita_transactions",
     )
     # ### end Alembic commands ###
-    op.execute(sa.text("""
+    op.execute(
+        sa.text("""
             ALTER TABLE papita_transactions.accounts ADD CONSTRAINT accounts_ledger_side_matches_kind CHECK (
                 (account_kind IN (
                     'CHECKING', 'SAVINGS', 'CASH', 'INVESTMENT_BROKERAGE', 'REAL_ESTATE', 'OTHER_ASSET'
@@ -506,8 +507,10 @@ def upgrade() -> None:
                     AND ledger_side = 'LIABILITY'
                 )
             )
-            """))
-    op.execute(sa.text("""
+            """)
+    )
+    op.execute(
+        sa.text("""
             ALTER TABLE papita_transactions.transactions ADD CONSTRAINT chk_transaction_kind_accounts CHECK (
                 (transaction_kind = 'INCOME' AND from_account_id IS NULL AND to_account_id IS NOT NULL
                     AND category_id IS NOT NULL)
@@ -521,12 +524,15 @@ def upgrade() -> None:
                     AND from_account_id <> to_account_id
                 )
             )
-            """))
-    op.execute(sa.text("""
+            """)
+    )
+    op.execute(
+        sa.text("""
             ALTER TABLE papita_transactions.account_financing ADD CONSTRAINT chk_financing_share CHECK (
                 financing_share > 0 AND financing_share <= 1
             )
-            """))
+            """)
+    )
     op.create_entity(ACCOUNT_BALANCES_MATERIALIZED_VIEW)
     op.create_index(
         "account_balances_owner_account_idx",

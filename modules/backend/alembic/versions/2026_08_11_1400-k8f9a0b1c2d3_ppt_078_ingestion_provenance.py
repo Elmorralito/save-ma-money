@@ -54,14 +54,16 @@ def _ingestion_source_type(*, create_type: bool = False) -> postgresql.ENUM:
 def upgrade() -> None:
     """Create ingestion_source enum, provenance sidecar, and dead-letter table."""
     # Idempotent: Alembic/SQLAlchemy may otherwise emit CREATE TYPE twice in one txn.
-    op.execute(sa.text(f"""
+    op.execute(
+        sa.text(f"""
             DO $$ BEGIN
                 CREATE TYPE {SCHEMA_NAME}.{_INGESTION_SOURCE_ENUM}
                     AS ENUM ('MANUAL', 'CSV', 'EMAIL', 'API');
             EXCEPTION
                 WHEN duplicate_object THEN NULL;
             END $$;
-            """))
+            """)
+    )
     ingestion_source = _ingestion_source_type(create_type=False)
 
     op.create_table(

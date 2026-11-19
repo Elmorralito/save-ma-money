@@ -157,9 +157,7 @@ class TransactionListQuery(BaseModel):
             resolved_exclude_transfer = self.exclude_transfer
         else:
             resolved_exclude_transfer = (
-                self.transaction_type is None
-                and self.source_account_id is None
-                and self.destination_account_id is None
+                self.transaction_type is None and self.source_account_id is None and self.destination_account_id is None
             )
         return TransactionListServiceKwargs(
             account_id=self.account_id,

@@ -18,9 +18,7 @@ class TestTransactionQueryFilters:
         assert str(filters[0]).startswith(str(Transactions.transaction_kind != TransactionKind.TRANSFER))
 
     def test_transfer_kind_filter(self) -> None:
-        filters = build_transaction_list_filters(
-            TransactionListFilterSpec(transaction_kind=TransactionKind.TRANSFER)
-        )
+        filters = build_transaction_list_filters(TransactionListFilterSpec(transaction_kind=TransactionKind.TRANSFER))
         assert len(filters) == 1
         assert str(filters[0]).startswith(str(Transactions.transaction_kind == TransactionKind.TRANSFER))
 

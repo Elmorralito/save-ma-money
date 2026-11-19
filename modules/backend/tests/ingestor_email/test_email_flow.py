@@ -7,13 +7,11 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from papita_ingestor_core.parsers.base import BaseRecordParser
 from papita_ingestor_core.sources.base import BaseIngestorSource
 from papita_ingestor_core.types.records import FetchFilter, ParsedRecord, RawRecord
 from papita_ingestor_email.flow_settings import EmailFlowSettings
-from papita_ingestor_email.flows.email_flow import build_email_ingestion_flow, build_email_runner, default_fetch_filter
+from papita_ingestor_email.flows.email_flow import build_email_runner, default_fetch_filter
 from papita_ingestor_email.owner import users_dto_for_owner_id
 from papita_ingestor_email.wiring import EmailFlowDeps
 from papita_txnsmodel.access.users.dto import UsersDTO

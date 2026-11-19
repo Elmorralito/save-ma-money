@@ -85,9 +85,7 @@ class TestRedisRateLimiter:
         monkeypatch.setenv("REDIS_ENABLED", "false")
         monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "false")
 
-    def test_get_rate_limiter_for_request_reuses_app_state_cache(
-        self, fake_redis: object, monkeypatch
-    ) -> None:
+    def test_get_rate_limiter_for_request_reuses_app_state_cache(self, fake_redis: object, monkeypatch) -> None:
         monkeypatch.setenv("REDIS_ENABLED", "true")
         monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
         monkeypatch.setenv("REDIS_RATE_LIMIT_ENABLED", "true")

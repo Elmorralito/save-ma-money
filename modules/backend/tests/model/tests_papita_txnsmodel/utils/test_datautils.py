@@ -6,7 +6,6 @@ isolation and avoid external dependencies.
 """
 
 import uuid
-from typing import Generator, Iterator
 from unittest.mock import patch
 
 import pandas as pd

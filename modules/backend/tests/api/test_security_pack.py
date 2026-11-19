@@ -6,10 +6,8 @@ Extends (does not replace) auth hardening, health injection, and tenancy suites.
 from __future__ import annotations
 
 from datetime import date, timedelta
-from unittest.mock import MagicMock, patch
 
 import pytest
-from auth_helpers import make_user
 from fastapi.testclient import TestClient
 
 from papita_txnsapi.config.settings import (
@@ -21,7 +19,6 @@ from papita_txnsapi.config.settings import (
 )
 from papita_txnsapi.core.rate_limit import get_rate_limiter
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.main import create_app
 from papita_txnsapi.schemas.accounts import BankingDetailsSchema
 from papita_txnsapi.schemas.query_params import (

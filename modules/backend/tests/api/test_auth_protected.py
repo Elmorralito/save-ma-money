@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from auth_helpers import VALID_PASSWORD, make_user
 from fastapi.testclient import TestClient
 
-from auth_helpers import VALID_PASSWORD, make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.core.security import AuthSecurityManager
 

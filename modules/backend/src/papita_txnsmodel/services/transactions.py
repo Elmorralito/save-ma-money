@@ -102,7 +102,13 @@ class TransactionTemplatesService(BaseService):
 
     def create(self, *, obj: TableDTO | dict[str, Any], owner: UsersDTO | None = None, **kwargs) -> TableDTO:
         """Create a transaction template after validating its category reference."""
-        raw_cat = obj.get(self.category_id_field_name) if isinstance(obj, dict) else getattr(obj, self.category_id_field_name, None)
+        raw_cat = (
+            obj.get(self.category_id_field_name)
+            if isinstance(obj, dict)
+            else getattr(obj, self.category_id_field_name, None)
+        )
+        if raw_cat is None:
+            raise ValueError(f"Missing required field '{self.category_id_field_name}'.")
         category_dto = self.categories_service.get_or_create(obj=raw_cat, owner=owner, **kwargs)
         dto = super().create(obj=obj, owner=owner, **kwargs)
         setattr(dto, self.category_id_field_name, category_dto)
@@ -450,19 +456,17 @@ class TransactionsService(BaseService):
     missing_upsertions_tol: Annotated[float, Field(ge=0, le=0.5)] = 0.0
     on_conflict_do: OnUpsertConflictDo | str = OnUpsertConflictDo.UPDATE
 
-    def load_link_services(
-        self, links: Dict[str, BaseService], reload: bool = True, **kwargs
-    ) -> "TransactionsService":
+    def load_link_services(self, links: Dict[str, BaseService], reload: bool = True, **kwargs) -> "TransactionsService":
         """Bind collaborator services used to validate/resolve FK references."""
         del kwargs
         if "from_account_id" in links and (self.accounts_service is None or reload):
-            self.accounts_service = links["from_account_id"]  # type: ignore[assignment]
+            self.accounts_service = links["from_account_id"]
         elif "to_account_id" in links and (self.accounts_service is None or reload):
-            self.accounts_service = links["to_account_id"]  # type: ignore[assignment]
+            self.accounts_service = links["to_account_id"]
         if "category_id" in links and (self.categories_service is None or reload):
-            self.categories_service = links["category_id"]  # type: ignore[assignment]
+            self.categories_service = links["category_id"]
         if "template_id" in links and (self.templates_service is None or reload):
-            self.templates_service = links["template_id"]  # type: ignore[assignment]
+            self.templates_service = links["template_id"]
         return self
 
     def _link_service_for_field(self, field_name: str) -> BaseService | None:
@@ -544,7 +548,7 @@ class TransactionsService(BaseService):
                 linked_dtos[field_name] = field_value if resolved is None else resolved
             if linked_dtos:
                 dto = self.dto_type.model_validate(dto.model_dump(mode="python") | linked_dtos)
-        return dto  # type: ignore[return-value]
+        return dto
 
     def delete(
         self, *, obj: TransactionsDTO | dict[str, Any], owner: UsersDTO | None = None, hard: bool = False, **kwargs

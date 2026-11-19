@@ -14,11 +14,12 @@ from sqlmodel import Session
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "model" / "tests"))
 
+from postgres_gate import postgres_url, requires_postgres
+
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.main import create_app
 from papita_txnsmodel.database.session import close_database, configure_database
 from papita_txnsmodel.services.users import UsersService
-from postgres_gate import postgres_url, requires_postgres
 
 POSTGRES_URL = postgres_url()
 

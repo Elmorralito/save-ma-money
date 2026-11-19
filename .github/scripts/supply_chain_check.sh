@@ -16,7 +16,7 @@ log "INFO" "Validating workspace and module metadata..."
 poetry run python "${ROOT}/.github/scripts/check_module_versions.py"
 
 log "INFO" "Auditing installed dependencies..."
-poetry run python -m pip install --disable-pip-version-check --quiet pip-audit
+poetry run python -m pip install --disable-pip-version-check --quiet --upgrade 'pip>=26.2.0' pip-audit
 poetry run pip-audit --desc on --skip-editable
 
 log "INFO" "Supply chain checks completed."

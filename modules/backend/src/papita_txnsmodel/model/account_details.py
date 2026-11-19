@@ -3,9 +3,8 @@
 import uuid
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DECIMAL, Column
+from sqlalchemy import DECIMAL, Column, SmallInteger, String
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import SmallInteger, String
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel

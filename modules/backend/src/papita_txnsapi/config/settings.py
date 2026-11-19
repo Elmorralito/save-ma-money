@@ -14,7 +14,7 @@ import logging
 import warnings
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Literal, Self, Type
+from typing import Any, Literal, Self
 from urllib.parse import urlparse
 
 from pydantic import Field, field_validator, model_validator
@@ -230,9 +230,7 @@ class Settings(BaseSettings):
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
-    def coerce_database_url(
-        cls, value: str | DatabaseSessionManager | None
-    ) -> str | DatabaseSessionManager | None:
+    def coerce_database_url(cls, value: str | DatabaseSessionManager | None) -> str | DatabaseSessionManager | None:
         """Accept a session manager instance, a non-empty URL string, or ``None``."""
         if isinstance(value, DatabaseSessionManager):
             return value

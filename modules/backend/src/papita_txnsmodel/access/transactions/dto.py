@@ -63,7 +63,7 @@ class TransactionTemplatesDTO(OwnedTableDTO, CoreTableDTO):
         default=None,
         ge=0,
         description=(
-            "Days before due to surface an in-app reminder; null is treated as 0 " "(reminder starts on the due date)"
+            "Days before due to surface an in-app reminder; null is treated as 0 (reminder starts on the due date)"
         ),
     )
     from_account_id: uuid.UUID | AccountsDTO | None = Field(

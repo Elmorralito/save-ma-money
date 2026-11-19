@@ -5,11 +5,12 @@ from __future__ import annotations
 import uuid
 
 import pytest
+from postgres_gate import postgres_url
+from postgres_gate import requires_postgres as requires_postgres
 from sqlalchemy import text
 from sqlmodel import Session
 
 from papita_txnsmodel.database.session import close_database, configure_database
-from postgres_gate import postgres_url, requires_postgres
 
 POSTGRES_URL = postgres_url()
 

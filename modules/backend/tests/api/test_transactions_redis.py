@@ -8,9 +8,9 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from auth_helpers import make_user
 from fastapi.testclient import TestClient
 
-from auth_helpers import make_user
 from papita_txnsapi.config.settings import get_settings
 from papita_txnsapi.core.idempotency import begin_idempotency, complete_idempotency
 from papita_txnsapi.core.rate_limit import InMemoryRateLimiter
@@ -134,20 +134,14 @@ class TestTransactionIdempotency:
 
     def test_begin_conflict_when_pending(self, fake_redis: object) -> None:
         owner_id = uuid.uuid4()
-        first = begin_idempotency(
-            fake_redis, owner_id, scope="transactions:create", key="k1", ttl_seconds=60
-        )
-        second = begin_idempotency(
-            fake_redis, owner_id, scope="transactions:create", key="k1", ttl_seconds=60
-        )
+        first = begin_idempotency(fake_redis, owner_id, scope="transactions:create", key="k1", ttl_seconds=60)
+        second = begin_idempotency(fake_redis, owner_id, scope="transactions:create", key="k1", ttl_seconds=60)
         assert first.state == "miss"
         assert second.state == "conflict"
 
     def test_begin_hit_after_complete(self, fake_redis: object) -> None:
         owner_id = uuid.uuid4()
-        begun = begin_idempotency(
-            fake_redis, owner_id, scope="transactions:create", key="k2", ttl_seconds=60
-        )
+        begun = begin_idempotency(fake_redis, owner_id, scope="transactions:create", key="k2", ttl_seconds=60)
         assert begun.state == "miss"
         complete_idempotency(
             fake_redis,
@@ -157,9 +151,7 @@ class TestTransactionIdempotency:
             body={"id": str(uuid.uuid4()), "amount": 1.0},
             ttl_seconds=60,
         )
-        replay = begin_idempotency(
-            fake_redis, owner_id, scope="transactions:create", key="k2", ttl_seconds=60
-        )
+        replay = begin_idempotency(fake_redis, owner_id, scope="transactions:create", key="k2", ttl_seconds=60)
         assert replay.state == "hit"
         assert replay.payload is not None
         assert replay.payload["amount"] == 1.0
@@ -205,9 +197,7 @@ class TestTransactionIdempotency:
         expense = _sample_expense(owner.id)
         mock_service = MagicMock()
         mock_service.create.return_value = expense
-        begin_idempotency(
-            fake_redis, owner.id, scope="transactions:create", key="pending-key", ttl_seconds=60
-        )
+        begin_idempotency(fake_redis, owner.id, scope="transactions:create", key="pending-key", ttl_seconds=60)
 
         with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
             app = create_app()
@@ -336,9 +326,7 @@ class TestTransactionIdempotency:
 
         owner = make_user()
         expense = _sample_expense(owner.id)
-        begin_idempotency(
-            fake_redis, owner.id, scope="transactions:bulk", key="bulk-pending", ttl_seconds=60
-        )
+        begin_idempotency(fake_redis, owner.id, scope="transactions:bulk", key="bulk-pending", ttl_seconds=60)
         mock_service = MagicMock()
         body = {"transactions": [_create_body(expense)]}
 

@@ -82,9 +82,7 @@ class DatabaseSessionManager:
         self.engine: db.Engine | None = engine
         self.sql_kwargs: dict[str, Any] | None = sql_kwargs
         self.session_factory: sessionmaker[Session] | None = (
-            sessionmaker(bind=engine, class_=Session, expire_on_commit=False)
-            if isinstance(engine, db.Engine)
-            else None
+            sessionmaker(bind=engine, class_=Session, expire_on_commit=False) if isinstance(engine, db.Engine) else None
         )
 
     def configure(

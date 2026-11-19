@@ -127,9 +127,7 @@ class TestCompleteAndClear:
         clear_idempotency_pending(fake_redis, owner_id, scope="s", key=None)
         clear_idempotency_pending(fake_redis, owner_id, scope="s", key="absent")
         begin_idempotency(fake_redis, owner_id, scope="s", key="done", ttl_seconds=60)
-        complete_idempotency(
-            fake_redis, owner_id, scope="s", key="done", body={"ok": True}, ttl_seconds=60
-        )
+        complete_idempotency(fake_redis, owner_id, scope="s", key="done", body={"ok": True}, ttl_seconds=60)
         clear_idempotency_pending(fake_redis, owner_id, scope="s", key="done")
         replay = begin_idempotency(fake_redis, owner_id, scope="s", key="done", ttl_seconds=60)
         assert replay.state == "hit"

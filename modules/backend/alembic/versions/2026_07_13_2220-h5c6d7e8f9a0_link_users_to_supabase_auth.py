@@ -50,7 +50,7 @@ def upgrade() -> None:
         nullable=True,
         schema=SCHEMA_NAME,
     )
-    op.execute(sa.text(f"COMMENT ON COLUMN {_USERS}.id IS " f"'Supabase Auth user id (auth.users.id / JWT sub)'"))
+    op.execute(sa.text(f"COMMENT ON COLUMN {_USERS}.id IS 'Supabase Auth user id (auth.users.id / JWT sub)'"))
     # Optional: on Supabase Postgres only —
     # ALTER TABLE papita_transactions.users
     #   ADD CONSTRAINT users_auth_users_fk
@@ -59,7 +59,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Restore NOT NULL password and drop auth_provider."""
-    op.execute(sa.text(f"UPDATE {_USERS} SET password = " f"'__downgrade_placeholder__' WHERE password IS NULL"))
+    op.execute(sa.text(f"UPDATE {_USERS} SET password = '__downgrade_placeholder__' WHERE password IS NULL"))
     op.alter_column(
         USERS__TABLENAME,
         "password",

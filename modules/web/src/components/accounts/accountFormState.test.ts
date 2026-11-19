@@ -25,6 +25,7 @@ describe("accountFormState", () => {
       account_kind: "checking",
       ledger_side: "asset",
       currency: "USD",
+      include_in_balance: true,
       initial_value: 100,
       banking_details: { entity: "Local Bank", account_number: "****1234" },
     });

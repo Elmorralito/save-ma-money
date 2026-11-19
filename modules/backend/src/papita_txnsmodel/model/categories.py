@@ -3,9 +3,8 @@
 import uuid
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import ARRAY, Column
+from sqlalchemy import ARRAY, Column, Index, String, Text
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Index, String, Text
 from sqlmodel import Field, Relationship
 
 from .base import SCHEMA_NAME, BaseSQLModel

@@ -7,9 +7,10 @@ method properly routes to the appropriate handler. Tests cover edge cases includ
 empty DataFrames, single-row DataFrames, and multiple-row DataFrames.
 """
 
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
-from unittest.mock import patch
 
 from papita_txnsmodel.utils.enums import OnMultipleMatchesDo
 

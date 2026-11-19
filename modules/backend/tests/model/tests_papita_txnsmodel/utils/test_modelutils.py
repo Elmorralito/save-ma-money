@@ -12,9 +12,8 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 import pytz
+
 from papita_txnsmodel.utils import modelutils
-from unittest.mock import MagicMock
-import pytest
 from papita_txnsmodel.utils.modelutils import (
     validate_python_version_wrapper,
     validate_tags,
@@ -173,7 +172,9 @@ class TestMakeClassValidator:
         assert inspect.isclass(result)
 
     @patch("papita_txnsmodel.utils.modelutils.ClassDiscovery")
-    def test_make_class_validator_loads_class_from_string(self, mock_class_discovery, sample_derived_class, mock_validation_info):
+    def test_make_class_validator_loads_class_from_string(
+        self, mock_class_discovery, sample_derived_class, mock_validation_info
+    ):
         """Test that validator loads class from string using ClassDiscovery.select."""
         mock_class_discovery.select.return_value = sample_derived_class
         validator = modelutils.make_class_validator(object)
@@ -182,14 +183,18 @@ class TestMakeClassValidator:
         mock_class_discovery.select.assert_called_once_with("module.ClassName", class_type=object)
 
     @patch("papita_txnsmodel.utils.modelutils.ClassDiscovery")
-    def test_make_class_validator_raises_value_error_for_invalid_string(self, mock_class_discovery, mock_validation_info):
+    def test_make_class_validator_raises_value_error_for_invalid_string(
+        self, mock_class_discovery, mock_validation_info
+    ):
         """Test that validator raises ValueError when ClassDiscovery.select returns non-class."""
         mock_class_discovery.select.return_value = "not_a_class"
         validator = modelutils.make_class_validator(object)
         with pytest.raises(ValueError, match="Class type not supported"):
             validator("invalid.class", mock_validation_info)
 
-    def test_make_class_validator_raises_value_error_for_non_class_non_string(self, sample_base_class, mock_validation_info):
+    def test_make_class_validator_raises_value_error_for_non_class_non_string(
+        self, sample_base_class, mock_validation_info
+    ):
         """Test that validator raises ValueError when given neither class nor string."""
         validator = modelutils.make_class_validator(sample_base_class)
         with pytest.raises(ValueError, match="Class type not supported"):

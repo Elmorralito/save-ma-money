@@ -14,11 +14,11 @@ import pytest
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.accounts.repository import AccountsRepository
 from papita_txnsmodel.access.base.repository import OwnedTableRepository
+from papita_txnsmodel.access.categories.repository import CategoriesRepository
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.access.transactions.repository import TransactionsRepository
-from papita_txnsmodel.access.categories.repository import CategoriesRepository
-from papita_txnsmodel.model.enums import AccountKind, LedgerSide
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.enums import AccountKind, LedgerSide
 
 _VALID_PASSWORD = "Password1!"
 

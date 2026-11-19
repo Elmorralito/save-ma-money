@@ -100,9 +100,7 @@ class TestCacheFailOpen:
 
     def test_bump_invalidates_reused_version_write(self, fake_redis: object) -> None:
         owner_id = uuid.uuid4()
-        _, _, version = get_versioned_cached_json(
-            fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {}
-        )
+        _, _, version = get_versioned_cached_json(fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {})
         set_versioned_cached_json(
             fake_redis,
             owner_id,
@@ -114,9 +112,7 @@ class TestCacheFailOpen:
             version=version,
         )
         bump_cache_versions(fake_redis, owner_id, CacheNamespace.ACCOUNTS)
-        miss, status, _ = get_versioned_cached_json(
-            fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {}
-        )
+        miss, status, _ = get_versioned_cached_json(fake_redis, owner_id, CacheNamespace.ACCOUNTS, "accounts:list", {})
         assert miss is None and status == "MISS"
 
     def test_ttl_defaults_without_settings(self) -> None:

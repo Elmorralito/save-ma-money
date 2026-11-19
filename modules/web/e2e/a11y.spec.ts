@@ -11,7 +11,6 @@ const AUTHED_ROUTES = [
   "/categories",
   "/transactions",
   "/payment-dues",
-  "/movements",
   "/reports",
 ] as const;
 

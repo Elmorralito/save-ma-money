@@ -12,7 +12,7 @@ from papita_txnsmodel.access.ingestion.dto import TransactionIngestionProvenance
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import IngestionSource, TransactionKind
-from papita_txnsmodel.services.ingestion import IngestTransactionRequest, IngestionBridgeService
+from papita_txnsmodel.services.ingestion import IngestionBridgeService, IngestTransactionRequest
 
 
 def _owner() -> UsersDTO:

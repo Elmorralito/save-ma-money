@@ -5,7 +5,6 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-import pytest
 from sqlalchemy import text
 
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
@@ -14,7 +13,7 @@ from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import AccountKind, CategoryKind, IngestionSource, LedgerSide, TransactionKind
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.categories import CategoriesService
-from papita_txnsmodel.services.ingestion import IngestTransactionRequest, IngestionBridgeService
+from papita_txnsmodel.services.ingestion import IngestionBridgeService, IngestTransactionRequest
 from papita_txnsmodel.services.transactions import TransactionsService
 
 from .conftest import requires_postgres
@@ -159,9 +158,7 @@ class TestLiveDbPpt078IngestionBridge:
                 txn_id=txn_id,
             )
 
-    def test_provenance_unique_index_exists(
-        self, postgres_connector, ensure_integration_users, integration_owner_ids
-    ):
+    def test_provenance_unique_index_exists(self, postgres_connector, ensure_integration_users, integration_owner_ids):
         """Migration created the partial unique index on the sidecar."""
         with postgres_connector.engine.connect() as conn:
             row = conn.execute(

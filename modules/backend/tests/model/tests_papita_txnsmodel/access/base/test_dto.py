@@ -5,9 +5,9 @@ including data conversion, validation, and DataFrame standardization operations.
 All tests use mocking to ensure isolation and avoid external dependencies.
 """
 
-from typing import Iterable
 import uuid
 from datetime import datetime
+from typing import Iterable
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -101,13 +101,10 @@ def test_table_dto_standardized_dataframe_calls_utility(mock_standardize, sample
     mock_standardize.return_value = expected_result
     drops = ["deleted_at"]
     by_alias = True
-    extra_col = "test_col"
     extra_val = "test_value"
 
     # Act
-    result = TableDTO.standardized_dataframe(
-        sample_dataframe, drops=drops, by_alias=by_alias, test_col=extra_val
-    )
+    result = TableDTO.standardized_dataframe(sample_dataframe, drops=drops, by_alias=by_alias, test_col=extra_val)
 
     # Assert
     assert result.equals(expected_result)

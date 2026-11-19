@@ -33,6 +33,7 @@ describe("AccountDetailPage", () => {
       currency: "USD",
       balance: 10,
       is_active: true,
+      include_in_balance: true,
       banking_details: { entity: "Bank", account_number: null },
     });
     vi.mocked(accountsApi.deleteAccount).mockResolvedValue(undefined);

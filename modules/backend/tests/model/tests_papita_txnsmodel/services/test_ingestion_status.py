@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from papita_txnsmodel.access.ingestion.dto import IngestionConnectionDTO, IngestionRunDTO
+from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.model.enums import IngestionRunStatus
 from papita_txnsmodel.services.ingestion_status import (
     IngestionConnectionService,
@@ -16,7 +17,6 @@ from papita_txnsmodel.services.ingestion_status import (
     RecordIngestionRunRequest,
     UpsertIngestionConnectionRequest,
 )
-from papita_txnsmodel.access.users.dto import UsersDTO
 
 
 def _owner() -> UsersDTO:

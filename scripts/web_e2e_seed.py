@@ -371,7 +371,9 @@ def _soft_delete_baseline_txns(base: str, token: str) -> int:
 def _probe_live(base: str) -> None:
     status, body = _request("GET", _api(base, "/api/v1/health/live"))
     if status != 200:
-        raise SeedError(f"API not healthy at {base} (HTTP {status}: {body}). Run: ./deploy/scripts/deploy-dev.sh up --build")
+        raise SeedError(
+            f"API not healthy at {base} (HTTP {status}: {body}). Run: ./deploy/scripts/deploy-dev.sh up --build"
+        )
 
 
 def seed(*, api_base: str, out_path: Path, reset: bool) -> dict[str, Any]:

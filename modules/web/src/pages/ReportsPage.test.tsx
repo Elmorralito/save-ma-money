@@ -86,6 +86,7 @@ function mockHappyPath(): void {
         currency: "USD",
         balance: 100,
         is_active: true,
+        include_in_balance: true,
       },
     ],
     limit: 100,

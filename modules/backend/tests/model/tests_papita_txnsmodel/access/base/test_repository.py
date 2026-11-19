@@ -7,17 +7,16 @@ are mocked to ensure test isolation and prevent actual database access.
 
 import uuid
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from sqlalchemy import inspect as db_inspector
-from sqlmodel import Session, delete, update
+from sqlmodel import Session
 from sqlmodel.sql.expression import Select
 
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.base.repository import BaseRepository
-from papita_txnsmodel.database.upsert import OnUpsertConflictDo, UpserterFactory
+from papita_txnsmodel.database.upsert import OnUpsertConflictDo
 from papita_txnsmodel.model.base import BaseSQLModel
 
 
@@ -76,7 +75,16 @@ class TestHardDeleteRecords:
 
     @patch("papita_txnsmodel.access.base.repository.delete")
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
-    def test_hard_delete_records_deletes_matching_records(self, mock_inspector, mock_delete, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_hard_delete_records_deletes_matching_records(
+        self,
+        mock_inspector,
+        mock_delete,
+        repository,
+        mock_dto,
+        mock_session,
+        sample_dataframe,
+        mock_connector_connected,
+    ):
         """Test that hard_delete_records permanently deletes records matching query filters."""
         mock_dao = MagicMock()
         mock_dto.__dao_type__ = mock_dao
@@ -99,7 +107,9 @@ class TestHardDeleteRecords:
         mock_session.exec.assert_called()
         mock_session.commit.assert_called_once()
 
-    def test_hard_delete_records_returns_empty_when_no_records_found(self, repository, mock_dto, mock_session, mock_connector_connected):
+    def test_hard_delete_records_returns_empty_when_no_records_found(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
         """Test that hard_delete_records returns empty DataFrame when no records match filters."""
         repository.get_records = MagicMock(return_value=pd.DataFrame([]))
 
@@ -110,7 +120,9 @@ class TestHardDeleteRecords:
         mock_session.exec.assert_not_called()
 
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
-    def test_hard_delete_records_rolls_back_on_error(self, mock_inspector, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_hard_delete_records_rolls_back_on_error(
+        self, mock_inspector, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected
+    ):
         """Test that hard_delete_records rolls back transaction when deletion fails."""
         mock_dao = MagicMock()
         mock_dto.__dao_type__ = mock_dao
@@ -135,7 +147,17 @@ class TestSoftDeleteRecords:
     @patch("papita_txnsmodel.access.base.repository.update")
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
     @patch("papita_txnsmodel.access.base.repository.datetime")
-    def test_soft_delete_records_marks_records_as_deleted(self, mock_datetime, mock_inspector, mock_update, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_soft_delete_records_marks_records_as_deleted(
+        self,
+        mock_datetime,
+        mock_inspector,
+        mock_update,
+        repository,
+        mock_dto,
+        mock_session,
+        sample_dataframe,
+        mock_connector_connected,
+    ):
         """Test that soft_delete_records marks records as inactive with deletion timestamp."""
         mock_dao = MagicMock()
         mock_dto.__dao_type__ = mock_dao
@@ -160,7 +182,9 @@ class TestSoftDeleteRecords:
         mock_session.exec.assert_called()
         mock_session.commit.assert_called_once()
 
-    def test_soft_delete_records_returns_empty_when_no_records_found(self, repository, mock_dto, mock_session, mock_connector_connected):
+    def test_soft_delete_records_returns_empty_when_no_records_found(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
         """Test that soft_delete_records returns empty DataFrame when no records match filters."""
         repository.get_records = MagicMock(return_value=pd.DataFrame([]))
 
@@ -171,7 +195,9 @@ class TestSoftDeleteRecords:
         mock_session.exec.assert_not_called()
 
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
-    def test_soft_delete_records_rolls_back_on_error(self, mock_inspector, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_soft_delete_records_rolls_back_on_error(
+        self, mock_inspector, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected
+    ):
         """Test that soft_delete_records rolls back transaction when update fails."""
         mock_dao = MagicMock()
         mock_dto.__dao_type__ = mock_dao
@@ -264,7 +290,9 @@ class TestRunQuery:
 class TestUpsertRecord:
     """Test suite for BaseRepository.upsert_record method."""
 
-    def test_upsert_record_raises_value_error_when_dto_has_no_id(self, repository, mock_dto, mock_session, mock_connector_connected):
+    def test_upsert_record_raises_value_error_when_dto_has_no_id(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
         """Test that upsert_record raises ValueError when DTO has no ID."""
         mock_dto_instance = MagicMock()
         mock_dto_instance.id = None
@@ -273,7 +301,9 @@ class TestUpsertRecord:
         with pytest.raises(ValueError, match="There is no id in the DTO"):
             repository.upsert_record(mock_dto_instance, _db_session=mock_session, _testing_=True)
 
-    def test_upsert_record_adds_record_when_not_found(self, repository, mock_dto, mock_session, mock_connector_connected):
+    def test_upsert_record_adds_record_when_not_found(
+        self, repository, mock_dto, mock_session, mock_connector_connected
+    ):
         """Test that upsert_record inserts when no existing row is found."""
         test_id = uuid.uuid4()
         mock_dto_instance = MagicMock()
@@ -292,7 +322,9 @@ class TestUpsertRecord:
         assert result is not None
 
     @patch("papita_txnsmodel.access.base.repository.isinstance")
-    def test_upsert_record_merges_existing_record_when_found(self, mock_isinstance, repository, mock_dto, mock_session, mock_connector_connected):
+    def test_upsert_record_merges_existing_record_when_found(
+        self, mock_isinstance, repository, mock_dto, mock_session, mock_connector_connected
+    ):
         """Test that upsert_record merges record when record already exists."""
         test_id = uuid.uuid4()
         mock_dto_instance = MagicMock()
@@ -353,9 +385,7 @@ class TestUpsertRecord:
         existing.active = False
         repository.get_record_by_id = MagicMock(return_value=existing)
 
-        result = repository.upsert_record(
-            mock_dto_instance, _db_session=mock_session, reactivate=True, _testing_=True
-        )
+        result = repository.upsert_record(mock_dto_instance, _db_session=mock_session, reactivate=True, _testing_=True)
 
         assert mock_dto_instance.active is True
         assert mock_dto_instance.deleted_at is None
@@ -383,7 +413,16 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.access.base.repository.UpserterFactory")
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
-    def test_upsert_records_calls_upserter_factory(self, mock_inspector, mock_factory, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_upsert_records_calls_upserter_factory(
+        self,
+        mock_inspector,
+        mock_factory,
+        repository,
+        mock_dto,
+        mock_session,
+        sample_dataframe,
+        mock_connector_connected,
+    ):
         """Test that upsert_records uses UpserterFactory to perform bulk upsert."""
         mock_dto.__dao_type__ = MagicMock()
         mock_dto.__dao_type__.__tablename__ = "test_table"
@@ -404,7 +443,16 @@ class TestUpsertRecords:
 
     @patch("papita_txnsmodel.access.base.repository.UpserterFactory")
     @patch("papita_txnsmodel.access.base.repository.db_inspector")
-    def test_upsert_records_passes_conflict_action_to_upserter(self, mock_inspector, mock_factory, repository, mock_dto, mock_session, sample_dataframe, mock_connector_connected):
+    def test_upsert_records_passes_conflict_action_to_upserter(
+        self,
+        mock_inspector,
+        mock_factory,
+        repository,
+        mock_dto,
+        mock_session,
+        sample_dataframe,
+        mock_connector_connected,
+    ):
         """Test that upsert_records correctly passes on_conflict_do parameter to upserter."""
         mock_dto.__dao_type__ = MagicMock()
         mock_dto.__dao_type__.__tablename__ = "test_table"
@@ -418,7 +466,11 @@ class TestUpsertRecords:
         mock_factory.get_upserter.return_value = mock_upserter
 
         result = repository.upsert_records(
-            mock_dto, sample_dataframe, _db_session=mock_session, on_conflict_do=OnUpsertConflictDo.UPDATE, _testing_=True
+            mock_dto,
+            sample_dataframe,
+            _db_session=mock_session,
+            on_conflict_do=OnUpsertConflictDo.UPDATE,
+            _testing_=True,
         )
 
         assert result == 2
@@ -560,7 +612,6 @@ class TestGetRecordById:
     def test_get_record_by_id_converts_string_to_uuid(self, repository, mock_dto):
         """Test that get_record_by_id converts string ID to UUID."""
         test_id_str = str(uuid.uuid4())
-        test_id = uuid.UUID(test_id_str)
         mock_dto.__dao_type__ = MagicMock()
         mock_dto.__dao_type__.id = MagicMock()
         repository.get_records = MagicMock(return_value=pd.DataFrame([]))

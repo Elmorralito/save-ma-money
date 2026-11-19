@@ -59,6 +59,8 @@ describe("transactions API helpers", () => {
         description: "Coffee",
         transaction_date: "2026-08-01",
         transaction_type: "expense",
+        scheduled: false,
+        settlement_status: "settled",
       },
       { idempotencyKey: "test-key-1" },
     );
@@ -86,6 +88,8 @@ describe("transactions API helpers", () => {
             description: "A",
             transaction_date: "2026-08-01",
             transaction_type: "income",
+            scheduled: false,
+            settlement_status: "settled",
           },
         ],
       },

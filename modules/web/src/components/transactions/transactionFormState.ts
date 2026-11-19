@@ -132,6 +132,8 @@ export function toTransactionCreate(state: TransactionFormState): TransactionCre
     currency: state.currency.trim().toUpperCase() || "USD",
     description: state.description.trim(),
     transaction_date: state.transaction_date.trim(),
+    scheduled: state.scheduled,
+    settlement_status: state.settlement_status,
   };
 
   const reference = state.reference_number.trim();

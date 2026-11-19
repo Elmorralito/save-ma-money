@@ -141,7 +141,7 @@ def serve_email_ingestion(
         webserver,
     )
     if hasattr(flow_fn, "serve"):
-        flow_fn.serve(  # type: ignore[attr-defined]
+        flow_fn.serve(
             name=deployment_name,
             interval=timedelta(minutes=minutes),
             webserver=webserver,
@@ -223,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.once:
         flow_fn = build_email_ingestion_flow(deps=deps)
-        result = flow_fn()
+        result = flow_fn(None)
         logger.info("Email ingestion finished: %s", result.model_dump())
         return _run_once_exit_code(result)
     serve_email_ingestion(
