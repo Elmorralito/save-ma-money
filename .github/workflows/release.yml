@@ -1,0 +1,93 @@
+---
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# contents:write — tag + GitHub Release via GITHUB_TOKEN (main only; no dev tags)
+# actions:write — dispatch docker-release.yml after tagging
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: semantic-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Tag release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pin branch to triggering commit
+        run: git reset --hard "${GITHUB_SHA}"
+
+      # Major bumps are manual; automated releases on >=1.x are capped at minor.
+      - name: Cap automated bump at minor
+        id: bump
+        env:
+          PSR: python-semantic-release==10.7.0
+        run: |
+          last="$(pipx run --spec "${PSR}" semantic-release --noop version --print-last-released 2>/dev/null || echo '0.0.0')"
+          next="$(pipx run --spec "${PSR}" semantic-release --noop version --print 2>/dev/null || echo '')"
+          echo "last=${last} next=${next}"
+          force=""
+          if [ -n "${next}" ] && [ "${last%%.*}" -ge 1 ] && [ "${next%%.*}" -gt "${last%%.*}" ]; then
+            force="minor"
+            echo "::notice::Breaking change detected; capping ${last} -> minor bump (major bumps are manual)."
+          fi
+          echo "force=${force}" >> "${GITHUB_OUTPUT}"
+
+      - name: Semantic release (tag only)
+        id: release
+        uses: python-semantic-release/python-semantic-release@b700dbeb1f431a0fcc30a79f3f0869407fe07278 # v10.7.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: ${{ steps.bump.outputs.force }}
+          commit: "false"
+          tag: "true"
+          push: "true"
+          changelog: "false"
+          vcs_release: "true"
+          build: "false"
+
+      # Tags pushed with GITHUB_TOKEN do not fire docker-release.yml's
+      # `on: push: tags` trigger. Dispatch it explicitly at the new tag ref.
+      - name: Trigger docker-release
+        if: steps.release.outputs.released == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAG}" ]; then
+            echo "::error::released=true but tag output is empty"
+            exit 1
+          fi
+          echo "Dispatching docker-release.yml for ${TAG}"
+          gh workflow run docker-release.yml --repo "${GITHUB_REPOSITORY}" --ref "${TAG}"
+
+      - name: Summary
+        env:
+          RELEASED: ${{ steps.release.outputs.released }}
+          TAG: ${{ steps.release.outputs.tag }}
+          PREVIOUS: ${{ steps.release.outputs.previous_version }}
+        run: |
+          if [ "${RELEASED}" = "true" ]; then
+            echo "Released ${TAG} (previous: v${PREVIOUS})" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Dispatched docker-release.yml at ${TAG}" >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "No releasable commits since v${PREVIOUS}" >> "${GITHUB_STEP_SUMMARY}"
+          fi

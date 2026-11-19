@@ -1,0 +1,46 @@
+---
+name: Bash Security
+
+on:
+  pull_request:
+    paths:
+      - "scripts/**"
+      - "deploy/scripts/**"
+      - ".github/scripts/**"
+      - ".github/workflows/bash-security.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: bash-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck-security:
+    name: ShellCheck (security)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Run ShellCheck security codes
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+        env:
+          SHELLCHECK_OPTS: >-
+            -i SC2046,SC2048,SC2068,SC2086,SC2115,SC2145,SC2154,SC2164,SC2206,SC2207,SC2294,SC2479
+        with:
+          version: v0.11.0
+          severity: warning
+          check_together: "yes"
+          scandir: .
+          ignore_paths: >-
+            .git
+            .venv
+            node_modules
+            docs
+            .cursor
+            .agents
+            .github/workflows

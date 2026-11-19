@@ -13,8 +13,8 @@ on:
       - "modules/web/e2e/**"
       - "modules/web/playwright.config.ts"
       - "modules/web/lighthouserc.cjs"
-      - "bin/python/web_e2e_seed.py"
-      - "bin/bash/web_e2e_seed.sh"
+      - "scripts/web_e2e_seed.py"
+      - "scripts/web_e2e_seed.sh"
       - ".github/workflows/web-e2e.yml"
 
 concurrency:
@@ -83,7 +83,7 @@ jobs:
           "
 
       - name: Start Compose API stack
-        run: make api-all
+        run: ./deploy/scripts/deploy-dev.sh up --build api
 
       - name: Run Playwright (seed via globalSetup)
         run: pnpm web:test:e2e

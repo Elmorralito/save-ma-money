@@ -47,8 +47,8 @@ Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents
 
 | Goal            | Detail                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Primary outcome | Auditable PostgreSQL-backed financial data with tested vertical-slice backend (`backend/`) and web client (`modules/web`) ([#261](https://github.com/Elmorralito/save-ma-money/issues/261))                                                                                                                                                                                                                         |
-| Active packages | `papita-backend` (`backend/` — vertical slices under `backend/domains/{accounts,categories,transactions,reports,ingestion,auth}/`, `backend/core/`, `papita_txnsmodel`, `papita_txnsapi`, `papita_ingestor_core`, `papita_ingestor_email`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**)                                                                                                            |
+| Primary outcome | Auditable PostgreSQL-backed financial data with tested vertical-slice backend (`modules/backend/`) and web client (`modules/web/`) ([#261](https://github.com/Elmorralito/save-ma-money/issues/261))                                                                                                                                                                                                                  |
+| Active packages | `papita-backend` (`modules/backend/` — vertical slices under `modules/backend/domains/{accounts,categories,transactions,reports,ingestion,auth}/`, `modules/backend/core/`, `papita_txnsmodel`, `papita_txnsapi`, `papita_ingestor_core`, `papita_ingestor_email`); `@papita/web` (`modules/web`, pnpm — **no JS domain logic**)                                                                                      |
 | Database        | **PostgreSQL only** ([#31](https://github.com/Elmorralito/save-ma-money/issues/31)). Do not add DuckDB URLs or dialect work.                                                                                                                                                                                                                                                                                        |
 | Auth direction  | **Stateless JWKS Bearer** (PPT-039 / PPT-100): register/login via Supabase Auth (`/api/v1/auth/*`); API verifies JWKS and maps `sub` → `users.id`. Local HS256 is **tests only** (`AUTH_PROVIDER=local`).                                                                                                                                                                                                           |
 | Web epic        | PPT-046 / [#112](https://github.com/Elmorralito/save-ma-money/issues/112) — setup SSOT [`modules/web/README.md`](../modules/web/README.md)                                                                                                                                                                                                                                                                          |
@@ -59,34 +59,43 @@ Index also: [`.cursor/README.md`](README.md) · [`.agents/README.md`](../.agents
 
 ```
 save-ma-money/
-├── pyproject.toml              # Poetry workspace root (package-mode = false; ruff + mypy + pytest)
+├── pyproject.toml              # Poetry workspace root (package-mode = false; ruff + mypy + pytest + semantic-release)
 ├── pnpm-workspace.yaml         # Node workspace → modules/web
-├── backend/                    # Unified Python backend (PPT-097 / PPT-098 / #261)
-│   ├── pyproject.toml          # papita-backend (single deployable Python package)
-│   ├── alembic.ini             # Alembic configuration
-│   ├── alembic/                # PostgreSQL migrations
-│   ├── core/ -> src/backend/core
-│   ├── domains/ -> src/backend/domains
-│   ├── src/
-│   │   ├── backend/
-│   │   │   ├── core/           # Settings, DatabaseSessionManager (get_db), AuthSecurityManager
-│   │   │   └── domains/        # accounts/, categories/, transactions/, reports/, ingestion/, auth/
-│   │   ├── papita_txnsmodel/   # SQLModel tables, DTOs/repositories, services, session.py
-│   │   ├── papita_txnsapi/     # FastAPI app, routers/v1, schemas, dependencies
-│   │   ├── papita_ingestor_core/
-│   │   └── papita_ingestor_email/
-│   └── tests/                  # api/, model/, ingestor_core/, ingestor_email/
+├── compose.yaml                # Full local B0 stack (Postgres, Redis, migrate, api, web, optional ingestor)
 ├── modules/
+│   ├── backend/                # Unified Python backend (PPT-097 / PPT-098 / #261)
+│   │   ├── Dockerfile          # Self-contained backend image (api, migrate, ingestor CLI)
+│   │   ├── pyproject.toml      # papita-backend (single deployable Python package)
+│   │   ├── alembic.ini         # Alembic configuration
+│   │   ├── alembic/            # PostgreSQL migrations
+│   │   ├── core/ -> src/backend/core
+│   │   ├── domains/ -> src/backend/domains
+│   │   ├── src/
+│   │   │   ├── backend/
+│   │   │   │   ├── core/       # Settings, DatabaseSessionManager (get_db), AuthSecurityManager
+│   │   │   │   └── domains/    # accounts/, categories/, transactions/, reports/, ingestion/, auth/
+│   │   │   ├── papita_txnsmodel/
+│   │   │   ├── papita_txnsapi/
+│   │   │   ├── papita_ingestor_core/
+│   │   │   └── papita_ingestor_email/
+│   │   └── tests/              # api/, model/, ingestor_core/, ingestor_email/
 │   └── web/                    # @papita/web — Vite + React SPA (presentation only)
+│       ├── Dockerfile          # Multi-stage pnpm build → nginx-unprivileged
+│       ├── nginx.conf          # SPA reverse proxy + security headers
 │       ├── openapi/            # committed OpenAPI artifact (strategy B)
 │       └── src/                # UI + TanStack Query + stateless Bearer auth
+├── deploy/
+│   ├── redis/redis.conf
+│   └── scripts/                # deploy-dev.sh, api_image_smoke.sh, web_image_smoke.sh
+├── scripts/                    # alembic.sh, auth_smoke.sh, export_openapi.{sh,py}, web_e2e_seed.{sh,py}, utils.sh
 ├── environments/               # PAPITA_ENV profiles (local|staging|production)
-├── bin/                        # bash/ · python/ · make/
-├── docker/                     # database/, api/, redis/, web/, ingestor/, docker-compose.yml
 ├── docs/                       # design program + issue briefs
 ├── .cursor/ · .agents/         # agent instructions + skills
 ├── .strata/                    # agent memory
-└── .github/workflows/          # quality-control, web-ci, web-e2e, migration-check, openapi-contract, security
+└── .github/
+    ├── actions/setup-poetry/   # Composite Poetry setup action
+    ├── scripts/                # migration_check.sh, supply_chain_check.sh, branch_sync_check.sh, …
+    └── workflows/              # quality-control, unittests-python, frontend-quality, web-e2e, release, docker-release, security
 ```
 
 Domain entities in the model layer include **accounts**, **transactions**, **categories**, **users**, and account extension tables. Canonical B0 API start: `make api-up` (uvicorn in-container; see ARCHITECTURE Part IX). Full local stack + health wait: `make api-all` (preferred before `make web-dev`).

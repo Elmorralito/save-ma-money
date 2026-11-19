@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "save-ma-money"
 version = "v0.0.1"
-description = "Papita Public projects: save-me-money"
+description = "Papita Public projects: save-ma-money"
 readme = "README.md"
 package-mode = false
 authors = ["Elmorralito <drestrepohinc@gmail.com>"]
@@ -13,7 +13,7 @@ cryptography = ">=50.0.0,<51.0.0"
 supabase = ">=2.13.0,<3.0.0"
 
 [tool.poetry.group.development.dependencies]
-papita-backend = { path = "backend", develop = true }
+papita-backend = { path = "modules/backend", develop = true }
 
 [tool.poetry.group.ci.dependencies]
 requests = "^2.32.5"
@@ -43,12 +43,12 @@ requires = ["poetry>=1.1.13"]
 build-backend = "poetry.masonry.api"
 
 [tool.pytest.ini_options]
-addopts = "--import-mode=importlib -raqvs --cov=./backend/src --cov-report xml:docs/coverage.xml"
+addopts = "--import-mode=importlib -raqvs --cov=./modules/backend/src --cov-report xml:docs/coverage.xml"
 testpaths = [
-    "./backend/tests/api",
-    "./backend/tests/model",
-    "./backend/tests/ingestor_core",
-    "./backend/tests/ingestor_email",
+    "./modules/backend/tests/api",
+    "./modules/backend/tests/model",
+    "./modules/backend/tests/ingestor_core",
+    "./modules/backend/tests/ingestor_email",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",
@@ -66,15 +66,20 @@ exclude_also = [
     "if __name__ == .__main__.:",
     "@(abc\\.)?abstractmethod",
 ]
-
 ignore_errors = true
 
 [tool.coverage.run]
 branch = true
+source = ["modules/backend/src"]
+omit = [
+    "*/alembic/*",
+    "*/tests/*",
+]
 
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+src = ["modules/backend/src", "modules/backend/tests"]
 exclude = [
     ".git",
     "__pycache__",
@@ -97,7 +102,7 @@ known-first-party = [
 ]
 
 [tool.mypy]
-mypy_path = ["*"]
+mypy_path = ["modules/backend/src"]
 exclude = ["tests/*"]
 python_version = "3.12"
 disable_error_code = ["union-attr", "misc", "attr-defined"]
@@ -108,8 +113,22 @@ ignore_missing_imports = true
 disallow_untyped_calls = false
 namespace_packages = true
 
+# Semantic Release (tag-only on main; dispatches docker-release.yml at the new v* tag).
+[tool.semantic_release]
+tag_format = "v{version}"
+commit_parser = "conventional"
+allow_zero_version = true
+build_command = ""
+
+[tool.semantic_release.branches.main]
+match = "main"
+prerelease = false
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = ['''^Merge pull request #''', '''^Merge branch ''']
+
 # SQLFluff — PostgreSQL query standard for materialized-view SQL under
-# backend/src/papita_txnsmodel/views/ (enforced via pre-commit sqlfluff hooks).
+# modules/backend/src/papita_txnsmodel/views/ (enforced via pre-commit sqlfluff hooks).
 [tool.sqlfluff.core]
 dialect = "postgres"
 templater = "raw"

@@ -1,4 +1,0 @@
-# Docker env files are obsolete — use environments/<name>/.env (see environments/README.md).
-# Keep ignoring accidental local copies under docker/.
-.env
-**/.env

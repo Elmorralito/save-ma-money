@@ -4,9 +4,9 @@ The codemap after the **PPT-095 (`#261`) vertical-slice reset**:
 
 ## Map
 
-- **`backend/`** (`papita-backend`) — single deployable Python package containing:
-  - **`backend/core/`** (`src/backend/core/`) — `Settings`, `DatabaseSessionManager` (`configure_database`, `get_db`, `session_scope`, `with_session`), `AuthSecurityManager`, and `get_current_owner`.
-  - **`backend/domains/`** (`src/backend/domains/`) — vertical domain slices:
+- **`modules/backend/`** (`papita-backend`) — single deployable Python package (with self-contained `Dockerfile`) containing:
+  - **`modules/backend/core/`** (`src/backend/core/`) — `Settings`, `DatabaseSessionManager` (`configure_database`, `get_db`, `session_scope`, `with_session`), `AuthSecurityManager`, and `get_current_owner`.
+  - **`modules/backend/domains/`** (`src/backend/domains/`) — vertical domain slices:
     - `accounts/` — `Accounts` (with `include_in_balance: bool = True` and `currency: CHAR(3)`), 1:1 account extension tables, `AccountsDTO`, `AccountsRepository`, `AccountsService`, and `/api/v1/accounts` router.
     - `categories/` — `Categories`, `CategoriesDTO`, `CategoriesRepository`, `CategoriesService`, and `/api/v1/categories` router.
     - `transactions/` — unified ledger for `INCOME`, `EXPENSE`, and `TRANSFER` (`Transactions` with `currency: CHAR(3)`, `template_id`, and `settlement_status: SettlementStatus`), `TransactionTemplates`, `TransactionsService`, and `/api/v1/transactions` (+ `/api/v1/transactions/{id}/execute`) and `/api/v1/transaction-templates` routers.

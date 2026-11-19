@@ -1,0 +1,41 @@
+---
+name: Code Quality Control
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths-ignore:
+      - "docs/**"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: quality-control-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-control:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-quality')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Poetry environment
+        uses: ./.github/actions/setup-poetry
+        with:
+          with-groups: development,pre-commit
+
+      - name: Run lint and format checks (pre-commit)
+        uses: pre-commit/action@v3.0.1
+        env:
+          # Local-only hooks; web quality runs in frontend-quality.yml.
+          SKIP: mcp-config-validate,web-eslint,web-prettier,web-tsc,web-vitest-related

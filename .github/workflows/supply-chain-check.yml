@@ -1,0 +1,45 @@
+---
+name: Supply Chain Check
+
+on:
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "modules/backend/pyproject.toml"
+      - "poetry.toml"
+      - ".github/scripts/*.sh"
+      - ".github/workflows/*.yml"
+      - ".github/actions/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "pyproject.toml"
+      - "modules/backend/pyproject.toml"
+      - "poetry.toml"
+      - ".github/scripts/*.sh"
+      - ".github/workflows/*.yml"
+      - ".github/actions/**"
+  schedule:
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: supply-chain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supply-chain:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Poetry environment
+        uses: ./.github/actions/setup-poetry
+        with:
+          with-groups: development,pre-commit
+
+      - name: Run supply chain security checks
+        run: /bin/bash .github/scripts/supply_chain_check.sh

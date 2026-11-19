@@ -1,0 +1,206 @@
+---
+# Full local stack: PostgreSQL + Redis + Alembic migrate + FastAPI API + nginx SPA (B0)
+#
+#   cp environments/local/.env.example environments/local/.env
+#   ./deploy/scripts/deploy-dev.sh up --build          # whole stack, waits for API health
+#   ./deploy/scripts/deploy-dev.sh up api              # API + deps only
+#   ./deploy/scripts/deploy-dev.sh up --profile ingestor ingestor   # optional email ingestion worker
+#   ./deploy/scripts/deploy-dev.sh up postgres-db redis             # database + Redis only
+#
+# Images: modules/backend/Dockerfile (api, migrate, ingestor) and modules/web/Dockerfile (nginx SPA).
+# GHCR publish happens only from a release tag (.github/workflows/docker-release.yml).
+#
+# API (direct): http://localhost:8000/api/docs
+# Web (nginx):  http://localhost:3000/  (WEB_PORT) — /api proxied to api:8000
+# Env layout: environments/README.md (PAPITA_ENV=local)
+
+name: "${COMPOSE_NAME:-papita-transactions}"
+
+networks:
+  papita-local-net:
+    driver: bridge
+
+volumes:
+  papita-local-env:
+    driver: local
+  papita-redis-data:
+    driver: local
+
+services:
+  postgres-db:
+    container_name: "postgresql-${COMPOSE_NAME:-papita-transactions}"
+    image: postgres:15-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    expose:
+      - "${DB_PORT:-5435}"
+    ports:
+      - "${DB_PORT:-5435}:${DB_PORT:-5435}/tcp"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready --username=${DB_USER:-admin} --port=${DB_PORT:-5435} --dbname=${DB_NAME:-papita}'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+      POSTGRES_USER: "${DB_USER:-admin}"
+      POSTGRES_PASSWORD: "${DB_PASSWORD:-admin}"
+      POSTGRES_DB: "${DB_NAME:-papita}"
+      PGPORT: "${DB_PORT:-5435}"
+    volumes:
+      - papita-local-env:/var/lib/postgresql/data:rw
+
+  redis:
+    container_name: "redis-${COMPOSE_NAME:-papita-transactions}"
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - ./deploy/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - papita-redis-data:/data:rw
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  migrate:
+    build:
+      context: ./modules/backend
+    image: papita-backend:local
+    container_name: "${COMPOSE_NAME:-papita-transactions}-migrate"
+    networks:
+      - papita-local-net
+    working_dir: /app
+    command:
+      - alembic
+      - -c
+      - /app/alembic.ini
+      - upgrade
+      - head
+    environment:
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./modules/backend
+    image: papita-backend:local
+    container_name: "${COMPOSE_NAME:-papita-transactions}-api"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      # App settings (compose --env-file environments/<env>/.env supplies these)
+      PAPITA_ENV: "${PAPITA_ENV:-local}"
+      # DEBUG defaults true for B0 local Compose; when false, ALLOWED_HOSTS is required.
+      DEBUG: "${DEBUG:-true}"
+      DOCS_ENABLED: "${DOCS_ENABLED:-true}"
+      AUTH_PROVIDER: "${AUTH_PROVIDER:-local}"
+      SUPABASE_URL: "${SUPABASE_URL:-}"
+      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}"
+      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:-}"
+      SUPABASE_JWT_AUDIENCE: "${SUPABASE_JWT_AUDIENCE:-authenticated}"
+      SUPABASE_OAUTH_REDIRECT_TO: "${SUPABASE_OAUTH_REDIRECT_TO:-}"
+      AUTH_RATE_LIMIT_ENABLED: "${AUTH_RATE_LIMIT_ENABLED:-true}"
+      AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: "${AUTH_OAUTH_RATE_LIMIT_PER_MINUTE:-20}"
+      AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-false}"
+      JWT_SECRET_KEY: "${JWT_SECRET_KEY:-replace-with-long-random-secret-min-32-chars}"
+      # Tenant DB stays on Compose Postgres (Auth users live in Supabase Auth, not this DB)
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+      ALLOWED_ORIGINS: '${ALLOWED_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000","http://localhost:5173","http://127.0.0.1:5173"]}'
+      # Required when DEBUG=false (TrustedHost). Harmless when DEBUG=true.
+      ALLOWED_HOSTS: '${ALLOWED_HOSTS:-["localhost","127.0.0.1","api","testserver"]}'
+      DATABASE_POOL_SIZE: "${DATABASE_POOL_SIZE:-5}"
+      # In-compose Redis DNS (do not reuse host REDIS_URL=localhost from .env)
+      REDIS_URL: "redis://redis:6379/0"
+      REDIS_ENABLED: "${REDIS_ENABLED:-true}"
+      REDIS_DEFAULT_TTL_SECONDS: "${REDIS_DEFAULT_TTL_SECONDS:-60}"
+      REDIS_CACHE_TTL_ACCOUNTS_SECONDS: "${REDIS_CACHE_TTL_ACCOUNTS_SECONDS:-60}"
+      REDIS_CACHE_TTL_CATEGORIES_SECONDS: "${REDIS_CACHE_TTL_CATEGORIES_SECONDS:-300}"
+      REDIS_CACHE_TTL_REPORTS_SECONDS: "${REDIS_CACHE_TTL_REPORTS_SECONDS:-180}"
+      REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: "${REDIS_CACHE_TTL_TRANSACTIONS_SECONDS:-15}"
+      REDIS_IDEMPOTENCY_TTL_SECONDS: "${REDIS_IDEMPOTENCY_TTL_SECONDS:-86400}"
+      REDIS_RATE_LIMIT_ENABLED: "${REDIS_RATE_LIMIT_ENABLED:-true}"
+      REDIS_MAX_CONNECTIONS: "${REDIS_MAX_CONNECTIONS:-10}"
+      API_RATE_LIMIT_ENABLED: "${API_RATE_LIMIT_ENABLED:-true}"
+      API_RATE_LIMIT_DEFAULT_TIER: "${API_RATE_LIMIT_DEFAULT_TIER:-free}"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Optional email ingestion worker (profile `ingestor`) — same backend image, CLI command.
+  ingestor:
+    profiles: ["ingestor"]
+    build:
+      context: ./modules/backend
+    image: papita-backend:local
+    command: ["python", "-m", "backend.domains.ingestion.cli"]
+    container_name: "${COMPOSE_NAME:-papita-transactions}-ingestor"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    environment:
+      PAPITA_ENV: "${PAPITA_ENV:-local}"
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+      PAPITA_INGESTOR_OWNER_ID: "${PAPITA_INGESTOR_OWNER_ID:?set PAPITA_INGESTOR_OWNER_ID in environments/local/.env}"
+      PAPITA_INGESTOR_LOOKBACK_HOURS: "${PAPITA_INGESTOR_LOOKBACK_HOURS:-24}"
+      PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES: "${PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES:-60}"
+      PAPITA_INGESTOR_DRY_RUN: "${PAPITA_INGESTOR_DRY_RUN:-false}"
+      PAPITA_INGESTOR_FLOW_RETRIES: "${PAPITA_INGESTOR_FLOW_RETRIES:-2}"
+      # Startup preflight also validates Gmail auth (token file OR refresh-token triplet).
+      GMAIL_CLIENT_ID: "${GMAIL_CLIENT_ID:-}"
+      GMAIL_CLIENT_SECRET: "${GMAIL_CLIENT_SECRET:-}"
+      GMAIL_REFRESH_TOKEN: "${GMAIL_REFRESH_TOKEN:-}"
+      GMAIL_TOKEN_URI: "${GMAIL_TOKEN_URI:-https://oauth2.googleapis.com/token}"
+      GMAIL_PROCESSED_LABEL: "${GMAIL_PROCESSED_LABEL:-PAPITA_PROCESSED}"
+      GMAIL_TOKEN_FILE: "${GMAIL_TOKEN_FILE:-}"
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # nginx SPA (PPT-057 / #122 + PPT-063 / #128). VITE_* baked at image build — not runtime on nginx.
+  web:
+    build:
+      context: .
+      dockerfile: modules/web/Dockerfile
+      args:
+        VITE_APP_TITLE: "${VITE_APP_TITLE:-Papita}"
+        VITE_PAPITA_BREAKING_CHANGES_ID: "${VITE_PAPITA_BREAKING_CHANGES_ID:-ppt-044}"
+        # Leave empty for same-origin /api through this nginx (do not bake :8000).
+        VITE_API_BASE_URL: "${VITE_API_BASE_URL:-}"
+    container_name: "${COMPOSE_NAME:-papita-transactions}-web"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    ports:
+      # nginx-unprivileged listens on 8080 (Trivy DS-0002 / non-root)
+      - "${WEB_PORT:-3000}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

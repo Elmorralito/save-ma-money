@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1090,SC1091
+# Validate workspace metadata and audit installed dependencies.
+set -euo pipefail
 
-# shellcheck source=../../bin/bash/utils.sh
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../bin/bash" && pwd)/utils.sh"
-PROJECT_PATH="$(resolve_repo_root)" || exit 1
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "${ROOT}"
 
-cd "${PROJECT_PATH}" || exit
+log() {
+  printf '%s %s\n' "$1" "$2"
+}
 
 log "INFO" "Validating Poetry project metadata..."
-run_command 1 "poetry check"
+poetry check
 
-log "INFO" "Validating module version metadata..."
-run_command 1 "poetry run python ${PROJECT_PATH}/.github/scripts/check_module_versions.py"
-
-log "INFO" "Upgrading pip to a patched release..."
-run_command 1 "poetry run python -m pip install --disable-pip-version-check --upgrade 'pip>=26.1.2'"
+log "INFO" "Validating workspace and module metadata..."
+poetry run python "${ROOT}/.github/scripts/check_module_versions.py"
 
 log "INFO" "Auditing installed dependencies..."
-run_command 1 "poetry run python -m pip install --disable-pip-version-check pip-audit"
-run_command 1 "poetry run pip-audit --desc on --skip-editable"
+poetry run python -m pip install --disable-pip-version-check --quiet pip-audit
+poetry run pip-audit --desc on --skip-editable
 
 log "INFO" "Supply chain checks completed."
