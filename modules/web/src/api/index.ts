@@ -28,9 +28,13 @@ export {
   type BffSession,
   type BffUser,
 } from "@/api/auth";
-export { clearCsrfToken, getCsrfToken, setCsrfToken } from "@/api/csrf";
 export {
   apiFetch,
+  clearAuthTokens,
+  getAccessExpiresAt,
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
   setUnauthorizedHandler,
   type ApiFetchOptions,
   type ApiFetchResult,
@@ -56,18 +60,10 @@ export { IDEMPOTENCY_KEY_HEADER, newIdempotencyKey } from "@/api/idempotency";
 export { invalidateAfterLedgerWrite, invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 export { getClientContract } from "@/api/meta";
 export {
-  cancelMovement,
-  createMovement,
-  executeMovement,
-  getMovement,
-  listMovements,
-  updateMovement,
-  type ListMovementsParams,
-} from "@/api/movements";
-export {
   bulkCreateTransactions,
   createTransaction,
   deleteTransaction,
+  executeTransaction,
   getTransaction,
   listTransactions,
   updateTransaction,
@@ -81,8 +77,6 @@ export {
   clientContractQueryOptions,
   healthLiveQueryOptions,
   healthQueryOptions,
-  movementDetailQueryOptions,
-  movementsListQueryOptions,
   spendingReportQueryOptions,
   transactionDetailQueryOptions,
   transactionTemplateDetailQueryOptions,

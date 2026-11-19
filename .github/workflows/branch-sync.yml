@@ -1,19 +1,15 @@
 ---
-# Fail when a PR (or dispatched) branch is behind main and needs merge/rebase.
-# Being ahead of main is normal for feature work and does not fail.
-
-name: Branch sync with main
+name: Branch Sync Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
       base_ref:
-        description: "Base ref to compare against (default origin/main)"
-        type: string
+        description: Base ref to compare HEAD against
         required: false
-        default: "origin/main"
+        default: origin/main
 
 concurrency:
   group: branch-sync-${{ github.event.pull_request.number || github.ref }}

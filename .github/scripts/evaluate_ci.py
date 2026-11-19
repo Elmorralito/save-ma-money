@@ -213,12 +213,6 @@ RUNTIME_SIGNAL_DEFS: list[RuntimeSignalDef] = [
         "file": ".github/workflows/quality-control.yml",
         "required": ["schedule:", "cron:"],
     },
-    {
-        "name": "Strata push gate",
-        "score": 1,
-        "file": ".github/workflows/strata-check.yml",
-        "required": ["push:", "branches:", "main"],
-    },
 ]
 
 CI_BADGE_PATTERN = re.compile(r"\[!\[CI Adoption\]\([^)]+\)\]\([^)]+\)")
@@ -395,7 +389,6 @@ RUNTIME_RECOMMENDATIONS: dict[str, str] = {
     "Postgres CI service": "Add a Postgres service to quality-control for live integration tests",
     "Codecov upload gate": "Set codecov fail_ci_if_error: true in quality-control",
     "Scheduled quality control": "Add a weekly schedule to quality-control.yml",
-    "Strata push gate": "Run strata-check on push to main (path-filtered)",
 }
 
 
@@ -428,7 +421,7 @@ def build_badge_url(level: str, score: int, color: str) -> str:
     """Build a shields.io badge URL for the adoption level."""
     label = "CI%20Adoption"
     message = f"{level}%20%7C%20Score%3A%20{score}"
-    return f"https://img.shields.io/badge/{label}-{message}-{color}" "?style=flat&logo=githubactions&logoColor=white"
+    return f"https://img.shields.io/badge/{label}-{message}-{color}?style=flat&logo=githubactions&logoColor=white"
 
 
 def build_badge_link(repo_name: str) -> str:

@@ -2,7 +2,7 @@
  * Playwright globalSetup (PPT-056 / #121).
  *
  * Invokes the PPT-061 seed SSOT only — do not invent a second SQL seed.
- * Requires a healthy Compose API (`make api-all`).
+ * Requires a healthy Compose API (`./deploy/scripts/deploy-dev.sh up --build`).
  */
 import { execFileSync } from "node:child_process";
 import path from "node:path";
@@ -19,9 +19,9 @@ export default function globalSetup(): void {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     try {
       console.log(
-        `[e2e] seeding fixtures via make web-e2e-seed (attempt ${attempt}/${MAX_ATTEMPTS}, cwd=${repoRoot})`,
+        `[e2e] seeding fixtures via scripts/web_e2e_seed.sh (attempt ${attempt}/${MAX_ATTEMPTS}, cwd=${repoRoot})`,
       );
-      execFileSync("make", ["web-e2e-seed"], {
+      execFileSync("bash", ["./scripts/web_e2e_seed.sh"], {
         cwd: repoRoot,
         stdio: "inherit",
         env: process.env,

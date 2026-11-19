@@ -3,21 +3,12 @@ name: Trivy Security Scan
 
 on:
   pull_request:
-    paths:
-      - "pyproject.toml"
-      - "modules/**/pyproject.toml"
-      - "docker/**"
-      - ".github/workflows/trivy.yml"
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - main
-    paths:
-      - "pyproject.toml"
-      - "modules/**/pyproject.toml"
-      - "docker/**"
-      - ".github/workflows/trivy.yml"
   schedule:
-    - cron: "0 7 * * 1"
+    - cron: "0 6 * * 1"
   workflow_dispatch:
 
 concurrency:
@@ -44,7 +35,6 @@ jobs:
           scan-ref: .
           scanners: vuln,misconfig
           severity: CRITICAL,HIGH
-          # Keep SARIF + exit-code aligned with severity (see trivy-action entrypoint).
           limit-severities-for-sarif: true
           format: sarif
           output: trivy-results.sarif
@@ -52,7 +42,7 @@ jobs:
           ignore-unfixed: true
 
       - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
         if: always() && hashFiles('trivy-results.sarif') != ''
         with:
           sarif_file: trivy-results.sarif

@@ -11,12 +11,9 @@ export async function invalidateAfterLedgerWrite(
   queryClient: QueryClient,
   options: {
     transactions?: boolean;
-    movements?: boolean;
     templates?: boolean;
     transactionId?: string;
-    movementId?: string;
     removeTransactionId?: string;
-    removeMovementId?: string;
   } = {},
 ): Promise<void> {
   const tasks: Promise<unknown>[] = [
@@ -26,9 +23,6 @@ export async function invalidateAfterLedgerWrite(
 
   if (options.transactions !== false) {
     tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.transactions.lists() }));
-  }
-  if (options.movements) {
-    tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.movements.lists() }));
   }
   if (options.templates) {
     tasks.push(queryClient.invalidateQueries({ queryKey: queryKeys.transactionTemplates.all }));
@@ -40,19 +34,9 @@ export async function invalidateAfterLedgerWrite(
       }),
     );
   }
-  if (options.movementId) {
-    tasks.push(
-      queryClient.invalidateQueries({ queryKey: queryKeys.movements.detail(options.movementId) }),
-    );
-  }
   if (options.removeTransactionId) {
     queryClient.removeQueries({
       queryKey: queryKeys.transactions.detail(options.removeTransactionId),
-    });
-  }
-  if (options.removeMovementId) {
-    queryClient.removeQueries({
-      queryKey: queryKeys.movements.detail(options.removeMovementId),
     });
   }
 

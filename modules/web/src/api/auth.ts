@@ -1,5 +1,11 @@
-import { apiFetch } from "@/api/http";
-import { clearCsrfToken, setCsrfToken } from "@/api/csrf";
+import {
+  apiFetch,
+  clearAuthTokens,
+  getAccessExpiresAt,
+  getAccessToken,
+  getRefreshToken,
+  setAuthTokens,
+} from "@/api/http";
 
 export type BffUser = {
   id: string;
@@ -7,9 +13,10 @@ export type BffUser = {
   email: string;
   display_name: string | null;
   phone: string | null;
-  provider: string;
+  provider?: string;
+  provider_type?: string;
   auth_provider: string;
-  created_at: string;
+  created_at: string | null;
 };
 
 export type BffSession = {
@@ -17,48 +24,80 @@ export type BffSession = {
   user: BffUser | null;
   csrf_token: string | null;
   session_backend: string | null;
-  /** Unix seconds when the server-held access JWT expires (never the JWT itself). */
   access_expires_at: number | null;
 };
 
-function rememberCsrf(session: BffSession): BffSession {
-  if (session.authenticated && session.csrf_token) {
-    setCsrfToken(session.csrf_token);
-  }
-  if (!session.authenticated) {
-    clearCsrfToken();
-  }
-  return session;
+type TokenPayload = {
+  access_token: string;
+  token_type?: string;
+  expires_in?: number | null;
+  refresh_token?: string | null;
+};
+
+function unauthenticatedSession(): BffSession {
+  return {
+    authenticated: false,
+    user: null,
+    csrf_token: null,
+    session_backend: "bearer",
+    access_expires_at: null,
+  };
 }
 
-/** GET /api/v1/bff/auth/session — SPA bootstrap (200 even when anonymous). */
+/** Resolve current session via stateless Bearer token + ``GET /api/v1/auth/me``. */
 export async function getBffSession(signal?: AbortSignal): Promise<BffSession> {
-  const { data } = await apiFetch<BffSession>("/api/v1/bff/auth/session", {
-    signal,
-    skipAuthRefresh: true,
-  });
-  return rememberCsrf(data);
+  if (!getAccessToken()) {
+    return unauthenticatedSession();
+  }
+  try {
+    const { data: user } = await apiFetch<BffUser>("/api/v1/auth/me", {
+      signal,
+      skipAuthRefresh: true,
+    });
+    return {
+      authenticated: true,
+      user: {
+        ...user,
+        provider: user.provider ?? user.provider_type ?? "email",
+      },
+      csrf_token: null,
+      session_backend: "bearer",
+      access_expires_at: getAccessExpiresAt(),
+    };
+  } catch {
+    clearAuthTokens();
+    return unauthenticatedSession();
+  }
 }
 
-/** POST /api/v1/bff/auth/login — sets HttpOnly session cookie; no JWT in body. */
+/** ``POST /api/v1/auth/login`` (OAuth2 form) + ``GET /api/v1/auth/me``. */
 export async function bffLogin(input: { email: string; password: string }): Promise<BffSession> {
-  const { data } = await apiFetch<BffSession>("/api/v1/bff/auth/login", {
+  const form = new URLSearchParams({
+    username: input.email.trim(),
+    password: input.password,
+  });
+  const { data: token } = await apiFetch<TokenPayload>("/api/v1/auth/login", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
     skipAuthRefresh: true,
   });
-  return rememberCsrf(data);
+  setAuthTokens({
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token ?? null,
+    expiresIn: token.expires_in ?? 3600,
+  });
+  return getBffSession();
 }
 
-/** POST /api/v1/bff/auth/register — creates user; does not open a session. */
+/** ``POST /api/v1/auth/register`` — creates user; does not open a session. */
 export async function bffRegister(input: {
   email: string;
   password: string;
   display_name?: string;
 }): Promise<BffUser & { email_confirmation_required: boolean }> {
-  const { data } = await apiFetch<BffUser & { email_confirmation_required: boolean }>(
-    "/api/v1/bff/auth/register",
+  const { data } = await apiFetch<BffUser & { email_confirmation_required?: boolean }>(
+    "/api/v1/auth/register",
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -68,11 +107,12 @@ export async function bffRegister(input: {
   );
   return {
     ...data,
+    provider: data.provider ?? data.provider_type ?? "email",
     email_confirmation_required: Boolean(data.email_confirmation_required),
   };
 }
 
-/** POST /api/v1/bff/auth/resend-confirmation — soft-success 204; no session. */
+/** ``POST /api/v1/auth/resend-confirmation`` — soft-success 204; no session. */
 export async function bffResendConfirmation(input: {
   email: string;
   email_redirect_to?: string;
@@ -80,7 +120,7 @@ export async function bffResendConfirmation(input: {
   const redirect =
     input.email_redirect_to ??
     (typeof window !== "undefined" ? `${window.location.origin}/auth/confirm` : undefined);
-  await apiFetch<undefined>("/api/v1/bff/auth/resend-confirmation", {
+  await apiFetch<undefined>("/api/v1/auth/resend-confirmation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -91,35 +131,59 @@ export async function bffResendConfirmation(input: {
   });
 }
 
-/** POST /api/v1/bff/auth/refresh — rotate tokens server-side. */
+/** ``POST /api/v1/auth/refresh`` — rotate tokens. */
 export async function bffRefresh(signal?: AbortSignal): Promise<BffSession> {
-  const { data } = await apiFetch<BffSession>("/api/v1/bff/auth/refresh", {
+  const refresh = getRefreshToken();
+  if (!refresh) {
+    clearAuthTokens();
+    return unauthenticatedSession();
+  }
+  const { data: token } = await apiFetch<TokenPayload>("/api/v1/auth/refresh", {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refresh }),
     signal,
     skipAuthRefresh: true,
   });
-  return rememberCsrf(data);
+  setAuthTokens({
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token ?? refresh,
+    expiresIn: token.expires_in ?? 3600,
+  });
+  return getBffSession(signal);
 }
 
-/** POST /api/v1/bff/auth/logout — clears cookie + server session. */
+/** ``POST /api/v1/auth/logout`` — clears in-memory Bearer session. */
 export async function bffLogout(): Promise<void> {
-  await apiFetch<undefined>("/api/v1/bff/auth/logout", {
-    method: "POST",
-    skipAuthRefresh: true,
-  });
-  clearCsrfToken();
+  const access = getAccessToken();
+  const refresh = getRefreshToken();
+  clearAuthTokens();
+  if (!access) {
+    return;
+  }
+  try {
+    await apiFetch<undefined>("/api/v1/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: access,
+        refresh_token: refresh ?? "local-stateless",
+      }),
+      skipAuthRefresh: true,
+    });
+  } catch {
+    // Stateless local mode returns 501; clearing tokens in memory is sufficient.
+  }
 }
 
 export type BffOAuthProvider = "google" | "github";
 
-/**
- * Same-origin BFF OAuth start URL (full-page navigation — do not fetch).
- * Sets HttpOnly PKCE cookies then 302s to the IdP; callback sets ``papita_sid``.
- */
+/** Same-origin OAuth start URL (`/api/v1/auth/oauth/{provider}?follow=true`). */
 export function bffOAuthStartUrl(
   provider: BffOAuthProvider,
   returnTo: string = "/dashboard",
 ): string {
-  const params = new URLSearchParams({ return_to: returnTo });
-  return `/api/v1/bff/auth/oauth/${provider}?${params.toString()}`;
+  void returnTo;
+  const params = new URLSearchParams({ follow: "true" });
+  return `/api/v1/auth/oauth/${provider}?${params.toString()}`;
 }

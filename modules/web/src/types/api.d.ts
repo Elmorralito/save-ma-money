@@ -204,30 +204,7 @@ export interface paths {
         put?: never;
         /**
          * Logout
-         * @description Revoke the session: Supabase Auth sign-out and/or Redis JWT denylist.
-         *
-         *     * ``AUTH_PROVIDER=supabase`` — calls Supabase ``sign_out``, then denylists the
-         *       access token when Redis is enabled so remaining JWT TTL cannot be reused.
-         *     * ``AUTH_PROVIDER=local`` — when Redis is enabled, denylists the access token
-         *       and returns 204; otherwise returns HTTP 501 (no refresh/session store).
-         *
-         *     Access token may be supplied in the JSON body or as ``Authorization: Bearer``.
-         *     Per-IP OAuth/auth rate limits apply (logout may run before tenant context).
-         *
-         *     Args:
-         *         body: Refresh token (required for Supabase) and optional access token.
-         *         settings: Application settings selecting Auth provider.
-         *         credentials: Optional bearer credentials for the access JWT.
-         *         session_store: Redis-backed JWT denylist (no-op when Redis disabled).
-         *         _rate_limit: Per-IP auth rate-limit dependency (side effect only).
-         *
-         *     Returns:
-         *         Empty 204 response on success, or deferred JSON with status 501 in local
-         *         mode without Redis.
-         *
-         *     Raises:
-         *         HTTPException: 400 when access token missing; 401 on Auth errors;
-         *             429 when the per-IP auth limit is exceeded; 503 when Auth misconfigured.
+         * @description Revoke the Supabase Auth session when ``AUTH_PROVIDER=supabase``.
          */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
@@ -505,312 +482,6 @@ export interface paths {
          *             provision failures.
          */
         post: operations["complete_sso_api_v1_auth_sso_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bff Login
-         * @description Authenticate and set an HttpOnly session-id cookie (JWTs stay server-side).
-         */
-        post: operations["bff_login_api_v1_bff_auth_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bff Logout
-         * @description Clear BFF session cookie, revoke at IdP when possible, denylist access JWT.
-         */
-        post: operations["bff_logout_api_v1_bff_auth_logout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/oauth/callback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bff Oauth Callback Get
-         * @description Complete Supabase OAuth for the SPA and set ``papita_sid`` (never JWT JSON).
-         *
-         *     Pair with ``GET /bff/auth/oauth/{provider}``. Exchanges the authorization
-         *     ``code`` using Path=/api PKCE cookies, creates a BFF session, then 302s to
-         *     the allowlisted SPA ``return_to`` URL. Failures redirect to ``/login?oauth_error=1``.
-         */
-        get: operations["bff_oauth_callback_get_api_v1_bff_auth_oauth_callback_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/oauth/{provider}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bff Start Oauth
-         * @description Start Supabase OAuth for the SPA and 302 to the IdP (PKCE cookies, Path=/api).
-         *
-         *     Browser navigates here (full page, not ``fetch``). ``return_to`` is a relative
-         *     SPA path (default ``/dashboard``) stored for the callback redirect after
-         *     ``papita_sid`` is set. Never returns JWTs or the PKCE verifier to JavaScript.
-         */
-        get: operations["bff_start_oauth_api_v1_bff_auth_oauth__provider__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bff Refresh
-         * @description Rotate tokens inside the BFF session store (cookie required).
-         */
-        post: operations["bff_refresh_api_v1_bff_auth_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bff Register
-         * @description Register via the same Auth/UsersService path as ``POST /auth/register``.
-         *
-         *     Does not create a BFF session — clients should call ``POST /bff/auth/login``
-         *     after email confirmation when required (PPT-068). Never sets ``papita_sid``.
-         */
-        post: operations["bff_register_api_v1_bff_auth_register_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/resend-confirmation": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Bff Resend Confirmation
-         * @description Resend signup confirmation email for pending SPA users (PPT-068).
-         *
-         *     Anonymous-friendly (CSRF-exempt). Does not set ``papita_sid``. Soft-succeeds
-         *     for unknown emails; 429 when Auth/SMTP rate limits fire.
-         */
-        post: operations["bff_resend_confirmation_api_v1_bff_auth_resend_confirmation_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bff/auth/session": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bff Session
-         * @description Probe BFF session for SPA bootstrap.
-         *
-         *     Returns ``authenticated: false`` (200) when no valid cookie/Bearer — avoids
-         *     treating anonymous bootstrap as an error. When authenticated via cookie,
-         *     includes ``csrf_token`` for mutation headers.
-         */
-        get: operations["bff_session_api_v1_bff_auth_session_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Budgets
-         * @description List budgets — deferred post-MVP.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget listing is not available in MVP.
-         */
-        get: operations["list_budgets_api_v1_budgets_get"];
-        put?: never;
-        /**
-         * Create Budget
-         * @description Create budget — deferred post-MVP.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget creation is not available in MVP.
-         */
-        post: operations["create_budget_api_v1_budgets_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget
-         * @description Get budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget retrieval is not available in MVP.
-         */
-        get: operations["get_budget_api_v1_budgets__budget_id__get"];
-        /**
-         * Update Budget
-         * @description Update budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget updates are not available in MVP.
-         */
-        put: operations["update_budget_api_v1_budgets__budget_id__put"];
-        post?: never;
-        /**
-         * Delete Budget
-         * @description Delete budget — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget deletion is not available in MVP.
-         */
-        delete: operations["delete_budget_api_v1_budgets__budget_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}/allocations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Update Budget Allocations
-         * @description Budget allocations — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that allocation updates are not available in MVP.
-         */
-        post: operations["update_budget_allocations_api_v1_budgets__budget_id__allocations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/budgets/{budget_id}/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget Summary
-         * @description Budget summary — deferred post-MVP.
-         *
-         *     Args:
-         *         budget_id: Path identifier reserved for future budget primary key.
-         *
-         *     Returns:
-         *         DeferredResponse: Explains that budget summaries are not available in MVP.
-         */
-        get: operations["get_budget_summary_api_v1_budgets__budget_id__summary_get"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1126,6 +797,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ingestion Connections
+         * @description List non-secret ingestion connections for the authenticated owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         pagination: Skip/limit window for the response page.
+         *         connection_service: Injected connection status service.
+         *
+         *     Returns:
+         *         Paginated allowlisted connection resources.
+         */
+        get: operations["list_ingestion_connections_api_v1_ingestion_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/connections/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ingestion Connection
+         * @description Return one connection when owned by the caller; else 404.
+         *
+         *     Args:
+         *         connection_id: Connection primary key.
+         *         owner: Authenticated tenant from JWT.
+         *         connection_service: Injected connection status service.
+         *
+         *     Returns:
+         *         Allowlisted connection resource.
+         */
+        get: operations["get_ingestion_connection_api_v1_ingestion_connections__connection_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Ingestion Runs
+         * @description List recent ingestion runs for the authenticated owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         pagination: Skip/limit window for the response page.
+         *         run_service: Injected run status service.
+         *         connection_id: Optional filter by connection id.
+         *
+         *     Returns:
+         *         Paginated allowlisted run resources, newest first.
+         */
+        get: operations["list_ingestion_runs_api_v1_ingestion_runs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/runs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Ingestion Run
+         * @description Return the most recently started run for the owner.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         run_service: Injected run status service.
+         *         connection_id: Optional filter to a single connection.
+         *
+         *     Returns:
+         *         Allowlisted run resource.
+         *
+         *     Raises:
+         *         HTTPException: 404 when no runs exist for the scope.
+         */
+        get: operations["get_latest_ingestion_run_api_v1_ingestion_runs_latest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/meta/client-contract": {
         parameters: {
             query?: never;
@@ -1145,186 +932,6 @@ export interface paths {
          *         stable ``X-Papita-Error-Code`` values clients should handle.
          */
         get: operations["get_client_contract_api_v1_meta_client_contract_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/movements": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List Movements
-         * @description List tenant transfer rows with optional source/destination and date filters.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT.
-         *         pagination: Skip/limit window for the response page.
-         *         transactions_service: Injected service providing ``list_transfers``.
-         *         filters: Bundled query parameters mapped to service kwargs.
-         *
-         *     Returns:
-         *         Paginated ``MovementResponse`` items for TRANSFER rows owned by ``owner``.
-         */
-        get: operations["list_movements_api_v1_movements_get"];
-        put?: never;
-        /**
-         * Create Movement
-         * @description Create a transfer between two tenant-owned accounts.
-         *
-         *     ``create_transfer`` always persists PENDING. When ``scheduled`` is false, the
-         *     handler immediately calls ``complete_transfer`` so the response reflects COMPLETED
-         *     and balance views are refreshed once. Scheduled (PENDING) creates skip MV refresh.
-         *
-         *     Args:
-         *         body: Transfer create payload (accounts, amount, currency, scheduled flag).
-         *         owner: Authenticated tenant that will own the transfer.
-         *         transactions_service: Injected service for create/complete helpers.
-         *         accounts_service: Injected service used to validate account ownership.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementResponse for the created (and possibly completed) transfer.
-         *
-         *     Raises:
-         *         HTTPException: 404/422 from account validation; 401 when owner id is missing.
-         */
-        post: operations["create_movement_api_v1_movements_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/movements/{movement_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Movement
-         * @description Retrieve a single transfer with linked account names.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant from JWT.
-         *         transactions_service: Injected service for owner-scoped get-by-id.
-         *
-         *     Returns:
-         *         MovementResponse including source/destination names when linked DTOs load.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the transfer is missing, not owned, or not TRANSFER.
-         */
-        get: operations["get_movement_api_v1_movements__movement_id__get"];
-        /**
-         * Update Movement
-         * @description Update a pending transfer via upsert of the merged DTO.
-         *
-         *     PENDING rows do not affect completed ledger MVs, so balance views are not
-         *     refreshed here (cache versions are still bumped).
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         body: Partial update fields applied onto the existing PENDING transfer.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service for load and upsert.
-         *         accounts_service: Injected service used to re-validate account legs.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementResponse for the updated transfer row.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing; 422 when not PENDING or legs/currency invalid.
-         */
-        put: operations["update_movement_api_v1_movements__movement_id__put"];
-        post?: never;
-        /**
-         * Delete Movement
-         * @description Cancel a pending transfer by setting status to CANCELLED.
-         *
-         *     Note:
-         *         This is not a soft-delete of the row; cancelled transfers remain in the ledger.
-         *         Cancelling PENDING does not change completed MV totals, so views are not refreshed.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service providing ``cancel``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing or cancel fails; 422 when not PENDING.
-         */
-        delete: operations["delete_movement_api_v1_movements__movement_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/movements/{movement_id}/execute": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Execute Movement
-         * @description Complete a pending scheduled transfer.
-         *
-         *     Args:
-         *         movement_id: Transfer primary key from the path.
-         *         owner: Authenticated tenant that must own the transfer.
-         *         transactions_service: Injected service providing ``complete_transfer``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         MovementExecuteResponse with completed status and execution timestamp.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing or complete fails; 422 when not PENDING.
-         */
-        post: operations["execute_movement_api_v1_movements__movement_id__execute_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/budget-performance": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Budget Performance Report
-         * @description Return deferred budget-performance stub (FR-09 / v4.1).
-         *
-         *     Requires a valid JWT so the deferred surface stays tenant-authenticated even
-         *     though no report data is produced until budgets exist.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT (required; unused until budgets land).
-         *
-         *     Returns:
-         *         DeferredResponse explaining that budget-performance is not in MVP.
-         */
-        get: operations["get_budget_performance_report_api_v1_reports_budget_performance_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1643,46 +1250,13 @@ export interface paths {
         };
         /**
          * List Transactions
-         * @description List tenant transactions with optional G4 filters.
-         *
-         *     By default TRANSFER rows are excluded (``exclude_transfer=True``) unless the
-         *     client filters ``transaction_type=transfer``. Short-TTL Redis cache-aside when enabled.
-         *
-         *     Args:
-         *         owner: Authenticated tenant from JWT.
-         *         pagination: Skip/limit window for the response page.
-         *         transactions_service: Injected service providing ``list_transactions``.
-         *         filters: Bundled query parameters mapped to service kwargs.
-         *         settings: Application settings (cache TTL).
-         *         redis: Optional Redis client when ``REDIS_ENABLED``.
-         *         response: FastAPI response used to set ``X-Cache`` status.
-         *
-         *     Returns:
-         *         Paginated ``TransactionResponse`` items owned by ``owner``.
+         * @description List tenant transactions and transfers with optional filters.
          */
         get: operations["list_transactions_api_v1_transactions_get"];
         put?: never;
         /**
          * Create Transaction
-         * @description Create an INCOME or EXPENSE transaction for the authenticated tenant.
-         *
-         *     Optional ``Idempotency-Key`` header (when Redis is enabled) makes retries safe:
-         *     a repeated key returns the original create response without inserting again.
-         *
-         *     Args:
-         *         body: Create payload (account, category, type, amount, date, optional fields).
-         *         owner: Authenticated tenant that will own the new row.
-         *         transactions_service: Injected service providing ``create``.
-         *         settings: Application settings (idempotency TTL).
-         *         redis: Optional Redis client for cache invalidation / idempotency.
-         *         idempotency_key: Optional client key for safe retries.
-         *
-         *     Returns:
-         *         TransactionResponse for the persisted row.
-         *
-         *     Raises:
-         *         HTTPException: 401 when owner id is missing; 409 when idempotency key is
-         *             pending; domain errors may surface as 400 via the global handler.
+         * @description Create an INCOME, EXPENSE, or TRANSFER transaction for the authenticated tenant.
          */
         post: operations["create_transaction_api_v1_transactions_post"];
         delete?: never;
@@ -1702,27 +1276,7 @@ export interface paths {
         put?: never;
         /**
          * Bulk Create Transactions
-         * @description Create multiple INCOME/EXPENSE transactions for the authenticated tenant.
-         *
-         *     Each item is created independently; ``ValueError`` / ``TypeError`` on an item
-         *     increments ``failed`` without aborting the remainder of the batch. Optional
-         *     ``Idempotency-Key`` replays a prior bulk response when Redis is enabled.
-         *
-         *     Args:
-         *         body: Bulk payload containing one or more ``TransactionCreate`` items.
-         *         owner: Authenticated tenant that will own every created row.
-         *         transactions_service: Injected service used for per-item ``create``.
-         *         settings: Application settings (idempotency TTL).
-         *         redis: Optional Redis client for cache invalidation / idempotency.
-         *         idempotency_key: Optional client key for safe retries.
-         *
-         *     Returns:
-         *         TransactionBulkResponse with counts and successfully created items.
-         *
-         *     Raises:
-         *         HTTPException: 401 when the owner context lacks a primary key; 409 when
-         *             an idempotency key is still pending; 422 when the batch exceeds
-         *             ``API_BULK_MAX_TRANSACTIONS``.
+         * @description Create multiple transactions for the authenticated tenant.
          */
         post: operations["bulk_create_transactions_api_v1_transactions_bulk_post"];
         delete?: never;
@@ -1740,56 +1294,18 @@ export interface paths {
         };
         /**
          * Get Transaction
-         * @description Retrieve a single tenant-owned transaction with linked names.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         owner: Authenticated tenant from JWT.
-         *         transactions_service: Injected service for owner-scoped get-by-id.
-         *         settings: Application settings (cache TTL).
-         *         redis: Optional Redis client when ``REDIS_ENABLED``.
-         *         response: FastAPI response used to set ``X-Cache`` status.
-         *
-         *     Returns:
-         *         TransactionResponse including account/category names when linked DTOs load.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the row is missing or not owned by ``owner``.
+         * @description Retrieve a single tenant-owned transaction or transfer with linked names.
          */
         get: operations["get_transaction_api_v1_transactions__transaction_id__get"];
         /**
          * Update Transaction
-         * @description Update a tenant-owned INCOME/EXPENSE transaction via upsert.
-         *
-         *     TRANSFER rows must be updated through ``PUT /movements`` instead.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         body: Partial update fields applied onto the existing DTO.
-         *         owner: Authenticated tenant that must own the row.
-         *         transactions_service: Injected service for get and upsert.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Returns:
-         *         TransactionResponse for the updated row.
-         *
-         *     Raises:
-         *         HTTPException: 404 when missing; 422 when the row is a TRANSFER.
+         * @description Update a tenant-owned transaction or pending transfer via upsert.
          */
         put: operations["update_transaction_api_v1_transactions__transaction_id__put"];
         post?: never;
         /**
          * Delete Transaction
-         * @description Soft-delete a tenant-owned transaction.
-         *
-         *     Args:
-         *         transaction_id: Ledger primary key from the path.
-         *         owner: Authenticated tenant that must own the row.
-         *         transactions_service: Injected service providing soft ``delete``.
-         *         redis: Optional Redis client for cache invalidation.
-         *
-         *     Raises:
-         *         HTTPException: 404 when the row is missing or not owned by ``owner``.
+         * @description Soft-delete a tenant-owned transaction or cancel a pending transfer.
          */
         delete: operations["delete_transaction_api_v1_transactions__transaction_id__delete"];
         options?: never;
@@ -1797,7 +1313,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/transactions/{transaction_id}/split": {
+    "/api/v1/transactions/{transaction_id}/execute": {
         parameters: {
             query?: never;
             header?: never;
@@ -1807,16 +1323,10 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Split Transaction
-         * @description Defer transaction split until v4 ``transaction_splits`` (MVP stub).
-         *
-         *     Args:
-         *         transaction_id: Path identifier reserved for a future split target row.
-         *
-         *     Returns:
-         *         DeferredResponse explaining that split is not implemented in MVP.
+         * Execute Transaction
+         * @description Complete a pending scheduled transfer.
          */
-        post: operations["split_transaction_api_v1_transactions__transaction_id__split_post"];
+        post: operations["execute_transaction_api_v1_transactions__transaction_id__execute_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1862,6 +1372,11 @@ export interface components {
              * @default
              */
             description: string;
+            /**
+             * Include In Balance
+             * @default true
+             */
+            include_in_balance: boolean;
             /** Initial Value */
             initial_value?: number | null;
             /** Ledger Side */
@@ -1915,6 +1430,11 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /**
+             * Include In Balance
+             * @default true
+             */
+            include_in_balance: boolean;
             /** Is Active */
             is_active: boolean;
             /** Ledger Side */
@@ -1955,6 +1475,8 @@ export interface components {
             currency?: string | null;
             /** Description */
             description?: string | null;
+            /** Include In Balance */
+            include_in_balance?: boolean | null;
             /** Initial Value */
             initial_value?: number | null;
             /** Is Active */
@@ -2051,75 +1573,6 @@ export interface components {
             account_number?: string | null;
             /** Entity */
             entity: string;
-        };
-        /**
-         * BffLoginRequest
-         * @description JSON body for ``POST /bff/auth/login``.
-         *
-         *     Attributes:
-         *         email: Canonical login identity (OAuth2 ``username`` field for token login).
-         *         password: Plain-text password (never logged or echoed).
-         */
-        BffLoginRequest: {
-            /** Email */
-            email: string;
-            /** Password */
-            password: string;
-        };
-        /**
-         * BffRegisterRequest
-         * @description JSON body for ``POST /bff/auth/register`` (same fields as ``/auth/register``).
-         */
-        BffRegisterRequest: {
-            /** Display Name */
-            display_name?: string | null;
-            /** Email */
-            email: string;
-            /** Password */
-            password: string;
-            /** Phone */
-            phone?: string | null;
-            /**
-             * Provider
-             * @default email
-             * @constant
-             */
-            provider: "email";
-            /** Username */
-            username?: string | null;
-        };
-        /**
-         * BffResendConfirmationRequest
-         * @description JSON body for ``POST /bff/auth/resend-confirmation`` (same fields as Bearer twin).
-         */
-        BffResendConfirmationRequest: {
-            /** Email */
-            email: string;
-            /** Email Redirect To */
-            email_redirect_to?: string | null;
-        };
-        /**
-         * BffSessionResponse
-         * @description Public BFF session probe / login response (no JWTs).
-         *
-         *     Attributes:
-         *         authenticated: Whether a valid session cookie was resolved.
-         *         user: Public profile when authenticated.
-         *         csrf_token: Value for ``X-Papita-CSRF`` on cookie-authenticated mutations.
-         *         session_backend: ``redis`` or ``memory`` (ops visibility; not a secret).
-         *         access_expires_at: Unix timestamp (seconds) when the server-held access JWT
-         *             expires. Never includes the JWT itself — SPA countdown / refresh UX only.
-         */
-        BffSessionResponse: {
-            /** Access Expires At */
-            access_expires_at?: number | null;
-            /** Authenticated */
-            authenticated: boolean;
-            /** Csrf Token */
-            csrf_token?: string | null;
-            /** Session Backend */
-            session_backend?: string | null;
-            user?: components["schemas"]["UserResponse"] | null;
         };
         /** Body_login_api_v1_auth_login_post */
         Body_login_api_v1_auth_login_post: {
@@ -2410,23 +1863,6 @@ export interface components {
          * @enum {string}
          */
         DatabaseProbeDetail: "api-database link healthy" | "connector not initialized" | "database engine unavailable" | "probe failed";
-        /**
-         * DeferredResponse
-         * @description 501 response body for deferred MVP endpoints.
-         *
-         *     Attributes:
-         *         detail: Default message pointing to the API mapping doc.
-         *         deferred_reason: Optional override explaining why the route is not implemented.
-         */
-        DeferredResponse: {
-            /** Deferred Reason */
-            deferred_reason?: string | null;
-            /**
-             * Detail
-             * @default Not implemented in MVP — see docs/design/ARCHITECTURE.md Part IV
-             */
-            detail: string;
-        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2490,6 +1926,83 @@ export interface components {
             timestamp: string;
             /** Version */
             version: string;
+        };
+        /**
+         * IngestionConnectionResponse
+         * @description Non-secret connection metadata for status APIs.
+         *
+         *     Allowlist: identity + provider/flow labels + enabled/lookback only.
+         */
+        IngestionConnectionResponse: {
+            /** Created At */
+            created_at?: string | null;
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Flow Name */
+            flow_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lookback Hours */
+            lookback_hours: number;
+            /** Provider */
+            provider: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * IngestionRunResponse
+         * @description Owner-scoped ingestion run history for status APIs.
+         *
+         *     Counters and status only — never per-record failure payloads or DLQ bodies.
+         */
+        IngestionRunResponse: {
+            /** Acknowledged */
+            acknowledged: number;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Created */
+            created: number;
+            /** Created At */
+            created_at?: string | null;
+            /** Dead Lettered */
+            dead_lettered: number;
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Dry Run Skipped */
+            dry_run_skipped: number;
+            /** Error Summary */
+            error_summary?: string | null;
+            /** Failed */
+            failed: number;
+            /** Fetched */
+            fetched: number;
+            /** Finished At */
+            finished_at?: string | null;
+            /** Flow Name */
+            flow_name?: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reactivated */
+            reactivated: number;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Status */
+            status: string;
+            /** Updated */
+            updated: number;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /**
          * LivenessResponse
@@ -2585,116 +2098,6 @@ export interface components {
             total_spending: number;
         };
         /**
-         * MovementCreate
-         * @description Request body for ``POST /movements``.
-         */
-        MovementCreate: {
-            /** Amount */
-            amount: number;
-            /** Currency */
-            currency: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Destination Account Id
-             * Format: uuid
-             */
-            destination_account_id: string;
-            /** Movement Date */
-            movement_date: string;
-            /**
-             * Scheduled
-             * @default false
-             */
-            scheduled: boolean;
-            /**
-             * Source Account Id
-             * Format: uuid
-             */
-            source_account_id: string;
-        };
-        /**
-         * MovementExecuteResponse
-         * @description Response body for ``POST /movements/{movement_id}/execute``.
-         */
-        MovementExecuteResponse: {
-            /**
-             * Executed At
-             * Format: date-time
-             */
-            executed_at: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Status */
-            status: string;
-        };
-        /**
-         * MovementResponse
-         * @description Movement (TRANSFER) resource returned by alias CRUD endpoints.
-         */
-        MovementResponse: {
-            /** Amount */
-            amount: number;
-            /** Created At */
-            created_at?: string | null;
-            /** Currency */
-            currency: string;
-            /** Description */
-            description: string;
-            /**
-             * Destination Account Id
-             * Format: uuid
-             */
-            destination_account_id: string;
-            /** Destination Account Name */
-            destination_account_name?: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Movement Date
-             * Format: date
-             */
-            movement_date: string;
-            /**
-             * Source Account Id
-             * Format: uuid
-             */
-            source_account_id: string;
-            /** Source Account Name */
-            source_account_name?: string | null;
-            /** Status */
-            status: string;
-            /** Updated At */
-            updated_at?: string | null;
-        };
-        /**
-         * MovementUpdate
-         * @description Request body for ``PUT /movements/{movement_id}`` (PENDING only).
-         */
-        MovementUpdate: {
-            /** Amount */
-            amount?: number | null;
-            /** Currency */
-            currency?: string | null;
-            /** Description */
-            description?: string | null;
-            /** Destination Account Id */
-            destination_account_id?: string | null;
-            /** Movement Date */
-            movement_date?: string | null;
-            /** Source Account Id */
-            source_account_id?: string | null;
-        };
-        /**
          * OAuthCodeExchangeRequest
          * @description JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).
          *
@@ -2763,10 +2166,21 @@ export interface components {
             /** Total */
             total: number;
         };
-        /** PaginatedResponse[MovementResponse] */
-        PaginatedResponse_MovementResponse_: {
+        /** PaginatedResponse[IngestionConnectionResponse] */
+        PaginatedResponse_IngestionConnectionResponse_: {
             /** Items */
-            items?: components["schemas"]["MovementResponse"][];
+            items?: components["schemas"]["IngestionConnectionResponse"][];
+            /** Limit */
+            limit: number;
+            /** Skip */
+            skip: number;
+            /** Total */
+            total: number;
+        };
+        /** PaginatedResponse[IngestionRunResponse] */
+        PaginatedResponse_IngestionRunResponse_: {
+            /** Items */
+            items?: components["schemas"]["IngestionRunResponse"][];
             /** Limit */
             limit: number;
             /** Skip */
@@ -3173,21 +2587,15 @@ export interface components {
         };
         /**
          * TransactionCreate
-         * @description Request body for ``POST /transactions`` (INCOME/EXPENSE only).
+         * @description Request body for ``POST /transactions`` (INCOME, EXPENSE, or TRANSFER).
          */
         TransactionCreate: {
-            /**
-             * Account Id
-             * Format: uuid
-             */
-            account_id: string;
+            /** Account Id */
+            account_id?: string | null;
             /** Amount */
             amount: number;
-            /**
-             * Category Id
-             * Format: uuid
-             */
-            category_id: string;
+            /** Category Id */
+            category_id?: string | null;
             /**
              * Currency
              * @default USD
@@ -3198,23 +2606,74 @@ export interface components {
              * @default
              */
             description: string;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /** Ingestion Source */
+            ingestion_source?: string | null;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /**
+             * Scheduled
+             * @default false
+             */
+            scheduled: boolean;
+            /**
+             * Settlement Status
+             * @default settled
+             * @enum {string}
+             */
+            settlement_status: "settled" | "in_transit";
+            /** Source Account Id */
+            source_account_id?: string | null;
+            /** Source Ref */
+            source_ref?: string | null;
             /** Status */
             status?: string | null;
             /** Tags */
             tags?: string[];
+            /** Template Id */
+            template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /** Transaction Date */
-            transaction_date: string;
+            transaction_date?: string | null;
             /**
              * Transaction Type
+             * @default expense
              * @enum {string}
              */
-            transaction_type: "income" | "expense";
+            transaction_type: "income" | "expense" | "transfer";
+        };
+        /**
+         * TransactionExecuteResponse
+         * @description Response body for ``POST /transactions/{transaction_id}/execute``.
+         */
+        TransactionExecuteResponse: {
+            /**
+             * Executed At
+             * Format: date-time
+             */
+            executed_at: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Settlement Status
+             * @default settled
+             */
+            settlement_status: string;
+            /** Status */
+            status: string;
         };
         /**
          * TransactionResponse
-         * @description Transaction resource returned by CRUD endpoints.
+         * @description Unified transaction & transfer resource returned by CRUD endpoints.
          */
         TransactionResponse: {
             /** Account Id */
@@ -3233,6 +2692,12 @@ export interface components {
             currency: string;
             /** Description */
             description: string;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** Destination Account Name */
+            destination_account_name?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -3243,14 +2708,27 @@ export interface components {
              * @default false
              */
             is_recurring: boolean;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /**
+             * Settlement Status
+             * @default settled
+             */
+            settlement_status: string;
+            /** Source Account Id */
+            source_account_id?: string | null;
+            /** Source Account Name */
+            source_account_name?: string | null;
             /** Status */
             status: string;
             /** Tags */
             tags?: string[];
             /** Template Id */
             template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /**
              * Transaction Date
              * Format: date
@@ -3379,12 +2857,26 @@ export interface components {
             currency?: string | null;
             /** Description */
             description?: string | null;
+            /** Destination Account Id */
+            destination_account_id?: string | null;
+            /** From Account Id */
+            from_account_id?: string | null;
+            /** Movement Date */
+            movement_date?: string | null;
             /** Reference Number */
             reference_number?: string | null;
+            /** Settlement Status */
+            settlement_status?: ("settled" | "in_transit") | null;
+            /** Source Account Id */
+            source_account_id?: string | null;
             /** Status */
             status?: string | null;
             /** Tags */
             tags?: string[] | null;
+            /** Template Id */
+            template_id?: string | null;
+            /** To Account Id */
+            to_account_id?: string | null;
             /** Transaction Date */
             transaction_date?: string | null;
             /** Transaction Type */
@@ -4038,422 +3530,6 @@ export interface operations {
             };
         };
     };
-    bff_login_api_v1_bff_auth_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BffLoginRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BffSessionResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    bff_logout_api_v1_bff_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    bff_oauth_callback_get_api_v1_bff_auth_oauth_callback_get: {
-        parameters: {
-            query?: {
-                code?: string | null;
-                error?: string | null;
-                error_description?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    bff_start_oauth_api_v1_bff_auth_oauth__provider__get: {
-        parameters: {
-            query?: {
-                return_to?: string | null;
-            };
-            header?: never;
-            path: {
-                provider: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    bff_refresh_api_v1_bff_auth_refresh_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BffSessionResponse"];
-                };
-            };
-        };
-    };
-    bff_register_api_v1_bff_auth_register_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BffRegisterRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RegisterResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    bff_resend_confirmation_api_v1_bff_auth_resend_confirmation_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BffResendConfirmationRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    bff_session_api_v1_bff_auth_session_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BffSessionResponse"];
-                };
-            };
-        };
-    };
-    list_budgets_api_v1_budgets_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    create_budget_api_v1_budgets_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    get_budget_api_v1_budgets__budget_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    update_budget_api_v1_budgets__budget_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    delete_budget_api_v1_budgets__budget_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    update_budget_allocations_api_v1_budgets__budget_id__allocations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
-    get_budget_summary_api_v1_budgets__budget_id__summary_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                budget_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
-                };
-            };
-        };
-    };
     list_categories_api_v1_categories_get: {
         parameters: {
             query?: {
@@ -4740,6 +3816,139 @@ export interface operations {
             };
         };
     };
+    list_ingestion_connections_api_v1_ingestion_connections_get: {
+        parameters: {
+            query?: {
+                /** @description Number of records to skip */
+                skip?: number;
+                /** @description Maximum records to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_IngestionConnectionResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ingestion_connection_api_v1_ingestion_connections__connection_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionConnectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ingestion_runs_api_v1_ingestion_runs_get: {
+        parameters: {
+            query?: {
+                /** @description Optional filter by connection id */
+                connection_id?: string | null;
+                /** @description Number of records to skip */
+                skip?: number;
+                /** @description Maximum records to return */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedResponse_IngestionRunResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_latest_ingestion_run_api_v1_ingestion_runs_latest_get: {
+        parameters: {
+            query?: {
+                /** @description Optional connection filter for the latest run */
+                connection_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_client_contract_api_v1_meta_client_contract_get: {
         parameters: {
             query?: never;
@@ -4758,229 +3967,6 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
-                };
-            };
-        };
-    };
-    list_movements_api_v1_movements_get: {
-        parameters: {
-            query?: {
-                /** @description Number of records to skip */
-                skip?: number;
-                /** @description Maximum records to return */
-                limit?: number;
-                /** @description Filter by source account */
-                source_account_id?: string | null;
-                /** @description Filter by destination account */
-                destination_account_id?: string | null;
-                /** @description Filter by pending/completed/cancelled */
-                status?: string | null;
-                /** @description Filter by start date */
-                start_date?: string | null;
-                /** @description Filter by end date */
-                end_date?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PaginatedResponse_MovementResponse_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_movement_api_v1_movements_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MovementCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_movement_api_v1_movements__movement_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_movement_api_v1_movements__movement_id__put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MovementUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_movement_api_v1_movements__movement_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    execute_movement_api_v1_movements__movement_id__execute_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                movement_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["MovementExecuteResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_budget_performance_report_api_v1_reports_budget_performance_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
                 };
             };
         };
@@ -5428,10 +4414,16 @@ export interface operations {
                 limit?: number;
                 /** @description Filter by primary account (from or to) */
                 account_id?: string | null;
+                /** @description Filter by source account */
+                source_account_id?: string | null;
+                /** @description Filter by destination account */
+                destination_account_id?: string | null;
                 /** @description Filter by category */
                 category_id?: string | null;
                 /** @description Filter by income/expense/transfer */
                 transaction_type?: string | null;
+                /** @description Exclude transfer rows when true */
+                exclude_transfer?: boolean | null;
                 /** @description Filter by pending/completed/cancelled */
                 status?: string | null;
                 /** @description Filter by start date */
@@ -5636,7 +4628,7 @@ export interface operations {
             };
         };
     };
-    split_transaction_api_v1_transactions__transaction_id__split_post: {
+    execute_transaction_api_v1_transactions__transaction_id__execute_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -5647,6 +4639,15 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionExecuteResponse"];
+                };
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5654,15 +4655,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description Successful Response */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DeferredResponse"];
                 };
             };
         };

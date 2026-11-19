@@ -1,5 +1,4 @@
-# Dependabot version updates — see:
-# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot version updates
 version: 2
 updates:
   - package-ecosystem: pip
@@ -12,7 +11,6 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - dependencies
-      - CI/CD
     commit-message:
       prefix: deps
       include: scope
@@ -22,7 +20,7 @@ updates:
           - "*"
 
   - package-ecosystem: pip
-    directory: /modules/model
+    directory: /modules/backend
     schedule:
       interval: weekly
       day: monday
@@ -31,36 +29,16 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - dependencies
-      - data model
     commit-message:
       prefix: deps
       include: scope
     groups:
-      python-model:
-        patterns:
-          - "*"
-
-  - package-ecosystem: pip
-    directory: /modules/api
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: America/Bogota
-    open-pull-requests-limit: 3
-    labels:
-      - dependencies
-      - API
-    commit-message:
-      prefix: deps
-      include: scope
-    groups:
-      python-api:
+      python-backend:
         patterns:
           - "*"
 
   - package-ecosystem: npm
-    directory: /
+    directory: /modules/web
     schedule:
       interval: weekly
       day: monday
@@ -69,19 +47,41 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - dependencies
-      - CI/CD
-      - frontend
     commit-message:
       prefix: deps
       include: scope
-    # typescript-eslint does not support TypeScript 7 yet — keep ~5.9 in modules/web.
-    ignore:
-      - dependency-name: typescript
-        update-types: ["version-update:semver-major"]
     groups:
       npm-web:
         patterns:
           - "*"
+
+  - package-ecosystem: docker
+    directory: /modules/backend
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+      include: scope
+
+  - package-ecosystem: docker
+    directory: /modules/web
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: America/Bogota
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+    commit-message:
+      prefix: deps
+      include: scope
 
   - package-ecosystem: github-actions
     directory: /
@@ -93,77 +93,11 @@ updates:
     open-pull-requests-limit: 3
     labels:
       - dependencies
-      - CI/CD
     commit-message:
       prefix: deps
       include: scope
     groups:
       github-actions:
-        patterns:
-          - "*"
-
-  - package-ecosystem: docker
-    directory: /docker/database
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: America/Bogota
-    open-pull-requests-limit: 2
-    labels:
-      - dependencies
-      - CI/CD
-    commit-message:
-      prefix: deps
-      include: scope
-    groups:
-      docker-database:
-        patterns:
-          - "*"
-
-  # PPT-067 / #132 — API runtime base (python:*-slim) digest bumps
-  - package-ecosystem: docker
-    directory: /docker/api
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: America/Bogota
-    open-pull-requests-limit: 2
-    labels:
-      - dependencies
-      - CI/CD
-      - API
-    commit-message:
-      prefix: deps
-      include: scope
-    groups:
-      docker-api:
-        patterns:
-          - "*"
-
-  # PPT-067 — web nginx SPA base (node + nginx-unprivileged) bumps
-  - package-ecosystem: docker
-    directory: /docker/web
-    schedule:
-      interval: weekly
-      day: monday
-      time: "09:00"
-      timezone: America/Bogota
-    open-pull-requests-limit: 2
-    labels:
-      - dependencies
-      - CI/CD
-      - frontend
-    commit-message:
-      prefix: deps
-      include: scope
-    # Build stage stays on Node 22 LTS (.nvmrc); major jumps break corepack/pnpm (#192).
-    ignore:
-      - dependency-name: "node"
-        update-types: ["version-update:semver-major"]
-    groups:
-      docker-web:
         patterns:
           - "*"
 
@@ -177,7 +111,6 @@ updates:
     open-pull-requests-limit: 2
     labels:
       - dependencies
-      - CI/CD
     commit-message:
       prefix: deps
       include: scope

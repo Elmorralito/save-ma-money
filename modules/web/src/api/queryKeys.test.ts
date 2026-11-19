@@ -11,7 +11,6 @@ describe("queryKeys", () => {
     expect(queryKeys.accounts.all).toEqual(["papita", "accounts"]);
     expect(queryKeys.categories.all).toEqual(["papita", "categories"]);
     expect(queryKeys.transactions.all).toEqual(["papita", "transactions"]);
-    expect(queryKeys.movements.all).toEqual(["papita", "movements"]);
     expect(queryKeys.reports.all).toEqual(["papita", "reports"]);
     expect(queryKeys.transactionTemplates.all).toEqual(["papita", "transactionTemplates"]);
   });
@@ -46,13 +45,6 @@ describe("queryKeys", () => {
       "detail",
       "txn-1",
     ]);
-    expect(queryKeys.movements.list({ status: "pending" })).toEqual([
-      "papita",
-      "movements",
-      "list",
-      { status: "pending" },
-    ]);
-    expect(queryKeys.movements.detail("mov-1")).toEqual(["papita", "movements", "detail", "mov-1"]);
     expect(queryKeys.meta.clientContract()).not.toEqual(queryKeys.health.root());
     expect(
       queryKeys.reports.spending({ start_date: "2026-01-01", end_date: "2026-01-31" }),

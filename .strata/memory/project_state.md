@@ -1,41 +1,22 @@
 ---
 name: save-ma-money State
-description: Auth + user management owned by Supabase project; Compose injects SUPABASE_*.
+description: Vertical-slice baseline reset (PPT-095 / #261) completed across Phases 0–3.
 ---
 
 ## WHERE WE LEFT OFF (current)
 
-**Standing rule:** move / keep **user management and authentication in the Supabase
-project**. Papita API verifies JWTs + links `users` by `sub` — it is not the IdP.
-
-**Strata issues policy:** do **not** keep closed GitHub issues under `.strata/issues/`
-(including `archive/`) — they add agent context noise. History lives on GitHub / git.
-Capture with `/strata:capture` only for work in flight.
+**Standing rule:** keep **user management and authentication in the Supabase
+project** using stateless JWKS Bearer tokens (`/api/v1/auth/*`). Papita API verifies
+JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
-- **PPT-082 / #176:** Prefect hourly email flow + Compose packaging on main (#216).
-- **PPT-081 / #175:** Bancolombia + synthetic Nequi parsers + Fallback on main.
-- **PPT-080 / #174:** `GmailSource` + `GmailSettings` on main (#214).
-- **PPT-079 / #173:** core contracts, registries, `IngestionRunner` on main (#213).
-- **PPT-078 / #172:** provenance sidecar + `IngestionBridgeService` on main (#212).
-
-### In progress (ACTIVE)
-
-- **PPT-083 / #177:** ingestion connection + run-status — model tables/Alembic,
-  email worker persist hook (`RunResult` mapped at plugin boundary), read-only
-  `GET /api/v1/ingestion/*` (401 / cross-tenant 404; no HTTP run trigger).
-  Soft-delete connection upsert reactivates natural key; serve `deployment_name`
-  wired into deps. Branch `177-featppt-083-…`. Parent epic **PPT-076 / #170**.
-
-### Open (backlog)
-
-- **PPT-076** remaining: #178 e2e/tests/docs (OpenAPI web regen / packaging gate).
-- **PPT-066 follow-up:** after 1–2 releases, drop legacy `model-v*` publish trigger.
-- Alembic/`alembic check` SQLModel CHECK alignment (`chk_financing_share`, etc.).
+- **PPT-100 (Phase 3 of #261 / PPT-095):** Consolidated authentication to stateless JWKS Bearer (`/api/v1/auth/*`, removing BFF cookie/session store `bff_auth.py`, `bff_session.py`, `session_store.py`, `bff_csrf.py`, and SPA CSRF); replaced 6 Python linters (`black`, `isort`, `flake8`, `pylint`, `interrogate`, `ci-adoption-check`) with `ruff` + `mypy` + `pytest`; pruned redundant `bin/bash/` and `.github/scripts/` helpers and consolidated `.github/workflows/`.
+- **PPT-099 (Phase 2B of #261 / PPT-095):** Added `SettlementStatus` (`SETTLED` | `IN_TRANSIT`) to `Transactions` (`n1c2d3e4f5a6` migration + DTO + schemas); unified `/movements` into `/transactions` (supporting `income`, `expense`, `transfer`, `from_account_id`/`to_account_id`, `settlement_status`, `template_id`, and `POST /api/v1/transactions/{id}/execute`); folded `MovementsPage` into `TransactionsPage` and redirected `/movements` → `/transactions`.
+- **PPT-098 (Phase 2A of #261 / PPT-095):** Merged `modules/ingestor-core` and `modules/ingestors/email` into `backend/domains/ingestion/` (`backend/src/papita_ingestor_*`), removed Prefect `@flow` wrapper and `ParserRegistry`/`SourceRegistry` indirection in favor of explicit parser lists (`select_parser`, `default_email_parsers()`) and CLI `python -m backend.domains.ingestion.cli --once`, and wired optional `source_ref` on `POST /api/v1/transactions` to share `IngestionBridgeService`.
+- **PPT-097 (Phase 1 of #261 / PPT-095):** Replaced `SQLDatabaseConnector` with `DatabaseSessionManager` (`Depends(get_db)`, `session_scope()`, `@with_session`); removed `services/extends.py` and `balance_reports/`; added `Accounts.include_in_balance` (`m0b1c2d3e4f5`); retired PyPI model release workflows; converged `modules/model` and `modules/api` into `backend/`.
+- **PPT-096 (Phase 0 of #261 / PPT-095):** Pruned dead v0 stubs, DuckDB remnants, registrar-era `handlers/`, and API/Web placeholders.
 
 ### Next action
 
-- Ship PPT-083 PR (#217); Autopilot Black-fix on email `test_status_mapping`
-  for Ingestor CI. Apply model migration on B0 (`l9a0b1c2d3e4`). Full OpenAPI/CI
-  web contract refresh deferred to PPT-084 / #178. Live FK enricher still H1=B.
+- All phases of Epic **PPT-095 (`#261`)** (`PPT-096` through `PPT-100`) are complete and verified. Ready for downstream **PPT-101 (`#262`)**.

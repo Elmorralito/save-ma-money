@@ -1,0 +1,64 @@
+[project]
+name = "papita-backend"
+version = "0.1.0"
+description = "Unified vertical-slice backend for Papita financial transactions (models, Alembic, FastAPI, ingestion)."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Elmorralito", email = "drestrepohinc@gmail.com" }]
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "pydantic (>=2.13.5,<3.0)",
+    "pandas (>=2.3.3,<2.4.0)",
+    "greenlet (>=3.5.6,<4.0)",
+    "mako (>=1.4.3,<2.0)",
+    "alembic[tz] (>=1.20.0,<2.0.0)",
+    "sqlmodel (>=0.0.47,<1.0)",
+    "dotenv (>=0.9.9,<1.0)",
+    "psycopg2-binary (>=2.9.13,<3.0)",
+    "sqlalchemy (>=2.0.54,<2.1.0)",
+    "toml (>=0.10.2,<0.11.0)",
+    "argon2-cffi (>=25.1.0,<26.0.0)",
+    "semver (>=3.1.0,<4.0.0)",
+    "rapidfuzz (>=3.14.5,<4.0.0)",
+    "alembic-utils (>=0.8.8,<0.9.0)",
+    "pyyaml (>=6.0.3,<7.0)",
+    "tabulate (>=0.10.0,<0.11.0)",
+    "python-dateutil (>=2.9.0.post0)",
+    "fastapi (>=0.141.1,<0.142.0)",
+    "starlette (>=1.4.1,<2.0.0)",
+    "pydantic-settings (>=2.15.0,<3.0.0)",
+    "pyjwt[crypto] (>=2.15.1,<3.0.0)",
+    "cryptography (>=50.0.2,<51.0.0)",
+    "jinja2 (>=3.1.6,<4.0.0)",
+    "aiofiles (>=25.1.0,<26.0.0)",
+    "uvicorn[standard] (>=0.54.0,<0.55.0)",
+    "python-multipart (>=0.0.32,<0.0.33)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "supabase (>=2.33.0,<3.0.0)",
+    "redis (>=8.1.0,<9.0.0)",
+    "google-auth-oauthlib (>=1.4.0,<2.0.0)",
+    "google-auth (>=2.56.3,<3.0.0)",
+    "google-api-python-client (>=2.198.0,<3.0.0)",
+]
+
+[project.urls]
+Homepage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/backend"
+Repository = "https://github.com/Elmorralito/save-ma-money"
+Issues = "https://github.com/Elmorralito/save-ma-money/issues"
+
+[tool.poetry]
+packages = [
+    { include = "backend", from = "src/" },
+    { include = "papita_txnsmodel", from = "src/" },
+    { include = "papita_txnsapi", from = "src/" },
+    { include = "papita_ingestor_core", from = "src/" },
+    { include = "papita_ingestor_email", from = "src/" },
+]
+include = [{ path = "pyproject.toml", format = ["sdist"] }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=9.1.1"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

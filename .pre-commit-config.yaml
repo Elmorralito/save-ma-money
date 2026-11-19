@@ -4,23 +4,17 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-        exclude: '(\.svg$|@docs/coverage\.xml$)'
+        exclude: '(\.svg$|docs/coverage\.xml$)'
       - id: check-yaml
       - id: check-toml
+      - id: check-json
+        exclude: '^modules/web/tsconfig.*\.json$'
+      - id: check-merge-conflict
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
       - id: detect-private-key
       - id: check-added-large-files
         args: ["--maxkb=4096"]
-
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
-    hooks:
-      - id: prettier
-        name: prettier (repo — non-web)
-        types_or: [yaml, python, toml, json, markdown]
-        # pnpm-lock.yaml is machine-generated; prettier/yamllint must not rewrite it.
-        # modules/web uses the local web-prettier hook (package Prettier + .prettierrc).
-        exclude: '(\.svg$|@docs/coverage\.xml$|^pnpm-lock\.yaml$|^modules/web/)'
-        args: ["--write", "*.yaml", "*.yml", "*.py", "*.toml", "*.json"]
 
   - repo: https://github.com/koalaman/shellcheck-precommit
     rev: v0.11.0
@@ -34,73 +28,28 @@ repos:
         name: sqlfluff lint
         entry: poetry run sqlfluff lint
         language: system
-        files: ^modules/model/src/papita_txnsmodel/views/.*\.sql$
+        files: ^modules/backend/src/papita_txnsmodel/views/.*\.sql$
       - id: sqlfluff-fix
         name: sqlfluff format
         entry: poetry run sqlfluff fix
         language: system
-        files: ^modules/model/src/papita_txnsmodel/views/.*\.sql$
+        files: ^modules/backend/src/papita_txnsmodel/views/.*\.sql$
 
-  - repo: https://github.com/pycqa/isort
-    rev: 9.0.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.6
     hooks:
-      - id: isort
-        name: isort (python)
-        exclude: "./tests/.*"
-        args: ["--profile=black"]
-
-  - repo: https://github.com/psf/black
-    rev: 26.10.1
-    hooks:
-      - id: black
-        exclude: "./tests/.*"
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.4.1
-    hooks:
-      - id: flake8
-        additional_dependencies: [flake8-pyproject]
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
 
   - repo: local
     hooks:
-      - id: pylint
-        name: pylint
-        entry: poetry run pylint
-        language: system
-        types: [python]
-        require_serial: true
-        args:
-          [
-            "--disable=import-error,wrong-import-order",
-            "--rcfile=pyproject.toml",
-          ]
-      - id: strata-validate
-        name: strata validate (local only)
-        entry: /bin/bash .github/scripts/pre_commit_strata.sh
-        language: system
-        pass_filenames: false
-        always_run: true
-        # Evaluates all staged paths via git diff --cached (STRATA_DIFF_SOURCE=staged).
-        # Excluded in CI via SKIP in quality-control.yml; strata-check.yml runs strata_check.sh on PRs.
       - id: mcp-config-validate
         name: mcp config validate (local only)
         entry: /bin/bash .github/scripts/pre_commit_mcp.sh
         language: system
         pass_filenames: false
         files: ^\.cursor/mcp\.json$
-        # Excluded in CI via SKIP in quality-control.yml.
-      - id: ci-adoption-check
-        name: ci adoption check (local pre-push, advisory)
-        entry: /bin/bash .github/scripts/pre_commit_ci_adoption.sh
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
-        # Runs on `git push` when pre-push hook is installed locally; never blocks; skipped in CI.
-
-      # --- modules/web (TypeScript / React) — local only; web-ci.yml is the CI gate ---
-      # Mirrors the husky+lint-staged stack (ESLint, Prettier, tsc, related Vitest) via
-      # pre-commit instead of husky. Requires Node 22+ / pnpm 9+ and `pnpm install`.
       - id: web-eslint
         name: web eslint (modules/web)
         entry: /bin/bash .github/scripts/pre_commit_web.sh eslint
@@ -108,7 +57,6 @@ repos:
         files: ^modules/web/.*\.(ts|tsx|js|jsx)$
         exclude: ^modules/web/(dist|coverage|node_modules|openapi)/
         require_serial: true
-        # Excluded in CI via SKIP in quality-control.yml (no Node in that job).
       - id: web-prettier
         name: web prettier (modules/web)
         entry: /bin/bash .github/scripts/pre_commit_web.sh prettier
@@ -146,17 +94,13 @@ repos:
             "types-toml>=0.10.8.20240310",
             "types-requests>=2.32.4.20250913",
             "types-pytz>=2025.2.0.20250809",
-            "types-tabulate>=0.10.0.20260508",
           ]
 
-  - repo: https://github.com/econchick/interrogate
-    rev: 1.7.0
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.15.1
     hooks:
-      - id: interrogate
-        args: ["-c", "pyproject.toml"]
-        files: "^.*/[src|tests]"
-        pass_filenames: false
-        always_run: true
+      - id: hadolint
+        args: ["--config", ".hadolint.yaml"]
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.49.1

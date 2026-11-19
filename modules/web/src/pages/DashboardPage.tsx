@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 import {
   accountsListQueryOptions,
-  movementsListQueryOptions,
+  transactionsListQueryOptions,
   upcomingDuesQueryOptions,
 } from "@/api/queries";
 import { markTemplatePaid } from "@/api/transactionTemplates";
@@ -17,11 +17,15 @@ import { formatApiError } from "@/lib/formatApiError";
 import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
 import { formatRemainingDuration, secondsUntil } from "@/lib/formatRemainingDuration";
-import type { AccountResponse, MovementResponse, UpcomingDueResponse } from "@/types/domain";
+import type { AccountResponse, TransactionResponse, UpcomingDueResponse } from "@/types/domain";
 
 const QUICK_LINKS = APP_NAV_ITEMS.filter((item) => item.to !== "/dashboard");
 const SNAPSHOT_PARAMS = { limit: 5, skip: 0 } as const;
-const PENDING_PARAMS = { ...SNAPSHOT_PARAMS, status: "pending" } as const;
+const PENDING_PARAMS = {
+  ...SNAPSHOT_PARAMS,
+  transaction_type: "transfer",
+  status: "pending",
+} as const;
 const DUE_SOON_PARAMS = { window_days: 14, include_paid: false } as const;
 const DUE_SOON_LIMIT = 5;
 
@@ -30,7 +34,7 @@ export function DashboardPage() {
   const queryClient = useQueryClient();
   const sessionQuery = useQuery(bffSessionQueryOptions());
   const accountsQuery = useQuery(accountsListQueryOptions(SNAPSHOT_PARAMS));
-  const pendingQuery = useQuery(movementsListQueryOptions(PENDING_PARAMS));
+  const pendingQuery = useQuery(transactionsListQueryOptions(PENDING_PARAMS));
   const duesQuery = useQuery(upcomingDuesQueryOptions(DUE_SOON_PARAMS));
 
   const markPaidMutation = useMutation({
@@ -106,12 +110,12 @@ export function DashboardPage() {
 
         <SnapshotPanel
           title="Pending transfers"
-          viewAllTo="/movements"
+          viewAllTo="/transactions"
           isPending={pendingQuery.isPending}
           isError={pendingQuery.isError}
           itemCount={pendingMovements.length}
           emptyLabel="No pending transfers"
-          emptyActionTo="/movements"
+          emptyActionTo="/transactions"
           emptyActionLabel="Schedule a transfer"
           footer={pendingTotal > 0 ? `${String(pendingTotal)} waiting to execute` : null}
         >
@@ -284,7 +288,7 @@ function AccountRow({ account }: { account: AccountResponse }) {
   );
 }
 
-function PendingMovementRow({ movement }: { movement: MovementResponse }) {
+function PendingMovementRow({ movement }: { movement: TransactionResponse }) {
   const label = movement.description.trim() || "Scheduled transfer";
   const routeLabel =
     movement.source_account_name && movement.destination_account_name
@@ -300,7 +304,7 @@ function PendingMovementRow({ movement }: { movement: MovementResponse }) {
         </span>
       </div>
       <p className="text-xs text-muted-foreground">
-        {formatDate(movement.movement_date)}
+        {formatDate(movement.movement_date ?? movement.transaction_date)}
         {routeLabel ? ` · ${routeLabel}` : ""}
       </p>
     </li>
@@ -352,11 +356,9 @@ function quickLinkHint(path: string): string {
     case "/categories":
       return "Income and expense labels";
     case "/transactions":
-      return "Income and expenses";
+      return "Income, expenses, and transfers";
     case "/payment-dues":
       return "Bills and payment deadlines";
-    case "/movements":
-      return "Transfers between accounts";
     case "/reports":
       return "Spending breakdowns";
     default:

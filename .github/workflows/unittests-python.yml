@@ -1,0 +1,100 @@
+---
+name: Unittests Python
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths-ignore:
+      - "docs/**"
+      - "modules/web/src/**"
+      - "modules/web/e2e/**"
+      - ".github/workflows/frontend-quality.yml"
+      - ".github/workflows/web-e2e.yml"
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "modules/web/src/**"
+      - "modules/web/e2e/**"
+      - ".github/workflows/frontend-quality.yml"
+      - ".github/workflows/web-e2e.yml"
+  schedule:
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: unittests-python-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unittests-python:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-quality')
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: papita
+          POSTGRES_PASSWORD: papita
+          POSTGRES_DB: papita_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Poetry environment
+        uses: ./.github/actions/setup-poetry
+        with:
+          with-groups: development,pre-commit
+
+      - name: OpenAPI contract gate
+        run: ./scripts/export_openapi.sh --check
+
+      - name: PostgreSQL migrations gate
+        env:
+          DB_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
+        run: /bin/bash .github/scripts/migration_check.sh
+
+      - name: Run pytest with coverage
+        env:
+          DATABASE_URL: postgresql+psycopg2://papita:papita@localhost:5432/papita_test
+          JWT_SECRET_KEY: test-jwt-secret-key-minimum-32-characters
+          AUTH_PROVIDER: local
+          AUTH_RATE_LIMIT_ENABLED: "false"
+        run: >-
+          poetry run pytest
+          --cov=modules/backend/src
+          --cov-report=xml:docs/coverage.xml
+          --cov-report=term-missing
+
+      - name: Detect Codecov token
+        id: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: |
+          if [ -n "${CODECOV_TOKEN}" ]; then
+            echo "enabled=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "enabled=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Upload coverage report
+        if: steps.codecov.outputs.enabled == 'true'
+        uses: codecov/codecov-action@v7
+        with:
+          files: ./docs/coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          flags: unittests
+          name: ci-unittests-python
+          verbose: true

@@ -1,0 +1,49 @@
+---
+name: Setup Poetry
+description: Install Python and sync Poetry dependencies into .venv
+inputs:
+  with-groups:
+    description: Comma-separated Poetry dependency groups for --with
+    required: false
+    default: "development,pre-commit"
+  python-version:
+    description: Python version to install
+    required: false
+    default: "3.12"
+  poetry-version:
+    description: Poetry version to install
+    required: false
+    default: "2.1.3"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: ${{ inputs.poetry-version }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+        installer-parallel: true
+
+    - name: Cache Poetry virtualenv
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: poetry-venv-${{ runner.os }}-${{ inputs.python-version }}-${{ hashFiles('pyproject.toml', 'modules/backend/pyproject.toml', 'poetry.toml') }}
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        groups="${{ inputs.with-groups }}"
+        if [ -n "${groups}" ]; then
+          poetry install --no-interaction --with "${groups}"
+        else
+          poetry install --no-interaction
+        fi

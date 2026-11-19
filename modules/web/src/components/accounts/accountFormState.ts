@@ -202,6 +202,7 @@ export function toAccountCreate(state: AccountFormState): AccountCreate {
     account_kind: state.account_kind,
     ledger_side: state.ledger_side,
     currency: state.currency.trim().toUpperCase() || "USD",
+    include_in_balance: true,
     ...buildExtensionBlocks(state),
   };
   const initialValue = parseOptionalNumber(state.initial_value);

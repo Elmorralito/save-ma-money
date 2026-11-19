@@ -50,22 +50,22 @@ test.describe("critical path", () => {
     await txnDialog.getByRole("button", { name: "Save" }).click();
     await expect(page.getByText(expenseDesc)).toBeVisible({ timeout: 15_000 });
 
-    // Transfer between seed accounts
-    await page.getByRole("link", { name: "Movements", exact: true }).click();
-    await page.getByRole("heading", { name: "Movements" }).waitFor();
-    await page.getByRole("button", { name: "New movement" }).click();
-    const movDialog = page.getByRole("dialog");
-    await expect(movDialog.getByRole("heading", { name: "Create movement" })).toBeVisible();
-    await movDialog
-      .locator("#mov-create-source")
+    // Transfer between seed accounts (unified Transactions ledger, PPT-099)
+    await page.getByRole("button", { name: "New transaction" }).click();
+    const transferDialog = page.getByRole("dialog");
+    await expect(transferDialog.getByRole("heading", { name: "Create transaction" })).toBeVisible();
+    await transferDialog.locator("#txn-create-type").selectOption("transfer");
+    await transferDialog.locator("#txn-create-date").fill(today);
+    await transferDialog
+      .locator("#txn-create-source-account")
       .selectOption({ label: seed.accountNames.checking });
-    await movDialog
-      .locator("#mov-create-destination")
+    await transferDialog
+      .locator("#txn-create-dest-account")
       .selectOption({ label: seed.accountNames.savings });
-    await movDialog.locator("#mov-create-amount").fill("5.00");
-    await movDialog.locator("#mov-create-date").fill(today);
-    await movDialog.locator("#mov-create-description").fill(transferDesc);
-    await movDialog.getByRole("button", { name: "Save" }).click();
+    await transferDialog.locator("#txn-create-amount").fill("5.00");
+    await transferDialog.locator("#txn-create-description").fill(transferDesc);
+    await transferDialog.getByRole("button", { name: "Save" }).click();
+    await page.locator("#txn-filter-type").selectOption("transfer");
     await expect(page.getByText(transferDesc)).toBeVisible({ timeout: 15_000 });
 
     // Spending report includes the UI expense (and seed baseline).

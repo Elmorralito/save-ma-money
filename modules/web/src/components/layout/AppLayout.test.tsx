@@ -28,13 +28,14 @@ vi.mock("@/api/accounts", () => ({
   deleteAccount: vi.fn(),
 }));
 
-vi.mock("@/api/movements", () => ({
-  listMovements: vi.fn(async () => ({ items: [], total: 0, skip: 0, limit: 5 })),
-  getMovement: vi.fn(),
-  createMovement: vi.fn(),
-  updateMovement: vi.fn(),
-  executeMovement: vi.fn(),
-  cancelMovement: vi.fn(),
+vi.mock("@/api/transactions", () => ({
+  listTransactions: vi.fn(async () => ({ items: [], total: 0, skip: 0, limit: 5 })),
+  getTransaction: vi.fn(),
+  createTransaction: vi.fn(),
+  updateTransaction: vi.fn(),
+  deleteTransaction: vi.fn(),
+  executeTransaction: vi.fn(),
+  bulkCreateTransactions: vi.fn(),
 }));
 
 vi.mock("@/api/transactionTemplates", () => ({

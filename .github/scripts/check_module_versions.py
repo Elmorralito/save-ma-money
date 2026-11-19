@@ -31,7 +31,7 @@ def validate_version(version: str) -> None:
 
 
 def main() -> int:
-    """Validate versions for all module pyproject.toml files."""
+    """Validate versions for module pyproject.toml files."""
     pyproject_files = sorted(MODULES_PATH.glob("*/pyproject.toml"))
     if not pyproject_files:
         print("No module pyproject.toml files found.", file=sys.stderr)

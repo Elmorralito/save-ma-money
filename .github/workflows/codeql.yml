@@ -1,74 +1,46 @@
 ---
-# Python-only CodeQL. JavaScript/TypeScript is a separate workflow: codeql-javascript.yml
-# (PR checks name: "CodeQL Python" — do not confuse with "CodeQL JavaScript/TypeScript".)
-name: CodeQL Python
+name: CodeQL Analysis
 
 on:
   pull_request:
     branches:
       - main
-    paths:
-      - "modules/model/**"
-      - "modules/api/**"
-      - "modules/model/pyproject.toml"
-      - "modules/api/pyproject.toml"
-      - "pyproject.toml"
-      - ".github/workflows/codeql.yml"
   push:
     branches:
       - main
-    paths:
-      - "modules/model/**"
-      - "modules/api/**"
-      - "modules/model/pyproject.toml"
-      - "modules/api/pyproject.toml"
-      - "pyproject.toml"
-      - ".github/workflows/codeql.yml"
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 5 * * 1"
   workflow_dispatch:
 
 concurrency:
-  group: codeql-python-${{ github.ref }}
+  group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   analyze:
-    name: Analyze Python
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       actions: read
       contents: read
       security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["python", "javascript-typescript"]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v3
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
         with:
-          languages: python
+          languages: ${{ matrix.language }}
           queries: security-extended
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Install Poetry
-        uses: snok/install-poetry@v1
-        with:
-          version: 2.1.3
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: Install dependencies
-        run: poetry install --no-interaction
-
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v3
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
         with:
-          category: /language:python
+          category: "/language:${{ matrix.language }}"

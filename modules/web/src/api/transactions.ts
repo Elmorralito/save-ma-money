@@ -5,6 +5,7 @@ import type {
   TransactionBulkCreate,
   TransactionBulkResponse,
   TransactionCreate,
+  TransactionExecuteResponse,
   TransactionResponse,
   TransactionUpdate,
 } from "@/types/domain";
@@ -13,8 +14,11 @@ const TRANSACTIONS_PATH = "/api/v1/transactions";
 
 export type ListTransactionsParams = {
   account_id?: string;
+  source_account_id?: string;
+  destination_account_id?: string;
   category_id?: string;
   transaction_type?: string;
+  exclude_transfer?: boolean;
   status?: string;
   start_date?: string;
   end_date?: string;
@@ -31,11 +35,20 @@ function buildListQuery(params: ListTransactionsParams): string {
   if (params.account_id) {
     search.set("account_id", params.account_id);
   }
+  if (params.source_account_id) {
+    search.set("source_account_id", params.source_account_id);
+  }
+  if (params.destination_account_id) {
+    search.set("destination_account_id", params.destination_account_id);
+  }
   if (params.category_id) {
     search.set("category_id", params.category_id);
   }
   if (params.transaction_type) {
     search.set("transaction_type", params.transaction_type);
+  }
+  if (params.exclude_transfer !== undefined) {
+    search.set("exclude_transfer", String(params.exclude_transfer));
   }
   if (params.status) {
     search.set("status", params.status);
@@ -124,7 +137,7 @@ export async function updateTransaction(
   return result.data;
 }
 
-/** ``DELETE /api/v1/transactions/{transaction_id}`` — soft-delete (204). */
+/** ``DELETE /api/v1/transactions/{transaction_id}`` — soft-delete or cancel pending transfer (204). */
 export async function deleteTransaction(
   transactionId: string,
   signal?: AbortSignal,
@@ -133,6 +146,21 @@ export async function deleteTransaction(
     method: "DELETE",
     signal,
   });
+}
+
+/** ``POST /api/v1/transactions/{transaction_id}/execute`` — complete pending transfer. */
+export async function executeTransaction(
+  transactionId: string,
+  signal?: AbortSignal,
+): Promise<TransactionExecuteResponse> {
+  const result = await apiFetch<TransactionExecuteResponse>(
+    `${TRANSACTIONS_PATH}/${transactionId}/execute`,
+    {
+      method: "POST",
+      signal,
+    },
+  );
+  return result.data;
 }
 
 export type BulkCreateTransactionsOptions = {
