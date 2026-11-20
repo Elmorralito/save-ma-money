@@ -364,13 +364,17 @@ import httpx
 
 BASE = "http://localhost:8000/api/v1"
 
+
 async def register_and_login() -> str:
     async with httpx.AsyncClient() as client:
-        await client.post(f"{BASE}/auth/register", json={
-            "username": "johndoe",
-            "email": "user@example.local",
-            "password": "SecurePass1!",
-        })
+        await client.post(
+            f"{BASE}/auth/register",
+            json={
+                "username": "johndoe",
+                "email": "user@example.local",
+                "password": "SecurePass1!",
+            },
+        )
         login = await client.post(
             f"{BASE}/auth/login",
             data={"username": "user@example.local", "password": "SecurePass1!"},

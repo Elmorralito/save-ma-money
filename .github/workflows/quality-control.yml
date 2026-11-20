@@ -6,11 +6,21 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
     paths-ignore:
       - "docs/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".nvmrc"
+      - "modules/web/package.json"
   push:
     branches:
       - main
     paths-ignore:
       - "docs/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".nvmrc"
+      - "modules/web/package.json"
   schedule:
     - cron: "0 7 * * 1"
   workflow_dispatch:

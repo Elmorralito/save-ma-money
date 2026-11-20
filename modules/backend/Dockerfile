@@ -6,7 +6,7 @@
 # The python:3.14-slim base tag is the reproducibility boundary; Debian security updates
 # drop old package versions, so exact apt pins break rebuilds.
 
-FROM python:3.15-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
