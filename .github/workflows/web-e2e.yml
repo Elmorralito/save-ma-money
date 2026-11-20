@@ -25,7 +25,8 @@ jobs:
   playwright:
     if: >-
       github.event_name != 'pull_request' ||
-      !contains(github.event.pull_request.labels.*.name, 'skip-web-e2e')
+      (!contains(github.event.pull_request.labels.*.name, 'skip-web-e2e') &&
+      github.event.pull_request.user.login != 'dependabot[bot]')
     runs-on: ubuntu-latest
     timeout-minutes: 45
 

@@ -7,9 +7,10 @@ on:
       - "pyproject.toml"
       - "modules/backend/pyproject.toml"
       - "poetry.toml"
-      - ".github/scripts/*.sh"
-      - ".github/workflows/*.yml"
-      - ".github/actions/**"
+      - ".github/scripts/supply_chain_check.sh"
+      - ".github/scripts/check_module_versions.py"
+      - ".github/workflows/supply-chain-check.yml"
+      - ".github/actions/setup-poetry/**"
   push:
     branches:
       - main
@@ -17,9 +18,10 @@ on:
       - "pyproject.toml"
       - "modules/backend/pyproject.toml"
       - "poetry.toml"
-      - ".github/scripts/*.sh"
-      - ".github/workflows/*.yml"
-      - ".github/actions/**"
+      - ".github/scripts/supply_chain_check.sh"
+      - ".github/scripts/check_module_versions.py"
+      - ".github/workflows/supply-chain-check.yml"
+      - ".github/actions/setup-poetry/**"
   schedule:
     - cron: "0 8 * * 1"
   workflow_dispatch:

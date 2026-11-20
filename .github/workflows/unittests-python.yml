@@ -4,21 +4,31 @@ name: Unittests Python
 on:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
-    paths-ignore:
-      - "docs/**"
-      - "modules/web/src/**"
-      - "modules/web/e2e/**"
-      - ".github/workflows/frontend-quality.yml"
-      - ".github/workflows/web-e2e.yml"
+    paths:
+      - "pyproject.toml"
+      - "poetry.toml"
+      - "modules/backend/**"
+      - "!modules/backend/Dockerfile"
+      - "modules/web/openapi/**"
+      - "scripts/export_openapi.*"
+      - "scripts/utils.sh"
+      - ".github/scripts/migration_check.sh"
+      - ".github/actions/setup-poetry/**"
+      - ".github/workflows/unittests-python.yml"
   push:
     branches:
       - main
-    paths-ignore:
-      - "docs/**"
-      - "modules/web/src/**"
-      - "modules/web/e2e/**"
-      - ".github/workflows/frontend-quality.yml"
-      - ".github/workflows/web-e2e.yml"
+    paths:
+      - "pyproject.toml"
+      - "poetry.toml"
+      - "modules/backend/**"
+      - "!modules/backend/Dockerfile"
+      - "modules/web/openapi/**"
+      - "scripts/export_openapi.*"
+      - "scripts/utils.sh"
+      - ".github/scripts/migration_check.sh"
+      - ".github/actions/setup-poetry/**"
+      - ".github/workflows/unittests-python.yml"
   schedule:
     - cron: "0 7 * * 1"
   workflow_dispatch:

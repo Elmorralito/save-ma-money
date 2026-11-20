@@ -8,12 +8,11 @@
 # -----------------------------------------------------------------------------
 # Stage 1: production bundle
 # -----------------------------------------------------------------------------
-FROM node:22-bookworm-slim AS build
+FROM node:26-bookworm-slim AS build
 
 WORKDIR /app
 
-RUN corepack enable \
-    && corepack prepare pnpm@9.15.9 --activate
+RUN npm install -g pnpm@9.15.9
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .nvmrc ./
 COPY modules/web/package.json ./modules/web/
