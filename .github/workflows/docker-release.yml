@@ -67,12 +67,13 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          pull: true
+          no-cache: true
           load: true
           push: false
           build-args: ${{ matrix.build_args }}
           tags: local/${{ matrix.image }}:ci
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-to: type=local,dest=/tmp/.buildx-cache,mode=max
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -96,5 +97,4 @@ jobs:
           build-args: ${{ matrix.build_args }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-from: type=local,src=/tmp/.buildx-cache
