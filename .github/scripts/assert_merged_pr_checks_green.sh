@@ -225,6 +225,8 @@ jq -r '
 ' <<<"${STATUSES_JSON}"
 
 FAILED_INDIVIDUAL="$(
+  # Literal ${{ matrix.language }} appears when CodeQL matrix skips pre-expansion.
+  # shellcheck disable=SC2016
   jq -r --argjson is_bot "${IS_DEPENDABOT}" '
     [
       .check_runs[]
@@ -238,6 +240,7 @@ FAILED_INDIVIDUAL="$(
               and .conclusion == "skipped"
               and (.name == "Analyze (python)"
                 or .name == "Analyze (javascript-typescript)"
+                or .name == "Analyze (${{ matrix.language }})"
                 or .name == "gitleaks"
                 or .name == "Not behind main"
                 or .name == "branch-sync"

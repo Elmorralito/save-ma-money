@@ -17,6 +17,6 @@
     "web:test:coverage": "pnpm --filter @papita/web test:coverage",
     "web:test:e2e": "pnpm --filter @papita/web test:e2e",
     "web:lhci": "pnpm --filter @papita/web lhci",
-    "web:audit": "pnpm --filter @papita/web audit"
+    "web:audit": "pnpm --filter @papita/web run audit"
   }
 }
