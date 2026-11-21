@@ -5,9 +5,8 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
+  # Do not re-run on push to main: release.yml gates the tag on the merged
+  # PR having been green; weekly schedule still scans main.
   schedule:
     - cron: "0 5 * * 1"
   workflow_dispatch:

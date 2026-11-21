@@ -3,11 +3,12 @@ name: Branch Sync Check
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
     inputs:
       base_ref:
         description: Base ref to compare HEAD against
+        type: string
         required: false
         default: origin/main
 

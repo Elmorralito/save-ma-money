@@ -1,0 +1,14 @@
+---
+# Deep IaC scan for the manual pre-commit hook:
+#   pre-commit run checkov --hook-stage manual --all-files
+# Maintenance: .github/CI.md. Every skip needs a reason.
+directory:
+  - modules/backend
+  - modules/web
+framework:
+  - dockerfile
+compact: true
+quiet: true
+skip-path:
+  - node_modules
+  - .venv

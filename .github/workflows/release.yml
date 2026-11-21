@@ -9,9 +9,13 @@ on:
 
 # contents:write — tag + GitHub Release via GITHUB_TOKEN (main only; no dev tags)
 # actions:write — dispatch docker-release.yml after tagging
+# pull-requests:read + checks:read — GraphQL statusCheckRollup needs checks:read.
+# Do not use Checks REST check-runs (403 even with checks:write).
 permissions:
   contents: write
   actions: write
+  pull-requests: read
+  checks: read
 
 concurrency:
   group: semantic-release
@@ -33,6 +37,14 @@ jobs:
 
       - name: Pin branch to triggering commit
         run: git reset --hard "${GITHUB_SHA}"
+
+      # Quality, test, frontend, and security workflows do not re-run on push
+      # to main. Refuse to tag unless the associated merged PR had every
+      # applicable gate individually green (see assert_merged_pr_checks_green.sh).
+      - name: Require merged PR checks were green
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: /bin/bash .github/scripts/assert_merged_pr_checks_green.sh
 
       # Major bumps are manual; automated releases on >=1.x are capped at minor.
       - name: Cap automated bump at minor

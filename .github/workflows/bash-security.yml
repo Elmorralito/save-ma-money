@@ -7,6 +7,7 @@ on:
       - "scripts/**"
       - "deploy/scripts/**"
       - ".github/scripts/**"
+      - ".github/semgrep/**"
       - ".github/workflows/bash-security.yml"
   workflow_dispatch:
 
@@ -44,3 +45,26 @@ jobs:
             .cursor
             .agents
             .github/workflows
+            .github/semgrep
+
+  semgrep-bash:
+    name: Semgrep (bash security)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: semgrep/semgrep:1.128.1@sha256:fca58525689355641019c05ab49dcc5bc3a1eb7e044f35014ee39594b5aa4fc1
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Scan shell scripts with Semgrep
+        run: |
+          semgrep scan \
+            --config=.github/semgrep/bash-security.yml \
+            --config=p/trailofbits \
+            --error \
+            --metrics=off \
+            --include='*.sh' \
+            .github/scripts/ \
+            deploy/scripts/ \
+            scripts/

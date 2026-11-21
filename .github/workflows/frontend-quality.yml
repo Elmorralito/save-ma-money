@@ -13,18 +13,8 @@ on:
       - ".node-version"
       - ".dockerignore"
       - ".github/workflows/frontend-quality.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "modules/web/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".nvmrc"
-      - ".node-version"
-      - ".dockerignore"
-      - ".github/workflows/frontend-quality.yml"
+  # Do not re-run on push to main: release.yml gates the tag on the merged
+  # PR having been green (see assert_merged_pr_checks_green.sh).
   workflow_dispatch:
 
 concurrency:
