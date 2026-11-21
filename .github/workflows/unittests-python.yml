@@ -15,20 +15,8 @@ on:
       - ".github/scripts/migration_check.sh"
       - ".github/actions/setup-poetry/**"
       - ".github/workflows/unittests-python.yml"
-  push:
-    branches:
-      - main
-    paths:
-      - "pyproject.toml"
-      - "poetry.toml"
-      - "modules/backend/**"
-      - "!modules/backend/Dockerfile"
-      - "modules/web/openapi/**"
-      - "scripts/export_openapi.*"
-      - "scripts/utils.sh"
-      - ".github/scripts/migration_check.sh"
-      - ".github/actions/setup-poetry/**"
-      - ".github/workflows/unittests-python.yml"
+  # Do not re-run on push to main: release.yml gates the tag on the merged
+  # PR having been green (see assert_merged_pr_checks_green.sh).
   schedule:
     - cron: "0 7 * * 1"
   workflow_dispatch:

@@ -121,3 +121,16 @@ repos:
     hooks:
       - id: actionlint
         args: ["-color"]
+
+  # ---------- Deep IaC scan (manual stage; PRs/main via checkov.yml) ----------
+  - repo: local
+    hooks:
+      - id: checkov
+        name: checkov (Dockerfiles)
+        entry: bridgecrew/checkov:3.3.19
+        language: docker_image
+        args:
+          - "--config-file"
+          - ".checkov.yaml"
+        pass_filenames: false
+        stages: [manual]

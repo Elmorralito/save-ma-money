@@ -4,9 +4,8 @@ name: Secret Scan
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-  push:
-    branches:
-      - main
+  # Do not re-run on push to main: release.yml gates the tag on the merged
+  # PR having been green; weekly schedule still scans main.
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:

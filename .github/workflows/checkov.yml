@@ -1,0 +1,49 @@
+---
+name: Checkov IaC Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths:
+      - "**/Dockerfile"
+      - ".checkov.yaml"
+      - ".pre-commit-config.yaml"
+      - ".github/workflows/checkov.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/Dockerfile"
+      - ".checkov.yaml"
+      - ".pre-commit-config.yaml"
+      - ".github/workflows/checkov.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checkov-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checkov:
+    name: Checkov (Dockerfiles)
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'skip-scan-image')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version-file: .python-version
+
+      # Same hook as local runs; config in .checkov.yaml.
+      - name: Run checkov (pre-commit manual stage)
+        uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: checkov --hook-stage manual --all-files
