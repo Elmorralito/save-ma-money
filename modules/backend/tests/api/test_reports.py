@@ -606,3 +606,7 @@ class TestReportsRoutes:
         assert health_body["scorecard"]["margin_ltv_pct"] == 20.0
         assert mock_service.financial_health.call_args.kwargs["currency"] == "USD"
         assert mock_service.financial_health.call_args.kwargs["target_liquidity_months"] == 6.0
+
+        health_default_resp = client.get("/api/v1/reports/financial-health")
+        assert health_default_resp.status_code == 200
+        assert mock_service.financial_health.call_args.kwargs["currency"] is None

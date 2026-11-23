@@ -164,3 +164,111 @@ def test_compute_financial_health_handles_empty_accounts_and_multi_currency() ->
     assert sc["debt_to_asset_ratio_pct"] is None
     assert sc["margin_ltv_pct"] is None
     assert sc["liquid_runway_months"] is None
+
+
+def test_compute_financial_health_value_fallbacks_and_inactive_links() -> None:
+    liquid_current = _acct(
+        name="Liquid Current",
+        kind=AccountKind.SAVINGS,
+        side=LedgerSide.ASSET,
+        current_value=2_000.0,
+        initial_value=500.0,
+    )
+    liquid_initial = _acct(
+        name="Liquid Initial",
+        kind=AccountKind.CASH,
+        side=LedgerSide.ASSET,
+        current_value=None,
+        initial_value=1_000.0,
+    )
+    non_liquid_balance = _acct(
+        name="Other Asset Balance",
+        kind=AccountKind.OTHER_ASSET,
+        side=LedgerSide.ASSET,
+        current_value=None,
+        initial_value=100.0,
+    )
+    non_liquid_initial = _acct(
+        name="Other Asset Initial",
+        kind=AccountKind.REAL_ESTATE,
+        side=LedgerSide.ASSET,
+        current_value=None,
+        initial_value=5_000.0,
+    )
+    liab_balance = _acct(
+        name="Card Balance",
+        kind=AccountKind.CREDIT_CARD,
+        side=LedgerSide.LIABILITY,
+        current_value=None,
+        initial_value=200.0,
+    )
+    liab_initial = _acct(
+        name="Other Liab Initial",
+        kind=AccountKind.OTHER_LIABILITY,
+        side=LedgerSide.LIABILITY,
+        current_value=None,
+        initial_value=800.0,
+    )
+    excluded_collateral = _acct(
+        name="Excluded Collateral",
+        kind=AccountKind.INVESTMENT_BROKERAGE,
+        side=LedgerSide.ASSET,
+        include_in_balance=False,
+        current_value=50_000.0,
+    )
+
+    assert non_liquid_balance.id is not None
+    assert liab_balance.id is not None
+    assert liab_initial.id is not None
+    assert excluded_collateral.id is not None
+    assert liquid_current.id is not None
+
+    inactive_link = AccountFinancingDTO(
+        id=uuid.uuid4(),
+        owner_id=liquid_current.owner_id,
+        asset_account_id=non_liquid_balance.id,
+        loan_account_id=liab_balance.id,
+        financing_share=1.0,
+        active=False,
+    )
+    missing_acct_link = AccountFinancingDTO(
+        id=uuid.uuid4(),
+        owner_id=liquid_current.owner_id,
+        asset_account_id=uuid.uuid4(),
+        loan_account_id=liab_balance.id,
+        financing_share=1.0,
+        active=True,
+    )
+    excluded_asset_link = AccountFinancingDTO(
+        id=uuid.uuid4(),
+        owner_id=liquid_current.owner_id,
+        asset_account_id=excluded_collateral.id,
+        loan_account_id=liab_initial.id,
+        financing_share=1.0,
+        active=True,
+    )
+
+    result = compute_financial_health(
+        accounts=[
+            liquid_current,
+            liquid_initial,
+            non_liquid_balance,
+            non_liquid_initial,
+            liab_balance,
+            liab_initial,
+            excluded_collateral,
+        ],
+        loan_details_by_id={},
+        financing_links=[inactive_link, missing_acct_link, excluded_asset_link],
+        balance_by_account_id={non_liquid_balance.id: 3_000.0, liab_balance.id: -1_200.0},
+        debt_payload=_debt_payload(),
+        requested_currency="USD",
+    )
+
+    sc = result["scorecard"]
+    # Assets = 2,000 + 1,000 + 3,000 + 5,000 = 11,000
+    assert sc["total_assets"] == 11_000.0
+    # Liabilities = 1,200 + 800 = 2,000
+    assert sc["total_liabilities"] == 2_000.0
+    assert sc["reconciled_net_worth"] == 9_000.0
+    assert sc["margin_ltv_pct"] is None
