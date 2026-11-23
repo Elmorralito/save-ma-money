@@ -332,7 +332,7 @@ class IngestionConnectionService(BaseService):
             return False
         disabled = existing.model_copy(update={"enabled": False})
         self._connection_repository.upsert_record(disabled, owner=owner, **kwargs)
-        self.delete(obj=connection_id, owner=owner, hard=False, **kwargs)
+        self.delete(obj=disabled, owner=owner, hard=False, **kwargs)
         return True
 
     def list_connections(self, *, owner: UsersDTO, **kwargs) -> list[IngestionConnectionDTO]:

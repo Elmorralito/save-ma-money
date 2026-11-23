@@ -85,9 +85,7 @@ def test_query_merges_legacy_sender_with_senders_list_and_ignores_blank_terms() 
     query = build_gmail_query(fetch_filter, processed_label="PAPITA_PROCESSED")
 
     assert query == (
-        "-label:PAPITA_PROCESSED "
-        "from:(alertasynotificaciones@notificacionesbancolombia.com OR global66.com) "
-        "in:inbox"
+        "-label:PAPITA_PROCESSED from:(alertasynotificaciones@notificacionesbancolombia.com OR global66.com) in:inbox"
     )
 
 

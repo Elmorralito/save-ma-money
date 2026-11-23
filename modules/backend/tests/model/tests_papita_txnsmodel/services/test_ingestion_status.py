@@ -250,7 +250,7 @@ def test_delete_connection_disables_and_soft_deletes() -> None:
         assert service.delete_connection(owner=owner, connection_id=conn_id) is True
         saved_dto = repo.upsert_record.call_args.args[0]
         assert saved_dto.enabled is False
-        mock_delete.assert_called_once_with(obj=conn_id, owner=owner, hard=False)
+        mock_delete.assert_called_once_with(obj=saved_dto, owner=owner, hard=False)
 
     with patch.object(service, "get", return_value=None):
         assert service.delete_connection(owner=owner, connection_id=uuid.uuid4()) is False
