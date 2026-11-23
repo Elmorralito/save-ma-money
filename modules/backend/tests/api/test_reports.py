@@ -445,3 +445,112 @@ class TestReportsRoutes:
             json={"extra_monthly_prepayment": -50.0},
         )
         assert bad_sim.status_code == 422
+
+    def test_ppt091_query_validation_currency_norm_and_cache_bypass(
+        self,
+        reports_client: tuple[TestClient, object, MagicMock],
+    ) -> None:
+        client, owner, mock_service = reports_client
+
+        inv_ocf = client.get(
+            "/api/v1/reports/operating-cashflow",
+            params={"start_date": "2026-03-10", "end_date": "2026-03-01"},
+        )
+        assert inv_ocf.status_code in (400, 422)
+
+        inv_pva = client.get(
+            "/api/v1/reports/planned-vs-actual",
+            params={"start_date": "2026-03-10", "end_date": "2026-03-01"},
+        )
+        assert inv_pva.status_code in (400, 422)
+
+        mock_service.planned_vs_actual.return_value = {
+            "currency": "COP",
+            "available_currencies": ["COP"],
+            "multi_currency_warning": False,
+            "summary": {
+                "planned_income": 0.0,
+                "actual_income": 0.0,
+                "planned_outflows": 0.0,
+                "actual_outflows": 0.0,
+                "planned_operating_fcf": 0.0,
+                "actual_operating_fcf": 0.0,
+                "net_fcf_variance": 0.0,
+                "adherence_pct": 100.0,
+                "reconciliation_flag_count": 0,
+                "status_tone": "positive",
+            },
+            "bucket_rollups": [],
+            "template_items": [],
+            "unplanned_items": [],
+            "reconciliation_flags": [],
+        }
+        pva_ok = client.get(
+            "/api/v1/reports/planned-vs-actual",
+            params={**_SPENDING_PARAMS, "currency": "cop", "cashflow_bucket": "fixed_expense"},
+        )
+        assert pva_ok.status_code == 200
+        assert mock_service.planned_vs_actual.call_args.kwargs["currency"] == "COP"
+
+        mock_service.debt_paydown.return_value = {
+            "currency": "COP",
+            "available_currencies": ["COP"],
+            "multi_currency_warning": False,
+            "summary": {
+                "total_debt": 0.0,
+                "active_liability_count": 0,
+                "total_monthly_interest_drag": 0.0,
+                "total_annual_interest_drag": 0.0,
+                "total_monthly_contractual_payment": 0.0,
+                "weighted_average_ea_pct": 0.0,
+                "highest_rate_account_name": None,
+                "highest_rate_payoff_date": None,
+            },
+            "liabilities": [],
+            "liquidity_context": {
+                "liquid_cash_total": 0.0,
+                "baseline_monthly_burn": 0.0,
+                "liquid_runway_months": None,
+                "target_liquidity_months": 4.0,
+                "safe_lump_sum_headroom": 0.0,
+            },
+            "excluded_liabilities": None,
+        }
+        debt_ok = client.get("/api/v1/reports/debt-paydown", params={"currency": "cop"})
+        assert debt_ok.status_code == 200
+        assert mock_service.debt_paydown.call_args.kwargs["currency"] == "COP"
+
+        # Cover _cached_report_call X-Cache: BYPASS when owner.id is None
+        mock_service.operating_cashflow.return_value = {
+            "currency": "USD",
+            "available_currencies": ["USD"],
+            "multi_currency_warning": False,
+            "waterfall": {
+                "income_fixed": 0.0,
+                "income_variable": 0.0,
+                "total_operating_inflows": 0.0,
+                "loan_payments": 0.0,
+                "fixed_expenses": 0.0,
+                "variable_expenses": 0.0,
+                "unexpected_expenses": 0.0,
+                "total_operating_outflows": 0.0,
+                "operating_free_cashflow": 0.0,
+                "savings": 0.0,
+                "capital_deployments": 0.0,
+                "total_allocations": 0.0,
+                "net_cash_generation": 0.0,
+                "non_operating_inflows": 0.0,
+                "internal_transfers_excluded": 0.0,
+            },
+            "buckets": [],
+            "monthly_series": [],
+            "diagnostics": {
+                "unbucketed_transaction_count": 0,
+                "unbucketed_amount": 0.0,
+                "cashflow_only_card_expense_excluded_count": 0,
+            },
+        }
+        owner.id = None  # type: ignore[attr-defined]
+        bypass_resp = client.get("/api/v1/reports/operating-cashflow", params=_SPENDING_PARAMS)
+        assert bypass_resp.status_code == 200
+        assert bypass_resp.headers["X-Cache"] == "BYPASS"

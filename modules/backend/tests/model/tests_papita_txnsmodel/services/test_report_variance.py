@@ -153,3 +153,235 @@ def test_planned_vs_actual_expansion_partial_sums_and_reconciliation_flags() -> 
     assert report["summary"]["planned_income"] == 2000.0
     assert report["summary"]["planned_outflows"] == 1100.0
     assert report["summary"]["actual_outflows"] == 1183.0
+
+
+def test_planned_vs_actual_filters_statuses_and_zero_planned_branches() -> None:
+    """Cover template/txn filters, variance status variants, and mild-shortfall/zero-planned summaries."""
+    owner_id = uuid.uuid4()
+    checking = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="USD",
+    )
+    other_acct = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Euro Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="EUR",
+    )
+    savings = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Savings",
+        account_kind=AccountKind.SAVINGS,
+        ledger_side=LedgerSide.ASSET,
+        currency="USD",
+    )
+    cat_salary = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Salary",
+        category_kind=CategoryKind.INCOME,
+        cashflow_bucket=CashflowBucket.INCOME_FIXED,
+    )
+    cat_fixed = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Internet",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=CashflowBucket.FIXED_EXPENSE,
+    )
+    cat_var = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Dining",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=CashflowBucket.VARIABLE_EXPENSE,
+    )
+
+    tpl_inactive = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_fixed.id,
+        name="Cancelled Plan",
+        planned_amount=50.0,
+        planned_day=1,
+        from_account_id=checking.id,
+        active=False,
+    )
+    tpl_eur = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_fixed.id,
+        name="Euro Hosting",
+        planned_amount=40.0,
+        planned_day=2,
+        from_account_id=other_acct.id,
+    )
+    tpl_salary = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_salary.id,
+        name="Salary",
+        planned_amount=1000.0,
+        planned_day=5,
+        from_account_id=checking.id,
+    )
+    tpl_internet = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_fixed.id,
+        name="Internet",
+        planned_amount=100.0,
+        planned_day=10,
+        from_account_id=checking.id,
+    )
+    tpl_dining = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_var.id,
+        name="Dining Plan",
+        planned_amount=200.0,
+        planned_day=25,
+        from_account_id=checking.id,
+    )
+
+    txns = [
+        # Income > 105% -> status "exceeded"
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.INCOME,
+            amount=1100.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 3, 5, 12, 0, tzinfo=timezone.utc),
+            to_account_id=checking.id,
+            category_id=cat_salary.id,
+            template_id=tpl_salary.id,
+        ),
+        # Partial expense (< 99%) -> status "partial"
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=60.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 3, 10, 12, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            category_id=cat_fixed.id,
+            template_id=tpl_internet.id,
+        ),
+        # Over-budget expense (> 105%) -> status "over_budget"
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=250.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 3, 25, 12, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            category_id=cat_var.id,
+            template_id=tpl_dining.id,
+        ),
+        # Internal transfer between two checking accounts -> skipped via INTERNAL_BUCKET
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.TRANSFER,
+            amount=50.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 3, 12, 12, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            to_account_id=savings.id,
+        ),
+    ]
+
+    full_report = compute_planned_vs_actual(
+        templates=[tpl_inactive, tpl_eur, tpl_salary, tpl_internet, tpl_dining],
+        transactions=txns,
+        accounts=[checking, other_acct, savings],
+        categories=[cat_salary, cat_fixed, cat_var],
+        cc_details_by_id={},
+        start_day=date(2026, 3, 1),
+        end_day=date(2026, 3, 31),
+        requested_currency="USD",
+        as_of=date(2026, 3, 15),
+    )
+    by_name = {item["template_name"]: item for item in full_report["template_items"]}
+    assert set(by_name) == {"Salary", "Internet", "Dining Plan"}
+    assert by_name["Salary"]["status"] == "exceeded"
+    assert by_name["Internet"]["status"] == "partial"
+    assert by_name["Dining Plan"]["status"] == "over_budget"
+    assert full_report["summary"]["status_tone"] == "positive"
+
+    # Bucket + account filters exclude non-matching templates/transactions cleanly
+    bucket_only = compute_planned_vs_actual(
+        templates=[tpl_salary, tpl_internet, tpl_dining],
+        transactions=txns,
+        accounts=[checking, savings],
+        categories=[cat_salary, cat_fixed, cat_var],
+        cc_details_by_id={},
+        start_day=date(2026, 3, 1),
+        end_day=date(2026, 3, 31),
+        requested_currency="USD",
+        account_id=checking.id,
+        cashflow_bucket=CashflowBucket.FIXED_EXPENSE,
+        as_of=date(2026, 3, 15),
+    )
+    assert [row["template_name"] for row in bucket_only["template_items"]] == ["Internet"]
+
+    # Zero planned outflows -> adherence_pct 100.0 (when actual == 0) and 0.0 (when unplanned expense > 0)
+    empty_report = compute_planned_vs_actual(
+        templates=[],
+        transactions=[],
+        accounts=[checking],
+        categories=[],
+        cc_details_by_id={},
+        start_day=date(2026, 3, 1),
+        end_day=date(2026, 3, 31),
+        requested_currency="USD",
+        as_of=date(2026, 3, 15),
+    )
+    assert empty_report["summary"]["adherence_pct"] == 100.0
+
+    # Mild shortfall within 10% -> status_tone "warning" + actual > 0 with planned_outflows == 0 -> adherence_pct 0.0
+    mild_tpl = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_salary.id,
+        name="Pay",
+        planned_amount=1000.0,
+        planned_day=10,
+        from_account_id=checking.id,
+    )
+    mild_report = compute_planned_vs_actual(
+        templates=[mild_tpl],
+        transactions=[
+            TransactionsDTO(
+                owner_id=owner_id,
+                transaction_kind=TransactionKind.INCOME,
+                amount=1000.0,
+                currency="USD",
+                transaction_ts=datetime(2026, 3, 10, 12, 0, tzinfo=timezone.utc),
+                to_account_id=checking.id,
+                category_id=cat_salary.id,
+                template_id=mild_tpl.id,
+            ),
+            TransactionsDTO(
+                owner_id=owner_id,
+                transaction_kind=TransactionKind.EXPENSE,
+                amount=50.0,
+                currency="USD",
+                transaction_ts=datetime(2026, 3, 11, 12, 0, tzinfo=timezone.utc),
+                from_account_id=checking.id,
+                category_id=cat_fixed.id,
+            ),
+        ],
+        accounts=[checking],
+        categories=[cat_salary, cat_fixed],
+        cc_details_by_id={},
+        start_day=date(2026, 3, 1),
+        end_day=date(2026, 3, 31),
+        requested_currency="USD",
+        as_of=date(2026, 3, 15),
+    )
+    assert mild_report["summary"]["adherence_pct"] == 0.0
+    assert mild_report["summary"]["status_tone"] == "warning"
