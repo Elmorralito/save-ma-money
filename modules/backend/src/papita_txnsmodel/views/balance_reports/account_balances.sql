@@ -21,6 +21,7 @@ WITH per_owner_account_net AS (
                 a.owner_id = t.owner_id
                 AND t.active = TRUE
                 AND t.status = 'COMPLETED'
+                AND t.settlement_status = 'SETTLED'
                 AND (a.id = t.from_account_id OR a.id = t.to_account_id)
         LEFT JOIN papita_transactions.accounts AS a_to
             ON

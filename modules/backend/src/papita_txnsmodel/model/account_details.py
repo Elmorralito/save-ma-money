@@ -3,7 +3,7 @@
 import uuid
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DECIMAL, Boolean, Column, SmallInteger, String, text
+from sqlalchemy import DECIMAL, Boolean, Column, String, text
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship
 
@@ -68,8 +68,16 @@ class TradingAccountDetails(BaseSQLModel, table=True):  # type: ignore
     __tablename__ = TRADING_ACCOUNT_DETAILS__TABLENAME
 
     account_id: uuid.UUID = Field(foreign_key=f"{ACCOUNTS__TABLENAME}.id", primary_key=True)
+    symbol: str | None = Field(sa_type=String(32), nullable=True, default=None)
     buy_value: float = Field(sa_column=Column(DECIMAL(22, 8), nullable=False))
-    units: int = Field(sa_column=Column(SmallInteger, nullable=False), default=1)
+    units: float = Field(sa_column=Column(DECIMAL(22, 8), nullable=False, server_default=text("1.0")), default=1.0)
+    unit_price: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None, ge=0)
+    fx_rate: float = Field(
+        sa_column=Column(DECIMAL(22, 8), nullable=False, server_default=text("1.0")),
+        default=1.0,
+        gt=0,
+    )
+    unrealized_pnl: float | None = Field(sa_column=Column(DECIMAL(22, 8), nullable=True), default=None)
 
     account: "Accounts" = Relationship(back_populates="trading_details")
 

@@ -16,7 +16,11 @@ from typing import Any, Literal
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from papita_txnsmodel.access.account_details.dto import CreditCardAccountDetailsDTO, LoanAccountDetailsDTO
+from papita_txnsmodel.access.account_details.dto import (
+    CreditCardAccountDetailsDTO,
+    LoanAccountDetailsDTO,
+    TradingAccountDetailsDTO,
+)
 from papita_txnsmodel.access.account_financing.dto import AccountFinancingDTO
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
@@ -31,7 +35,11 @@ from papita_txnsmodel.model.enums import (
     TransactionStatus,
 )
 from papita_txnsmodel.services.account_balances import AccountBalancesService
-from papita_txnsmodel.services.account_details import CreditCardAccountDetailsService, LoanAccountDetailsService
+from papita_txnsmodel.services.account_details import (
+    CreditCardAccountDetailsService,
+    LoanAccountDetailsService,
+    TradingAccountDetailsService,
+)
 from papita_txnsmodel.services.account_financing import AccountFinancingService
 from papita_txnsmodel.services.accounts import AccountsService
 from papita_txnsmodel.services.balance_views import refresh_balance_materialized_views
@@ -61,6 +69,7 @@ class ReportService(BaseModel):
     templates_service: TransactionTemplatesService | None = None
     cc_details_service: CreditCardAccountDetailsService | None = None
     loan_details_service: LoanAccountDetailsService | None = None
+    trading_details_service: TradingAccountDetailsService | None = None
     financing_service: AccountFinancingService | None = None
 
     @model_validator(mode="after")
@@ -80,6 +89,8 @@ class ReportService(BaseModel):
             self.cc_details_service = CreditCardAccountDetailsService.model_validate({"connector": self.connector})
         if not isinstance(self.loan_details_service, LoanAccountDetailsService):
             self.loan_details_service = LoanAccountDetailsService.model_validate({"connector": self.connector})
+        if not isinstance(self.trading_details_service, TradingAccountDetailsService):
+            self.trading_details_service = TradingAccountDetailsService.model_validate({"connector": self.connector})
         if not isinstance(self.financing_service, AccountFinancingService):
             self.financing_service = AccountFinancingService.model_validate({"connector": self.connector})
         return self
@@ -390,6 +401,20 @@ class ReportService(BaseModel):
         raw = self.loan_details_service.get_map_by_account_ids(loan_ids)
         return {k: v for k, v in raw.items() if isinstance(v, LoanAccountDetailsDTO)}
 
+    def _load_trading_details(self, accounts: list[AccountsDTO]) -> dict[uuid.UUID, TradingAccountDetailsDTO]:
+        """Batch-load trading extension rows for pre-validated tenant account IDs."""
+        if self.trading_details_service is None:
+            return {}
+        trading_ids = [
+            acct.id
+            for acct in accounts
+            if acct.id is not None and acct.account_kind == AccountKind.INVESTMENT_BROKERAGE
+        ]
+        if not trading_ids:
+            return {}
+        raw = self.trading_details_service.get_map_by_account_ids(trading_ids)
+        return {k: v for k, v in raw.items() if isinstance(v, TradingAccountDetailsDTO)}
+
     def _load_balance_map(self, *, owner: UsersDTO, **kwargs) -> dict[uuid.UUID, float]:
         """Return ``account_id -> balance`` map from the account_balances MV."""
         if self.account_balances_service is None:
@@ -636,6 +661,7 @@ class ReportService(BaseModel):
         templates = self._load_templates(owner=owner, **kwargs)
         cc_details = self._load_cc_details(accounts)
         loan_details = self._load_loan_details(accounts)
+        trading_details = self._load_trading_details(accounts)
         financing = self._load_financing_links(owner=owner, **kwargs)
         balances = self._load_balance_map(owner=owner, **kwargs)
 
@@ -686,4 +712,5 @@ class ReportService(BaseModel):
             balance_by_account_id=balances,
             debt_payload=debt_payload,
             requested_currency=selected_currency,
+            trading_details_by_id=trading_details,
         )

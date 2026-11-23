@@ -162,6 +162,7 @@ function buildExtensionBlocks(
     const trading_details: TradingDetailsSchema = {
       buy_value: parseRequiredNumber(state.trading_buy_value, "Buy value"),
       units: Math.max(1, Math.trunc(parseRequiredNumber(state.trading_units, "Units"))),
+      fx_rate: 1,
     };
     return { trading_details };
   }
@@ -206,6 +207,7 @@ export function toAccountCreate(state: AccountFormState): AccountCreate {
     account_kind: state.account_kind,
     ledger_side: state.ledger_side,
     currency: state.currency.trim().toUpperCase() || "USD",
+    fx_rate: 1,
     include_in_balance: true,
     ...buildExtensionBlocks(state),
   };

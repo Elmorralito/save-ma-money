@@ -5,15 +5,29 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from papita_txnsmodel.access.account_details.dto import LoanAccountDetailsDTO
+from papita_txnsmodel.access.account_details.dto import LoanAccountDetailsDTO, TradingAccountDetailsDTO
 from papita_txnsmodel.access.account_financing.dto import AccountFinancingDTO
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.model.enums import LedgerSide
 from papita_txnsmodel.services.report_common import LIQUID_ACCOUNT_KINDS, lookup_by_id, resolve_currency_scope
 
 
-def _resolve_asset_value(account: AccountsDTO, balance_by_account_id: dict[uuid.UUID, float]) -> float:
+def compute_position_valuation(*, units: float, unit_price: float, fx_rate: float = 1.0) -> float:
+    """Compute position market value as ``units * unit_price * fx_rate`` (PPT-101 / #262)."""
+    return round(float(units) * float(unit_price) * float(fx_rate), 2)
+
+
+def _resolve_asset_value(
+    account: AccountsDTO,
+    balance_by_account_id: dict[uuid.UUID, float],
+    trading_details_by_id: dict[uuid.UUID, TradingAccountDetailsDTO] | None = None,
+) -> float:
     """Resolve balance-sheet value for an active included asset account."""
+    if trading_details_by_id and account.id is not None:
+        td = trading_details_by_id.get(account.id)
+        if td is not None and td.unit_price is not None:
+            return compute_position_valuation(units=td.units, unit_price=td.unit_price, fx_rate=td.fx_rate)
+
     if account.account_kind in LIQUID_ACCOUNT_KINDS:
         if account.id is not None and account.id in balance_by_account_id:
             return float(balance_by_account_id[account.id])
@@ -72,6 +86,7 @@ def compute_financial_health(  # pylint: disable=too-many-arguments,too-many-loc
     balance_by_account_id: dict[uuid.UUID, float],
     debt_payload: dict[str, Any],
     requested_currency: str | None = None,
+    trading_details_by_id: dict[uuid.UUID, TradingAccountDetailsDTO] | None = None,
 ) -> dict[str, Any]:
     """Compute API-driven Financial Health Scorecard metrics from active included accounts.
 
@@ -106,14 +121,23 @@ def compute_financial_health(  # pylint: disable=too-many-arguments,too-many-loc
     for acct in accounts:
         if acct.id is None or not acct.active or acct.closed_at is not None:
             continue
-        if acct.currency.strip().upper() != selected_currency:
+        acct_currency = acct.currency.strip().upper()
+        acct_fx = float(getattr(acct, "fx_rate", 1.0) or 1.0)
+        is_foreign_fx_converted = acct_currency != selected_currency and acct_fx != 1.0
+        if acct_currency != selected_currency and not is_foreign_fx_converted:
             continue
         if not acct.include_in_balance:
             excluded_account_count += 1
             continue
 
         if acct.ledger_side == LedgerSide.ASSET:
-            val = _resolve_asset_value(acct, balance_by_account_id)
+            td = trading_details_by_id.get(acct.id) if trading_details_by_id else None
+            if td is not None and td.unit_price is not None:
+                eff_fx = td.fx_rate if td.fx_rate != 1.0 else (acct_fx if is_foreign_fx_converted else 1.0)
+                val = compute_position_valuation(units=td.units, unit_price=td.unit_price, fx_rate=eff_fx)
+            else:
+                base_val = _resolve_asset_value(acct, balance_by_account_id)
+                val = round(base_val * acct_fx, 2) if is_foreign_fx_converted else base_val
             asset_values_by_id[acct.id] = val
             total_assets += val
             included_asset_count += 1
@@ -122,7 +146,8 @@ def compute_financial_health(  # pylint: disable=too-many-arguments,too-many-loc
             if loan_detail and loan_detail.is_paid_off:
                 excluded_account_count += 1
                 continue
-            val = _resolve_liability_value(acct, balance_by_account_id)
+            base_val = _resolve_liability_value(acct, balance_by_account_id)
+            val = round(base_val * acct_fx, 2) if is_foreign_fx_converted else base_val
             liability_values_by_id[acct.id] = val
             total_liabilities += val
             included_liability_count += 1

@@ -56,8 +56,19 @@ class TradingAccountDetailsDTO(AccountDetailsDTO):
     __dao_type__ = TradingAccountDetails
 
     account_id: uuid.UUID
+    symbol: str | None = Field(default=None, max_length=32)
     buy_value: float = Field(gt=0)
-    units: int = Field(default=1, gt=0)
+    units: float = Field(default=1.0, gt=0)
+    unit_price: float | None = Field(default=None, ge=0)
+    fx_rate: float = Field(default=1.0, gt=0)
+    unrealized_pnl: float | None = None
+
+    @property
+    def valued_amount(self) -> float | None:
+        """Compute ``units * unit_price * fx_rate`` when ``unit_price`` is set."""
+        if self.unit_price is None:
+            return None
+        return round(float(self.units) * float(self.unit_price) * float(self.fx_rate), 2)
 
 
 class CreditCardAccountDetailsDTO(AccountDetailsDTO):

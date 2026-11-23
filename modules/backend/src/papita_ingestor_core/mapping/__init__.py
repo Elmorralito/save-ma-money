@@ -46,6 +46,7 @@ def to_ingest_transaction_request(parsed: ParsedRecord) -> IngestTransactionRequ
         category_id=parsed.category_id,
         template_id=parsed.template_id,
         status=parsed.status,
+        settlement_status=parsed.settlement_status,
         description=parsed.description,
         reference_number=parsed.reference_number,
         tags=list(parsed.tags),

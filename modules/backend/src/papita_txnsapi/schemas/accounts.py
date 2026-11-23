@@ -61,14 +61,24 @@ class TradingDetailsSchema(BaseModel):
     """Trading extension fields for investment brokerage accounts.
 
     Attributes:
+        symbol: Optional ticker symbol (e.g. ``IAU``, ``SLV``, ``NU``).
         buy_value: Positive purchase or cost basis per position unit.
-        units: Number of position units held (default 1, must be positive).
+        units: Number of position units held (supports fractional shares; default 1.0).
+        unit_price: Optional latest market price per unit in native currency.
+        fx_rate: FX conversion rate to base currency (default 1.0).
+        unrealized_pnl: Optional unrealized profit/loss from broker statement.
+        valued_amount: Computed ``units * unit_price * fx_rate`` (read-only/derived).
     """
 
     model_config = ConfigDict(extra="forbid")
 
+    symbol: str | None = Field(default=None, max_length=32)
     buy_value: float = Field(gt=0)
-    units: int = Field(default=1, gt=0)
+    units: float = Field(default=1.0, gt=0)
+    unit_price: float | None = Field(default=None, ge=0)
+    fx_rate: float = Field(default=1.0, gt=0)
+    unrealized_pnl: float | None = None
+    valued_amount: float | None = None
 
 
 class RealEstateDetailsSchema(BaseModel):
@@ -191,6 +201,7 @@ class AccountCreate(BaseModel):
     account_kind: str
     ledger_side: str
     currency: str = Field(default="USD", min_length=3, max_length=3)
+    fx_rate: float = Field(default=1.0, gt=0)
     include_in_balance: bool = True
     initial_value: float | None = Field(default=None, ge=0)
     banking_details: BankingDetailsSchema | None = None
@@ -219,6 +230,7 @@ class AccountCreate(BaseModel):
             account_kind=parse_account_kind(self.account_kind),
             ledger_side=parse_ledger_side(self.ledger_side),
             currency=self.currency.upper(),
+            fx_rate=self.fx_rate,
             include_in_balance=self.include_in_balance,
             initial_value=self.initial_value,
         )
@@ -241,6 +253,8 @@ class AccountCreate(BaseModel):
         if nested is None:
             return None
         payload = nested.model_dump(mode="python")
+        if field_name == "trading_details":
+            payload.pop("valued_amount", None)
         if field_name == "real_estate_details":
             payload["area_unit"] = parse_area_unit(payload["area_unit"])
             payload["ownership"] = parse_ownership(payload["ownership"])
@@ -271,6 +285,7 @@ class AccountUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
+    fx_rate: float | None = Field(default=None, gt=0)
     initial_value: float | None = Field(default=None, ge=0)
     is_active: bool | None = None
     include_in_balance: bool | None = None
@@ -328,6 +343,8 @@ class AccountUpdate(BaseModel):
         if nested is None:
             return None
         payload = nested.model_dump(mode="python")
+        if field_name == "trading_details":
+            payload.pop("valued_amount", None)
         if field_name == "real_estate_details":
             payload["area_unit"] = parse_area_unit(payload["area_unit"])
             payload["ownership"] = parse_ownership(payload["ownership"])
@@ -363,6 +380,7 @@ class AccountResponse(BaseModel):
     account_kind: str
     ledger_side: str
     currency: str
+    fx_rate: float = 1.0
     balance: float = 0.0
     is_active: bool
     include_in_balance: bool = True
@@ -400,6 +418,7 @@ class AccountResponse(BaseModel):
             account_kind=enum_to_api_slug(account.account_kind),
             ledger_side=enum_to_api_slug(account.ledger_side),
             currency=account.currency,
+            fx_rate=float(getattr(account, "fx_rate", 1.0) or 1.0),
             balance=balance,
             is_active=bool(account.active),
             include_in_balance=bool(getattr(account, "include_in_balance", True)),
@@ -610,7 +629,19 @@ def _attach_extension(response: AccountResponse, account_kind: AccountKind, exte
             response, field_name, BankingDetailsSchema(entity=extension.entity, account_number=extension.account_number)
         )
     elif isinstance(extension, TradingAccountDetailsDTO):
-        setattr(response, field_name, TradingDetailsSchema(buy_value=extension.buy_value, units=extension.units))
+        setattr(
+            response,
+            field_name,
+            TradingDetailsSchema(
+                symbol=extension.symbol,
+                buy_value=extension.buy_value,
+                units=extension.units,
+                unit_price=extension.unit_price,
+                fx_rate=extension.fx_rate,
+                unrealized_pnl=extension.unrealized_pnl,
+                valued_amount=extension.valued_amount,
+            ),
+        )
     elif isinstance(extension, RealEstateAccountDetailsDTO):
         setattr(
             response,

@@ -89,6 +89,7 @@ function mockHappyPath(): void {
         account_kind: "checking",
         ledger_side: "asset",
         currency: "USD",
+        fx_rate: 1,
         balance: 100,
         is_active: true,
         include_in_balance: true,

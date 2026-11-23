@@ -52,6 +52,11 @@ class Accounts(BaseSQLModel, table=True):  # type: ignore
         )
     )
     currency: str = Field(sa_column=Column(CHAR(3), nullable=False), default="USD")
+    fx_rate: float = Field(
+        sa_column=Column(DECIMAL(22, 8), nullable=False, server_default=text("1.0")),
+        default=1.0,
+        gt=0,
+    )
     include_in_balance: bool = Field(
         sa_column=Column(Boolean, nullable=False, server_default=text("true")),
         default=True,

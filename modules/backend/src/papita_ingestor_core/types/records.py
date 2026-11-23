@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from papita_txnsmodel.model.enums import IngestionSource, TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import IngestionSource, SettlementStatus, TransactionKind, TransactionStatus
 
 BridgeOutcome = Literal["created", "updated", "reactivated"]
 
@@ -41,6 +41,7 @@ class ParsedRecord(BaseModel):
     category_id: uuid.UUID | None = None
     template_id: uuid.UUID | None = None
     status: TransactionStatus = TransactionStatus.COMPLETED
+    settlement_status: SettlementStatus = SettlementStatus.SETTLED
     description: str = ""
     reference_number: str | None = Field(default=None, max_length=64)
     tags: list[str] = Field(default_factory=list)

@@ -22,6 +22,39 @@ test.describe("critical path", () => {
     await loginWithSeed(page, seed);
     await assertNoJwtInWebStorage(page);
 
+    // Automation-first Home (PPT-088 / #181): Financial Health Scorecard + Live Pulse
+    const scorecard = page.locator('section[aria-label="Financial Health Scorecard"]');
+    await expect(
+      scorecard.getByRole("heading", { name: "Financial Health Scorecard" }),
+    ).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(scorecard.getByText("Reconciled Net Worth")).toBeVisible({ timeout: 15_000 });
+    await expect(scorecard.getByText("Liquid Cash Runway")).toBeVisible();
+    await expect(scorecard.getByText("Monthly Debt Service")).toBeVisible();
+    await expect(scorecard.getByText("Debt-to-Asset / LTV")).toBeVisible();
+
+    const ingestion = page.locator('section[aria-label="Ingestion status"]');
+    await expect(ingestion.getByRole("heading", { name: "Ingestion status" })).toBeVisible();
+    await expect(ingestion.getByText("Loading ingestion status…")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    await expect(ingestion.getByText(/Could not load ingestion status/i)).toHaveCount(0);
+
+    const operatingFcf = page.locator('section[aria-label="Operating Free Cashflow"]');
+    await expect(operatingFcf.getByText(/Monthly Operating FCF/i)).toBeVisible({
+      timeout: 15_000,
+    });
+
+    await expect(
+      page.locator('section[aria-label="In-transit transfers"]').getByRole("heading", {
+        name: "In-transit transfers",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.locator('section[aria-label="Due soon"]').getByRole("heading", { name: "Due soon" }),
+    ).toBeVisible();
+
     // Create account (exact: avoid dashboard quick-link cards matching nav labels)
     await page.getByRole("link", { name: "Accounts", exact: true }).click();
     await page.getByRole("heading", { name: "Accounts" }).waitFor();

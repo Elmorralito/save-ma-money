@@ -162,18 +162,69 @@ class IngestionRunResponse(BaseModel):
         )
 
 
+class IBKRImportRequest(BaseModel):
+    """Request body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    csv_content: str = Field(min_length=1, max_length=5_000_000)
+    fx_rate: float = Field(default=1.0, gt=0)
+    base_currency: str = Field(default="COP", min_length=3, max_length=3)
+    cash_account_id: uuid.UUID | None = None
+    margin_account_id: uuid.UUID | None = None
+    source_account_id: uuid.UUID | None = None
+    create_missing_accounts: bool = True
+
+
+class IBKRPositionImportResponse(BaseModel):
+    """Imported IBKR position valuation summary."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    symbol: str
+    account_id: uuid.UUID
+    action: str
+    units: float
+    unit_price: float
+    fx_rate: float
+    valued_amount: float
+    unrealized_pnl: float | None = None
+
+
+class IBKRImportResponse(BaseModel):
+    """Response body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    account_code: str | None = None
+    period: str | None = None
+    as_of: datetime | None = None
+    fx_rate: float
+    base_currency: str
+    positions: list[IBKRPositionImportResponse] = Field(default_factory=list)
+    total_portfolio_value: float = 0.0
+    settled_cash_value: float = 0.0
+    margin_loan_value: float = 0.0
+    margin_ltv_pct: float | None = None
+    deposits_created: int = 0
+    deposits_updated: int = 0
+
+
 def assert_ingestion_response_allowlist() -> None:
     """Raise if forbidden secret/raw field names appear on public schemas.
 
     Intended for unit tests / import-time hygiene — not a runtime router check.
     """
-    for schema in (IngestionConnectionResponse, IngestionRunResponse):
+    for schema in (IngestionConnectionResponse, IngestionRunResponse, IBKRImportResponse):
         overlap = _FORBIDDEN_RESPONSE_FIELDS.intersection(schema.model_fields)
         if overlap:
             raise AssertionError(f"{schema.__name__} exposes forbidden fields: {sorted(overlap)}")
 
 
 __all__ = [
+    "IBKRImportRequest",
+    "IBKRImportResponse",
+    "IBKRPositionImportResponse",
     "IngestionConnectionResponse",
     "IngestionRunResponse",
     "assert_ingestion_response_allowlist",

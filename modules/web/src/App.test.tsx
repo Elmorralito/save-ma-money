@@ -206,6 +206,7 @@ describe("DashboardPage (authenticated)", () => {
           id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
           name: "Checking",
           currency: "USD",
+          fx_rate: 1,
           balance: 1200,
           account_kind: "bank_account",
           ledger_side: "asset",
