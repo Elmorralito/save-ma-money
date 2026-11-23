@@ -36,6 +36,7 @@ export function AccountDetailPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.lists() });
       await queryClient.removeQueries({ queryKey: queryKeys.accounts.detail(accountId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       toast.success("Account deleted");
       await navigate("/accounts");
     },

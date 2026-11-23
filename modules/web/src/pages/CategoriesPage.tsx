@@ -46,6 +46,7 @@ export function CategoriesPage() {
     onSuccess: async (_void, categoryId) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories.lists() });
       await queryClient.removeQueries({ queryKey: queryKeys.categories.detail(categoryId) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       toast.success("Category deleted");
       setDeleteTarget(null);
     },

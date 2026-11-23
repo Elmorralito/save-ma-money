@@ -35,8 +35,8 @@ from papita_txnsapi.core.client_contract import (
     HEADER_SUNSET,
     cash_flow_refresh_balances_default,
 )
-from papita_txnsapi.schemas.converters import parse_transaction_kind, parse_transaction_status
-from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsapi.schemas.converters import parse_cashflow_bucket, parse_transaction_kind, parse_transaction_status
+from papita_txnsmodel.model.enums import CashflowBucket, TransactionKind, TransactionStatus
 
 _ALLOWED_SPENDING_GROUP_BY = frozenset({"category", "account"})
 _ALLOWED_TREND_PERIODS = frozenset({"daily", "weekly", "monthly", "yearly"})
@@ -721,3 +721,169 @@ def get_report_export_query(  # pylint: disable=too-many-arguments
     )
     _enforce_report_window(query.start_date, query.end_date, settings)
     return query
+
+
+class ReportOperatingCashflowServiceKwargs(TypedDict):
+    """Keyword arguments accepted by ``ReportService.operating_cashflow``."""
+
+    start_date: datetime
+    end_date: datetime
+    currency: str | None
+    account_id: uuid.UUID | None
+    include_monthly_series: bool
+
+
+class ReportOperatingCashflowQuery(BaseModel):
+    """Bundled query parameters for ``GET /reports/operating-cashflow``."""
+
+    start_date: date = Field(description="Report start date")
+    end_date: date = Field(description="Report end date")
+    currency: str | None = Field(default=None, min_length=3, max_length=3, description="ISO currency filter")
+    account_id: uuid.UUID | None = Field(default=None, description="Optional account filter")
+    include_monthly_series: bool = Field(default=False, description="Include month-by-month series")
+
+    @model_validator(mode="after")
+    def _validate_window(self) -> ReportOperatingCashflowQuery:
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must be on or before end_date")
+        if self.currency is not None:
+            self.currency = self.currency.strip().upper()
+        return self
+
+    def service_kwargs(self) -> ReportOperatingCashflowServiceKwargs:
+        """Map API query parameters to ``ReportService.operating_cashflow`` kwargs."""
+        return ReportOperatingCashflowServiceKwargs(
+            start_date=date_to_start_datetime(self.start_date),
+            end_date=date_to_end_datetime(self.end_date),
+            currency=self.currency,
+            account_id=self.account_id,
+            include_monthly_series=self.include_monthly_series,
+        )
+
+
+def get_report_operating_cashflow_query(  # pylint: disable=too-many-arguments
+    *,
+    start_date: Annotated[date, Query(description="Report start date")],
+    end_date: Annotated[date, Query(description="Report end date")],
+    currency: Annotated[str | None, Query(description="Optional 3-letter currency filter")] = None,
+    account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
+    include_monthly_series: Annotated[bool, Query(description="Include monthly breakdown")] = False,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ReportOperatingCashflowQuery:
+    """Collect ``GET /reports/operating-cashflow`` query parameters for FastAPI injection."""
+    query = ReportOperatingCashflowQuery(
+        start_date=start_date,
+        end_date=end_date,
+        currency=currency,
+        account_id=account_id,
+        include_monthly_series=include_monthly_series,
+    )
+    _enforce_report_window(query.start_date, query.end_date, settings)
+    return query
+
+
+class ReportPlannedVsActualServiceKwargs(TypedDict):
+    """Keyword arguments accepted by ``ReportService.planned_vs_actual``."""
+
+    start_date: datetime
+    end_date: datetime
+    currency: str | None
+    account_id: uuid.UUID | None
+    cashflow_bucket: CashflowBucket | None
+
+
+class ReportPlannedVsActualQuery(BaseModel):
+    """Bundled query parameters for ``GET /reports/planned-vs-actual``."""
+
+    start_date: date = Field(description="Report start date")
+    end_date: date = Field(description="Report end date")
+    currency: str | None = Field(default=None, min_length=3, max_length=3, description="ISO currency filter")
+    account_id: uuid.UUID | None = Field(default=None, description="Optional account filter")
+    cashflow_bucket: str | None = Field(default=None, description="Optional cashflow bucket slug filter")
+    _parsed_bucket: CashflowBucket | None = None
+
+    @model_validator(mode="after")
+    def _validate_window(self) -> ReportPlannedVsActualQuery:
+        if self.start_date > self.end_date:
+            raise ValueError("start_date must be on or before end_date")
+        if self.currency is not None:
+            self.currency = self.currency.strip().upper()
+        self._parsed_bucket = parse_cashflow_bucket(self.cashflow_bucket) if self.cashflow_bucket is not None else None
+        if self._parsed_bucket is not None:
+            self.cashflow_bucket = self._parsed_bucket.value.lower()
+        return self
+
+    def service_kwargs(self) -> ReportPlannedVsActualServiceKwargs:
+        """Map API query parameters to ``ReportService.planned_vs_actual`` kwargs."""
+        return ReportPlannedVsActualServiceKwargs(
+            start_date=date_to_start_datetime(self.start_date),
+            end_date=date_to_end_datetime(self.end_date),
+            currency=self.currency,
+            account_id=self.account_id,
+            cashflow_bucket=self._parsed_bucket,
+        )
+
+
+def get_report_planned_vs_actual_query(  # pylint: disable=too-many-arguments
+    *,
+    start_date: Annotated[date, Query(description="Report start date")],
+    end_date: Annotated[date, Query(description="Report end date")],
+    currency: Annotated[str | None, Query(description="Optional 3-letter currency filter")] = None,
+    account_id: Annotated[uuid.UUID | None, Query(description="Optional account filter")] = None,
+    cashflow_bucket: Annotated[str | None, Query(description="Optional cashflow bucket filter")] = None,
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> ReportPlannedVsActualQuery:
+    """Collect ``GET /reports/planned-vs-actual`` query parameters for FastAPI injection."""
+    query = ReportPlannedVsActualQuery(
+        start_date=start_date,
+        end_date=end_date,
+        currency=currency,
+        account_id=account_id,
+        cashflow_bucket=cashflow_bucket,
+    )
+    _enforce_report_window(query.start_date, query.end_date, settings)
+    return query
+
+
+class ReportDebtPaydownServiceKwargs(TypedDict):
+    """Keyword arguments accepted by ``ReportService.debt_paydown``."""
+
+    currency: str | None
+    include_excluded: bool
+    target_liquidity_months: float
+
+
+class ReportDebtPaydownQuery(BaseModel):
+    """Bundled query parameters for ``GET /reports/debt-paydown``."""
+
+    currency: str | None = Field(default=None, min_length=3, max_length=3, description="ISO currency filter")
+    include_excluded: bool = Field(default=False, description="Include excluded/paid-off liabilities summary")
+    target_liquidity_months: float = Field(default=4.0, ge=0, le=24, description="Target liquid runway months")
+
+    @model_validator(mode="after")
+    def _normalize(self) -> ReportDebtPaydownQuery:
+        if self.currency is not None:
+            self.currency = self.currency.strip().upper()
+        return self
+
+    def service_kwargs(self) -> ReportDebtPaydownServiceKwargs:
+        """Map API query parameters to ``ReportService.debt_paydown`` kwargs."""
+        return ReportDebtPaydownServiceKwargs(
+            currency=self.currency,
+            include_excluded=self.include_excluded,
+            target_liquidity_months=self.target_liquidity_months,
+        )
+
+
+def get_report_debt_paydown_query(
+    *,
+    currency: Annotated[str | None, Query(description="Optional 3-letter currency filter")] = None,
+    include_excluded: Annotated[bool, Query(description="Include excluded liabilities summary")] = False,
+    target_liquidity_months: Annotated[float, Query(description="Target liquid cash runway months", ge=0, le=24)] = 4.0,
+) -> ReportDebtPaydownQuery:
+    """Collect ``GET /reports/debt-paydown`` query parameters for FastAPI injection."""
+    return ReportDebtPaydownQuery(
+        currency=currency,
+        include_excluded=include_excluded,
+        target_liquidity_months=target_liquidity_months,
+    )

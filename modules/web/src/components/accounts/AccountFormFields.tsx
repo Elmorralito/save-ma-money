@@ -197,6 +197,10 @@ export function AccountFormFields({ form, mode, idPrefix }: AccountFormFieldsPro
               {...register("credit_limit")}
             />
           </FormField>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" {...register("credit_card_cashflow_only")} />
+            Cashflow-only tracking (count card bill payments, exclude itemized charges)
+          </label>
         </fieldset>
       ) : null}
 

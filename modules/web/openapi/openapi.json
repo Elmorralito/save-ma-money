@@ -580,6 +580,85 @@
         "title": "Body_login_api_v1_auth_login_post",
         "type": "object"
       },
+      "BucketCategoryItem": {
+        "description": "Top category rollup within a waterfall bucket.",
+        "properties": {
+          "amount": {
+            "default": 0.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "category_name": {
+            "title": "Category Name",
+            "type": "string"
+          },
+          "transaction_count": {
+            "default": 0,
+            "title": "Transaction Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category_name"
+        ],
+        "title": "BucketCategoryItem",
+        "type": "object"
+      },
+      "BucketVarianceItem": {
+        "description": "Per-bucket planned vs. actual variance rollup.",
+        "properties": {
+          "actual_amount": {
+            "default": 0.0,
+            "title": "Actual Amount",
+            "type": "number"
+          },
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "is_favorable": {
+            "default": true,
+            "title": "Is Favorable",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "planned_amount": {
+            "default": 0.0,
+            "title": "Planned Amount",
+            "type": "number"
+          },
+          "variance_amount": {
+            "default": 0.0,
+            "title": "Variance Amount",
+            "type": "number"
+          },
+          "variance_pct": {
+            "default": 0.0,
+            "title": "Variance Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket",
+          "label"
+        ],
+        "title": "BucketVarianceItem",
+        "type": "object"
+      },
       "CashFlowByAccountItem": {
         "description": "Per-account cash-flow rollup (stubbed empty in MVP).",
         "properties": {
@@ -661,8 +740,19 @@
       },
       "CategoryCreate": {
         "additionalProperties": false,
-        "description": "Request body for ``POST /categories``.\n\nAttributes:\n    name: Display name; 1–255 characters after trimming.\n    description: Optional free-text description.\n    category_type: Lowercase slug parsed to ``CategoryKind``.\n    parent_id: Optional parent category for hierarchical trees.\n    icon: Optional icon key or identifier (max 64 chars).\n    color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).",
+        "description": "Request body for ``POST /categories``.\n\nAttributes:\n    name: Display name; 1–255 characters after trimming.\n    description: Optional free-text description.\n    category_type: Lowercase slug parsed to ``CategoryKind``.\n    cashflow_bucket: Optional waterfall bucket slug parsed to ``CashflowBucket``.\n    parent_id: Optional parent category for hierarchical trees.\n    icon: Optional icon key or identifier (max 64 chars).\n    color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).",
         "properties": {
+          "cashflow_bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cashflow Bucket"
+          },
           "category_type": {
             "title": "Category Type",
             "type": "string"
@@ -724,8 +814,19 @@
         "type": "object"
       },
       "CategoryResponse": {
-        "description": "Category resource returned by CRUD endpoints.\n\nAttributes:\n    id: Category UUID.\n    name: Display name.\n    category_type: Lowercase API slug for ``CategoryKind``.\n    parent_id: Parent category UUID when nested; otherwise ``None``.\n    icon: Optional icon key.\n    color: Optional hex color.\n    is_active: Whether the category is soft-active.\n    created_at: Row creation timestamp.\n    updated_at: Last modification timestamp.\n    subcategories: Direct child summaries for list enrichment.",
+        "description": "Category resource returned by CRUD endpoints.\n\nAttributes:\n    id: Category UUID.\n    name: Display name.\n    category_type: Lowercase API slug for ``CategoryKind``.\n    cashflow_bucket: Optional lowercase API slug for ``CashflowBucket``.\n    parent_id: Parent category UUID when nested; otherwise ``None``.\n    icon: Optional icon key.\n    color: Optional hex color.\n    is_active: Whether the category is soft-active.\n    created_at: Row creation timestamp.\n    updated_at: Last modification timestamp.\n    subcategories: Direct child summaries for list enrichment.",
         "properties": {
+          "cashflow_bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cashflow Bucket"
+          },
           "category_type": {
             "title": "Category Type",
             "type": "string"
@@ -874,8 +975,19 @@
       },
       "CategoryUpdate": {
         "additionalProperties": false,
-        "description": "Request body for ``PUT /categories/{category_id}``.\n\nAll fields are optional; only set fields are merged onto the existing DTO.\n\nAttributes:\n    name: New display name; 1–255 characters when provided.\n    description: Replacement description text.\n    category_type: New kind slug; maps to DTO ``category_kind``.\n    parent_id: New parent reference or ``None`` to clear hierarchy.\n    icon: Updated icon key (max 64 chars).\n    color: Updated hex color (max 7 chars).\n    is_active: Soft-active flag; maps to DTO ``active``.",
+        "description": "Request body for ``PUT /categories/{category_id}``.\n\nAll fields are optional; only set fields are merged onto the existing DTO.\n\nAttributes:\n    name: New display name; 1–255 characters when provided.\n    description: Replacement description text.\n    category_type: New kind slug; maps to DTO ``category_kind``.\n    cashflow_bucket: New waterfall bucket slug or ``None`` to clear.\n    parent_id: New parent reference or ``None`` to clear hierarchy.\n    icon: Updated icon key (max 64 chars).\n    color: Updated hex color (max 7 chars).\n    is_active: Soft-active flag; maps to DTO ``active``.",
         "properties": {
+          "cashflow_bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cashflow Bucket"
+          },
           "category_type": {
             "anyOf": [
               {
@@ -985,8 +1097,13 @@
       },
       "CreditCardDetailsSchema": {
         "additionalProperties": false,
-        "description": "Credit card extension fields.\n\nAttributes:\n    credit_limit: Maximum revolving credit; must be positive.",
+        "description": "Credit card extension fields.\n\nAttributes:\n    credit_limit: Maximum revolving credit; must be positive.\n    cashflow_only: When true, treat ASSET->CREDIT_CARD lump-sum payments as\n        operating variable expenses and ignore itemized card expenses.",
         "properties": {
+          "cashflow_only": {
+            "default": false,
+            "title": "Cashflow Only",
+            "type": "boolean"
+          },
           "credit_limit": {
             "exclusiveMinimum": 0.0,
             "title": "Credit Limit",
@@ -1057,6 +1174,521 @@
         ],
         "title": "DatabaseProbeDetail",
         "type": "string"
+      },
+      "DebtLiabilityItem": {
+        "description": "Ranked active liability with normalized EA/MV rates and interest drag.",
+        "properties": {
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_kind": {
+            "title": "Account Kind",
+            "type": "string"
+          },
+          "account_name": {
+            "title": "Account Name",
+            "type": "string"
+          },
+          "annual_interest_drag": {
+            "default": 0.0,
+            "title": "Annual Interest Drag",
+            "type": "number"
+          },
+          "balance": {
+            "default": 0.0,
+            "title": "Balance",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "effective_annual_rate_pct": {
+            "default": 0.0,
+            "title": "Effective Annual Rate Pct",
+            "type": "number"
+          },
+          "effective_monthly_rate_pct": {
+            "default": 0.0,
+            "title": "Effective Monthly Rate Pct",
+            "type": "number"
+          },
+          "estimated_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Payoff Date"
+          },
+          "linked_asset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedAssetCarry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "monthly_contractual_payment": {
+            "default": 0.0,
+            "title": "Monthly Contractual Payment",
+            "type": "number"
+          },
+          "monthly_extras_payment": {
+            "default": 0.0,
+            "title": "Monthly Extras Payment",
+            "type": "number"
+          },
+          "monthly_interest_drag": {
+            "default": 0.0,
+            "title": "Monthly Interest Drag",
+            "type": "number"
+          },
+          "monthly_principal_amortization": {
+            "default": 0.0,
+            "title": "Monthly Principal Amortization",
+            "type": "number"
+          },
+          "negative_amortization": {
+            "default": false,
+            "title": "Negative Amortization",
+            "type": "boolean"
+          },
+          "priority_rank": {
+            "title": "Priority Rank",
+            "type": "integer"
+          },
+          "remaining_periods": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Periods"
+          }
+        },
+        "required": [
+          "priority_rank",
+          "account_id",
+          "account_name",
+          "account_kind",
+          "currency"
+        ],
+        "title": "DebtLiabilityItem",
+        "type": "object"
+      },
+      "DebtLiquidityContext": {
+        "description": "Liquid cash buffer & runway context for prepayment safety.",
+        "properties": {
+          "baseline_monthly_burn": {
+            "default": 0.0,
+            "title": "Baseline Monthly Burn",
+            "type": "number"
+          },
+          "liquid_cash_total": {
+            "default": 0.0,
+            "title": "Liquid Cash Total",
+            "type": "number"
+          },
+          "liquid_runway_months": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquid Runway Months"
+          },
+          "safe_lump_sum_headroom": {
+            "default": 0.0,
+            "title": "Safe Lump Sum Headroom",
+            "type": "number"
+          },
+          "target_liquidity_months": {
+            "default": 4.0,
+            "title": "Target Liquidity Months",
+            "type": "number"
+          }
+        },
+        "title": "DebtLiquidityContext",
+        "type": "object"
+      },
+      "DebtPaydownReportResponse": {
+        "description": "Response body for ``GET /reports/debt-paydown``.",
+        "properties": {
+          "available_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Currencies",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "excluded_liabilities": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExcludedLiabilitiesSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "liabilities": {
+            "items": {
+              "$ref": "#/components/schemas/DebtLiabilityItem"
+            },
+            "title": "Liabilities",
+            "type": "array"
+          },
+          "liquidity_context": {
+            "$ref": "#/components/schemas/DebtLiquidityContext"
+          },
+          "multi_currency_warning": {
+            "default": false,
+            "title": "Multi Currency Warning",
+            "type": "boolean"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DebtPaydownSummary"
+          }
+        },
+        "required": [
+          "currency",
+          "summary",
+          "liquidity_context"
+        ],
+        "title": "DebtPaydownReportResponse",
+        "type": "object"
+      },
+      "DebtPaydownSimulationRequest": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /reports/debt-paydown/simulate``.",
+        "properties": {
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "extra_monthly_prepayment": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Extra Monthly Prepayment",
+            "type": "number"
+          },
+          "horizon_months": {
+            "default": 60,
+            "maximum": 360.0,
+            "minimum": 1.0,
+            "title": "Horizon Months",
+            "type": "integer"
+          },
+          "lump_sum_month_offset": {
+            "default": 1,
+            "maximum": 120.0,
+            "minimum": 1.0,
+            "title": "Lump Sum Month Offset",
+            "type": "integer"
+          },
+          "lump_sum_prepayment": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Lump Sum Prepayment",
+            "type": "number"
+          },
+          "periodic_lump_sums": {
+            "items": {
+              "$ref": "#/components/schemas/PeriodicLumpSumInput"
+            },
+            "maxItems": 12,
+            "title": "Periodic Lump Sums",
+            "type": "array"
+          },
+          "strategy": {
+            "default": "avalanche",
+            "enum": [
+              "avalanche",
+              "snowball"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "target_liquidity_months": {
+            "default": 4.0,
+            "maximum": 24.0,
+            "minimum": 0.0,
+            "title": "Target Liquidity Months",
+            "type": "number"
+          }
+        },
+        "title": "DebtPaydownSimulationRequest",
+        "type": "object"
+      },
+      "DebtPaydownSimulationResponse": {
+        "description": "Response body for ``POST /reports/debt-paydown/simulate``.",
+        "properties": {
+          "accelerated_months_to_payoff": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accelerated Months To Payoff"
+          },
+          "accelerated_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accelerated Payoff Date"
+          },
+          "accelerated_total_interest": {
+            "default": 0.0,
+            "title": "Accelerated Total Interest",
+            "type": "number"
+          },
+          "baseline_months_to_payoff": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Months To Payoff"
+          },
+          "baseline_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Payoff Date"
+          },
+          "baseline_total_interest": {
+            "default": 0.0,
+            "title": "Baseline Total Interest",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "liquidity_guardrail": {
+            "$ref": "#/components/schemas/LiquidityGuardrail"
+          },
+          "monthly_trajectory": {
+            "items": {
+              "$ref": "#/components/schemas/DebtTrajectoryPoint"
+            },
+            "title": "Monthly Trajectory",
+            "type": "array"
+          },
+          "months_saved": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Months Saved"
+          },
+          "per_liability_impact": {
+            "items": {
+              "$ref": "#/components/schemas/LiabilitySimulationImpact"
+            },
+            "title": "Per Liability Impact",
+            "type": "array"
+          },
+          "strategy": {
+            "enum": [
+              "avalanche",
+              "snowball"
+            ],
+            "title": "Strategy",
+            "type": "string"
+          },
+          "total_interest_saved": {
+            "default": 0.0,
+            "title": "Total Interest Saved",
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "strategy",
+          "liquidity_guardrail"
+        ],
+        "title": "DebtPaydownSimulationResponse",
+        "type": "object"
+      },
+      "DebtPaydownSummary": {
+        "description": "Aggregate debt drag metrics across active liabilities.",
+        "properties": {
+          "active_liability_count": {
+            "default": 0,
+            "title": "Active Liability Count",
+            "type": "integer"
+          },
+          "highest_rate_account_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Rate Account Name"
+          },
+          "highest_rate_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Rate Payoff Date"
+          },
+          "total_annual_interest_drag": {
+            "default": 0.0,
+            "title": "Total Annual Interest Drag",
+            "type": "number"
+          },
+          "total_debt": {
+            "default": 0.0,
+            "title": "Total Debt",
+            "type": "number"
+          },
+          "total_monthly_contractual_payment": {
+            "default": 0.0,
+            "title": "Total Monthly Contractual Payment",
+            "type": "number"
+          },
+          "total_monthly_interest_drag": {
+            "default": 0.0,
+            "title": "Total Monthly Interest Drag",
+            "type": "number"
+          },
+          "weighted_average_ea_pct": {
+            "default": 0.0,
+            "title": "Weighted Average Ea Pct",
+            "type": "number"
+          }
+        },
+        "title": "DebtPaydownSummary",
+        "type": "object"
+      },
+      "DebtTrajectoryPoint": {
+        "description": "Monthly trajectory snapshot comparing baseline vs. accelerated debt.",
+        "properties": {
+          "accelerated_total_debt": {
+            "default": 0.0,
+            "title": "Accelerated Total Debt",
+            "type": "number"
+          },
+          "baseline_total_debt": {
+            "default": 0.0,
+            "title": "Baseline Total Debt",
+            "type": "number"
+          },
+          "events": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "extra_applied": {
+            "default": 0.0,
+            "title": "Extra Applied",
+            "type": "number"
+          },
+          "interest_paid": {
+            "default": 0.0,
+            "title": "Interest Paid",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "priority_loan_balance": {
+            "default": 0.0,
+            "title": "Priority Loan Balance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "DebtTrajectoryPoint",
+        "type": "object"
+      },
+      "ExcludedLiabilitiesSummary": {
+        "description": "Optional summary of paid-off or balance-excluded liabilities.",
+        "properties": {
+          "account_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Account Names",
+            "type": "array"
+          },
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "total_balance": {
+            "default": 0.0,
+            "title": "Total Balance",
+            "type": "number"
+          }
+        },
+        "title": "ExcludedLiabilitiesSummary",
+        "type": "object"
       },
       "HTTPValidationError": {
         "properties": {
@@ -1177,6 +1809,33 @@
           "database"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "InTransitSummary": {
+        "description": "Summary of COMPLETED transactions still awaiting settlement.",
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "inflows": {
+            "default": 0.0,
+            "title": "Inflows",
+            "type": "number"
+          },
+          "outflows": {
+            "default": 0.0,
+            "title": "Outflows",
+            "type": "number"
+          },
+          "total_volume": {
+            "default": 0.0,
+            "title": "Total Volume",
+            "type": "number"
+          }
+        },
+        "title": "InTransitSummary",
         "type": "object"
       },
       "IngestionConnectionResponse": {
@@ -1407,6 +2066,169 @@
         "title": "IngestionRunResponse",
         "type": "object"
       },
+      "LiabilitySimulationImpact": {
+        "description": "Per-liability payoff impact comparing baseline vs. accelerated simulation.",
+        "properties": {
+          "accelerated_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accelerated Payoff Date"
+          },
+          "account_id": {
+            "title": "Account Id",
+            "type": "string"
+          },
+          "account_name": {
+            "title": "Account Name",
+            "type": "string"
+          },
+          "baseline_payoff_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Payoff Date"
+          },
+          "effective_annual_rate_pct": {
+            "default": 0.0,
+            "title": "Effective Annual Rate Pct",
+            "type": "number"
+          },
+          "interest_saved": {
+            "default": 0.0,
+            "title": "Interest Saved",
+            "type": "number"
+          },
+          "months_saved": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Months Saved"
+          },
+          "starting_balance": {
+            "default": 0.0,
+            "title": "Starting Balance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "account_id",
+          "account_name"
+        ],
+        "title": "LiabilitySimulationImpact",
+        "type": "object"
+      },
+      "LinkedAssetCarry": {
+        "description": "Asset financing context linked to a liability via ``AccountFinancing``.",
+        "properties": {
+          "asset_current_value": {
+            "default": 0.0,
+            "title": "Asset Current Value",
+            "type": "number"
+          },
+          "asset_id": {
+            "title": "Asset Id",
+            "type": "string"
+          },
+          "asset_monthly_earnings": {
+            "default": 0.0,
+            "title": "Asset Monthly Earnings",
+            "type": "number"
+          },
+          "asset_name": {
+            "title": "Asset Name",
+            "type": "string"
+          },
+          "financing_share": {
+            "default": 1.0,
+            "title": "Financing Share",
+            "type": "number"
+          },
+          "net_monthly_carry": {
+            "default": 0.0,
+            "title": "Net Monthly Carry",
+            "type": "number"
+          }
+        },
+        "required": [
+          "asset_id",
+          "asset_name"
+        ],
+        "title": "LinkedAssetCarry",
+        "type": "object"
+      },
+      "LiquidityGuardrail": {
+        "description": "Safety evaluation ensuring prepayments preserve emergency cash runway.",
+        "properties": {
+          "liquid_cash_total": {
+            "default": 0.0,
+            "title": "Liquid Cash Total",
+            "type": "number"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "post_lump_sum_cash": {
+            "default": 0.0,
+            "title": "Post Lump Sum Cash",
+            "type": "number"
+          },
+          "post_lump_sum_runway_months": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Lump Sum Runway Months"
+          },
+          "safe_lump_sum_headroom": {
+            "default": 0.0,
+            "title": "Safe Lump Sum Headroom",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "safe",
+              "caution",
+              "warning"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_liquidity_months": {
+            "default": 4.0,
+            "title": "Target Liquidity Months",
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "LiquidityGuardrail",
+        "type": "object"
+      },
       "LivenessResponse": {
         "additionalProperties": false,
         "description": "Kubernetes liveness probe payload.\n\nAttributes:\n    alive: ``True`` when the process is running (default ``True``).",
@@ -1548,6 +2370,55 @@
         "title": "MonthlyTrendItem",
         "type": "object"
       },
+      "MonthlyWaterfallPoint": {
+        "description": "Monthly breakdown point inside the waterfall report.",
+        "properties": {
+          "capital_deployments": {
+            "default": 0.0,
+            "title": "Capital Deployments",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "non_operating_inflows": {
+            "default": 0.0,
+            "title": "Non Operating Inflows",
+            "type": "number"
+          },
+          "operating_free_cashflow": {
+            "default": 0.0,
+            "title": "Operating Free Cashflow",
+            "type": "number"
+          },
+          "organic_fcf_margin_pct": {
+            "default": 0.0,
+            "title": "Organic Fcf Margin Pct",
+            "type": "number"
+          },
+          "savings": {
+            "default": 0.0,
+            "title": "Savings",
+            "type": "number"
+          },
+          "total_external_income": {
+            "default": 0.0,
+            "title": "Total External Income",
+            "type": "number"
+          },
+          "total_operating_outflows": {
+            "default": 0.0,
+            "title": "Total Operating Outflows",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "MonthlyWaterfallPoint",
+        "type": "object"
+      },
       "OAuthCodeExchangeRequest": {
         "additionalProperties": false,
         "description": "JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).\n\nCompletes OAuth when the client holds the authorization ``code`` and the\nPKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``\nwhen the redirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    auth_code: Authorization ``code`` from the OAuth redirect query string.\n    code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.\n    redirect_to: Optional redirect URI that must match the authorize step.\n    display_name: Optional profile override when Auth metadata is incomplete.",
@@ -1627,6 +2498,60 @@
           "code_verifier"
         ],
         "title": "OAuthStartResponse",
+        "type": "object"
+      },
+      "OperatingCashflowReportResponse": {
+        "description": "Response body for ``GET /reports/operating-cashflow``.",
+        "properties": {
+          "available_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Currencies",
+            "type": "array"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/WaterfallBucketItem"
+            },
+            "title": "Buckets",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/WaterfallDiagnostics"
+          },
+          "in_transit": {
+            "$ref": "#/components/schemas/InTransitSummary"
+          },
+          "monthly_series": {
+            "items": {
+              "$ref": "#/components/schemas/MonthlyWaterfallPoint"
+            },
+            "title": "Monthly Series",
+            "type": "array"
+          },
+          "multi_currency_warning": {
+            "default": false,
+            "title": "Multi Currency Warning",
+            "type": "boolean"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "waterfall": {
+            "$ref": "#/components/schemas/WaterfallSummary"
+          }
+        },
+        "required": [
+          "period",
+          "currency",
+          "waterfall"
+        ],
+        "title": "OperatingCashflowReportResponse",
         "type": "object"
       },
       "PaginatedResponse_AccountResponse_": {
@@ -1827,6 +2752,153 @@
         "title": "PaginatedResponse[TransactionTemplateResponse]",
         "type": "object"
       },
+      "PeriodicLumpSumInput": {
+        "additionalProperties": false,
+        "description": "Recurring annual calendar-month lump-sum prepayment input (e.g. bonus month).",
+        "properties": {
+          "amount": {
+            "exclusiveMinimum": 0.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "month_of_year": {
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Month Of Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month_of_year",
+          "amount"
+        ],
+        "title": "PeriodicLumpSumInput",
+        "type": "object"
+      },
+      "PlannedVsActualReportResponse": {
+        "description": "Response body for ``GET /reports/planned-vs-actual``.",
+        "properties": {
+          "available_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Currencies",
+            "type": "array"
+          },
+          "bucket_rollups": {
+            "items": {
+              "$ref": "#/components/schemas/BucketVarianceItem"
+            },
+            "title": "Bucket Rollups",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "multi_currency_warning": {
+            "default": false,
+            "title": "Multi Currency Warning",
+            "type": "boolean"
+          },
+          "period": {
+            "$ref": "#/components/schemas/ReportPeriod"
+          },
+          "reconciliation_flags": {
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationFlagItem"
+            },
+            "title": "Reconciliation Flags",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/PlannedVsActualSummary"
+          },
+          "template_items": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateVarianceItem"
+            },
+            "title": "Template Items",
+            "type": "array"
+          },
+          "unplanned_items": {
+            "items": {
+              "$ref": "#/components/schemas/UnplannedCategoryItem"
+            },
+            "title": "Unplanned Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "period",
+          "currency",
+          "summary"
+        ],
+        "title": "PlannedVsActualReportResponse",
+        "type": "object"
+      },
+      "PlannedVsActualSummary": {
+        "description": "Summary metrics for Planned vs. Actual comparison.",
+        "properties": {
+          "actual_income": {
+            "default": 0.0,
+            "title": "Actual Income",
+            "type": "number"
+          },
+          "actual_operating_fcf": {
+            "default": 0.0,
+            "title": "Actual Operating Fcf",
+            "type": "number"
+          },
+          "actual_outflows": {
+            "default": 0.0,
+            "title": "Actual Outflows",
+            "type": "number"
+          },
+          "adherence_pct": {
+            "default": 0.0,
+            "title": "Adherence Pct",
+            "type": "number"
+          },
+          "net_fcf_variance": {
+            "default": 0.0,
+            "title": "Net Fcf Variance",
+            "type": "number"
+          },
+          "planned_income": {
+            "default": 0.0,
+            "title": "Planned Income",
+            "type": "number"
+          },
+          "planned_operating_fcf": {
+            "default": 0.0,
+            "title": "Planned Operating Fcf",
+            "type": "number"
+          },
+          "planned_outflows": {
+            "default": 0.0,
+            "title": "Planned Outflows",
+            "type": "number"
+          },
+          "reconciliation_flag_count": {
+            "default": 0,
+            "title": "Reconciliation Flag Count",
+            "type": "integer"
+          },
+          "status_tone": {
+            "default": "positive",
+            "enum": [
+              "positive",
+              "warning",
+              "negative"
+            ],
+            "title": "Status Tone",
+            "type": "string"
+          }
+        },
+        "title": "PlannedVsActualSummary",
+        "type": "object"
+      },
       "ProviderType": {
         "description": "Signup / identity channel for ``users.provider_type``.\n\n``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``\nare Supabase Auth OAuth providers; values match Supabase provider ids.",
         "enum": [
@@ -1914,6 +2986,83 @@
           "ownership"
         ],
         "title": "RealEstateDetailsSchema",
+        "type": "object"
+      },
+      "ReconciliationFlagItem": {
+        "description": "Automated reconciliation diagnostic alert.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "code": {
+            "enum": [
+              "unlinked_high_value",
+              "potential_duplicate",
+              "unbucketed_category"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template Id"
+          },
+          "transaction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Id"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "title": "ReconciliationFlagItem",
         "type": "object"
       },
       "RedisHealthResponse": {
@@ -2328,6 +3477,95 @@
           "refresh_token"
         ],
         "title": "SsoSessionRequest",
+        "type": "object"
+      },
+      "TemplateVarianceItem": {
+        "description": "Planned template occurrence compared against linked settled postings.",
+        "properties": {
+          "actual_amount": {
+            "default": 0.0,
+            "title": "Actual Amount",
+            "type": "number"
+          },
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "category_name": {
+            "title": "Category Name",
+            "type": "string"
+          },
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "is_favorable": {
+            "default": true,
+            "title": "Is Favorable",
+            "type": "boolean"
+          },
+          "linked_transaction_count": {
+            "default": 0,
+            "title": "Linked Transaction Count",
+            "type": "integer"
+          },
+          "planned_amount": {
+            "default": 0.0,
+            "title": "Planned Amount",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "paid",
+              "partial",
+              "over_budget",
+              "exceeded",
+              "overdue",
+              "upcoming"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "template_name": {
+            "title": "Template Name",
+            "type": "string"
+          },
+          "variance_amount": {
+            "default": 0.0,
+            "title": "Variance Amount",
+            "type": "number"
+          },
+          "variance_pct": {
+            "default": 0.0,
+            "title": "Variance Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "template_id",
+          "template_name",
+          "category_name",
+          "bucket",
+          "due_date",
+          "status"
+        ],
+        "title": "TemplateVarianceItem",
         "type": "object"
       },
       "TokenResponse": {
@@ -3563,6 +4801,52 @@
         "title": "TrendsReportResponse",
         "type": "object"
       },
+      "UnplannedCategoryItem": {
+        "description": "Settled actuals not matched to an expanded template occurrence.",
+        "properties": {
+          "actual_amount": {
+            "default": 0.0,
+            "title": "Actual Amount",
+            "type": "number"
+          },
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "category_name": {
+            "title": "Category Name",
+            "type": "string"
+          },
+          "status": {
+            "const": "unplanned",
+            "default": "unplanned",
+            "title": "Status",
+            "type": "string"
+          },
+          "transaction_count": {
+            "default": 0,
+            "title": "Transaction Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category_name",
+          "bucket"
+        ],
+        "title": "UnplannedCategoryItem",
+        "type": "object"
+      },
       "UpcomingDueResponse": {
         "description": "Single upcoming-due row for in-app reminders.",
         "properties": {
@@ -3736,6 +5020,194 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WaterfallBucketItem": {
+        "description": "Single bucket row in the Operating Free Cashflow waterfall.",
+        "properties": {
+          "amount": {
+            "default": 0.0,
+            "title": "Amount",
+            "type": "number"
+          },
+          "bucket": {
+            "title": "Bucket",
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "income",
+              "operating_outflow",
+              "allocation",
+              "non_operating"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "share_of_income_pct": {
+            "default": 0.0,
+            "title": "Share Of Income Pct",
+            "type": "number"
+          },
+          "top_categories": {
+            "items": {
+              "$ref": "#/components/schemas/BucketCategoryItem"
+            },
+            "title": "Top Categories",
+            "type": "array"
+          },
+          "transaction_count": {
+            "default": 0,
+            "title": "Transaction Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "bucket",
+          "label",
+          "group"
+        ],
+        "title": "WaterfallBucketItem",
+        "type": "object"
+      },
+      "WaterfallDiagnostics": {
+        "description": "Classification diagnostics for waterfall hygiene.",
+        "properties": {
+          "cashflow_only_cc_account_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cashflow Only Cc Account Names",
+            "type": "array"
+          },
+          "cashflow_only_cc_excluded_amount": {
+            "default": 0.0,
+            "title": "Cashflow Only Cc Excluded Amount",
+            "type": "number"
+          },
+          "cashflow_only_cc_excluded_count": {
+            "default": 0,
+            "title": "Cashflow Only Cc Excluded Count",
+            "type": "integer"
+          },
+          "unbucketed_amount": {
+            "default": 0.0,
+            "title": "Unbucketed Amount",
+            "type": "number"
+          },
+          "unbucketed_category_count": {
+            "default": 0,
+            "title": "Unbucketed Category Count",
+            "type": "integer"
+          }
+        },
+        "title": "WaterfallDiagnostics",
+        "type": "object"
+      },
+      "WaterfallSummary": {
+        "description": "Headline Operating Free Cashflow metrics.",
+        "properties": {
+          "capital_deployments": {
+            "default": 0.0,
+            "title": "Capital Deployments",
+            "type": "number"
+          },
+          "debt_service_to_income_pct": {
+            "default": 0.0,
+            "title": "Debt Service To Income Pct",
+            "type": "number"
+          },
+          "fixed_expenses": {
+            "default": 0.0,
+            "title": "Fixed Expenses",
+            "type": "number"
+          },
+          "income_fixed": {
+            "default": 0.0,
+            "title": "Income Fixed",
+            "type": "number"
+          },
+          "income_variable": {
+            "default": 0.0,
+            "title": "Income Variable",
+            "type": "number"
+          },
+          "internal_sweeps_volume": {
+            "default": 0.0,
+            "title": "Internal Sweeps Volume",
+            "type": "number"
+          },
+          "loans": {
+            "default": 0.0,
+            "title": "Loans",
+            "type": "number"
+          },
+          "net_allocated_surplus": {
+            "default": 0.0,
+            "title": "Net Allocated Surplus",
+            "type": "number"
+          },
+          "net_ledger_cashflow": {
+            "default": 0.0,
+            "title": "Net Ledger Cashflow",
+            "type": "number"
+          },
+          "non_operating_inflows": {
+            "default": 0.0,
+            "title": "Non Operating Inflows",
+            "type": "number"
+          },
+          "operating_free_cashflow": {
+            "default": 0.0,
+            "title": "Operating Free Cashflow",
+            "type": "number"
+          },
+          "organic_fcf_margin_pct": {
+            "default": 0.0,
+            "title": "Organic Fcf Margin Pct",
+            "type": "number"
+          },
+          "savings": {
+            "default": 0.0,
+            "title": "Savings",
+            "type": "number"
+          },
+          "status_tone": {
+            "default": "positive",
+            "enum": [
+              "positive",
+              "warning",
+              "negative"
+            ],
+            "title": "Status Tone",
+            "type": "string"
+          },
+          "total_external_income": {
+            "default": 0.0,
+            "title": "Total External Income",
+            "type": "number"
+          },
+          "total_operating_outflows": {
+            "default": 0.0,
+            "title": "Total Operating Outflows",
+            "type": "number"
+          },
+          "unexpected_expenses": {
+            "default": 0.0,
+            "title": "Unexpected Expenses",
+            "type": "number"
+          },
+          "variable_expenses": {
+            "default": 0.0,
+            "title": "Variable Expenses",
+            "type": "number"
+          }
+        },
+        "title": "WaterfallSummary",
         "type": "object"
       }
     },
@@ -5390,6 +6862,136 @@
         ]
       }
     },
+    "/api/v1/reports/debt-paydown": {
+      "get": {
+        "description": "Return active liabilities ranked by effective annual rate and monthly interest drag.",
+        "operationId": "get_debt_paydown_report_api_v1_reports_debt_paydown_get",
+        "parameters": [
+          {
+            "description": "Optional 3-letter currency filter",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional 3-letter currency filter",
+              "title": "Currency"
+            }
+          },
+          {
+            "description": "Include excluded liabilities summary",
+            "in": "query",
+            "name": "include_excluded",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Include excluded liabilities summary",
+              "title": "Include Excluded",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Target liquid cash runway months",
+            "in": "query",
+            "name": "target_liquidity_months",
+            "required": false,
+            "schema": {
+              "default": 4.0,
+              "description": "Target liquid cash runway months",
+              "maximum": 24,
+              "minimum": 0,
+              "title": "Target Liquidity Months",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebtPaydownReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Debt Paydown Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/debt-paydown/simulate": {
+      "post": {
+        "description": "Simulate accelerated debt paydown and return trajectory plus liquidity guardrail.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    body: Prepayment strategy, recurring/lump-sum inputs, and runway floor.\n\nReturns:\n    DebtPaydownSimulationResponse comparing baseline vs. accelerated schedules.",
+        "operationId": "simulate_debt_paydown_report_api_v1_reports_debt_paydown_simulate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DebtPaydownSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DebtPaydownSimulationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Simulate Debt Paydown Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
     "/api/v1/reports/export": {
       "get": {
         "description": "Export a tenant-scoped report as CSV or JSON; deferred formats return 501.\n\nDelegates to ``ReportService.export`` for spending, cash-flow, or trends.\n``xlsx`` and ``pdf`` return HTTP 501 with ``DeferredResponse`` and do not\ncall the service. Export is not cached (streaming / large payloads).\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    report_service: Injected report aggregation service.\n    filters: Report type, format, date window, and optional filters.\n\nReturns:\n    JSONResponse for JSON payloads, raw CSV ``Response`` for ``format=csv``,\n    or 501 JSON for deferred export formats.\n\nRaises:\n    HTTPException: 401 without JWT; 400 when query validation or ownership fails.",
@@ -5513,6 +7115,236 @@
           }
         ],
         "summary": "Export Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/operating-cashflow": {
+      "get": {
+        "description": "Return the Operating Free Cashflow waterfall for the authenticated tenant.",
+        "operationId": "get_operating_cashflow_report_api_v1_reports_operating_cashflow_get",
+        "parameters": [
+          {
+            "description": "Report start date",
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "description": "Report start date",
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report end date",
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "Report end date",
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional 3-letter currency filter",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional 3-letter currency filter",
+              "title": "Currency"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Include monthly breakdown",
+            "in": "query",
+            "name": "include_monthly_series",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Include monthly breakdown",
+              "title": "Include Monthly Series",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatingCashflowReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Operating Cashflow Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/v1/reports/planned-vs-actual": {
+      "get": {
+        "description": "Return Planned vs. Actual template variance and reconciliation alerts for ``owner``.",
+        "operationId": "get_planned_vs_actual_report_api_v1_reports_planned_vs_actual_get",
+        "parameters": [
+          {
+            "description": "Report start date",
+            "in": "query",
+            "name": "start_date",
+            "required": true,
+            "schema": {
+              "description": "Report start date",
+              "format": "date",
+              "title": "Start Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report end date",
+            "in": "query",
+            "name": "end_date",
+            "required": true,
+            "schema": {
+              "description": "Report end date",
+              "format": "date",
+              "title": "End Date",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional 3-letter currency filter",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional 3-letter currency filter",
+              "title": "Currency"
+            }
+          },
+          {
+            "description": "Optional account filter",
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional account filter",
+              "title": "Account Id"
+            }
+          },
+          {
+            "description": "Optional cashflow bucket filter",
+            "in": "query",
+            "name": "cashflow_bucket",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional cashflow bucket filter",
+              "title": "Cashflow Bucket"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlannedVsActualReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Planned Vs Actual Report",
         "tags": [
           "Reports"
         ]

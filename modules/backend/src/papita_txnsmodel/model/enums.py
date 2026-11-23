@@ -61,6 +61,20 @@ class CategoryKind(str, Enum):
     EXPENSE = "EXPENSE"
 
 
+class CashflowBucket(str, Enum):
+    """Operating Free Cashflow waterfall classification for categories (PPT-091 / #184)."""
+
+    INCOME_FIXED = "INCOME_FIXED"
+    INCOME_VARIABLE = "INCOME_VARIABLE"
+    LOAN_PAYMENT = "LOAN_PAYMENT"
+    FIXED_EXPENSE = "FIXED_EXPENSE"
+    VARIABLE_EXPENSE = "VARIABLE_EXPENSE"
+    UNEXPECTED_EXPENSE = "UNEXPECTED_EXPENSE"
+    SAVINGS = "SAVINGS"
+    CAPITAL_DEPLOYMENT = "CAPITAL_DEPLOYMENT"
+    NON_OPERATING_INFLOW = "NON_OPERATING_INFLOW"
+
+
 class TransactionKind(str, Enum):
     """Ledger transaction semantics."""
 

@@ -27,7 +27,11 @@ import { applyMutationError } from "@/forms/applyMutationError";
 import { CATEGORY_SERVER_FIELD_MAP } from "@/forms/fieldMaps";
 import { FormField, FormRootError } from "@/forms/FormField";
 import { categoryFormSchema } from "@/forms/schemas/category";
-import { CATEGORY_TYPE_SLUGS } from "@/lib/categoryTypes";
+import {
+  CASHFLOW_BUCKET_LABELS,
+  CASHFLOW_BUCKET_SLUGS,
+  CATEGORY_TYPE_SLUGS,
+} from "@/lib/categoryTypes";
 import { isGlobalOrMissingCategoryError } from "@/lib/formatApiError";
 import type { CategoryResponse } from "@/types/domain";
 
@@ -76,6 +80,7 @@ function CategoryFormBody({
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories.lists() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.categories.detail(saved.id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       toast.success(mode === "create" ? "Category created" : "Category updated");
       onOpenChange(false);
     },
@@ -147,6 +152,20 @@ function CategoryFormBody({
           </NativeSelect>
         </FormField>
       </div>
+      <FormField
+        label="Cashflow bucket"
+        htmlFor={`${idPrefix}-bucket`}
+        error={errors.cashflow_bucket?.message}
+      >
+        <NativeSelect id={`${idPrefix}-bucket`} {...register("cashflow_bucket")}>
+          <option value="">Auto (infer from kind / template)</option>
+          {CASHFLOW_BUCKET_SLUGS.map((bucket) => (
+            <option key={bucket} value={bucket}>
+              {CASHFLOW_BUCKET_LABELS[bucket]}
+            </option>
+          ))}
+        </NativeSelect>
+      </FormField>
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField label="Icon" htmlFor={`${idPrefix}-icon`} error={errors.icon?.message}>
           <Input id={`${idPrefix}-icon`} maxLength={64} {...register("icon")} />

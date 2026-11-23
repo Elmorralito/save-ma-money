@@ -980,6 +980,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/debt-paydown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Debt Paydown Report
+         * @description Return active liabilities ranked by effective annual rate and monthly interest drag.
+         */
+        get: operations["get_debt_paydown_report_api_v1_reports_debt_paydown_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/debt-paydown/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate Debt Paydown Report
+         * @description Simulate accelerated debt paydown and return trajectory plus liquidity guardrail.
+         *
+         *     Args:
+         *         owner: Authenticated tenant from JWT.
+         *         report_service: Injected report aggregation service.
+         *         body: Prepayment strategy, recurring/lump-sum inputs, and runway floor.
+         *
+         *     Returns:
+         *         DebtPaydownSimulationResponse comparing baseline vs. accelerated schedules.
+         */
+        post: operations["simulate_debt_paydown_report_api_v1_reports_debt_paydown_simulate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/export": {
         parameters: {
             query?: never;
@@ -1008,6 +1056,46 @@ export interface paths {
          *         HTTPException: 401 without JWT; 400 when query validation or ownership fails.
          */
         get: operations["export_report_api_v1_reports_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/operating-cashflow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Operating Cashflow Report
+         * @description Return the Operating Free Cashflow waterfall for the authenticated tenant.
+         */
+        get: operations["get_operating_cashflow_report_api_v1_reports_operating_cashflow_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports/planned-vs-actual": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Planned Vs Actual Report
+         * @description Return Planned vs. Actual template variance and reconciliation alerts for ``owner``.
+         */
+        get: operations["get_planned_vs_actual_report_api_v1_reports_planned_vs_actual_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1599,6 +1687,61 @@ export interface components {
             username: string;
         };
         /**
+         * BucketCategoryItem
+         * @description Top category rollup within a waterfall bucket.
+         */
+        BucketCategoryItem: {
+            /**
+             * Amount
+             * @default 0
+             */
+            amount: number;
+            /** Category Id */
+            category_id?: string | null;
+            /** Category Name */
+            category_name: string;
+            /**
+             * Transaction Count
+             * @default 0
+             */
+            transaction_count: number;
+        };
+        /**
+         * BucketVarianceItem
+         * @description Per-bucket planned vs. actual variance rollup.
+         */
+        BucketVarianceItem: {
+            /**
+             * Actual Amount
+             * @default 0
+             */
+            actual_amount: number;
+            /** Bucket */
+            bucket: string;
+            /**
+             * Is Favorable
+             * @default true
+             */
+            is_favorable: boolean;
+            /** Label */
+            label: string;
+            /**
+             * Planned Amount
+             * @default 0
+             */
+            planned_amount: number;
+            /**
+             * Variance Amount
+             * @default 0
+             */
+            variance_amount: number;
+            /**
+             * Variance Pct
+             * @default 0
+             */
+            variance_pct: number;
+        };
+        /**
          * CashFlowByAccountItem
          * @description Per-account cash-flow rollup (stubbed empty in MVP).
          */
@@ -1668,11 +1811,14 @@ export interface components {
          *         name: Display name; 1–255 characters after trimming.
          *         description: Optional free-text description.
          *         category_type: Lowercase slug parsed to ``CategoryKind``.
+         *         cashflow_bucket: Optional waterfall bucket slug parsed to ``CashflowBucket``.
          *         parent_id: Optional parent category for hierarchical trees.
          *         icon: Optional icon key or identifier (max 64 chars).
          *         color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).
          */
         CategoryCreate: {
+            /** Cashflow Bucket */
+            cashflow_bucket?: string | null;
             /** Category Type */
             category_type: string;
             /** Color */
@@ -1697,6 +1843,7 @@ export interface components {
          *         id: Category UUID.
          *         name: Display name.
          *         category_type: Lowercase API slug for ``CategoryKind``.
+         *         cashflow_bucket: Optional lowercase API slug for ``CashflowBucket``.
          *         parent_id: Parent category UUID when nested; otherwise ``None``.
          *         icon: Optional icon key.
          *         color: Optional hex color.
@@ -1706,6 +1853,8 @@ export interface components {
          *         subcategories: Direct child summaries for list enrichment.
          */
         CategoryResponse: {
+            /** Cashflow Bucket */
+            cashflow_bucket?: string | null;
             /** Category Type */
             category_type: string;
             /** Color */
@@ -1783,12 +1932,15 @@ export interface components {
          *         name: New display name; 1–255 characters when provided.
          *         description: Replacement description text.
          *         category_type: New kind slug; maps to DTO ``category_kind``.
+         *         cashflow_bucket: New waterfall bucket slug or ``None`` to clear.
          *         parent_id: New parent reference or ``None`` to clear hierarchy.
          *         icon: Updated icon key (max 64 chars).
          *         color: Updated hex color (max 7 chars).
          *         is_active: Soft-active flag; maps to DTO ``active``.
          */
         CategoryUpdate: {
+            /** Cashflow Bucket */
+            cashflow_bucket?: string | null;
             /** Category Type */
             category_type?: string | null;
             /** Color */
@@ -1818,8 +1970,15 @@ export interface components {
          *
          *     Attributes:
          *         credit_limit: Maximum revolving credit; must be positive.
+         *         cashflow_only: When true, treat ASSET->CREDIT_CARD lump-sum payments as
+         *             operating variable expenses and ignore itemized card expenses.
          */
         CreditCardDetailsSchema: {
+            /**
+             * Cashflow Only
+             * @default false
+             */
+            cashflow_only: boolean;
             /** Credit Limit */
             credit_limit: number;
         };
@@ -1863,6 +2022,297 @@ export interface components {
          * @enum {string}
          */
         DatabaseProbeDetail: "api-database link healthy" | "connector not initialized" | "database engine unavailable" | "probe failed";
+        /**
+         * DebtLiabilityItem
+         * @description Ranked active liability with normalized EA/MV rates and interest drag.
+         */
+        DebtLiabilityItem: {
+            /** Account Id */
+            account_id: string;
+            /** Account Kind */
+            account_kind: string;
+            /** Account Name */
+            account_name: string;
+            /**
+             * Annual Interest Drag
+             * @default 0
+             */
+            annual_interest_drag: number;
+            /**
+             * Balance
+             * @default 0
+             */
+            balance: number;
+            /** Currency */
+            currency: string;
+            /**
+             * Effective Annual Rate Pct
+             * @default 0
+             */
+            effective_annual_rate_pct: number;
+            /**
+             * Effective Monthly Rate Pct
+             * @default 0
+             */
+            effective_monthly_rate_pct: number;
+            /** Estimated Payoff Date */
+            estimated_payoff_date?: string | null;
+            linked_asset?: components["schemas"]["LinkedAssetCarry"] | null;
+            /**
+             * Monthly Contractual Payment
+             * @default 0
+             */
+            monthly_contractual_payment: number;
+            /**
+             * Monthly Extras Payment
+             * @default 0
+             */
+            monthly_extras_payment: number;
+            /**
+             * Monthly Interest Drag
+             * @default 0
+             */
+            monthly_interest_drag: number;
+            /**
+             * Monthly Principal Amortization
+             * @default 0
+             */
+            monthly_principal_amortization: number;
+            /**
+             * Negative Amortization
+             * @default false
+             */
+            negative_amortization: boolean;
+            /** Priority Rank */
+            priority_rank: number;
+            /** Remaining Periods */
+            remaining_periods?: number | null;
+        };
+        /**
+         * DebtLiquidityContext
+         * @description Liquid cash buffer & runway context for prepayment safety.
+         */
+        DebtLiquidityContext: {
+            /**
+             * Baseline Monthly Burn
+             * @default 0
+             */
+            baseline_monthly_burn: number;
+            /**
+             * Liquid Cash Total
+             * @default 0
+             */
+            liquid_cash_total: number;
+            /** Liquid Runway Months */
+            liquid_runway_months?: number | null;
+            /**
+             * Safe Lump Sum Headroom
+             * @default 0
+             */
+            safe_lump_sum_headroom: number;
+            /**
+             * Target Liquidity Months
+             * @default 4
+             */
+            target_liquidity_months: number;
+        };
+        /**
+         * DebtPaydownReportResponse
+         * @description Response body for ``GET /reports/debt-paydown``.
+         */
+        DebtPaydownReportResponse: {
+            /** Available Currencies */
+            available_currencies?: string[];
+            /** Currency */
+            currency: string;
+            excluded_liabilities?: components["schemas"]["ExcludedLiabilitiesSummary"] | null;
+            /** Liabilities */
+            liabilities?: components["schemas"]["DebtLiabilityItem"][];
+            liquidity_context: components["schemas"]["DebtLiquidityContext"];
+            /**
+             * Multi Currency Warning
+             * @default false
+             */
+            multi_currency_warning: boolean;
+            summary: components["schemas"]["DebtPaydownSummary"];
+        };
+        /**
+         * DebtPaydownSimulationRequest
+         * @description Request body for ``POST /reports/debt-paydown/simulate``.
+         */
+        DebtPaydownSimulationRequest: {
+            /** Currency */
+            currency?: string | null;
+            /**
+             * Extra Monthly Prepayment
+             * @default 0
+             */
+            extra_monthly_prepayment: number;
+            /**
+             * Horizon Months
+             * @default 60
+             */
+            horizon_months: number;
+            /**
+             * Lump Sum Month Offset
+             * @default 1
+             */
+            lump_sum_month_offset: number;
+            /**
+             * Lump Sum Prepayment
+             * @default 0
+             */
+            lump_sum_prepayment: number;
+            /** Periodic Lump Sums */
+            periodic_lump_sums?: components["schemas"]["PeriodicLumpSumInput"][];
+            /**
+             * Strategy
+             * @default avalanche
+             * @enum {string}
+             */
+            strategy: "avalanche" | "snowball";
+            /**
+             * Target Liquidity Months
+             * @default 4
+             */
+            target_liquidity_months: number;
+        };
+        /**
+         * DebtPaydownSimulationResponse
+         * @description Response body for ``POST /reports/debt-paydown/simulate``.
+         */
+        DebtPaydownSimulationResponse: {
+            /** Accelerated Months To Payoff */
+            accelerated_months_to_payoff?: number | null;
+            /** Accelerated Payoff Date */
+            accelerated_payoff_date?: string | null;
+            /**
+             * Accelerated Total Interest
+             * @default 0
+             */
+            accelerated_total_interest: number;
+            /** Baseline Months To Payoff */
+            baseline_months_to_payoff?: number | null;
+            /** Baseline Payoff Date */
+            baseline_payoff_date?: string | null;
+            /**
+             * Baseline Total Interest
+             * @default 0
+             */
+            baseline_total_interest: number;
+            /** Currency */
+            currency: string;
+            liquidity_guardrail: components["schemas"]["LiquidityGuardrail"];
+            /** Monthly Trajectory */
+            monthly_trajectory?: components["schemas"]["DebtTrajectoryPoint"][];
+            /** Months Saved */
+            months_saved?: number | null;
+            /** Per Liability Impact */
+            per_liability_impact?: components["schemas"]["LiabilitySimulationImpact"][];
+            /**
+             * Strategy
+             * @enum {string}
+             */
+            strategy: "avalanche" | "snowball";
+            /**
+             * Total Interest Saved
+             * @default 0
+             */
+            total_interest_saved: number;
+        };
+        /**
+         * DebtPaydownSummary
+         * @description Aggregate debt drag metrics across active liabilities.
+         */
+        DebtPaydownSummary: {
+            /**
+             * Active Liability Count
+             * @default 0
+             */
+            active_liability_count: number;
+            /** Highest Rate Account Name */
+            highest_rate_account_name?: string | null;
+            /** Highest Rate Payoff Date */
+            highest_rate_payoff_date?: string | null;
+            /**
+             * Total Annual Interest Drag
+             * @default 0
+             */
+            total_annual_interest_drag: number;
+            /**
+             * Total Debt
+             * @default 0
+             */
+            total_debt: number;
+            /**
+             * Total Monthly Contractual Payment
+             * @default 0
+             */
+            total_monthly_contractual_payment: number;
+            /**
+             * Total Monthly Interest Drag
+             * @default 0
+             */
+            total_monthly_interest_drag: number;
+            /**
+             * Weighted Average Ea Pct
+             * @default 0
+             */
+            weighted_average_ea_pct: number;
+        };
+        /**
+         * DebtTrajectoryPoint
+         * @description Monthly trajectory snapshot comparing baseline vs. accelerated debt.
+         */
+        DebtTrajectoryPoint: {
+            /**
+             * Accelerated Total Debt
+             * @default 0
+             */
+            accelerated_total_debt: number;
+            /**
+             * Baseline Total Debt
+             * @default 0
+             */
+            baseline_total_debt: number;
+            /** Events */
+            events?: string[];
+            /**
+             * Extra Applied
+             * @default 0
+             */
+            extra_applied: number;
+            /**
+             * Interest Paid
+             * @default 0
+             */
+            interest_paid: number;
+            /** Month */
+            month: string;
+            /**
+             * Priority Loan Balance
+             * @default 0
+             */
+            priority_loan_balance: number;
+        };
+        /**
+         * ExcludedLiabilitiesSummary
+         * @description Optional summary of paid-off or balance-excluded liabilities.
+         */
+        ExcludedLiabilitiesSummary: {
+            /** Account Names */
+            account_names?: string[];
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Total Balance
+             * @default 0
+             */
+            total_balance: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1926,6 +2376,32 @@ export interface components {
             timestamp: string;
             /** Version */
             version: string;
+        };
+        /**
+         * InTransitSummary
+         * @description Summary of COMPLETED transactions still awaiting settlement.
+         */
+        InTransitSummary: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /**
+             * Inflows
+             * @default 0
+             */
+            inflows: number;
+            /**
+             * Outflows
+             * @default 0
+             */
+            outflows: number;
+            /**
+             * Total Volume
+             * @default 0
+             */
+            total_volume: number;
         };
         /**
          * IngestionConnectionResponse
@@ -2003,6 +2479,102 @@ export interface components {
             updated: number;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * LiabilitySimulationImpact
+         * @description Per-liability payoff impact comparing baseline vs. accelerated simulation.
+         */
+        LiabilitySimulationImpact: {
+            /** Accelerated Payoff Date */
+            accelerated_payoff_date?: string | null;
+            /** Account Id */
+            account_id: string;
+            /** Account Name */
+            account_name: string;
+            /** Baseline Payoff Date */
+            baseline_payoff_date?: string | null;
+            /**
+             * Effective Annual Rate Pct
+             * @default 0
+             */
+            effective_annual_rate_pct: number;
+            /**
+             * Interest Saved
+             * @default 0
+             */
+            interest_saved: number;
+            /** Months Saved */
+            months_saved?: number | null;
+            /**
+             * Starting Balance
+             * @default 0
+             */
+            starting_balance: number;
+        };
+        /**
+         * LinkedAssetCarry
+         * @description Asset financing context linked to a liability via ``AccountFinancing``.
+         */
+        LinkedAssetCarry: {
+            /**
+             * Asset Current Value
+             * @default 0
+             */
+            asset_current_value: number;
+            /** Asset Id */
+            asset_id: string;
+            /**
+             * Asset Monthly Earnings
+             * @default 0
+             */
+            asset_monthly_earnings: number;
+            /** Asset Name */
+            asset_name: string;
+            /**
+             * Financing Share
+             * @default 1
+             */
+            financing_share: number;
+            /**
+             * Net Monthly Carry
+             * @default 0
+             */
+            net_monthly_carry: number;
+        };
+        /**
+         * LiquidityGuardrail
+         * @description Safety evaluation ensuring prepayments preserve emergency cash runway.
+         */
+        LiquidityGuardrail: {
+            /**
+             * Liquid Cash Total
+             * @default 0
+             */
+            liquid_cash_total: number;
+            /** Message */
+            message: string;
+            /**
+             * Post Lump Sum Cash
+             * @default 0
+             */
+            post_lump_sum_cash: number;
+            /** Post Lump Sum Runway Months */
+            post_lump_sum_runway_months?: number | null;
+            /**
+             * Safe Lump Sum Headroom
+             * @default 0
+             */
+            safe_lump_sum_headroom: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "safe" | "caution" | "warning";
+            /**
+             * Target Liquidity Months
+             * @default 4
+             */
+            target_liquidity_months: number;
         };
         /**
          * LivenessResponse
@@ -2098,6 +2670,49 @@ export interface components {
             total_spending: number;
         };
         /**
+         * MonthlyWaterfallPoint
+         * @description Monthly breakdown point inside the waterfall report.
+         */
+        MonthlyWaterfallPoint: {
+            /**
+             * Capital Deployments
+             * @default 0
+             */
+            capital_deployments: number;
+            /** Month */
+            month: string;
+            /**
+             * Non Operating Inflows
+             * @default 0
+             */
+            non_operating_inflows: number;
+            /**
+             * Operating Free Cashflow
+             * @default 0
+             */
+            operating_free_cashflow: number;
+            /**
+             * Organic Fcf Margin Pct
+             * @default 0
+             */
+            organic_fcf_margin_pct: number;
+            /**
+             * Savings
+             * @default 0
+             */
+            savings: number;
+            /**
+             * Total External Income
+             * @default 0
+             */
+            total_external_income: number;
+            /**
+             * Total Operating Outflows
+             * @default 0
+             */
+            total_operating_outflows: number;
+        };
+        /**
          * OAuthCodeExchangeRequest
          * @description JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).
          *
@@ -2143,6 +2758,29 @@ export interface components {
             provider: components["schemas"]["ProviderType"];
             /** Url */
             url: string;
+        };
+        /**
+         * OperatingCashflowReportResponse
+         * @description Response body for ``GET /reports/operating-cashflow``.
+         */
+        OperatingCashflowReportResponse: {
+            /** Available Currencies */
+            available_currencies?: string[];
+            /** Buckets */
+            buckets?: components["schemas"]["WaterfallBucketItem"][];
+            /** Currency */
+            currency: string;
+            diagnostics?: components["schemas"]["WaterfallDiagnostics"];
+            in_transit?: components["schemas"]["InTransitSummary"];
+            /** Monthly Series */
+            monthly_series?: components["schemas"]["MonthlyWaterfallPoint"][];
+            /**
+             * Multi Currency Warning
+             * @default false
+             */
+            multi_currency_warning: boolean;
+            period: components["schemas"]["ReportPeriod"];
+            waterfall: components["schemas"]["WaterfallSummary"];
         };
         /** PaginatedResponse[AccountResponse] */
         PaginatedResponse_AccountResponse_: {
@@ -2211,6 +2849,98 @@ export interface components {
             total: number;
         };
         /**
+         * PeriodicLumpSumInput
+         * @description Recurring annual calendar-month lump-sum prepayment input (e.g. bonus month).
+         */
+        PeriodicLumpSumInput: {
+            /** Amount */
+            amount: number;
+            /** Month Of Year */
+            month_of_year: number;
+        };
+        /**
+         * PlannedVsActualReportResponse
+         * @description Response body for ``GET /reports/planned-vs-actual``.
+         */
+        PlannedVsActualReportResponse: {
+            /** Available Currencies */
+            available_currencies?: string[];
+            /** Bucket Rollups */
+            bucket_rollups?: components["schemas"]["BucketVarianceItem"][];
+            /** Currency */
+            currency: string;
+            /**
+             * Multi Currency Warning
+             * @default false
+             */
+            multi_currency_warning: boolean;
+            period: components["schemas"]["ReportPeriod"];
+            /** Reconciliation Flags */
+            reconciliation_flags?: components["schemas"]["ReconciliationFlagItem"][];
+            summary: components["schemas"]["PlannedVsActualSummary"];
+            /** Template Items */
+            template_items?: components["schemas"]["TemplateVarianceItem"][];
+            /** Unplanned Items */
+            unplanned_items?: components["schemas"]["UnplannedCategoryItem"][];
+        };
+        /**
+         * PlannedVsActualSummary
+         * @description Summary metrics for Planned vs. Actual comparison.
+         */
+        PlannedVsActualSummary: {
+            /**
+             * Actual Income
+             * @default 0
+             */
+            actual_income: number;
+            /**
+             * Actual Operating Fcf
+             * @default 0
+             */
+            actual_operating_fcf: number;
+            /**
+             * Actual Outflows
+             * @default 0
+             */
+            actual_outflows: number;
+            /**
+             * Adherence Pct
+             * @default 0
+             */
+            adherence_pct: number;
+            /**
+             * Net Fcf Variance
+             * @default 0
+             */
+            net_fcf_variance: number;
+            /**
+             * Planned Income
+             * @default 0
+             */
+            planned_income: number;
+            /**
+             * Planned Operating Fcf
+             * @default 0
+             */
+            planned_operating_fcf: number;
+            /**
+             * Planned Outflows
+             * @default 0
+             */
+            planned_outflows: number;
+            /**
+             * Reconciliation Flag Count
+             * @default 0
+             */
+            reconciliation_flag_count: number;
+            /**
+             * Status Tone
+             * @default positive
+             * @enum {string}
+             */
+            status_tone: "positive" | "warning" | "negative";
+        };
+        /**
          * ProviderType
          * @description Signup / identity channel for ``users.provider_type``.
          *
@@ -2266,6 +2996,32 @@ export interface components {
             participation: number;
             /** Total Area */
             total_area: number;
+        };
+        /**
+         * ReconciliationFlagItem
+         * @description Automated reconciliation diagnostic alert.
+         */
+        ReconciliationFlagItem: {
+            /** Amount */
+            amount?: number | null;
+            /** Category Id */
+            category_id?: string | null;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "unlinked_high_value" | "potential_duplicate" | "unbucketed_category";
+            /** Message */
+            message: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning";
+            /** Template Id */
+            template_id?: string | null;
+            /** Transaction Id */
+            transaction_id?: string | null;
         };
         /**
          * RedisHealthResponse
@@ -2521,6 +3277,62 @@ export interface components {
             provider: components["schemas"]["ProviderType"];
             /** Refresh Token */
             refresh_token: string;
+        };
+        /**
+         * TemplateVarianceItem
+         * @description Planned template occurrence compared against linked settled postings.
+         */
+        TemplateVarianceItem: {
+            /**
+             * Actual Amount
+             * @default 0
+             */
+            actual_amount: number;
+            /** Bucket */
+            bucket: string;
+            /** Category Id */
+            category_id?: string | null;
+            /** Category Name */
+            category_name: string;
+            /**
+             * Due Date
+             * Format: date
+             */
+            due_date: string;
+            /**
+             * Is Favorable
+             * @default true
+             */
+            is_favorable: boolean;
+            /**
+             * Linked Transaction Count
+             * @default 0
+             */
+            linked_transaction_count: number;
+            /**
+             * Planned Amount
+             * @default 0
+             */
+            planned_amount: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "paid" | "partial" | "over_budget" | "exceeded" | "overdue" | "upcoming";
+            /** Template Id */
+            template_id: string;
+            /** Template Name */
+            template_name: string;
+            /**
+             * Variance Amount
+             * @default 0
+             */
+            variance_amount: number;
+            /**
+             * Variance Pct
+             * @default 0
+             */
+            variance_pct: number;
         };
         /**
          * TokenResponse
@@ -2911,6 +3723,34 @@ export interface components {
             period: string;
         };
         /**
+         * UnplannedCategoryItem
+         * @description Settled actuals not matched to an expanded template occurrence.
+         */
+        UnplannedCategoryItem: {
+            /**
+             * Actual Amount
+             * @default 0
+             */
+            actual_amount: number;
+            /** Bucket */
+            bucket: string;
+            /** Category Id */
+            category_id?: string | null;
+            /** Category Name */
+            category_name: string;
+            /**
+             * Status
+             * @default unplanned
+             * @constant
+             */
+            status: "unplanned";
+            /**
+             * Transaction Count
+             * @default 0
+             */
+            transaction_count: number;
+        };
+        /**
          * UpcomingDueResponse
          * @description Single upcoming-due row for in-app reminders.
          */
@@ -3007,6 +3847,163 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WaterfallBucketItem
+         * @description Single bucket row in the Operating Free Cashflow waterfall.
+         */
+        WaterfallBucketItem: {
+            /**
+             * Amount
+             * @default 0
+             */
+            amount: number;
+            /** Bucket */
+            bucket: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "income" | "operating_outflow" | "allocation" | "non_operating";
+            /** Label */
+            label: string;
+            /**
+             * Share Of Income Pct
+             * @default 0
+             */
+            share_of_income_pct: number;
+            /** Top Categories */
+            top_categories?: components["schemas"]["BucketCategoryItem"][];
+            /**
+             * Transaction Count
+             * @default 0
+             */
+            transaction_count: number;
+        };
+        /**
+         * WaterfallDiagnostics
+         * @description Classification diagnostics for waterfall hygiene.
+         */
+        WaterfallDiagnostics: {
+            /** Cashflow Only Cc Account Names */
+            cashflow_only_cc_account_names?: string[];
+            /**
+             * Cashflow Only Cc Excluded Amount
+             * @default 0
+             */
+            cashflow_only_cc_excluded_amount: number;
+            /**
+             * Cashflow Only Cc Excluded Count
+             * @default 0
+             */
+            cashflow_only_cc_excluded_count: number;
+            /**
+             * Unbucketed Amount
+             * @default 0
+             */
+            unbucketed_amount: number;
+            /**
+             * Unbucketed Category Count
+             * @default 0
+             */
+            unbucketed_category_count: number;
+        };
+        /**
+         * WaterfallSummary
+         * @description Headline Operating Free Cashflow metrics.
+         */
+        WaterfallSummary: {
+            /**
+             * Capital Deployments
+             * @default 0
+             */
+            capital_deployments: number;
+            /**
+             * Debt Service To Income Pct
+             * @default 0
+             */
+            debt_service_to_income_pct: number;
+            /**
+             * Fixed Expenses
+             * @default 0
+             */
+            fixed_expenses: number;
+            /**
+             * Income Fixed
+             * @default 0
+             */
+            income_fixed: number;
+            /**
+             * Income Variable
+             * @default 0
+             */
+            income_variable: number;
+            /**
+             * Internal Sweeps Volume
+             * @default 0
+             */
+            internal_sweeps_volume: number;
+            /**
+             * Loans
+             * @default 0
+             */
+            loans: number;
+            /**
+             * Net Allocated Surplus
+             * @default 0
+             */
+            net_allocated_surplus: number;
+            /**
+             * Net Ledger Cashflow
+             * @default 0
+             */
+            net_ledger_cashflow: number;
+            /**
+             * Non Operating Inflows
+             * @default 0
+             */
+            non_operating_inflows: number;
+            /**
+             * Operating Free Cashflow
+             * @default 0
+             */
+            operating_free_cashflow: number;
+            /**
+             * Organic Fcf Margin Pct
+             * @default 0
+             */
+            organic_fcf_margin_pct: number;
+            /**
+             * Savings
+             * @default 0
+             */
+            savings: number;
+            /**
+             * Status Tone
+             * @default positive
+             * @enum {string}
+             */
+            status_tone: "positive" | "warning" | "negative";
+            /**
+             * Total External Income
+             * @default 0
+             */
+            total_external_income: number;
+            /**
+             * Total Operating Outflows
+             * @default 0
+             */
+            total_operating_outflows: number;
+            /**
+             * Unexpected Expenses
+             * @default 0
+             */
+            unexpected_expenses: number;
+            /**
+             * Variable Expenses
+             * @default 0
+             */
+            variable_expenses: number;
         };
     };
     responses: never;
@@ -4009,6 +5006,75 @@ export interface operations {
             };
         };
     };
+    get_debt_paydown_report_api_v1_reports_debt_paydown_get: {
+        parameters: {
+            query?: {
+                /** @description Optional 3-letter currency filter */
+                currency?: string | null;
+                /** @description Include excluded liabilities summary */
+                include_excluded?: boolean;
+                /** @description Target liquid cash runway months */
+                target_liquidity_months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebtPaydownReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_debt_paydown_report_api_v1_reports_debt_paydown_simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DebtPaydownSimulationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DebtPaydownSimulationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_report_api_v1_reports_export_get: {
         parameters: {
             query: {
@@ -4040,6 +5106,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_operating_cashflow_report_api_v1_reports_operating_cashflow_get: {
+        parameters: {
+            query: {
+                /** @description Report start date */
+                start_date: string;
+                /** @description Report end date */
+                end_date: string;
+                /** @description Optional 3-letter currency filter */
+                currency?: string | null;
+                /** @description Optional account filter */
+                account_id?: string | null;
+                /** @description Include monthly breakdown */
+                include_monthly_series?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperatingCashflowReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_planned_vs_actual_report_api_v1_reports_planned_vs_actual_get: {
+        parameters: {
+            query: {
+                /** @description Report start date */
+                start_date: string;
+                /** @description Report end date */
+                end_date: string;
+                /** @description Optional 3-letter currency filter */
+                currency?: string | null;
+                /** @description Optional account filter */
+                account_id?: string | null;
+                /** @description Optional cashflow bucket filter */
+                cashflow_bucket?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannedVsActualReportResponse"];
                 };
             };
             /** @description Validation Error */

@@ -47,6 +47,12 @@ export const queryKeys = {
     all: ["papita", "reports"] as const,
     spending: (filters: Record<string, string | number | boolean | undefined | null>) =>
       ["papita", "reports", "spending", filters] as const,
+    operatingCashflow: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "reports", "operatingCashflow", filters] as const,
+    plannedVsActual: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "reports", "plannedVsActual", filters] as const,
+    debtPaydown: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "reports", "debtPaydown", filters] as const,
   },
   transactionTemplates: {
     all: ["papita", "transactionTemplates"] as const,

@@ -75,8 +75,11 @@ export {
   categoriesListQueryOptions,
   categoryDetailQueryOptions,
   clientContractQueryOptions,
+  debtPaydownReportQueryOptions,
   healthLiveQueryOptions,
   healthQueryOptions,
+  operatingCashflowReportQueryOptions,
+  plannedVsActualReportQueryOptions,
   spendingReportQueryOptions,
   transactionDetailQueryOptions,
   transactionTemplateDetailQueryOptions,
@@ -86,7 +89,18 @@ export {
 } from "@/api/queries";
 export { createAppQueryClient } from "@/api/queryClient";
 export { queryKeys } from "@/api/queryKeys";
-export { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";
+export {
+  getDebtPaydownReport,
+  getOperatingCashflowReport,
+  getPlannedVsActualReport,
+  getSpendingReport,
+  simulateDebtPaydown,
+  type DebtPaydownReportParams,
+  type OperatingCashflowReportParams,
+  type PlannedVsActualReportParams,
+  type SpendingGroupBy,
+  type SpendingReportParams,
+} from "@/api/reports";
 export {
   clearTemplatePaid,
   createTransactionTemplate,

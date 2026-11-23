@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-import { CATEGORY_TYPE_SLUGS } from "@/lib/categoryTypes";
+import { CASHFLOW_BUCKET_SLUGS, CATEGORY_TYPE_SLUGS } from "@/lib/categoryTypes";
 
 /** UX schema for {@link CategoryFormState} — OpenAPI-aligned shape checks only. */
 export const categoryFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(255),
   description: z.string(),
   category_type: z.enum(CATEGORY_TYPE_SLUGS),
+  cashflow_bucket: z.union([z.literal(""), z.enum(CASHFLOW_BUCKET_SLUGS)]),
   parent_id: z.string(),
   icon: z.string().max(64, "Icon must be at most 64 characters"),
   color: z

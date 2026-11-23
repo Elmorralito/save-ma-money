@@ -45,6 +45,7 @@ export const accountFormSchema = z
     re_ownership: z.string(),
     re_participation: z.string(),
     credit_limit: z.string(),
+    credit_card_cashflow_only: z.boolean(),
     loan_is_paid_off: z.boolean(),
     loan_insurance_payment: z.string(),
     loan_extras_payment: z.string(),

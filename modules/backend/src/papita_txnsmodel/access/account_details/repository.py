@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import uuid
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlmodel import Session, select
@@ -52,6 +54,21 @@ class AccountDetailsRepository(BaseRepository, metaclass=MetaSingleton):
             _db_session.rollback()
 
         return None
+
+    @with_session
+    def get_by_account_ids(
+        self,
+        account_ids: Sequence[uuid.UUID],
+        *,
+        _db_session: Session,
+        **kwargs,
+    ) -> list[AccountDetailsDTO]:
+        """Return extension DTOs for a pre-validated list of owner account IDs."""
+        if not account_ids:
+            return []
+        dao_type = self.__expected_dto__.__dao_type__
+        rows = _db_session.exec(select(dao_type).where(dao_type.account_id.in_(list(account_ids)))).all()
+        return [self.__expected_dto__.model_validate(row.model_dump(mode="python")) for row in rows]
 
 
 class BankingAccountDetailsRepository(AccountDetailsRepository, metaclass=MetaSingleton):

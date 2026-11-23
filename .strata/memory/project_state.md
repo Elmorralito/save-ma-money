@@ -11,6 +11,10 @@ JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
+- **PPT-091 (`#184`) Operating Free Cashflow Waterfall, Planned-vs-Actual Variance & Debt Paydown Simulator:**
+  - Added `CashflowBucket` enum + nullable `categories.cashflow_bucket` and `credit_card_account_details.cashflow_only` (`o2d3e4f5a6b7` Alembic migration, DTOs, API CRUD schemas, and category/account SPA form controls).
+  - Implemented pure model analytics (`report_common.py`, `report_waterfall.py`, `report_variance.py`, `report_debt.py`) wired into `ReportService` and exposed `GET /api/v1/reports/operating-cashflow`, `GET /api/v1/reports/planned-vs-actual`, `GET /api/v1/reports/debt-paydown` (Redis cached), and `POST /api/v1/reports/debt-paydown/simulate` (rate-limited).
+  - Upgraded `ReportsPage` with a 4-KPI semantic strip, 4 URL-synced ARIA tabs (`Operating Cashflow`, `Planned vs. Actual`, `Debt Paydown`, `Spending`), accessible SVG/CSS visuals, zero TS domain math, single-currency scoping warning, and `queryKeys.reports.all` cache invalidation across ledger/template/account/category mutations.
 - **PPT-100 (Phase 3 of #261 / PPT-095):** Consolidated authentication to stateless JWKS Bearer (`/api/v1/auth/*`, removing BFF cookie/session store `bff_auth.py`, `bff_session.py`, `session_store.py`, `bff_csrf.py`, and SPA CSRF); replaced 6 Python linters (`black`, `isort`, `flake8`, `pylint`, `interrogate`, `ci-adoption-check`) with `ruff` + `mypy` + `pytest`; pruned redundant `bin/bash/` and `.github/scripts/` helpers and consolidated `.github/workflows/`.
 - **PPT-099 (Phase 2B of #261 / PPT-095):** Added `SettlementStatus` (`SETTLED` | `IN_TRANSIT`) to `Transactions` (`n1c2d3e4f5a6` migration + DTO + schemas); unified `/movements` into `/transactions` (supporting `income`, `expense`, `transfer`, `from_account_id`/`to_account_id`, `settlement_status`, `template_id`, and `POST /api/v1/transactions/{id}/execute`); folded `MovementsPage` into `TransactionsPage` and redirected `/movements` → `/transactions`.
 - **PPT-098 (Phase 2A of #261 / PPT-095):** Merged `modules/ingestor-core` and `modules/ingestors/email` into `backend/domains/ingestion/` (`backend/src/papita_ingestor_*`), removed Prefect `@flow` wrapper and `ParserRegistry`/`SourceRegistry` indirection in favor of explicit parser lists (`select_parser`, `default_email_parsers()`) and CLI `python -m backend.domains.ingestion.cli --once`, and wired optional `source_ref` on `POST /api/v1/transactions` to share `IngestionBridgeService`.
@@ -19,4 +23,4 @@ JWTs and links `users` by `sub`.
 
 ### Next action
 
-- All phases of Epic **PPT-095 (`#261`)** (`PPT-096` through `PPT-100`) are complete and verified. Ready for downstream **PPT-101 (`#262`)**.
+- Review/merge PR for **PPT-091 (`#184`)**, then wire **PPT-088 (`#181`)** Automation-first Home against `/reports/operating-cashflow` and `/reports/debt-paydown` and continue **PPT-101 (`#262`)**.

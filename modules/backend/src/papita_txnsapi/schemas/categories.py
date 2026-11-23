@@ -14,7 +14,7 @@ import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field
 
 from papita_txnsapi.config.settings import MAX_DESCRIPTION_LENGTH
-from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_category_kind
+from papita_txnsapi.schemas.converters import enum_to_api_slug, parse_cashflow_bucket, parse_category_kind
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 
 
@@ -39,6 +39,7 @@ class CategoryCreate(BaseModel):
         name: Display name; 1–255 characters after trimming.
         description: Optional free-text description.
         category_type: Lowercase slug parsed to ``CategoryKind``.
+        cashflow_bucket: Optional waterfall bucket slug parsed to ``CashflowBucket``.
         parent_id: Optional parent category for hierarchical trees.
         icon: Optional icon key or identifier (max 64 chars).
         color: Optional hex color (max 7 chars, e.g. ``#FF00AA``).
@@ -49,6 +50,7 @@ class CategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str = Field(default="", max_length=MAX_DESCRIPTION_LENGTH)
     category_type: str
+    cashflow_bucket: str | None = None
     parent_id: uuid.UUID | None = None
     icon: str | None = Field(default=None, max_length=64)
     color: str | None = Field(default=None, max_length=7)
@@ -58,15 +60,17 @@ class CategoryCreate(BaseModel):
 
         Returns:
             DTO ready for ``CategoriesService`` create/upsert; name is trimmed and
-            ``category_type`` is parsed to ``category_kind``.
+            ``category_type`` / ``cashflow_bucket`` are parsed to model enums.
 
         Raises:
-            ValueError: When ``category_type`` is not a valid slug.
+            ValueError: When ``category_type`` or ``cashflow_bucket`` is not a valid slug.
         """
+        bucket = parse_cashflow_bucket(self.cashflow_bucket) if self.cashflow_bucket is not None else None
         return CategoriesDTO(
             name=self.name.strip(),
             description=self.description,
             category_kind=parse_category_kind(self.category_type),
+            cashflow_bucket=bucket,
             parent_id=self.parent_id,
             icon=self.icon,
             color=self.color,
@@ -82,6 +86,7 @@ class CategoryUpdate(BaseModel):
         name: New display name; 1–255 characters when provided.
         description: Replacement description text.
         category_type: New kind slug; maps to DTO ``category_kind``.
+        cashflow_bucket: New waterfall bucket slug or ``None`` to clear.
         parent_id: New parent reference or ``None`` to clear hierarchy.
         icon: Updated icon key (max 64 chars).
         color: Updated hex color (max 7 chars).
@@ -93,6 +98,7 @@ class CategoryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
     category_type: str | None = None
+    cashflow_bucket: str | None = None
     parent_id: uuid.UUID | None = None
     icon: str | None = Field(default=None, max_length=64)
     color: str | None = Field(default=None, max_length=7)
@@ -106,15 +112,19 @@ class CategoryUpdate(BaseModel):
 
         Returns:
             New ``CategoriesDTO`` with only supplied fields overwritten;
-            ``category_type`` becomes ``category_kind`` and ``is_active`` becomes
-            ``active``.
+            ``category_type`` becomes ``category_kind``, ``cashflow_bucket``
+            maps to ``CashflowBucket | None``, and ``is_active`` becomes ``active``.
 
         Raises:
-            ValueError: When a provided ``category_type`` slug is invalid.
+            ValueError: When a provided ``category_type`` or ``cashflow_bucket`` slug is invalid.
         """
-        updates = self.model_dump(exclude_unset=True, exclude={"category_type", "is_active"})
+        updates = self.model_dump(exclude_unset=True, exclude={"category_type", "is_active", "cashflow_bucket"})
         if self.category_type is not None:
             updates["category_kind"] = parse_category_kind(self.category_type)
+        if "cashflow_bucket" in self.model_fields_set:
+            updates["cashflow_bucket"] = (
+                parse_cashflow_bucket(self.cashflow_bucket) if self.cashflow_bucket is not None else None
+            )
         if self.is_active is not None:
             updates["active"] = self.is_active
         return existing.model_copy(update=updates)
@@ -127,6 +137,7 @@ class CategoryResponse(BaseModel):
         id: Category UUID.
         name: Display name.
         category_type: Lowercase API slug for ``CategoryKind``.
+        cashflow_bucket: Optional lowercase API slug for ``CashflowBucket``.
         parent_id: Parent category UUID when nested; otherwise ``None``.
         icon: Optional icon key.
         color: Optional hex color.
@@ -141,6 +152,7 @@ class CategoryResponse(BaseModel):
     id: uuid.UUID
     name: str
     category_type: str
+    cashflow_bucket: str | None = None
     parent_id: uuid.UUID | None = None
     icon: str | None = None
     color: str | None = None
@@ -165,10 +177,12 @@ class CategoryResponse(BaseModel):
         Returns:
             Serialized category with ``category_type`` slug and nested children.
         """
+        bucket_slug = enum_to_api_slug(category.cashflow_bucket) if category.cashflow_bucket is not None else None
         return cls(
             id=category.id,
             name=category.name,
             category_type=enum_to_api_slug(category.category_kind),
+            cashflow_bucket=bucket_slug,
             parent_id=category.parent_id if isinstance(category.parent_id, uuid.UUID) else None,
             icon=category.icon,
             color=category.color,

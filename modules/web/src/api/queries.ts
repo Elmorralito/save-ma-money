@@ -5,7 +5,17 @@ import { getCategory, listCategories, type ListCategoriesParams } from "@/api/ca
 import { getHealth, getHealthLive } from "@/api/health";
 import { getClientContract } from "@/api/meta";
 import { queryKeys } from "@/api/queryKeys";
-import { getSpendingReport, type SpendingGroupBy, type SpendingReportParams } from "@/api/reports";
+import {
+  getDebtPaydownReport,
+  getOperatingCashflowReport,
+  getPlannedVsActualReport,
+  getSpendingReport,
+  type DebtPaydownReportParams,
+  type OperatingCashflowReportParams,
+  type PlannedVsActualReportParams,
+  type SpendingGroupBy,
+  type SpendingReportParams,
+} from "@/api/reports";
 import { getTransaction, listTransactions, type ListTransactionsParams } from "@/api/transactions";
 import {
   getTransactionTemplate,
@@ -152,6 +162,70 @@ export function spendingReportQueryOptions(
   return queryOptions({
     queryKey: queryKeys.reports.spending(spendingReportFilters(params)),
     queryFn: ({ signal }) => getSpendingReport({ ...params, signal }),
+  });
+}
+
+function operatingCashflowFilters(
+  params: Omit<OperatingCashflowReportParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    start_date: params.start_date,
+    end_date: params.end_date,
+    currency: params.currency ?? null,
+    account_id: params.account_id ?? null,
+    include_monthly_series: params.include_monthly_series ?? false,
+  };
+}
+
+function plannedVsActualFilters(
+  params: Omit<PlannedVsActualReportParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    start_date: params.start_date,
+    end_date: params.end_date,
+    currency: params.currency ?? null,
+    account_id: params.account_id ?? null,
+    cashflow_bucket: params.cashflow_bucket ?? null,
+  };
+}
+
+function debtPaydownFilters(
+  params: Omit<DebtPaydownReportParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    currency: params.currency ?? null,
+    include_excluded: params.include_excluded ?? false,
+    target_liquidity_months: params.target_liquidity_months ?? 4,
+  };
+}
+
+/** Shared query definition for ``GET /reports/operating-cashflow``. */
+export function operatingCashflowReportQueryOptions(
+  params: Omit<OperatingCashflowReportParams, "signal">,
+) {
+  return queryOptions({
+    queryKey: queryKeys.reports.operatingCashflow(operatingCashflowFilters(params)),
+    queryFn: ({ signal }) => getOperatingCashflowReport({ ...params, signal }),
+  });
+}
+
+/** Shared query definition for ``GET /reports/planned-vs-actual``. */
+export function plannedVsActualReportQueryOptions(
+  params: Omit<PlannedVsActualReportParams, "signal">,
+) {
+  return queryOptions({
+    queryKey: queryKeys.reports.plannedVsActual(plannedVsActualFilters(params)),
+    queryFn: ({ signal }) => getPlannedVsActualReport({ ...params, signal }),
+  });
+}
+
+/** Shared query definition for ``GET /reports/debt-paydown``. */
+export function debtPaydownReportQueryOptions(
+  params: Omit<DebtPaydownReportParams, "signal"> = {},
+) {
+  return queryOptions({
+    queryKey: queryKeys.reports.debtPaydown(debtPaydownFilters(params)),
+    queryFn: ({ signal }) => getDebtPaydownReport({ ...params, signal }),
   });
 }
 

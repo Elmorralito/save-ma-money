@@ -62,6 +62,7 @@ function AccountFormBody({ mode, account, onOpenChange }: AccountFormBodyProps) 
     onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.lists() });
       await queryClient.invalidateQueries({ queryKey: queryKeys.accounts.detail(saved.id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       toast.success(mode === "create" ? "Account created" : "Account updated");
       onOpenChange(false);
     },

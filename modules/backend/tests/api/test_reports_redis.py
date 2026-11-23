@@ -95,3 +95,67 @@ class TestReportsCache:
         assert tr1.status_code == 200 and tr2.headers.get("X-Cache") == "HIT"
         assert mock_service.cash_flow.call_count == 1
         assert mock_service.trends.call_count == 1
+
+    def test_ppt091_report_routes_cache_hit(
+        self,
+        fake_redis: object,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv("REDIS_ENABLED", "true")
+        monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+        get_settings.cache_clear()
+        InMemoryRateLimiter().reset()
+
+        owner = make_user()
+        mock_service = MagicMock()
+        mock_service.operating_cashflow.return_value = {
+            "currency": "USD",
+            "available_currencies": ["USD"],
+            "multi_currency_warning": False,
+            "waterfall": {"operating_free_cashflow": 100.0},
+            "buckets": [],
+            "in_transit": {},
+            "monthly_series": [],
+            "diagnostics": {},
+        }
+        mock_service.planned_vs_actual.return_value = {
+            "currency": "USD",
+            "available_currencies": ["USD"],
+            "multi_currency_warning": False,
+            "summary": {"net_fcf_variance": 10.0},
+            "bucket_rollups": [],
+            "template_items": [],
+            "unplanned_items": [],
+            "reconciliation_flags": [],
+        }
+        mock_service.debt_paydown.return_value = {
+            "currency": "USD",
+            "available_currencies": ["USD"],
+            "multi_currency_warning": False,
+            "summary": {"total_debt": 500.0},
+            "liabilities": [],
+            "liquidity_context": {},
+            "excluded_liabilities": None,
+        }
+
+        with patch("papita_txnsapi.main.init_redis", return_value=fake_redis):
+            app = create_app()
+            app.state.redis = fake_redis
+            app.dependency_overrides[get_current_owner] = lambda: owner
+            app.dependency_overrides[get_report_service] = lambda: mock_service
+            with TestClient(app) as client:
+                wf1 = client.get("/api/v1/reports/operating-cashflow", params=_SPENDING_PARAMS)
+                wf2 = client.get("/api/v1/reports/operating-cashflow", params=_SPENDING_PARAMS)
+                pv1 = client.get("/api/v1/reports/planned-vs-actual", params=_SPENDING_PARAMS)
+                pv2 = client.get("/api/v1/reports/planned-vs-actual", params=_SPENDING_PARAMS)
+                dp1 = client.get("/api/v1/reports/debt-paydown")
+                dp2 = client.get("/api/v1/reports/debt-paydown")
+
+        get_settings.cache_clear()
+        monkeypatch.setenv("REDIS_ENABLED", "false")
+        assert wf1.status_code == 200 and wf2.headers.get("X-Cache") == "HIT"
+        assert pv1.status_code == 200 and pv2.headers.get("X-Cache") == "HIT"
+        assert dp1.status_code == 200 and dp2.headers.get("X-Cache") == "HIT"
+        assert mock_service.operating_cashflow.call_count == 1
+        assert mock_service.planned_vs_actual.call_count == 1
+        assert mock_service.debt_paydown.call_count == 1
