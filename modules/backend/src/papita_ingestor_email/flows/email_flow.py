@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
+from papita_ingestor_core.registry import get_default_registry
 from papita_ingestor_core.runner.ingestion_runner import IngestionRunner
 from papita_ingestor_core.types.records import FetchFilter, RunResult
 from papita_ingestor_email.flow_settings import EmailFlowSettings
@@ -78,13 +79,27 @@ def build_email_runner(deps: EmailFlowDeps | None = None) -> IngestionRunner:
 
             owner = _owner_from_env
 
-    resolved_source = wiring.source or GmailSource(settings=wiring.gmail_settings)
+    active_registry = wiring.registry or get_default_registry()
+    if wiring.source is not None:
+        resolved_source = wiring.source
+    elif wiring.connector_id == "gmail" and wiring.registry is None:
+        resolved_source = GmailSource(settings=wiring.gmail_settings)
+    else:
+        resolved_source = active_registry.get_source(wiring.connector_id)
     resolved_bridge = wiring.bridge if wiring.bridge is not None else IngestionBridgeService()
+    resolved_parsers = (
+        default_email_parsers(registry=active_registry)
+        if wiring.connector_id == "gmail"
+        else active_registry.get_parsers(
+            source_id=resolved_source.source_id,
+            ingestion_source=resolved_source.manifest.ingestion_source,
+        )
+    )
     return IngestionRunner(
         source=resolved_source,
         owner=owner,
         bridge=resolved_bridge,
-        parsers=default_email_parsers(),
+        parsers=resolved_parsers,
         settings=settings,
     )
 
@@ -107,6 +122,7 @@ def build_email_ingestion_flow(
     def _run_batch(fetch_filter: FetchFilter | None = None) -> RunResult:
         runner = build_email_runner(wiring)
         eff_filter = fetch_filter if fetch_filter is not None else default_fetch_filter(settings)
+        provider_label = "email" if wiring.connector_id == "gmail" else runner.source_id
         return execute_with_run_status(
             runner,
             eff_filter,
@@ -116,6 +132,7 @@ def build_email_ingestion_flow(
             connection_service=wiring.connection_service,
             run_service=wiring.run_service,
             persist_status=should_persist_status,
+            provider=provider_label,
         )
 
     return _run_batch
@@ -187,6 +204,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Skip Gmail env + owner DB checks (tests / advanced dry wiring only)",
     )
     parser.add_argument(
+        "--connector",
+        type=str,
+        default="gmail",
+        help="Registered pull-source connector id from ConnectorRegistry (default: gmail)",
+    )
+    parser.add_argument(
         "--no-webserver",
         action="store_true",
         help="Disable Prefect runner /health webserver when serving",
@@ -198,11 +221,20 @@ def main(argv: list[str] | None = None) -> int:
     settings = EmailFlowSettings()
     preflight_owner: UsersDTO | None = None
     if not args.skip_preflight:
-        preflight_owner = run_cli_preflight(
-            owner_id=settings.owner_id,
-            dry_run=settings.dry_run,
-            require_gmail=True,
-        )
+        if args.connector == "gmail":
+            preflight_owner = run_cli_preflight(
+                owner_id=settings.owner_id,
+                dry_run=settings.dry_run,
+                require_gmail=True,
+            )
+        else:
+            source = get_default_registry().get_source(args.connector)
+            source.preflight()
+            preflight_owner = run_cli_preflight(
+                owner_id=settings.owner_id,
+                dry_run=settings.dry_run,
+                require_gmail=False,
+            )
 
     owner_provider = None
     if preflight_owner is not None:
@@ -215,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
 
     deps = EmailFlowDeps(
         flow_settings=settings,
+        connector_id=args.connector,
         owner=owner_provider,
         # Preflight already established DB / verified owner when applicable.
         establish_db=False if preflight_owner is not None else None,

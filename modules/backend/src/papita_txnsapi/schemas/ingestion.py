@@ -210,18 +210,38 @@ class IBKRImportResponse(BaseModel):
     deposits_updated: int = 0
 
 
+class ConnectorManifestResponse(BaseModel):
+    """Non-secret metadata for a registered ingestion connector/parser/importer plugin."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_id: str
+    kind: str
+    version: str
+    ingestion_source: str
+    supported_media_types: list[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
+    description: str = ""
+
+
 def assert_ingestion_response_allowlist() -> None:
     """Raise if forbidden secret/raw field names appear on public schemas.
 
     Intended for unit tests / import-time hygiene — not a runtime router check.
     """
-    for schema in (IngestionConnectionResponse, IngestionRunResponse, IBKRImportResponse):
+    for schema in (
+        IngestionConnectionResponse,
+        IngestionRunResponse,
+        IBKRImportResponse,
+        ConnectorManifestResponse,
+    ):
         overlap = _FORBIDDEN_RESPONSE_FIELDS.intersection(schema.model_fields)
         if overlap:
             raise AssertionError(f"{schema.__name__} exposes forbidden fields: {sorted(overlap)}")
 
 
 __all__ = [
+    "ConnectorManifestResponse",
     "IBKRImportRequest",
     "IBKRImportResponse",
     "IBKRPositionImportResponse",

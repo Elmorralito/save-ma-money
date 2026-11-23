@@ -6,7 +6,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from typing import Self
 
+from papita_ingestor_core.plugins import PluginManifest
 from papita_ingestor_core.types.records import FetchFilter, RawRecord
+from papita_txnsmodel.model.enums import IngestionSource
 
 
 class BaseIngestorSource(ABC):
@@ -16,6 +18,19 @@ class BaseIngestorSource(ABC):
     @abstractmethod
     def source_id(self) -> str:
         """Stable registry identity for this source implementation."""
+
+    @property
+    def manifest(self) -> PluginManifest:
+        """Non-secret plugin metadata for discovery and capability inspection."""
+        return PluginManifest(
+            plugin_id=self.source_id,
+            kind="pull_source",
+            ingestion_source=IngestionSource.API,
+            capabilities=frozenset({"acknowledge", "health_check"}),
+        )
+
+    def preflight(self) -> None:
+        """Optional fail-fast startup check (e.g. required env credentials)."""
 
     @abstractmethod
     def connect(self) -> None:

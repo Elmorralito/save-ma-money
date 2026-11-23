@@ -15,8 +15,10 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import Resource, build
 
 from papita_ingestor_core.errors import IngestorConnectionError, IngestorFetchError
+from papita_ingestor_core.plugins import PluginManifest
 from papita_ingestor_core.sources import BaseIngestorSource
 from papita_ingestor_core.types.records import FetchFilter, RawRecord
+from papita_ingestor_email.runtime import require_gmail_auth_env
 from papita_ingestor_email.settings import GmailSettings
 from papita_ingestor_email.sources.query import build_gmail_query
 from papita_txnsmodel.model.enums import IngestionSource
@@ -31,6 +33,14 @@ class GmailSource(BaseIngestorSource):
     """Headless Gmail source using refresh-token credentials (R2)."""
 
     registry_id = "gmail"
+    PLUGIN_MANIFEST = PluginManifest(
+        plugin_id="gmail",
+        kind="pull_source",
+        ingestion_source=IngestionSource.EMAIL,
+        supported_media_types=("message/rfc822",),
+        capabilities=frozenset({"acknowledge", "cursor", "health_check", "preflight"}),
+        description="Headless Gmail OAuth2 pull connector.",
+    )
 
     def __init__(
         self,
@@ -53,6 +63,14 @@ class GmailSource(BaseIngestorSource):
     @property
     def source_id(self) -> str:
         return self.registry_id
+
+    @property
+    def manifest(self) -> PluginManifest:
+        return self.PLUGIN_MANIFEST
+
+    def preflight(self) -> None:
+        """Fail fast when Gmail OAuth env credentials / token_file are absent."""
+        require_gmail_auth_env()
 
     @property
     def settings(self) -> GmailSettings:

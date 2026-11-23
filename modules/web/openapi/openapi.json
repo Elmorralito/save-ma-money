@@ -1118,6 +1118,55 @@
         "title": "ClearPaidRequest",
         "type": "object"
       },
+      "ConnectorManifestResponse": {
+        "additionalProperties": false,
+        "description": "Non-secret metadata for a registered ingestion connector/parser/importer plugin.",
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "ingestion_source": {
+            "title": "Ingestion Source",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "plugin_id": {
+            "title": "Plugin Id",
+            "type": "string"
+          },
+          "supported_media_types": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Media Types",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plugin_id",
+          "kind",
+          "version",
+          "ingestion_source"
+        ],
+        "title": "ConnectorManifestResponse",
+        "type": "object"
+      },
       "CreditCardDetailsSchema": {
         "additionalProperties": false,
         "description": "Credit card extension fields.\n\nAttributes:\n    credit_limit: Maximum revolving credit; must be positive.\n    cashflow_only: When true, treat ASSET->CREDIT_CARD lump-sum payments as\n        operating variable expenses and ignore itemized card expenses.",
@@ -7020,6 +7069,73 @@
         ]
       }
     },
+    "/api/v1/ingestion/connectors": {
+      "get": {
+        "description": "List non-secret manifests for all registered ingestion plugins.",
+        "operationId": "list_registered_connectors_api_v1_ingestion_connectors_get",
+        "parameters": [
+          {
+            "description": "Optional plugin kind filter",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pull_source",
+                    "record_parser",
+                    "batch_importer",
+                    "rate_feed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional plugin kind filter",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectorManifestResponse"
+                  },
+                  "title": "Response List Registered Connectors Api V1 Ingestion Connectors Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Registered Connectors",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
     "/api/v1/ingestion/ibkr/activity-statement": {
       "post": {
         "description": "Import an Interactive Brokers Activity Statement CSV idempotently (PPT-101 / #262).",
@@ -7205,6 +7321,64 @@
           }
         ],
         "summary": "Get Latest Ingestion Run",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/statements/{importer_id}": {
+      "post": {
+        "description": "Import a broker/statement payload via any registered ``BaseBatchImporter`` plugin.",
+        "operationId": "import_statement_by_plugin_api_v1_ingestion_statements__importer_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "importer_id",
+            "required": true,
+            "schema": {
+              "title": "Importer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IBKRImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IBKRImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Import Statement By Plugin",
         "tags": [
           "Ingestion"
         ]

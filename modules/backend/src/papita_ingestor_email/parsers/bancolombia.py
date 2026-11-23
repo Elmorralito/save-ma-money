@@ -33,6 +33,10 @@ class BancolombiaParser(BaseRecordParser):
     registry_id = "bancolombia-email"
 
     @property
+    def supported_ingestion_sources(self) -> frozenset[IngestionSource]:
+        return frozenset({IngestionSource.EMAIL})
+
+    @property
     def parser_id(self) -> str:
         return self.registry_id
 

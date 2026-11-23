@@ -33,6 +33,7 @@ from redis import Redis
 
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.auth_health import AuthProbeDetail, AuthProbeResult, probe_supabase_auth
+from papita_txnsapi.core.auth_provider import build_auth_provider
 from papita_txnsapi.core.db_health import probe_database
 from papita_txnsapi.core.redis import RedisProbeDetail, RedisProbeResult, get_redis_from_app, ping_redis
 from papita_txnsapi.dependencies.rate_limit import enforce_health_rate_limit
@@ -88,7 +89,7 @@ def _apply_no_store(response: Response) -> None:
 
 
 def _probe_auth(settings: Settings) -> AuthProbeResult:
-    """Run the configured Auth probe using application settings.
+    """Run the configured Auth probe via ``AuthProvider``.
 
     Args:
         settings: App settings with ``AUTH_PROVIDER`` and optional Supabase keys.
@@ -96,11 +97,7 @@ def _probe_auth(settings: Settings) -> AuthProbeResult:
     Returns:
         Allowlisted Auth connectivity result (local mode skips the network call).
     """
-    return probe_supabase_auth(
-        auth_provider=settings.AUTH_PROVIDER,
-        supabase_url=settings.SUPABASE_URL,
-        anon_key=settings.SUPABASE_ANON_KEY,
-    )
+    return build_auth_provider(settings).probe_health(probe_fn=probe_supabase_auth)
 
 
 def _probe_redis(request: Request, settings: Settings) -> RedisProbeResult:

@@ -96,6 +96,10 @@ class Global66Parser(BaseRecordParser):
     registry_id = "global66-email"
 
     @property
+    def supported_ingestion_sources(self) -> frozenset[IngestionSource]:
+        return frozenset({IngestionSource.EMAIL})
+
+    @property
     def parser_id(self) -> str:
         return self.registry_id
 

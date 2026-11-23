@@ -14,6 +14,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
 from papita_txnsapi.config.settings import Settings, get_settings
+from papita_txnsapi.core.auth_provider import AuthProvider, build_auth_provider
 from papita_txnsapi.core.security import AuthSecurityManager
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsmodel.access.users.dto import UsersDTO
@@ -57,6 +58,11 @@ def _profile_from_supabase_claims(payload: dict[str, Any]) -> dict[str, Any]:
 def get_auth_manager(settings: Annotated[Settings, Depends(get_settings)]) -> AuthSecurityManager:
     """Return the singleton JWT manager configured from application settings."""
     return AuthSecurityManager(settings)
+
+
+def get_auth_provider(settings: Annotated[Settings, Depends(get_settings)]) -> AuthProvider:
+    """Return the configured ``AuthProvider`` (Supabase or local test mode)."""
+    return build_auth_provider(settings)
 
 
 def get_current_owner(

@@ -22,7 +22,9 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from redis import Redis
 
-from papita_ingestor_core.errors import IngestorParseError
+from papita_ingestor_core.errors import IngestorParseError, IngestorPluginError
+from papita_ingestor_core.plugins import PluginKind
+from papita_ingestor_core.registry import get_default_registry
 from papita_txnsapi.core.cache import CacheNamespace, bump_cache_versions
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
@@ -32,9 +34,12 @@ from papita_txnsapi.dependencies.services import (
     get_ibkr_import_service,
     get_ingestion_connection_service,
     get_ingestion_run_service,
+    get_portfolio_import_service,
 )
 from papita_txnsapi.schemas.common import PaginatedResponse
+from papita_txnsapi.schemas.converters import enum_to_api_slug
 from papita_txnsapi.schemas.ingestion import (
+    ConnectorManifestResponse,
     IBKRImportRequest,
     IBKRImportResponse,
     IngestionConnectionResponse,
@@ -44,6 +49,7 @@ from papita_txnsmodel.access.ingestion.dto import IngestionRunDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.ibkr_import import IBKRImportService
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
+from papita_txnsmodel.services.portfolio_import import PortfolioImportService
 
 router = APIRouter(
     prefix="/ingestion",
@@ -218,3 +224,69 @@ def import_ibkr_activity_statement(
         CacheNamespace.ACCOUNTS,
     )
     return IBKRImportResponse.model_validate(result.model_dump(mode="python"))
+
+
+@router.post("/statements/{importer_id}", response_model=IBKRImportResponse)
+def import_statement_by_plugin(
+    importer_id: str,
+    payload: IBKRImportRequest,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    portfolio_service: Annotated[PortfolioImportService, Depends(get_portfolio_import_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+) -> IBKRImportResponse:
+    """Import a broker/statement payload via any registered ``BaseBatchImporter`` plugin."""
+    try:
+        importer = get_default_registry().get_importer(importer_id)
+    except IngestorPluginError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Unknown statement importer: {importer_id}",
+        ) from exc
+
+    try:
+        batch = importer.parse_statement(payload.csv_content)
+        result = portfolio_service.import_batch(
+            owner=owner,
+            batch=batch,
+            fx_rate=payload.fx_rate,
+            base_currency=payload.base_currency,
+            cash_account_id=payload.cash_account_id,
+            margin_account_id=payload.margin_account_id,
+            source_account_id=payload.source_account_id,
+            create_missing_accounts=payload.create_missing_accounts,
+        )
+    except (IngestorParseError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+
+    bump_cache_versions(
+        redis,
+        owner.id,
+        CacheNamespace.TRANSACTIONS,
+        CacheNamespace.REPORTS,
+        CacheNamespace.ACCOUNTS,
+    )
+    return IBKRImportResponse.model_validate(result.model_dump(mode="python"))
+
+
+@router.get("/connectors", response_model=list[ConnectorManifestResponse])
+def list_registered_connectors(
+    _owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    kind: Annotated[PluginKind | None, Query(description="Optional plugin kind filter")] = None,
+) -> list[ConnectorManifestResponse]:
+    """List non-secret manifests for all registered ingestion plugins."""
+    manifests = get_default_registry().list_manifests(kind=kind)
+    return [
+        ConnectorManifestResponse(
+            plugin_id=item.plugin_id,
+            kind=item.kind,
+            version=item.version,
+            ingestion_source=enum_to_api_slug(item.ingestion_source),
+            supported_media_types=list(item.supported_media_types),
+            capabilities=sorted(item.capabilities),
+            description=item.description,
+        )
+        for item in manifests
+    ]
