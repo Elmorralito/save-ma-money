@@ -15,7 +15,7 @@ from pydantic import ConfigDict, Field, field_serializer
 
 from papita_txnsmodel.access.base.dto import CoreTableDTO, TableDTO
 from papita_txnsmodel.model.categories import Categories
-from papita_txnsmodel.model.enums import CategoryKind
+from papita_txnsmodel.model.enums import CashflowBucket, CategoryKind
 
 
 class CategoriesDTO(CoreTableDTO):
@@ -38,6 +38,7 @@ class CategoriesDTO(CoreTableDTO):
     __dao_type__ = Categories
 
     category_kind: CategoryKind
+    cashflow_bucket: CashflowBucket | None = None
     owner_id: uuid.UUID | None = None
     parent_id: uuid.UUID | CategoriesDTO | None = Field(default=None, serialization_alias="parent_id")
     icon: str | None = Field(default=None, max_length=64)
@@ -59,10 +60,11 @@ class CategoriesDTO(CoreTableDTO):
         return value.id if isinstance(value, TableDTO) else value
 
     def to_dao(self) -> Categories:
-        """Convert to DAO, preserving nullable ``owner_id`` / ``parent_id`` keys."""
+        """Convert to DAO, preserving nullable ``owner_id`` / ``parent_id`` / ``cashflow_bucket`` keys."""
         data = self.model_dump(mode="python", exclude_unset=True, exclude={"id"})
         data["owner_id"] = self.owner_id
         data["parent_id"] = self._serialize_parent_id(self.parent_id)
+        data["cashflow_bucket"] = self.cashflow_bucket
         if self.id is not None:
             data["id"] = self.id
         return self.__dao_type__.model_validate(data)

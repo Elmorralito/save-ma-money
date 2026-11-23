@@ -53,6 +53,31 @@ export type SpendingBreakdownItem = ApiSchemas["SpendingBreakdownItem"];
 export type SpendingReportResponse = ApiSchemas["SpendingReportResponse"];
 export type CashFlowReportResponse = ApiSchemas["CashFlowReportResponse"];
 export type TrendsReportResponse = ApiSchemas["TrendsReportResponse"];
+export type BucketCategoryItem = ApiSchemas["BucketCategoryItem"];
+export type WaterfallBucketItem = ApiSchemas["WaterfallBucketItem"];
+export type WaterfallSummary = ApiSchemas["WaterfallSummary"];
+export type InTransitSummary = ApiSchemas["InTransitSummary"];
+export type MonthlyWaterfallPoint = ApiSchemas["MonthlyWaterfallPoint"];
+export type WaterfallDiagnostics = ApiSchemas["WaterfallDiagnostics"];
+export type OperatingCashflowReportResponse = ApiSchemas["OperatingCashflowReportResponse"];
+export type PlannedVsActualSummary = ApiSchemas["PlannedVsActualSummary"];
+export type BucketVarianceItem = ApiSchemas["BucketVarianceItem"];
+export type TemplateVarianceItem = ApiSchemas["TemplateVarianceItem"];
+export type UnplannedCategoryItem = ApiSchemas["UnplannedCategoryItem"];
+export type ReconciliationFlagItem = ApiSchemas["ReconciliationFlagItem"];
+export type PlannedVsActualReportResponse = ApiSchemas["PlannedVsActualReportResponse"];
+export type LinkedAssetCarry = ApiSchemas["LinkedAssetCarry"];
+export type DebtLiabilityItem = ApiSchemas["DebtLiabilityItem"];
+export type DebtPaydownSummary = ApiSchemas["DebtPaydownSummary"];
+export type DebtLiquidityContext = ApiSchemas["DebtLiquidityContext"];
+export type ExcludedLiabilitiesSummary = ApiSchemas["ExcludedLiabilitiesSummary"];
+export type DebtPaydownReportResponse = ApiSchemas["DebtPaydownReportResponse"];
+export type PeriodicLumpSumInput = ApiSchemas["PeriodicLumpSumInput"];
+export type DebtPaydownSimulationRequest = ApiSchemas["DebtPaydownSimulationRequest"];
+export type LiabilitySimulationImpact = ApiSchemas["LiabilitySimulationImpact"];
+export type DebtTrajectoryPoint = ApiSchemas["DebtTrajectoryPoint"];
+export type LiquidityGuardrail = ApiSchemas["LiquidityGuardrail"];
+export type DebtPaydownSimulationResponse = ApiSchemas["DebtPaydownSimulationResponse"];
 
 /**
  * Shape of ``GET /api/v1/meta/client-contract``.

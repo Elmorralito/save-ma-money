@@ -3,7 +3,7 @@
 import uuid
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DECIMAL, Column, SmallInteger, String
+from sqlalchemy import DECIMAL, Boolean, Column, SmallInteger, String, text
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship
 
@@ -81,6 +81,10 @@ class CreditCardAccountDetails(BaseSQLModel, table=True):  # type: ignore
 
     account_id: uuid.UUID = Field(foreign_key=f"{ACCOUNTS__TABLENAME}.id", primary_key=True)
     credit_limit: float = Field(sa_column=Column(DECIMAL(22, 8), nullable=False))
+    cashflow_only: bool = Field(
+        sa_column=Column(Boolean, nullable=False, server_default=text("false")),
+        default=False,
+    )
 
     account: "Accounts" = Relationship(back_populates="credit_card_details")
 

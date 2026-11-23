@@ -107,6 +107,45 @@ class TestAccountsRoutes:
         mock_service.create_account.assert_called_once()
         mock_service.get_with_extension.assert_not_called()
 
+    def test_create_credit_card_with_cashflow_only_flag(
+        self,
+        accounts_client: tuple[TestClient, object, MagicMock],
+    ) -> None:
+        from papita_txnsmodel.access.account_details.dto import CreditCardAccountDetailsDTO
+        from papita_txnsmodel.model.enums import AccountKind, LedgerSide
+
+        client, owner, mock_service = accounts_client
+        cc_account = _sample_account(owner.id).model_copy(
+            update={
+                "name": "Nu Platino",
+                "account_kind": AccountKind.CREDIT_CARD,
+                "ledger_side": LedgerSide.LIABILITY,
+            }
+        )
+        cc_ext = CreditCardAccountDetailsDTO(
+            account_id=cc_account.id,
+            credit_limit=10000.0,
+            cashflow_only=True,
+        )
+        mock_service.create_account.return_value = (cc_account, cc_ext)
+        mock_service.get_balance.return_value = None
+
+        response = client.post(
+            "/api/v1/accounts",
+            json={
+                "name": "Nu Platino",
+                "account_kind": "credit_card",
+                "ledger_side": "liability",
+                "currency": "USD",
+                "credit_card_details": {"credit_limit": 10000.0, "cashflow_only": True},
+            },
+        )
+
+        assert response.status_code == 201
+        assert response.json()["credit_card_details"] == {"credit_limit": 10000.0, "cashflow_only": True}
+        passed_ext = mock_service.create_account.call_args.kwargs["extension"]
+        assert passed_ext["cashflow_only"] is True
+
     def test_create_account_uses_initial_value_when_mv_empty(
         self,
         accounts_client: tuple[TestClient, object, MagicMock],

@@ -13,6 +13,7 @@ from typing import TypeVar
 
 from papita_txnsmodel.model.enums import (
     AccountKind,
+    CashflowBucket,
     CategoryKind,
     IngestionRunStatus,
     LedgerSide,
@@ -100,6 +101,21 @@ def parse_category_kind(slug: str) -> CategoryKind:
         ValueError: When the slug is not a valid category kind.
     """
     return api_slug_to_enum(CategoryKind, slug)
+
+
+def parse_cashflow_bucket(slug: str) -> CashflowBucket:
+    """Parse an API ``cashflow_bucket`` slug to ``CashflowBucket``.
+
+    Args:
+        slug: Lowercase waterfall bucket slug from request JSON or query params.
+
+    Returns:
+        Corresponding ``CashflowBucket`` member.
+
+    Raises:
+        ValueError: When the slug is not a valid cashflow bucket.
+    """
+    return api_slug_to_enum(CashflowBucket, slug)
 
 
 def parse_transaction_kind(slug: str) -> TransactionKind:

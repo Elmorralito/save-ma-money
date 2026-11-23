@@ -66,6 +66,30 @@ export function defaultReportWindowDates(): { startDate: string; endDate: string
   return { startDate: toIsoDateLocal(start), endDate: toIsoDateLocal(end) };
 }
 
+export type ReportWindowPreset = "this_month" | "last_3_months" | "ytd" | "last_12_months";
+
+/** Compute calendar preset window dates for filter quick-select buttons. */
+export function presetReportWindowDates(preset: ReportWindowPreset): {
+  startDate: string;
+  endDate: string;
+} {
+  const end = new Date();
+  if (preset === "this_month") {
+    const start = new Date(end.getFullYear(), end.getMonth(), 1);
+    return { startDate: toIsoDateLocal(start), endDate: toIsoDateLocal(end) };
+  }
+  if (preset === "last_3_months") {
+    const start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
+    return { startDate: toIsoDateLocal(start), endDate: toIsoDateLocal(end) };
+  }
+  if (preset === "ytd") {
+    const start = new Date(end.getFullYear(), 0, 1);
+    return { startDate: toIsoDateLocal(start), endDate: toIsoDateLocal(end) };
+  }
+  const start = new Date(end.getFullYear() - 1, end.getMonth(), end.getDate() + 1);
+  return { startDate: toIsoDateLocal(start), endDate: toIsoDateLocal(end) };
+}
+
 /**
  * Validate a report window against an optional client-contract max.
  *

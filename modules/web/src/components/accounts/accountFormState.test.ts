@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  accountFormFromResponse,
   emptyAccountFormState,
   toAccountCreate,
   toAccountUpdate,
@@ -75,5 +76,34 @@ describe("accountFormState", () => {
     );
     expect(payload).not.toHaveProperty("description");
     expect(payload).not.toHaveProperty("initial_value");
+  });
+
+  it("round-trips credit_card_details.cashflow_only", () => {
+    const createPayload = toAccountCreate(
+      emptyAccountFormState({
+        name: "Nu Platino",
+        account_kind: "credit_card",
+        ledger_side: "liability",
+        credit_limit: "5000",
+        credit_card_cashflow_only: true,
+      }),
+    );
+    expect(createPayload.credit_card_details).toEqual({
+      credit_limit: 5000,
+      cashflow_only: true,
+    });
+
+    const hydrated = accountFormFromResponse({
+      id: "cc-1",
+      name: "Nu Platino",
+      account_kind: "credit_card",
+      ledger_side: "liability",
+      currency: "USD",
+      balance: -200,
+      is_active: true,
+      include_in_balance: true,
+      credit_card_details: { credit_limit: 5000, cashflow_only: true },
+    });
+    expect(hydrated.credit_card_cashflow_only).toBe(true);
   });
 });

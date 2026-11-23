@@ -19,6 +19,7 @@ export async function invalidateAfterLedgerWrite(
   const tasks: Promise<unknown>[] = [
     queryClient.invalidateQueries({ queryKey: queryKeys.accounts.lists() }),
     queryClient.invalidateQueries({ queryKey: queryKeys.accounts.details() }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.all }),
   ];
 
   if (options.transactions !== false) {
@@ -59,6 +60,7 @@ export async function invalidateAfterTemplateWrite(
 ): Promise<void> {
   const tasks: Promise<unknown>[] = [
     queryClient.invalidateQueries({ queryKey: queryKeys.transactionTemplates.all }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.reports.all }),
   ];
 
   if (options.templateId) {

@@ -68,13 +68,18 @@ test.describe("critical path", () => {
     await page.locator("#txn-filter-type").selectOption("transfer");
     await expect(page.getByText(transferDesc)).toBeVisible({ timeout: 15_000 });
 
-    // Spending report includes the UI expense (and seed baseline).
+    // Operating cashflow waterfall renders on Reports by default, then switch to Spending.
     // Local Compose may 429 under burst traffic — CI disables API rate limits.
     await page.getByRole("link", { name: "Reports", exact: true }).click();
     await page.getByRole("heading", { name: "Reports" }).waitFor();
     await page.locator("#report-start-date").fill("2026-01-01");
     await page.locator("#report-end-date").fill(today);
+    await page.getByRole("button", { name: "Run report" }).click();
+    await expect(page.getByRole("heading", { name: "Cashflow Waterfall" })).toBeVisible({
+      timeout: 15_000,
+    });
 
+    await page.getByRole("tab", { name: "Spending" }).click();
     const spending = page.locator('section[aria-label="Spending report"]');
     let reportReady = false;
     for (let attempt = 0; attempt < 6; attempt += 1) {

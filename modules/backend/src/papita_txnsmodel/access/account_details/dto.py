@@ -67,6 +67,13 @@ class CreditCardAccountDetailsDTO(AccountDetailsDTO):
 
     account_id: uuid.UUID
     credit_limit: float = Field(gt=0)
+    cashflow_only: bool = False
+
+    def to_dao(self):
+        """Convert to DAO, preserving explicit ``cashflow_only`` boolean state."""
+        data = self.model_dump(mode="python", exclude_unset=True, exclude_none=True, exclude={"id"})
+        data["cashflow_only"] = bool(self.cashflow_only)
+        return self.__dao_type__.model_validate(data)
 
 
 class LoanAccountDetailsDTO(AccountDetailsDTO):

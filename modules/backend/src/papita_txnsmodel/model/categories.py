@@ -9,7 +9,7 @@ from sqlmodel import Field, Relationship
 
 from .base import SCHEMA_NAME, BaseSQLModel
 from .contstants import CATEGORIES__TABLENAME, USERS__TABLENAME
-from .enums import CategoryKind
+from .enums import CashflowBucket, CategoryKind
 
 if TYPE_CHECKING:
     from .transactions import Transactions, TransactionTemplates
@@ -41,6 +41,13 @@ class Categories(BaseSQLModel, table=True):  # type: ignore
             SAEnum(CategoryKind, name="category_kind", schema="papita_transactions", create_type=False),
             nullable=False,
         )
+    )
+    cashflow_bucket: CashflowBucket | None = Field(
+        sa_column=Column(
+            SAEnum(CashflowBucket, name="cashflow_bucket", schema="papita_transactions", create_type=False),
+            nullable=True,
+        ),
+        default=None,
     )
     description: str = Field(sa_type=Text, nullable=False, default="")
     tags: List[str] = Field(sa_column=Column(ARRAY(String), nullable=False), default_factory=list)

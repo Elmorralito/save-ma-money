@@ -138,11 +138,14 @@ class CreditCardDetailsSchema(BaseModel):
 
     Attributes:
         credit_limit: Maximum revolving credit; must be positive.
+        cashflow_only: When true, treat ASSET->CREDIT_CARD lump-sum payments as
+            operating variable expenses and ignore itemized card expenses.
     """
 
     model_config = ConfigDict(extra="forbid")
 
     credit_limit: float = Field(gt=0)
+    cashflow_only: bool = False
 
 
 class LoanDetailsSchema(BaseModel):
@@ -624,7 +627,14 @@ def _attach_extension(response: AccountResponse, account_kind: AccountKind, exte
             ),
         )
     elif isinstance(extension, CreditCardAccountDetailsDTO):
-        setattr(response, field_name, CreditCardDetailsSchema(credit_limit=extension.credit_limit))
+        setattr(
+            response,
+            field_name,
+            CreditCardDetailsSchema(
+                credit_limit=extension.credit_limit,
+                cashflow_only=bool(extension.cashflow_only),
+            ),
+        )
     elif isinstance(extension, LoanAccountDetailsDTO):
         setattr(
             response,

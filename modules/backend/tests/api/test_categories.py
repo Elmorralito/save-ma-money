@@ -10,7 +10,7 @@ import pandas as pd
 from fastapi.testclient import TestClient
 
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
-from papita_txnsmodel.model.enums import CategoryKind
+from papita_txnsmodel.model.enums import CashflowBucket, CategoryKind
 
 
 def _sample_category(*, owner_id: uuid.UUID | None = None, parent_id: uuid.UUID | None = None) -> CategoriesDTO:
@@ -86,6 +86,38 @@ class TestCategoriesRoutes:
 
         assert response.status_code == 201
         assert response.json()["category_type"] == "expense"
+
+    def test_category_cashflow_bucket_create_and_clear(
+        self,
+        categories_client: tuple[TestClient, object, MagicMock],
+    ) -> None:
+        client, owner, mock_service = categories_client
+        created = _sample_category(owner_id=owner.id).model_copy(
+            update={"cashflow_bucket": CashflowBucket.FIXED_EXPENSE}
+        )
+        cleared = created.model_copy(update={"cashflow_bucket": None})
+        mock_service.create.side_effect = [created, cleared]
+        mock_service.get.return_value = created
+
+        create_resp = client.post(
+            "/api/v1/categories",
+            json={
+                "name": "Rent",
+                "category_type": "expense",
+                "cashflow_bucket": "fixed_expense",
+            },
+        )
+        assert create_resp.status_code == 201
+        assert create_resp.json()["cashflow_bucket"] == "fixed_expense"
+
+        update_resp = client.put(
+            f"/api/v1/categories/{created.id}",
+            json={"cashflow_bucket": None},
+        )
+        assert update_resp.status_code == 200
+        assert update_resp.json()["cashflow_bucket"] is None
+        sent_dto = mock_service.create.call_args_list[1].kwargs["obj"]
+        assert sent_dto.cashflow_bucket is None
 
     def test_update_global_category_returns_404(
         self,

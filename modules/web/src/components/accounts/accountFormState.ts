@@ -35,6 +35,7 @@ export type AccountFormState = {
   re_ownership: string;
   re_participation: string;
   credit_limit: string;
+  credit_card_cashflow_only: boolean;
   loan_is_paid_off: boolean;
   loan_insurance_payment: string;
   loan_extras_payment: string;
@@ -62,6 +63,7 @@ export function emptyAccountFormState(overrides: Partial<AccountFormState> = {})
     re_ownership: "full",
     re_participation: "1",
     credit_limit: "",
+    credit_card_cashflow_only: false,
     loan_is_paid_off: false,
     loan_insurance_payment: "0",
     loan_extras_payment: "0",
@@ -107,6 +109,7 @@ export function accountFormFromResponse(account: AccountResponse): AccountFormSt
       account.credit_card_details?.credit_limit !== undefined
         ? String(account.credit_card_details.credit_limit)
         : "",
+    credit_card_cashflow_only: account.credit_card_details?.cashflow_only ?? false,
     loan_is_paid_off: account.loan_details?.is_paid_off ?? false,
     loan_insurance_payment:
       account.loan_details?.insurance_payment !== undefined
@@ -178,6 +181,7 @@ function buildExtensionBlocks(
   if (field === "credit_card_details") {
     const credit_card_details: CreditCardDetailsSchema = {
       credit_limit: parseRequiredNumber(state.credit_limit, "Credit limit"),
+      cashflow_only: state.credit_card_cashflow_only,
     };
     return { credit_card_details };
   }
