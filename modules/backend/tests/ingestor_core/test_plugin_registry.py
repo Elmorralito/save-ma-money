@@ -143,14 +143,18 @@ def test_registry_parser_priority_and_source_scoping() -> None:
     assert [p.parser_id for p in reg.get_parsers(source_id="dummy-source")] == ["multi-record"]
     assert reg.get_parsers(source_id="other-source") == []
 
-    wrong_record = RawRecord(source_id="other-source", source_ref="r1", content="x", ingestion_source=IngestionSource.API)
+    wrong_record = RawRecord(
+        source_id="other-source", source_ref="r1", content="x", ingestion_source=IngestionSource.API
+    )
     with pytest.raises(LookupError):
         select_parser(wrong_record, [_MultiRecordParser()])
 
 
 def test_runner_supports_parse_many_and_public_resolve_owner() -> None:
     owner = UsersDTO(id=uuid.uuid4(), username="owner01", email="owner@example.com")
-    record = RawRecord(source_id="dummy-source", source_ref="batch-1", content="payload", ingestion_source=IngestionSource.API)
+    record = RawRecord(
+        source_id="dummy-source", source_ref="batch-1", content="payload", ingestion_source=IngestionSource.API
+    )
     source = _DummySource([record])
     bridge = _FakeBridge()
     runner = IngestionRunner(source=source, owner=owner, bridge=bridge, parsers=[_MultiRecordParser()])
@@ -253,3 +257,101 @@ def test_all_builtin_plugins_satisfy_contracts() -> None:
         assert imp.importer_id == importer_id
         assert imp.manifest.plugin_id == importer_id
         assert imp.manifest.kind == "batch_importer"
+
+
+def test_registry_entry_points_allowlist_and_resolve_importer(monkeypatch: pytest.MonkeyPatch) -> None:
+    import backend.domains.ingestion as ingestion_domain
+    from papita_ingestor_core import registry as registry_mod
+
+    assert ingestion_domain.get_default_registry is get_default_registry
+
+    class _FakeEP:
+        def __init__(self, name: str, obj: object, *, fail: bool = False) -> None:
+            self.name = name
+            self._obj = obj
+            self._fail = fail
+
+        def load(self) -> object:
+            if self._fail:
+                raise RuntimeError("boom")
+            return self._obj
+
+    def _fake_entry_points(*, group: str) -> list[_FakeEP]:
+        if group == registry_mod.SOURCES_EP_GROUP:
+            return [_FakeEP("ep-src", _DummySource), _FakeEP("broken-src", _DummySource, fail=True)]
+        if group == registry_mod.IMPORTERS_EP_GROUP:
+            return [_FakeEP("ibkr-activity-csv", IBKRStatementImporter)]
+        return []
+
+    monkeypatch.setattr(registry_mod.metadata, "entry_points", _fake_entry_points)
+    reg = ConnectorRegistry()
+    loaded = reg.discover_entry_points(allowlist={"ep-src", "ibkr-activity-csv"})
+    assert loaded == 2
+    assert reg.source_ids() == ["ep-src"]
+
+    resolved = reg.resolve_importer(filename="U123_ibkr.csv")
+    assert resolved.importer_id == "ibkr-activity-csv"
+    with pytest.raises(IngestorPluginError, match="No batch importer"):
+        reg.resolve_importer(filename="unknown.txt", sample="nope")
+    with pytest.raises(IngestorPluginError, match="Empty plugin_id"):
+        reg.register_source("   ", _DummySource)
+    with pytest.raises(IngestorPluginError, match="Unknown batch_importer"):
+        reg.get_importer("does-not-exist")
+
+
+def test_core_execute_with_run_status_handles_failures_and_errors() -> None:
+    from unittest.mock import MagicMock
+
+    from papita_ingestor_core.run_status import execute_with_run_status
+    from papita_txnsmodel.model.enums import IngestionRunStatus
+
+    owner = UsersDTO(id=uuid.uuid4(), username="owner01", email="owner@example.com")
+    source = _DummySource([])
+    runner = IngestionRunner(source=source, owner=owner, bridge=_FakeBridge(), parsers=[_MultiRecordParser()])
+    assert runner.source_id == "dummy-source"
+
+    dry = execute_with_run_status(
+        runner,
+        None,
+        provider="dummy-source",
+        flow_name="test-flow",
+        deployment_name=None,
+        persist_status=False,
+    )
+    assert dry.fetched == 0
+
+    conn_svc = MagicMock()
+    conn_svc.upsert_connection.return_value = type("_Conn", (), {"id": uuid.uuid4()})()
+    run_svc = MagicMock()
+    run_svc.start_run.return_value = type("_Run", (), {"id": uuid.uuid4()})()
+    run_svc.finish_run.side_effect = RuntimeError("db glitch")
+
+    execute_with_run_status(
+        runner,
+        None,
+        provider="dummy-source",
+        flow_name="test-flow",
+        deployment_name="dep",
+        connection_service=conn_svc,
+        run_service=run_svc,
+    )
+    run_svc.finish_run.assert_called_once()
+
+    failing_runner = MagicMock()
+    failing_runner.resolve_owner.return_value = owner
+    failing_runner.run.side_effect = RuntimeError("fetch boom")
+    run_svc2 = MagicMock()
+    run_svc2.start_run.return_value = type("_Run", (), {"id": uuid.uuid4()})()
+    with pytest.raises(RuntimeError, match="fetch boom"):
+        execute_with_run_status(
+            failing_runner,
+            None,
+            provider="dummy-source",
+            flow_name="test-flow",
+            deployment_name=None,
+            connection_service=conn_svc,
+            run_service=run_svc2,
+        )
+    req = run_svc2.finish_run.call_args.kwargs["request"]
+    assert req.status == IngestionRunStatus.FAILED
+    assert "fetch boom" in (req.error_summary or "")

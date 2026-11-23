@@ -336,7 +336,12 @@ class IBKRStatementImporter(BaseBatchImporter):
         lowered = text.lower()
         if any(
             marker in lowered
-            for marker in ("open positions,header", "cash report,header", "statement,header", "account information,header")
+            for marker in (
+                "open positions,header",
+                "cash report,header",
+                "statement,header",
+                "account information,header",
+            )
         ):
             return True
         if filename and filename.lower().endswith(".csv") and "ibkr" in filename.lower():

@@ -37,9 +37,7 @@ class BaseRecordParser(ABC):
     def manifest(self) -> PluginManifest:
         """Non-secret plugin metadata for discovery and capability inspection."""
         primary_source = (
-            next(iter(self.supported_ingestion_sources))
-            if self.supported_ingestion_sources
-            else IngestionSource.EMAIL
+            next(iter(self.supported_ingestion_sources)) if self.supported_ingestion_sources else IngestionSource.EMAIL
         )
         return PluginManifest(
             plugin_id=self.parser_id,
