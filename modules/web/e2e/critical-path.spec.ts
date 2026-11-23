@@ -57,7 +57,9 @@ test.describe("critical path", () => {
 
     // Automation-first Home (PPT-088 / #181): Financial Health Scorecard + Live Pulse
     const scorecard = page.locator('section[aria-label="Financial Health Scorecard"]');
-    await expect(scorecard.getByRole("heading", { name: "Financial Health Scorecard" })).toBeVisible({
+    await expect(
+      scorecard.getByRole("heading", { name: "Financial Health Scorecard" }),
+    ).toBeVisible({
       timeout: 15_000,
     });
     await expect(scorecard.getByText("Reconciled Net Worth")).toBeVisible({ timeout: 15_000 });
