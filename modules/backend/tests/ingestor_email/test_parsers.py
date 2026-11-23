@@ -67,9 +67,14 @@ class _DlqBridge:
         return payload
 
 
-def test_default_email_parsers_returns_all_three() -> None:
+def test_default_email_parsers_returns_all_defaults() -> None:
     parsers = default_email_parsers()
-    assert {p.parser_id for p in parsers} == {"bancolombia-email", "nequi-email", "fallback-email"}
+    assert {p.parser_id for p in parsers} == {
+        "bancolombia-email",
+        "global66-email",
+        "nequi-email",
+        "fallback-email",
+    }
 
 
 @pytest.mark.parametrize(
