@@ -11,10 +11,16 @@ JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
+- **PPT-101 (`#262`) IBKR Activity Statement + Global66 Wire Import, FX Valuation, and In-Transit Settlement:**
+  - Added Alembic migration `p3e4f5a6b7c8` adding `accounts.fx_rate`, widening `trading_account_details.units` to `DECIMAL(22,8)`, adding `symbol`/`unit_price`/`fx_rate`/`unrealized_pnl` to `trading_account_details`, and updating `account_balances.sql` to filter `settlement_status = 'SETTLED'` so in-transit transfers do not distort reconciled balances.
+  - Added `Global66Parser` (`papita_ingestor_email/parsers/global66.py`, registered in `default_email_parsers()`) emitting `TRANSFER` records with `settlement_status = IN_TRANSIT` (or `SETTLED`), wired `settlement_status` through `ParsedRecord` → `to_ingest_transaction_request`, and exposed `POST /api/v1/transactions/{transaction_id}/settle`.
+  - Added multi-section IBKR Activity Statement CSV parser (`papita_ingestor_core/importers/ibkr.py`), idempotent `IBKRImportService` (`papita_txnsmodel/services/ibkr_import.py`), and `POST /api/v1/ingestion/ibkr/activity-statement` computing `units * unit_price * fx_rate`, linking `AccountFinancing` for Margin LTV, and ingesting settled deposits via `(owner_id, CSV, source_ref)`.
+  - Wired `trading_details_by_id` into `ReportService.financial_health` / `compute_financial_health` and regenerated `modules/web/openapi/openapi.json` + `modules/web/src/types/api.d.ts`.
 - **PPT-088 (`#181`) Automation-first Home (Financial Health Scorecard & Live Pulse):**
   - Added pure model scorecard helper (`report_health.py`) + `ReportService.financial_health` and exposed `GET /api/v1/reports/financial-health` (Redis cached) computing Reconciled Net Worth (active & `include_in_balance` Assets − Liabilities), Liquid Cash Runway, Monthly Contractual Debt Service, Monthly Interest Drag, Debt-to-Asset ratio, and collateralized Margin LTV from `account_financing`.
   - Added optional `settlement_status` filter on `GET /api/v1/transactions` (`query_filters.py`, `TransactionsService.list_transactions`, `TransactionListQuery`) and synced OpenAPI (`openapi.json` + `api.d.ts`).
   - Added thin Web ingestion client (`src/api/ingestion.ts`, graceful 404 → `null` on `/runs/latest`), `getFinancialHealthReport`, and upgraded `DashboardPage` with `FinancialHealthScorecard` (including multi-currency switcher aligned with Operating Free Cashflow), `LivePulseSection` (ingestion status + monthly Operating FCF), and `In-transit transfers` panel with zero TS domain math.
+  - Added Playwright E2E assertions in `modules/web/e2e/critical-path.spec.ts` verifying Financial Health Scorecard, Ingestion status, Operating Free Cashflow, In-transit transfers, and Due soon sections on `/dashboard`.
 - **PPT-091 (`#184`) Operating Free Cashflow Waterfall, Planned-vs-Actual Variance & Debt Paydown Simulator:**
   - Added `CashflowBucket` enum + nullable `categories.cashflow_bucket` and `credit_card_account_details.cashflow_only` (`o2d3e4f5a6b7` Alembic migration, DTOs, API CRUD schemas, and category/account SPA form controls).
   - Implemented pure model analytics (`report_common.py`, `report_waterfall.py`, `report_variance.py`, `report_debt.py`) wired into `ReportService` and exposed `GET /api/v1/reports/operating-cashflow`, `GET /api/v1/reports/planned-vs-actual`, `GET /api/v1/reports/debt-paydown` (Redis cached), and `POST /api/v1/reports/debt-paydown/simulate` (rate-limited).
@@ -27,4 +33,4 @@ JWTs and links `users` by `sub`.
 
 ### Next action
 
-- Review/merge PR for **PPT-088 (`#181`)** and continue **PPT-101 (`#262`)**.
+- Commit/PR **PPT-101 (`#262`)** on branch `262-featppt-101-...` and validate migration upgrade/downgrade on Docker Postgres; optionally file an issue for **Agent/MCP readiness** (`papita-mcp` + compact snapshot endpoint + PAT auth).

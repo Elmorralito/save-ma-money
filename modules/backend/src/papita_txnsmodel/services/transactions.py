@@ -714,6 +714,16 @@ class TransactionsService(BaseService):
         transfer.settlement_status = SettlementStatus.SETTLED
         return self.create(obj=transfer, owner=owner, **kwargs)
 
+    def settle_transfer(
+        self,
+        *,
+        transaction_id: uuid.UUID | TransactionsDTO | dict[str, Any],
+        owner: UsersDTO | None = None,
+        **kwargs,
+    ) -> TransactionsDTO:
+        """Mark an in-transit or pending transfer as settled (``POST /transactions/{id}/settle``)."""
+        return self.complete_transfer(transaction_id=transaction_id, owner=owner, **kwargs)
+
     def cancel(
         self,
         *,

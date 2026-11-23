@@ -488,6 +488,42 @@ def execute_transaction(
     )
 
 
+@router.post("/{transaction_id}/settle", response_model=TransactionExecuteResponse)
+def settle_transaction(
+    transaction_id: uuid.UUID,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    transactions_service: Annotated[TransactionsService, Depends(get_transactions_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+) -> TransactionExecuteResponse:
+    """Settle an in-transit or pending transfer (``in_transit`` -> ``settled``, PPT-101)."""
+    existing = transactions_service.get(obj=transaction_id, owner=owner, include_linked_dtos=False)
+    if existing is None or existing.transaction_kind != TransactionKind.TRANSFER:
+        raise _transaction_not_found()
+    if existing.status == TransactionStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cancelled transfers cannot be settled",
+        )
+    try:
+        settled = transactions_service.settle_transfer(
+            transaction_id=transaction_id, owner=owner, refresh_balances=False
+        )
+    except ValueError as exc:
+        raise _transaction_not_found() from exc
+
+    settled_at = settled.transaction_ts
+    if settled_at.tzinfo is None:
+        settled_at = settled_at.replace(tzinfo=timezone.utc)
+    transactions_service.refresh_balance_views()
+    _invalidate_ledger_caches(redis, owner)
+    return TransactionExecuteResponse(
+        id=_require_uuid(settled.id),
+        status="completed",
+        settlement_status="settled",
+        executed_at=settled_at,
+    )
+
+
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(
     transaction_id: uuid.UUID,

@@ -42,6 +42,12 @@
             "title": "Description",
             "type": "string"
           },
+          "fx_rate": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Fx Rate",
+            "type": "number"
+          },
           "include_in_balance": {
             "default": true,
             "title": "Include In Balance",
@@ -167,6 +173,11 @@
           "currency": {
             "title": "Currency",
             "type": "string"
+          },
+          "fx_rate": {
+            "default": 1.0,
+            "title": "Fx Rate",
+            "type": "number"
           },
           "id": {
             "format": "uuid",
@@ -304,6 +315,18 @@
               }
             ],
             "title": "Description"
+          },
+          "fx_rate": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate"
           },
           "include_in_balance": {
             "anyOf": [
@@ -1934,6 +1957,231 @@
           "database"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "IBKRImportRequest": {
+        "additionalProperties": false,
+        "description": "Request body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262).",
+        "properties": {
+          "base_currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Base Currency",
+            "type": "string"
+          },
+          "cash_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cash Account Id"
+          },
+          "create_missing_accounts": {
+            "default": true,
+            "title": "Create Missing Accounts",
+            "type": "boolean"
+          },
+          "csv_content": {
+            "maxLength": 5000000,
+            "minLength": 1,
+            "title": "Csv Content",
+            "type": "string"
+          },
+          "fx_rate": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Fx Rate",
+            "type": "number"
+          },
+          "margin_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin Account Id"
+          },
+          "source_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Account Id"
+          }
+        },
+        "required": [
+          "csv_content"
+        ],
+        "title": "IBKRImportRequest",
+        "type": "object"
+      },
+      "IBKRImportResponse": {
+        "additionalProperties": false,
+        "description": "Response body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262).",
+        "properties": {
+          "account_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Code"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "base_currency": {
+            "title": "Base Currency",
+            "type": "string"
+          },
+          "deposits_created": {
+            "default": 0,
+            "title": "Deposits Created",
+            "type": "integer"
+          },
+          "deposits_updated": {
+            "default": 0,
+            "title": "Deposits Updated",
+            "type": "integer"
+          },
+          "fx_rate": {
+            "title": "Fx Rate",
+            "type": "number"
+          },
+          "margin_loan_value": {
+            "default": 0.0,
+            "title": "Margin Loan Value",
+            "type": "number"
+          },
+          "margin_ltv_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin Ltv Pct"
+          },
+          "period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Period"
+          },
+          "positions": {
+            "items": {
+              "$ref": "#/components/schemas/IBKRPositionImportResponse"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "settled_cash_value": {
+            "default": 0.0,
+            "title": "Settled Cash Value",
+            "type": "number"
+          },
+          "total_portfolio_value": {
+            "default": 0.0,
+            "title": "Total Portfolio Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "fx_rate",
+          "base_currency"
+        ],
+        "title": "IBKRImportResponse",
+        "type": "object"
+      },
+      "IBKRPositionImportResponse": {
+        "additionalProperties": false,
+        "description": "Imported IBKR position valuation summary.",
+        "properties": {
+          "account_id": {
+            "format": "uuid",
+            "title": "Account Id",
+            "type": "string"
+          },
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "fx_rate": {
+            "title": "Fx Rate",
+            "type": "number"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "unit_price": {
+            "title": "Unit Price",
+            "type": "number"
+          },
+          "units": {
+            "title": "Units",
+            "type": "number"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pnl"
+          },
+          "valued_amount": {
+            "title": "Valued Amount",
+            "type": "number"
+          }
+        },
+        "required": [
+          "symbol",
+          "account_id",
+          "action",
+          "units",
+          "unit_price",
+          "fx_rate",
+          "valued_amount"
+        ],
+        "title": "IBKRPositionImportResponse",
         "type": "object"
       },
       "InTransitSummary": {
@@ -3731,18 +3979,70 @@
       },
       "TradingDetailsSchema": {
         "additionalProperties": false,
-        "description": "Trading extension fields for investment brokerage accounts.\n\nAttributes:\n    buy_value: Positive purchase or cost basis per position unit.\n    units: Number of position units held (default 1, must be positive).",
+        "description": "Trading extension fields for investment brokerage accounts.\n\nAttributes:\n    symbol: Optional ticker symbol (e.g. ``IAU``, ``SLV``, ``NU``).\n    buy_value: Positive purchase or cost basis per position unit.\n    units: Number of position units held (supports fractional shares; default 1.0).\n    unit_price: Optional latest market price per unit in native currency.\n    fx_rate: FX conversion rate to base currency (default 1.0).\n    unrealized_pnl: Optional unrealized profit/loss from broker statement.\n    valued_amount: Computed ``units * unit_price * fx_rate`` (read-only/derived).",
         "properties": {
           "buy_value": {
             "exclusiveMinimum": 0.0,
             "title": "Buy Value",
             "type": "number"
           },
+          "fx_rate": {
+            "default": 1.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Fx Rate",
+            "type": "number"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
           "units": {
-            "default": 1,
+            "default": 1.0,
             "exclusiveMinimum": 0.0,
             "title": "Units",
-            "type": "integer"
+            "type": "number"
+          },
+          "unrealized_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unrealized Pnl"
+          },
+          "valued_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valued Amount"
           }
         },
         "required": [
@@ -6720,6 +7020,53 @@
         ]
       }
     },
+    "/api/v1/ingestion/ibkr/activity-statement": {
+      "post": {
+        "description": "Import an Interactive Brokers Activity Statement CSV idempotently (PPT-101 / #262).",
+        "operationId": "import_ibkr_activity_statement_api_v1_ingestion_ibkr_activity_statement_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IBKRImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IBKRImportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Import Ibkr Activity Statement",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
     "/api/v1/ingestion/runs": {
       "get": {
         "description": "List recent ingestion runs for the authenticated owner.\n\nArgs:\n    owner: Authenticated tenant from JWT.\n    pagination: Skip/limit window for the response page.\n    run_service: Injected run status service.\n    connection_id: Optional filter by connection id.\n\nReturns:\n    Paginated allowlisted run resources, newest first.",
@@ -8917,6 +9264,55 @@
           }
         ],
         "summary": "Execute Transaction",
+        "tags": [
+          "Transactions"
+        ]
+      }
+    },
+    "/api/v1/transactions/{transaction_id}/settle": {
+      "post": {
+        "description": "Settle an in-transit or pending transfer (``in_transit`` -> ``settled``, PPT-101).",
+        "operationId": "settle_transaction_api_v1_transactions__transaction_id__settle_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransactionExecuteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Settle Transaction",
         "tags": [
           "Transactions"
         ]

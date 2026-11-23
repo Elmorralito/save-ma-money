@@ -853,6 +853,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/ibkr/activity-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Ibkr Activity Statement
+         * @description Import an Interactive Brokers Activity Statement CSV idempotently (PPT-101 / #262).
+         */
+        post: operations["import_ibkr_activity_statement_api_v1_ingestion_ibkr_activity_statement_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/runs": {
         parameters: {
             query?: never;
@@ -1441,6 +1461,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/transactions/{transaction_id}/settle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Settle Transaction
+         * @description Settle an in-transit or pending transfer (``in_transit`` -> ``settled``, PPT-101).
+         */
+        post: operations["settle_transaction_api_v1_transactions__transaction_id__settle_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1480,6 +1520,11 @@ export interface components {
              * @default
              */
             description: string;
+            /**
+             * Fx Rate
+             * @default 1
+             */
+            fx_rate: number;
             /**
              * Include In Balance
              * @default true
@@ -1534,6 +1579,11 @@ export interface components {
             /** Currency */
             currency: string;
             /**
+             * Fx Rate
+             * @default 1
+             */
+            fx_rate: number;
+            /**
              * Id
              * Format: uuid
              */
@@ -1583,6 +1633,8 @@ export interface components {
             currency?: string | null;
             /** Description */
             description?: string | null;
+            /** Fx Rate */
+            fx_rate?: number | null;
             /** Include In Balance */
             include_in_balance?: boolean | null;
             /** Initial Value */
@@ -2479,6 +2531,105 @@ export interface components {
             timestamp: string;
             /** Version */
             version: string;
+        };
+        /**
+         * IBKRImportRequest
+         * @description Request body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262).
+         */
+        IBKRImportRequest: {
+            /**
+             * Base Currency
+             * @default COP
+             */
+            base_currency: string;
+            /** Cash Account Id */
+            cash_account_id?: string | null;
+            /**
+             * Create Missing Accounts
+             * @default true
+             */
+            create_missing_accounts: boolean;
+            /** Csv Content */
+            csv_content: string;
+            /**
+             * Fx Rate
+             * @default 1
+             */
+            fx_rate: number;
+            /** Margin Account Id */
+            margin_account_id?: string | null;
+            /** Source Account Id */
+            source_account_id?: string | null;
+        };
+        /**
+         * IBKRImportResponse
+         * @description Response body for ``POST /ingestion/ibkr/activity-statement`` (PPT-101 / #262).
+         */
+        IBKRImportResponse: {
+            /** Account Code */
+            account_code?: string | null;
+            /** As Of */
+            as_of?: string | null;
+            /** Base Currency */
+            base_currency: string;
+            /**
+             * Deposits Created
+             * @default 0
+             */
+            deposits_created: number;
+            /**
+             * Deposits Updated
+             * @default 0
+             */
+            deposits_updated: number;
+            /** Fx Rate */
+            fx_rate: number;
+            /**
+             * Margin Loan Value
+             * @default 0
+             */
+            margin_loan_value: number;
+            /** Margin Ltv Pct */
+            margin_ltv_pct?: number | null;
+            /** Period */
+            period?: string | null;
+            /** Positions */
+            positions?: components["schemas"]["IBKRPositionImportResponse"][];
+            /**
+             * Settled Cash Value
+             * @default 0
+             */
+            settled_cash_value: number;
+            /**
+             * Total Portfolio Value
+             * @default 0
+             */
+            total_portfolio_value: number;
+        };
+        /**
+         * IBKRPositionImportResponse
+         * @description Imported IBKR position valuation summary.
+         */
+        IBKRPositionImportResponse: {
+            /**
+             * Account Id
+             * Format: uuid
+             */
+            account_id: string;
+            /** Action */
+            action: string;
+            /** Fx Rate */
+            fx_rate: number;
+            /** Symbol */
+            symbol: string;
+            /** Unit Price */
+            unit_price: number;
+            /** Units */
+            units: number;
+            /** Unrealized Pnl */
+            unrealized_pnl?: number | null;
+            /** Valued Amount */
+            valued_amount: number;
         };
         /**
          * InTransitSummary
@@ -3468,17 +3619,35 @@ export interface components {
          * @description Trading extension fields for investment brokerage accounts.
          *
          *     Attributes:
+         *         symbol: Optional ticker symbol (e.g. ``IAU``, ``SLV``, ``NU``).
          *         buy_value: Positive purchase or cost basis per position unit.
-         *         units: Number of position units held (default 1, must be positive).
+         *         units: Number of position units held (supports fractional shares; default 1.0).
+         *         unit_price: Optional latest market price per unit in native currency.
+         *         fx_rate: FX conversion rate to base currency (default 1.0).
+         *         unrealized_pnl: Optional unrealized profit/loss from broker statement.
+         *         valued_amount: Computed ``units * unit_price * fx_rate`` (read-only/derived).
          */
         TradingDetailsSchema: {
             /** Buy Value */
             buy_value: number;
             /**
+             * Fx Rate
+             * @default 1
+             */
+            fx_rate: number;
+            /** Symbol */
+            symbol?: string | null;
+            /** Unit Price */
+            unit_price?: number | null;
+            /**
              * Units
              * @default 1
              */
             units: number;
+            /** Unrealized Pnl */
+            unrealized_pnl?: number | null;
+            /** Valued Amount */
+            valued_amount?: number | null;
         };
         /**
          * TransactionBulkCreate
@@ -4981,6 +5150,39 @@ export interface operations {
             };
         };
     };
+    import_ibkr_activity_statement_api_v1_ingestion_ibkr_activity_statement_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IBKRImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IBKRImportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_ingestion_runs_api_v1_ingestion_runs_get: {
         parameters: {
             query?: {
@@ -5914,6 +6116,37 @@ export interface operations {
         };
     };
     execute_transaction_api_v1_transactions__transaction_id__execute_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                transaction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionExecuteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    settle_transaction_api_v1_transactions__transaction_id__settle_post: {
         parameters: {
             query?: never;
             header?: never;

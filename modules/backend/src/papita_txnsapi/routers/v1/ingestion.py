@@ -20,15 +20,29 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from redis import Redis
 
+from papita_ingestor_core.errors import IngestorParseError
+from papita_txnsapi.core.cache import CacheNamespace, bump_cache_versions
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
-from papita_txnsapi.dependencies.services import get_ingestion_connection_service, get_ingestion_run_service
+from papita_txnsapi.dependencies.redis import get_optional_redis
+from papita_txnsapi.dependencies.services import (
+    get_ibkr_import_service,
+    get_ingestion_connection_service,
+    get_ingestion_run_service,
+)
 from papita_txnsapi.schemas.common import PaginatedResponse
-from papita_txnsapi.schemas.ingestion import IngestionConnectionResponse, IngestionRunResponse
+from papita_txnsapi.schemas.ingestion import (
+    IBKRImportRequest,
+    IBKRImportResponse,
+    IngestionConnectionResponse,
+    IngestionRunResponse,
+)
 from papita_txnsmodel.access.ingestion.dto import IngestionRunDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.services.ibkr_import import IBKRImportService
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
 
 router = APIRouter(
@@ -170,3 +184,37 @@ def list_ingestion_runs(
         skip=pagination.skip,
         limit=pagination.limit,
     )
+
+
+@router.post("/ibkr/activity-statement", response_model=IBKRImportResponse)
+def import_ibkr_activity_statement(
+    payload: IBKRImportRequest,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    import_service: Annotated[IBKRImportService, Depends(get_ibkr_import_service)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+) -> IBKRImportResponse:
+    """Import an Interactive Brokers Activity Statement CSV idempotently (PPT-101 / #262)."""
+    try:
+        result = import_service.import_activity_statement(
+            owner=owner,
+            csv_text=payload.csv_content,
+            fx_rate=payload.fx_rate,
+            base_currency=payload.base_currency,
+            cash_account_id=payload.cash_account_id,
+            margin_account_id=payload.margin_account_id,
+            source_account_id=payload.source_account_id,
+            create_missing_accounts=payload.create_missing_accounts,
+        )
+    except (IngestorParseError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(exc),
+        ) from exc
+    bump_cache_versions(
+        redis,
+        owner.id,
+        CacheNamespace.TRANSACTIONS,
+        CacheNamespace.REPORTS,
+        CacheNamespace.ACCOUNTS,
+    )
+    return IBKRImportResponse.model_validate(result.model_dump(mode="python"))

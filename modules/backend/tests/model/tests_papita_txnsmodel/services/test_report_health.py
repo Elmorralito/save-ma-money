@@ -272,3 +272,155 @@ def test_compute_financial_health_value_fallbacks_and_inactive_links() -> None:
     assert sc["total_liabilities"] == 2_000.0
     assert sc["reconciled_net_worth"] == 9_000.0
     assert sc["margin_ltv_pct"] is None
+
+
+def test_financial_health_uses_trading_position_valuation_and_margin_ltv() -> None:
+    """Trading accounts with unit_price compute units * unit_price * fx_rate and feed Margin LTV."""
+    from papita_txnsmodel.access.account_details.dto import TradingAccountDetailsDTO
+    from papita_txnsmodel.services.report_health import compute_position_valuation
+
+    owner_id = uuid.uuid4()
+    broker_id = uuid.uuid4()
+    margin_id = uuid.uuid4()
+
+    assert compute_position_valuation(units=250.0, unit_price=72.68, fx_rate=4000.0) == 72_680_000.0
+
+    accounts = [
+        AccountsDTO(
+            id=broker_id,
+            owner_id=owner_id,
+            name="IBKR IAU",
+            account_kind=AccountKind.INVESTMENT_BROKERAGE,
+            ledger_side=LedgerSide.ASSET,
+            currency="COP",
+            fx_rate=4000.0,
+            include_in_balance=True,
+            current_value=None,
+        ),
+        AccountsDTO(
+            id=margin_id,
+            owner_id=owner_id,
+            name="IBKR Leverage",
+            account_kind=AccountKind.LOAN_MORTGAGE,
+            ledger_side=LedgerSide.LIABILITY,
+            currency="COP",
+            fx_rate=4000.0,
+            include_in_balance=True,
+            current_value=36_340_000.0,
+        ),
+    ]
+    trading_details = {
+        broker_id: TradingAccountDetailsDTO(
+            account_id=broker_id,
+            symbol="IAU",
+            buy_value=97.75,
+            units=250.0,
+            unit_price=72.68,
+            fx_rate=4000.0,
+        )
+    }
+    financing = [
+        AccountFinancingDTO(
+            owner_id=owner_id,
+            asset_account_id=broker_id,
+            loan_account_id=margin_id,
+            financing_share=1.0,
+        )
+    ]
+
+    result = compute_financial_health(
+        accounts=accounts,
+        loan_details_by_id={},
+        financing_links=financing,
+        balance_by_account_id={},
+        debt_payload={"summary": {}, "liquidity_context": {}},
+        requested_currency="COP",
+        trading_details_by_id=trading_details,
+    )
+    sc = result["scorecard"]
+    assert sc["total_assets"] == 72_680_000.0
+    assert sc["total_liabilities"] == 36_340_000.0
+    assert sc["reconciled_net_worth"] == 36_340_000.0
+    assert sc["margin_ltv_pct"] == 50.0
+
+
+def test_financial_health_converts_foreign_usd_ibkr_assets_and_margin_to_cop() -> None:
+    """USD accounts with fx_rate != 1.0 convert into COP net worth and Margin LTV."""
+    from papita_txnsmodel.access.account_details.dto import TradingAccountDetailsDTO
+
+    owner_id = uuid.uuid4()
+    cop_checking_id = uuid.uuid4()
+    usd_broker_id = uuid.uuid4()
+    usd_margin_id = uuid.uuid4()
+
+    accounts = [
+        AccountsDTO(
+            id=cop_checking_id,
+            owner_id=owner_id,
+            name="Bancolombia",
+            account_kind=AccountKind.CHECKING,
+            ledger_side=LedgerSide.ASSET,
+            currency="COP",
+            fx_rate=1.0,
+            include_in_balance=True,
+            current_value=20_000_000.0,
+        ),
+        AccountsDTO(
+            id=usd_broker_id,
+            owner_id=owner_id,
+            name="IBKR IAU USD",
+            account_kind=AccountKind.INVESTMENT_BROKERAGE,
+            ledger_side=LedgerSide.ASSET,
+            currency="USD",
+            fx_rate=4000.0,
+            include_in_balance=True,
+            current_value=None,
+        ),
+        AccountsDTO(
+            id=usd_margin_id,
+            owner_id=owner_id,
+            name="IBKR Margin USD",
+            account_kind=AccountKind.LOAN_MORTGAGE,
+            ledger_side=LedgerSide.LIABILITY,
+            currency="USD",
+            fx_rate=4000.0,
+            include_in_balance=True,
+            current_value=10_000.0,
+        ),
+    ]
+    trading_details = {
+        usd_broker_id: TradingAccountDetailsDTO(
+            account_id=usd_broker_id,
+            symbol="IAU",
+            buy_value=80.0,
+            units=250.0,
+            unit_price=80.0,
+            fx_rate=4000.0,
+        )
+    }
+    financing = [
+        AccountFinancingDTO(
+            owner_id=owner_id,
+            asset_account_id=usd_broker_id,
+            loan_account_id=usd_margin_id,
+            financing_share=1.0,
+        )
+    ]
+
+    result = compute_financial_health(
+        accounts=accounts,
+        loan_details_by_id={},
+        financing_links=financing,
+        balance_by_account_id={cop_checking_id: 20_000_000.0},
+        debt_payload={"summary": {}, "liquidity_context": {}},
+        requested_currency="COP",
+        trading_details_by_id=trading_details,
+    )
+    sc = result["scorecard"]
+    # 20M COP checking + (250 * 80 * 4000 = 80M COP IAU) = 100M COP assets
+    assert sc["total_assets"] == 100_000_000.0
+    # 10,000 USD * 4000 = 40M COP margin loan
+    assert sc["total_liabilities"] == 40_000_000.0
+    assert sc["reconciled_net_worth"] == 60_000_000.0
+    # 40M / 80M = 50.0% Margin LTV
+    assert sc["margin_ltv_pct"] == 50.0

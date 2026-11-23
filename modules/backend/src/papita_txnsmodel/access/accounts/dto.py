@@ -40,6 +40,7 @@ class AccountsDTO(OwnedTableDTO, CoreTableDTO):
     account_kind: AccountKind
     ledger_side: LedgerSide
     currency: str = Field(min_length=3, max_length=3, default="USD")
+    fx_rate: float = Field(default=1.0, gt=0)
     include_in_balance: bool = True
     opened_at: datetime.datetime = Field(default_factory=datetime.datetime.now)
     closed_at: Optional[datetime.datetime] = None
