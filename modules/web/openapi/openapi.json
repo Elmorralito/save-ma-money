@@ -1690,6 +1690,131 @@
         "title": "ExcludedLiabilitiesSummary",
         "type": "object"
       },
+      "FinancialHealthReportResponse": {
+        "description": "Response body for ``GET /reports/financial-health``.",
+        "properties": {
+          "available_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Available Currencies",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "multi_currency_warning": {
+            "default": false,
+            "title": "Multi Currency Warning",
+            "type": "boolean"
+          },
+          "scorecard": {
+            "$ref": "#/components/schemas/FinancialHealthScorecard"
+          }
+        },
+        "required": [
+          "currency",
+          "scorecard"
+        ],
+        "title": "FinancialHealthReportResponse",
+        "type": "object"
+      },
+      "FinancialHealthScorecard": {
+        "description": "API-computed Financial Health Scorecard metrics across active included accounts.",
+        "properties": {
+          "baseline_monthly_burn": {
+            "default": 0.0,
+            "title": "Baseline Monthly Burn",
+            "type": "number"
+          },
+          "debt_to_asset_ratio_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Debt To Asset Ratio Pct"
+          },
+          "excluded_account_count": {
+            "default": 0,
+            "title": "Excluded Account Count",
+            "type": "integer"
+          },
+          "included_asset_count": {
+            "default": 0,
+            "title": "Included Asset Count",
+            "type": "integer"
+          },
+          "included_liability_count": {
+            "default": 0,
+            "title": "Included Liability Count",
+            "type": "integer"
+          },
+          "liquid_cash_total": {
+            "default": 0.0,
+            "title": "Liquid Cash Total",
+            "type": "number"
+          },
+          "liquid_runway_months": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquid Runway Months"
+          },
+          "margin_ltv_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Margin Ltv Pct"
+          },
+          "monthly_debt_service": {
+            "default": 0.0,
+            "title": "Monthly Debt Service",
+            "type": "number"
+          },
+          "reconciled_net_worth": {
+            "default": 0.0,
+            "title": "Reconciled Net Worth",
+            "type": "number"
+          },
+          "target_liquidity_months": {
+            "default": 4.0,
+            "title": "Target Liquidity Months",
+            "type": "number"
+          },
+          "total_assets": {
+            "default": 0.0,
+            "title": "Total Assets",
+            "type": "number"
+          },
+          "total_liabilities": {
+            "default": 0.0,
+            "title": "Total Liabilities",
+            "type": "number"
+          },
+          "total_monthly_interest_drag": {
+            "default": 0.0,
+            "title": "Total Monthly Interest Drag",
+            "type": "number"
+          }
+        },
+        "title": "FinancialHealthScorecard",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -7120,6 +7245,77 @@
         ]
       }
     },
+    "/api/v1/reports/financial-health": {
+      "get": {
+        "description": "Return API-computed Financial Health Scorecard (Net Worth, Runway, Debt Service, LTV).",
+        "operationId": "get_financial_health_report_api_v1_reports_financial_health_get",
+        "parameters": [
+          {
+            "description": "Optional 3-letter currency filter",
+            "in": "query",
+            "name": "currency",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional 3-letter currency filter",
+              "title": "Currency"
+            }
+          },
+          {
+            "description": "Target liquid cash runway months",
+            "in": "query",
+            "name": "target_liquidity_months",
+            "required": false,
+            "schema": {
+              "default": 4.0,
+              "description": "Target liquid cash runway months",
+              "maximum": 24,
+              "minimum": 0,
+              "title": "Target Liquidity Months",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialHealthReportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Financial Health Report",
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
     "/api/v1/reports/operating-cashflow": {
       "get": {
         "description": "Return the Operating Free Cashflow waterfall for the authenticated tenant.",
@@ -8254,6 +8450,24 @@
               ],
               "description": "Filter by pending/completed/cancelled",
               "title": "Status"
+            }
+          },
+          {
+            "description": "Filter by settled/in_transit",
+            "in": "query",
+            "name": "settlement_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by settled/in_transit",
+              "title": "Settlement Status"
             }
           },
           {

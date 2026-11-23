@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as authApi from "@/api/auth";
 import * as accountsApi from "@/api/accounts";
+import * as ingestionApi from "@/api/ingestion";
+import * as reportsApi from "@/api/reports";
 import * as transactionsApi from "@/api/transactions";
 import * as templatesApi from "@/api/transactionTemplates";
 import { RequireAuth } from "@/auth/RequireAuth";
@@ -49,6 +51,21 @@ vi.mock("@/api/transactionTemplates", () => ({
   deleteTransactionTemplate: vi.fn(),
   markTemplatePaid: vi.fn(),
   clearTemplatePaid: vi.fn(),
+}));
+
+vi.mock("@/api/reports", () => ({
+  getFinancialHealthReport: vi.fn(),
+  getOperatingCashflowReport: vi.fn(),
+  getDebtPaydownReport: vi.fn(),
+  getPlannedVsActualReport: vi.fn(),
+  getSpendingReport: vi.fn(),
+  simulateDebtPaydown: vi.fn(),
+}));
+
+vi.mock("@/api/ingestion", () => ({
+  getLatestIngestionRun: vi.fn(),
+  listIngestionRuns: vi.fn(),
+  listIngestionConnections: vi.fn(),
 }));
 
 vi.mock("@/api/health", () => ({
@@ -222,6 +239,80 @@ describe("DashboardPage (authenticated)", () => {
       total: 1,
       skip: 0,
       limit: 5,
+    });
+    vi.mocked(reportsApi.getFinancialHealthReport).mockResolvedValue({
+      currency: "USD",
+      available_currencies: ["USD"],
+      multi_currency_warning: false,
+      scorecard: {
+        total_assets: 100000,
+        total_liabilities: 25000,
+        reconciled_net_worth: 75000,
+        liquid_cash_total: 15000,
+        baseline_monthly_burn: 3000,
+        liquid_runway_months: 5,
+        target_liquidity_months: 4,
+        monthly_debt_service: 1200,
+        total_monthly_interest_drag: 200,
+        debt_to_asset_ratio_pct: 25,
+        margin_ltv_pct: 20,
+        included_asset_count: 2,
+        included_liability_count: 1,
+        excluded_account_count: 0,
+      },
+    });
+    vi.mocked(reportsApi.getOperatingCashflowReport).mockResolvedValue({
+      period: { start_date: "2026-08-01", end_date: "2026-08-31" },
+      currency: "USD",
+      available_currencies: ["USD"],
+      multi_currency_warning: false,
+      waterfall: {
+        income_fixed: 4000,
+        income_variable: 500,
+        total_external_income: 4500,
+        loans: 1200,
+        fixed_expenses: 1500,
+        variable_expenses: 600,
+        unexpected_expenses: 0,
+        total_operating_outflows: 3300,
+        operating_free_cashflow: 1200,
+        savings: 500,
+        capital_deployments: 0,
+        net_allocated_surplus: 700,
+        net_ledger_cashflow: 700,
+        non_operating_inflows: 0,
+        internal_sweeps_volume: 0,
+        debt_service_to_income_pct: 26.7,
+        organic_fcf_margin_pct: 26.7,
+        status_tone: "positive",
+      },
+      buckets: [],
+      monthly_series: [],
+      diagnostics: {
+        unbucketed_category_count: 0,
+        unbucketed_amount: 0,
+        cashflow_only_cc_excluded_count: 0,
+        cashflow_only_cc_excluded_amount: 0,
+      },
+      in_transit: { count: 1, inflows: 0, outflows: 0, total_volume: 50 },
+    });
+    vi.mocked(ingestionApi.getLatestIngestionRun).mockResolvedValue({
+      id: "ffffffff-ffff-ffff-ffff-ffffffffffff",
+      connection_id: null,
+      status: "succeeded",
+      started_at: "2026-08-10T10:00:00Z",
+      finished_at: "2026-08-10T10:01:00Z",
+      fetched: 12,
+      created: 4,
+      updated: 1,
+      reactivated: 0,
+      failed: 0,
+      dead_lettered: 0,
+      acknowledged: 12,
+      dry_run_skipped: 0,
+      error_summary: null,
+      flow_name: "email-sync",
+      deployment_name: "prod",
     });
     vi.mocked(templatesApi.listUpcomingDues).mockResolvedValue({
       as_of: "2026-08-10",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 
 from papita_txnsmodel.access.transactions.query_filters import TransactionListFilterSpec, build_transaction_list_filters
-from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import SettlementStatus, TransactionKind, TransactionStatus
 from papita_txnsmodel.model.transactions import Transactions
 
 
@@ -31,3 +31,10 @@ class TestTransactionQueryFilters:
         filters = build_transaction_list_filters(TransactionListFilterSpec(status=TransactionStatus.PENDING))
         assert len(filters) == 1
         assert str(filters[0]).startswith(str(Transactions.status == TransactionStatus.PENDING))
+
+    def test_settlement_status_filter(self) -> None:
+        filters = build_transaction_list_filters(
+            TransactionListFilterSpec(settlement_status=SettlementStatus.IN_TRANSIT)
+        )
+        assert len(filters) == 1
+        assert str(filters[0]).startswith(str(Transactions.settlement_status == SettlementStatus.IN_TRANSIT))

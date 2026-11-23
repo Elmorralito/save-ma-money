@@ -9,7 +9,7 @@ from typing import Any
 
 from sqlalchemy import or_
 
-from papita_txnsmodel.model.enums import TransactionKind, TransactionStatus
+from papita_txnsmodel.model.enums import SettlementStatus, TransactionKind, TransactionStatus
 from papita_txnsmodel.model.transactions import Transactions
 
 
@@ -20,6 +20,7 @@ class TransactionListFilterSpec:  # pylint: disable=too-many-instance-attributes
     transaction_kind: TransactionKind | None = None
     exclude_transfer: bool = False
     status: TransactionStatus | None = None
+    settlement_status: SettlementStatus | None = None
     account_id: uuid.UUID | None = None
     category_id: uuid.UUID | None = None
     source_account_id: uuid.UUID | None = None
@@ -72,6 +73,9 @@ def build_transaction_list_filters(spec: TransactionListFilterSpec) -> tuple[Any
 
     if spec.status is not None:
         filters.append(Transactions.status == spec.status)
+
+    if spec.settlement_status is not None:
+        filters.append(Transactions.settlement_status == spec.settlement_status)
 
     if spec.account_id is not None:
         filters.append(

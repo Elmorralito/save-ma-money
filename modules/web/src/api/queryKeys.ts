@@ -53,6 +53,17 @@ export const queryKeys = {
       ["papita", "reports", "plannedVsActual", filters] as const,
     debtPaydown: (filters: Record<string, string | number | boolean | undefined | null>) =>
       ["papita", "reports", "debtPaydown", filters] as const,
+    financialHealth: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "reports", "financialHealth", filters] as const,
+  },
+  ingestion: {
+    all: ["papita", "ingestion"] as const,
+    latestRun: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "ingestion", "latestRun", filters] as const,
+    runs: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "ingestion", "runs", filters] as const,
+    connections: (filters: Record<string, string | number | boolean | undefined | null>) =>
+      ["papita", "ingestion", "connections", filters] as const,
   },
   transactionTemplates: {
     all: ["papita", "transactionTemplates"] as const,

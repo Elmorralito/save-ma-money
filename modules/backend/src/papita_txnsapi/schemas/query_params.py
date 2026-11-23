@@ -35,8 +35,13 @@ from papita_txnsapi.core.client_contract import (
     HEADER_SUNSET,
     cash_flow_refresh_balances_default,
 )
-from papita_txnsapi.schemas.converters import parse_cashflow_bucket, parse_transaction_kind, parse_transaction_status
-from papita_txnsmodel.model.enums import CashflowBucket, TransactionKind, TransactionStatus
+from papita_txnsapi.schemas.converters import (
+    parse_cashflow_bucket,
+    parse_settlement_status,
+    parse_transaction_kind,
+    parse_transaction_status,
+)
+from papita_txnsmodel.model.enums import CashflowBucket, SettlementStatus, TransactionKind, TransactionStatus
 
 _ALLOWED_SPENDING_GROUP_BY = frozenset({"category", "account"})
 _ALLOWED_TREND_PERIODS = frozenset({"daily", "weekly", "monthly", "yearly"})
@@ -123,6 +128,7 @@ class TransactionListServiceKwargs(TypedDict):
     transaction_kind: TransactionKind | None
     exclude_transfer: bool
     status: TransactionStatus | None
+    settlement_status: SettlementStatus | None
     start_date: date | None
     end_date: date | None
     min_amount: float | None
@@ -140,6 +146,7 @@ class TransactionListQuery(BaseModel):
     transaction_type: str | None = Field(default=None, description="Filter by income/expense/transfer")
     exclude_transfer: bool | None = Field(default=None, description="Exclude transfer rows when true")
     status: str | None = Field(default=None, description="Filter by pending/completed/cancelled")
+    settlement_status: str | None = Field(default=None, description="Filter by settled/in_transit")
     start_date: date | None = Field(default=None, description="Filter by start date")
     end_date: date | None = Field(default=None, description="Filter by end date")
     min_amount: float | None = Field(default=None, description="Minimum amount filter", ge=0)
@@ -167,6 +174,7 @@ class TransactionListQuery(BaseModel):
             transaction_kind=transaction_kind,
             exclude_transfer=resolved_exclude_transfer,
             status=parse_transaction_status(self.status) if self.status else None,
+            settlement_status=parse_settlement_status(self.settlement_status) if self.settlement_status else None,
             start_date=self.start_date,
             end_date=self.end_date,
             min_amount=self.min_amount,
@@ -184,6 +192,7 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
     transaction_type: Annotated[str | None, Query(description="Filter by income/expense/transfer")] = None,
     exclude_transfer: Annotated[bool | None, Query(description="Exclude transfer rows when true")] = None,
     status: Annotated[str | None, Query(description="Filter by pending/completed/cancelled")] = None,
+    settlement_status: Annotated[str | None, Query(description="Filter by settled/in_transit")] = None,
     start_date: Annotated[date | None, Query(description="Filter by start date")] = None,
     end_date: Annotated[date | None, Query(description="Filter by end date")] = None,
     min_amount: Annotated[float | None, Query(description="Minimum amount filter", ge=0)] = None,
@@ -202,6 +211,7 @@ def get_transaction_list_query(  # pylint: disable=too-many-arguments
         transaction_type=transaction_type,
         exclude_transfer=exclude_transfer,
         status=status,
+        settlement_status=settlement_status,
         start_date=start_date,
         end_date=end_date,
         min_amount=min_amount,
@@ -885,5 +895,44 @@ def get_report_debt_paydown_query(
     return ReportDebtPaydownQuery(
         currency=currency,
         include_excluded=include_excluded,
+        target_liquidity_months=target_liquidity_months,
+    )
+
+
+class ReportFinancialHealthServiceKwargs(TypedDict):
+    """Keyword arguments accepted by ``ReportService.financial_health``."""
+
+    currency: str | None
+    target_liquidity_months: float
+
+
+class ReportFinancialHealthQuery(BaseModel):
+    """Bundled query parameters for ``GET /reports/financial-health``."""
+
+    currency: str | None = Field(default=None, min_length=3, max_length=3, description="ISO currency filter")
+    target_liquidity_months: float = Field(default=4.0, ge=0, le=24, description="Target liquid runway months")
+
+    @model_validator(mode="after")
+    def _normalize(self) -> ReportFinancialHealthQuery:
+        if self.currency is not None:
+            self.currency = self.currency.strip().upper()
+        return self
+
+    def service_kwargs(self) -> ReportFinancialHealthServiceKwargs:
+        """Map API query parameters to ``ReportService.financial_health`` kwargs."""
+        return ReportFinancialHealthServiceKwargs(
+            currency=self.currency,
+            target_liquidity_months=self.target_liquidity_months,
+        )
+
+
+def get_report_financial_health_query(
+    *,
+    currency: Annotated[str | None, Query(description="Optional 3-letter currency filter")] = None,
+    target_liquidity_months: Annotated[float, Query(description="Target liquid cash runway months", ge=0, le=24)] = 4.0,
+) -> ReportFinancialHealthQuery:
+    """Collect ``GET /reports/financial-health`` query parameters for FastAPI injection."""
+    return ReportFinancialHealthQuery(
+        currency=currency,
         target_liquidity_months=target_liquidity_months,
     )

@@ -573,3 +573,36 @@ class TestReportsRoutes:
         )
         assert upper_resp.status_code == 200
         assert mock_service.planned_vs_actual.call_args.kwargs["cashflow_bucket"] == CashflowBucket.FIXED_EXPENSE
+
+        mock_service.financial_health.return_value = {
+            "currency": "USD",
+            "available_currencies": ["USD"],
+            "multi_currency_warning": False,
+            "scorecard": {
+                "total_assets": 100_000.0,
+                "total_liabilities": 25_000.0,
+                "reconciled_net_worth": 75_000.0,
+                "liquid_cash_total": 15_000.0,
+                "baseline_monthly_burn": 3_000.0,
+                "liquid_runway_months": 5.0,
+                "target_liquidity_months": 4.0,
+                "monthly_debt_service": 1_200.0,
+                "total_monthly_interest_drag": 200.0,
+                "debt_to_asset_ratio_pct": 25.0,
+                "margin_ltv_pct": 20.0,
+                "included_asset_count": 2,
+                "included_liability_count": 1,
+                "excluded_account_count": 0,
+            },
+        }
+        health_resp = client.get(
+            "/api/v1/reports/financial-health",
+            params={"currency": "usd", "target_liquidity_months": 6},
+        )
+        assert health_resp.status_code == 200
+        health_body = health_resp.json()
+        assert health_body["currency"] == "USD"
+        assert health_body["scorecard"]["reconciled_net_worth"] == 75_000.0
+        assert health_body["scorecard"]["margin_ltv_pct"] == 20.0
+        assert mock_service.financial_health.call_args.kwargs["currency"] == "USD"
+        assert mock_service.financial_health.call_args.kwargs["target_liquidity_months"] == 6.0

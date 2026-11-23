@@ -20,6 +20,7 @@ export type ListTransactionsParams = {
   transaction_type?: string;
   exclude_transfer?: boolean;
   status?: string;
+  settlement_status?: string;
   start_date?: string;
   end_date?: string;
   min_amount?: number;
@@ -52,6 +53,9 @@ function buildListQuery(params: ListTransactionsParams): string {
   }
   if (params.status) {
     search.set("status", params.status);
+  }
+  if (params.settlement_status) {
+    search.set("settlement_status", params.settlement_status);
   }
   if (params.start_date) {
     search.set("start_date", params.start_date);
