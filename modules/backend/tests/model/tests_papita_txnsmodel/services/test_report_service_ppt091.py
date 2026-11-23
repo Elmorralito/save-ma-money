@@ -365,3 +365,70 @@ def test_report_service_none_guards_and_ownership_errors() -> None:
 
     mocks["balances"].get_balances.return_value = pd.DataFrame()
     assert svc._load_balance_map(owner=owner) == {}
+
+
+def test_financial_health_orchestration() -> None:
+    """Verify ReportService.financial_health loads accounts, 90d txns, and delegates."""
+    owner = _make_owner()
+    assert owner.id is not None
+
+    checking = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner.id,
+        name="Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="USD",
+        current_value=15_000.0,
+    )
+    loan = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner.id,
+        name="Loan",
+        account_kind=AccountKind.LOAN_MORTGAGE,
+        ledger_side=LedgerSide.LIABILITY,
+        currency="USD",
+        current_value=5_000.0,
+    )
+    cat_rent = CategoriesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner.id,
+        name="Rent",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=CashflowBucket.FIXED_EXPENSE,
+    )
+    txn_rent = TransactionsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner.id,
+        transaction_kind=TransactionKind.EXPENSE,
+        status=TransactionStatus.COMPLETED,
+        from_account_id=checking.id,
+        category_id=cat_rent.id,
+        amount=3000.0,
+        transaction_ts=datetime.now(timezone.utc),
+    )
+
+    svc = ReportService.model_validate({"connector": MagicMock()})
+    mocks = _wire_mock_subservices(svc)
+    mocks["accounts"].get_records.return_value = pd.DataFrame([checking.model_dump(), loan.model_dump()])
+    mocks["categories"].get_records.return_value = pd.DataFrame([cat_rent.model_dump()])
+    mocks["templates"].get_records.return_value = pd.DataFrame()
+    mocks["cc_details"].get_map_by_account_ids.return_value = {}
+    mocks["loan_details"].get_map_by_account_ids.return_value = {}
+    mocks["financing"].get_records.return_value = pd.DataFrame()
+    mocks["balances"].get_balances.return_value = pd.DataFrame(
+        [{"account_id": checking.id, "balance": 15_000.0}, {"account_id": loan.id, "balance": -5_000.0}]
+    )
+    mocks["transactions"].get_transactions_frame.return_value = pd.DataFrame([txn_rent.model_dump()])
+
+    res = svc.financial_health(owner=owner, currency="USD", target_liquidity_months=4.0)
+    assert res["currency"] == "USD"
+    assert res["scorecard"]["reconciled_net_worth"] == 10_000.0
+    assert res["scorecard"]["baseline_monthly_burn"] == 1_000.0
+    assert res["scorecard"]["liquid_runway_months"] == 15.0
+
+    # Empty 90d transactions branch
+    mocks["transactions"].get_transactions_frame.return_value = pd.DataFrame()
+    res_empty = svc.financial_health(owner=owner)
+    assert res_empty["scorecard"]["reconciled_net_worth"] == 10_000.0
+    assert res_empty["scorecard"]["liquid_runway_months"] is None

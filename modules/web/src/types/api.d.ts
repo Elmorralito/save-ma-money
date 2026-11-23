@@ -1064,6 +1064,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/reports/financial-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Financial Health Report
+         * @description Return API-computed Financial Health Scorecard (Net Worth, Runway, Debt Service, LTV).
+         */
+        get: operations["get_financial_health_report_api_v1_reports_financial_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/reports/operating-cashflow": {
         parameters: {
             query?: never;
@@ -2312,6 +2332,89 @@ export interface components {
              * @default 0
              */
             total_balance: number;
+        };
+        /**
+         * FinancialHealthReportResponse
+         * @description Response body for ``GET /reports/financial-health``.
+         */
+        FinancialHealthReportResponse: {
+            /** Available Currencies */
+            available_currencies?: string[];
+            /** Currency */
+            currency: string;
+            /**
+             * Multi Currency Warning
+             * @default false
+             */
+            multi_currency_warning: boolean;
+            scorecard: components["schemas"]["FinancialHealthScorecard"];
+        };
+        /**
+         * FinancialHealthScorecard
+         * @description API-computed Financial Health Scorecard metrics across active included accounts.
+         */
+        FinancialHealthScorecard: {
+            /**
+             * Baseline Monthly Burn
+             * @default 0
+             */
+            baseline_monthly_burn: number;
+            /** Debt To Asset Ratio Pct */
+            debt_to_asset_ratio_pct?: number | null;
+            /**
+             * Excluded Account Count
+             * @default 0
+             */
+            excluded_account_count: number;
+            /**
+             * Included Asset Count
+             * @default 0
+             */
+            included_asset_count: number;
+            /**
+             * Included Liability Count
+             * @default 0
+             */
+            included_liability_count: number;
+            /**
+             * Liquid Cash Total
+             * @default 0
+             */
+            liquid_cash_total: number;
+            /** Liquid Runway Months */
+            liquid_runway_months?: number | null;
+            /** Margin Ltv Pct */
+            margin_ltv_pct?: number | null;
+            /**
+             * Monthly Debt Service
+             * @default 0
+             */
+            monthly_debt_service: number;
+            /**
+             * Reconciled Net Worth
+             * @default 0
+             */
+            reconciled_net_worth: number;
+            /**
+             * Target Liquidity Months
+             * @default 4
+             */
+            target_liquidity_months: number;
+            /**
+             * Total Assets
+             * @default 0
+             */
+            total_assets: number;
+            /**
+             * Total Liabilities
+             * @default 0
+             */
+            total_liabilities: number;
+            /**
+             * Total Monthly Interest Drag
+             * @default 0
+             */
+            total_monthly_interest_drag: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -5119,6 +5222,40 @@ export interface operations {
             };
         };
     };
+    get_financial_health_report_api_v1_reports_financial_health_get: {
+        parameters: {
+            query?: {
+                /** @description Optional 3-letter currency filter */
+                currency?: string | null;
+                /** @description Target liquid cash runway months */
+                target_liquidity_months?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FinancialHealthReportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_operating_cashflow_report_api_v1_reports_operating_cashflow_get: {
         parameters: {
             query: {
@@ -5572,6 +5709,8 @@ export interface operations {
                 exclude_transfer?: boolean | null;
                 /** @description Filter by pending/completed/cancelled */
                 status?: string | null;
+                /** @description Filter by settled/in_transit */
+                settlement_status?: string | null;
                 /** @description Filter by start date */
                 start_date?: string | null;
                 /** @description Filter by end date */

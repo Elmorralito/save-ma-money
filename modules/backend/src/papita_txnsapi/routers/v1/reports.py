@@ -50,6 +50,7 @@ from papita_txnsapi.schemas.query_params import (
     ReportCashFlowQuery,
     ReportDebtPaydownQuery,
     ReportExportQuery,
+    ReportFinancialHealthQuery,
     ReportOperatingCashflowQuery,
     ReportPlannedVsActualQuery,
     ReportSpendingQuery,
@@ -57,6 +58,7 @@ from papita_txnsapi.schemas.query_params import (
     get_report_cash_flow_query,
     get_report_debt_paydown_query,
     get_report_export_query,
+    get_report_financial_health_query,
     get_report_operating_cashflow_query,
     get_report_planned_vs_actual_query,
     get_report_spending_query,
@@ -67,6 +69,7 @@ from papita_txnsapi.schemas.reports import (
     DebtPaydownReportResponse,
     DebtPaydownSimulationRequest,
     DebtPaydownSimulationResponse,
+    FinancialHealthReportResponse,
     OperatingCashflowReportResponse,
     PlannedVsActualReportResponse,
     SpendingReportResponse,
@@ -96,6 +99,7 @@ def _report_cache_params(
         | ReportOperatingCashflowQuery
         | ReportPlannedVsActualQuery
         | ReportDebtPaydownQuery
+        | ReportFinancialHealthQuery
     ),
 ) -> dict:
     """Build a JSON-safe cache param map from report query models."""
@@ -476,3 +480,27 @@ def simulate_debt_paydown_report(
         horizon_months=body.horizon_months,
     )
     return DebtPaydownSimulationResponse.from_service(payload)
+
+
+@router.get("/financial-health", response_model=FinancialHealthReportResponse)
+def get_financial_health_report(  # pylint: disable=too-many-positional-arguments
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    report_service: Annotated[ReportService, Depends(get_report_service)],
+    filters: Annotated[ReportFinancialHealthQuery, Depends(get_report_financial_health_query)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    redis: Annotated[Redis | None, Depends(get_optional_redis)],
+    response: Response,
+) -> FinancialHealthReportResponse:
+    """Return API-computed Financial Health Scorecard (Net Worth, Runway, Debt Service, LTV)."""
+    return _cached_report_call(
+        owner_id=owner.id,
+        cache_key="reports:financial-health",
+        cache_params=_report_cache_params("financial-health", filters),
+        settings=settings,
+        redis=redis,
+        response=response,
+        response_type=FinancialHealthReportResponse,
+        builder=lambda: FinancialHealthReportResponse.from_service(
+            report_service.financial_health(owner=owner, **filters.service_kwargs()),
+        ),
+    )

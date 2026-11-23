@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 import {
   accountsListQueryOptions,
+  financialHealthReportQueryOptions,
+  latestIngestionRunQueryOptions,
+  operatingCashflowReportQueryOptions,
   transactionsListQueryOptions,
   upcomingDuesQueryOptions,
 } from "@/api/queries";
 import { markTemplatePaid } from "@/api/transactionTemplates";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
+import { FinancialHealthScorecard } from "@/components/home/FinancialHealthScorecard";
+import { LivePulseSection } from "@/components/home/LivePulseSection";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
 import { Button } from "@/components/ui/button";
 import { formatApiError } from "@/lib/formatApiError";
@@ -26,15 +31,55 @@ const PENDING_PARAMS = {
   transaction_type: "transfer",
   status: "pending",
 } as const;
+const IN_TRANSIT_PARAMS = {
+  ...SNAPSHOT_PARAMS,
+  exclude_transfer: false,
+  settlement_status: "in_transit",
+} as const;
 const DUE_SOON_PARAMS = { window_days: 14, include_paid: false } as const;
 const DUE_SOON_LIMIT = 5;
 
-/** Authenticated landing with session TTL, ledger snapshots, and quick links. */
+function currentMonthWindow(): { start_date: string; end_date: string; label: string } {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const start = new Date(Date.UTC(year, month, 1));
+  const end = new Date(Date.UTC(year, month + 1, 0));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const start_date = `${String(start.getUTCFullYear())}-${pad(start.getUTCMonth() + 1)}-${pad(start.getUTCDate())}`;
+  const end_date = `${String(end.getUTCFullYear())}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}`;
+  const label = start.toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+  return { start_date, end_date, label };
+}
+
+/** Automation-first authenticated Home dashboard (PPT-088 / #181). */
 export function DashboardPage() {
   const queryClient = useQueryClient();
+  const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
+  const monthWindow = useMemo(() => currentMonthWindow(), []);
   const sessionQuery = useQuery(bffSessionQueryOptions());
+  const financialHealthQuery = useQuery(
+    financialHealthReportQueryOptions({
+      currency: selectedCurrency,
+    }),
+  );
+  const activeCurrency = selectedCurrency ?? financialHealthQuery.data?.currency ?? null;
+  const operatingCashflowQuery = useQuery(
+    operatingCashflowReportQueryOptions({
+      start_date: monthWindow.start_date,
+      end_date: monthWindow.end_date,
+      currency: activeCurrency,
+      include_monthly_series: false,
+    }),
+  );
+  const ingestionRunQuery = useQuery(latestIngestionRunQueryOptions());
   const accountsQuery = useQuery(accountsListQueryOptions(SNAPSHOT_PARAMS));
   const pendingQuery = useQuery(transactionsListQueryOptions(PENDING_PARAMS));
+  const inTransitQuery = useQuery(transactionsListQueryOptions(IN_TRANSIT_PARAMS));
   const duesQuery = useQuery(upcomingDuesQueryOptions(DUE_SOON_PARAMS));
 
   const markPaidMutation = useMutation({
@@ -57,53 +102,73 @@ export function DashboardPage() {
     user?.display_name?.trim() || user?.username?.trim() || user?.email?.split("@")[0] || null;
   const accounts = accountsQuery.data?.items ?? [];
   const pendingMovements = pendingQuery.data?.items ?? [];
+  const inTransitMovements = inTransitQuery.data?.items ?? [];
   const dueSoonAll = duesQuery.data?.items ?? [];
   const dueSoon = dueSoonAll.slice(0, DUE_SOON_LIMIT);
   const accountsTotal = accountsQuery.data?.total ?? accounts.length;
   const pendingTotal = pendingQuery.data?.total ?? pendingMovements.length;
+  const inTransitTotal = inTransitQuery.data?.total ?? inTransitMovements.length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {greetingName ? `Welcome back, ${greetingName}` : "Dashboard"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Session status, balances, due soon, and pending transfers — then jump into the ledger.
-        </p>
+    <div className="mx-auto w-full max-w-5xl space-y-8">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {greetingName ? `Welcome back, ${greetingName}` : "Dashboard"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Live financial health, ingestion status, in-transit transfers, upcoming dues, and
+            Operating Free Cashflow.
+          </p>
+        </div>
+
+        <section aria-label="Session status" className="space-y-0.5 text-right">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Access token
+          </p>
+          <SessionTtlCountdown expiresAt={sessionQuery.data?.access_expires_at ?? null} />
+          {sessionQuery.data?.session_backend ? (
+            <p className="text-xs text-muted-foreground">
+              Session store: {sessionQuery.data.session_backend}
+            </p>
+          ) : null}
+        </section>
       </div>
 
-      <section aria-label="Session status" className="space-y-1 border-b border-border pb-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Access token
-        </p>
-        <SessionTtlCountdown expiresAt={sessionQuery.data?.access_expires_at ?? null} />
-        {sessionQuery.data?.session_backend ? (
-          <p className="text-xs text-muted-foreground">
-            Session store: {sessionQuery.data.session_backend}
-          </p>
-        ) : null}
-      </section>
+      <FinancialHealthScorecard
+        report={financialHealthQuery.data}
+        isPending={financialHealthQuery.isPending}
+        isError={financialHealthQuery.isError}
+        onSelectCurrency={(code) => {
+          setSelectedCurrency(code);
+        }}
+      />
+
+      <LivePulseSection
+        ingestionRun={ingestionRunQuery.data}
+        ingestionPending={ingestionRunQuery.isPending}
+        ingestionError={ingestionRunQuery.isError}
+        cashflow={operatingCashflowQuery.data}
+        cashflowPending={operatingCashflowQuery.isPending}
+        cashflowError={operatingCashflowQuery.isError}
+        monthLabel={monthWindow.label}
+      />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <SnapshotPanel
-          title="Accounts"
-          viewAllTo="/accounts"
-          isPending={accountsQuery.isPending}
-          isError={accountsQuery.isError}
-          itemCount={accounts.length}
-          emptyLabel="No accounts yet"
-          emptyActionTo="/accounts"
-          emptyActionLabel="Add an account"
-          footer={
-            accountsTotal > accounts.length
-              ? `Showing ${String(accounts.length)} of ${String(accountsTotal)}`
-              : null
-          }
+          title="In-transit transfers"
+          viewAllTo="/transactions"
+          isPending={inTransitQuery.isPending}
+          isError={inTransitQuery.isError}
+          itemCount={inTransitMovements.length}
+          emptyLabel="No in-transit transfers awaiting settlement"
+          emptyActionTo="/transactions"
+          emptyActionLabel="View transactions"
+          footer={inTransitTotal > 0 ? `${String(inTransitTotal)} awaiting settlement` : null}
         >
           <ul className="divide-y divide-border">
-            {accounts.map((account) => (
-              <AccountRow key={account.id} account={account} />
+            {inTransitMovements.map((movement) => (
+              <PendingMovementRow key={movement.id} movement={movement} />
             ))}
           </ul>
         </SnapshotPanel>
@@ -127,36 +192,60 @@ export function DashboardPage() {
         </SnapshotPanel>
       </div>
 
-      <SnapshotPanel
-        title="Due soon"
-        viewAllTo="/payment-dues"
-        isPending={duesQuery.isPending}
-        isError={duesQuery.isError}
-        itemCount={dueSoon.length}
-        emptyLabel="Nothing due in the next 14 days"
-        emptyActionTo="/payment-dues"
-        emptyActionLabel="Add a payment due"
-        footer={
-          dueSoonAll.length > dueSoon.length
-            ? `Showing ${String(dueSoon.length)} of ${String(dueSoonAll.length)}`
-            : dueSoonAll.length > 0
-              ? `${String(dueSoonAll.length)} in the next ${String(DUE_SOON_PARAMS.window_days)} days`
+      <div className="grid gap-6 sm:grid-cols-2">
+        <SnapshotPanel
+          title="Due soon"
+          viewAllTo="/payment-dues"
+          isPending={duesQuery.isPending}
+          isError={duesQuery.isError}
+          itemCount={dueSoon.length}
+          emptyLabel="Nothing due in the next 14 days"
+          emptyActionTo="/payment-dues"
+          emptyActionLabel="Add a payment due"
+          footer={
+            dueSoonAll.length > dueSoon.length
+              ? `Showing ${String(dueSoon.length)} of ${String(dueSoonAll.length)}`
+              : dueSoonAll.length > 0
+                ? `${String(dueSoonAll.length)} in the next ${String(DUE_SOON_PARAMS.window_days)} days`
+                : null
+          }
+        >
+          <ul className="divide-y divide-border">
+            {dueSoon.map((due) => (
+              <DueSoonRow
+                key={`${due.template.id}-${due.due_date}`}
+                due={due}
+                markPaidPending={markPaidMutation.isPending}
+                onMarkPaid={() => {
+                  markPaidMutation.mutate(due.template.id);
+                }}
+              />
+            ))}
+          </ul>
+        </SnapshotPanel>
+
+        <SnapshotPanel
+          title="Accounts"
+          viewAllTo="/accounts"
+          isPending={accountsQuery.isPending}
+          isError={accountsQuery.isError}
+          itemCount={accounts.length}
+          emptyLabel="No accounts yet"
+          emptyActionTo="/accounts"
+          emptyActionLabel="Add an account"
+          footer={
+            accountsTotal > accounts.length
+              ? `Showing ${String(accounts.length)} of ${String(accountsTotal)}`
               : null
-        }
-      >
-        <ul className="divide-y divide-border">
-          {dueSoon.map((due) => (
-            <DueSoonRow
-              key={`${due.template.id}-${due.due_date}`}
-              due={due}
-              markPaidPending={markPaidMutation.isPending}
-              onMarkPaid={() => {
-                markPaidMutation.mutate(due.template.id);
-              }}
-            />
-          ))}
-        </ul>
-      </SnapshotPanel>
+          }
+        >
+          <ul className="divide-y divide-border">
+            {accounts.map((account) => (
+              <AccountRow key={account.id} account={account} />
+            ))}
+          </ul>
+        </SnapshotPanel>
+      </div>
 
       <section aria-label="Quick links" className="grid gap-3 sm:grid-cols-2">
         {QUICK_LINKS.map((item) => (
@@ -298,7 +387,14 @@ function PendingMovementRow({ movement }: { movement: TransactionResponse }) {
   return (
     <li className="space-y-0.5 py-2 text-sm">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="truncate font-medium">{label}</span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-medium">{label}</span>
+          {movement.settlement_status === "in_transit" ? (
+            <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+              In transit
+            </span>
+          ) : null}
+        </div>
         <span className="shrink-0 tabular-nums text-muted-foreground">
           {formatMoney(movement.amount, movement.currency)}
         </span>

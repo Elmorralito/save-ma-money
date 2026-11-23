@@ -270,6 +270,22 @@ class TestTransactionsRoutes:
         assert exec_resp.json()["status"] == "completed"
         assert exec_resp.json()["settlement_status"] == "settled"
 
+    def test_list_transactions_forwards_settlement_status_filter(self, transactions_client) -> None:
+        client, _owner, mock_transactions = transactions_client
+        mock_transactions.list_transactions.return_value = (pd.DataFrame(), 0)
+
+        response = client.get(
+            "/api/v1/transactions",
+            params={"settlement_status": "in_transit", "exclude_transfer": "false"},
+        )
+        assert response.status_code == 200
+        call_kwargs = mock_transactions.list_transactions.call_args.kwargs
+        assert call_kwargs["settlement_status"] == SettlementStatus.IN_TRANSIT
+        assert call_kwargs["exclude_transfer"] is False
+
+        bad_resp = client.get("/api/v1/transactions", params={"settlement_status": "unknown_state"})
+        assert bad_resp.status_code == 400
+
 
 class TestTransactionsTenancy:
     """Cross-tenant access returns 404."""

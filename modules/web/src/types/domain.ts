@@ -78,6 +78,14 @@ export type LiabilitySimulationImpact = ApiSchemas["LiabilitySimulationImpact"];
 export type DebtTrajectoryPoint = ApiSchemas["DebtTrajectoryPoint"];
 export type LiquidityGuardrail = ApiSchemas["LiquidityGuardrail"];
 export type DebtPaydownSimulationResponse = ApiSchemas["DebtPaydownSimulationResponse"];
+export type FinancialHealthScorecard = ApiSchemas["FinancialHealthScorecard"];
+export type FinancialHealthReportResponse = ApiSchemas["FinancialHealthReportResponse"];
+
+export type IngestionConnectionResponse = ApiSchemas["IngestionConnectionResponse"];
+export type IngestionRunResponse = ApiSchemas["IngestionRunResponse"];
+export type PaginatedIngestionConnections =
+  ApiSchemas["PaginatedResponse_IngestionConnectionResponse_"];
+export type PaginatedIngestionRuns = ApiSchemas["PaginatedResponse_IngestionRunResponse_"];
 
 /**
  * Shape of ``GET /api/v1/meta/client-contract``.

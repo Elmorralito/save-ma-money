@@ -56,6 +56,14 @@ export {
   type ListCategoriesParams,
 } from "@/api/categories";
 export { getHealth, getHealthLive } from "@/api/health";
+export {
+  getLatestIngestionRun,
+  listIngestionConnections,
+  listIngestionRuns,
+  type LatestIngestionRunParams,
+  type ListIngestionConnectionsParams,
+  type ListIngestionRunsParams,
+} from "@/api/ingestion";
 export { IDEMPOTENCY_KEY_HEADER, newIdempotencyKey } from "@/api/idempotency";
 export { invalidateAfterLedgerWrite, invalidateAfterTemplateWrite } from "@/api/invalidateLedger";
 export { getClientContract } from "@/api/meta";
@@ -76,8 +84,12 @@ export {
   categoryDetailQueryOptions,
   clientContractQueryOptions,
   debtPaydownReportQueryOptions,
+  financialHealthReportQueryOptions,
   healthLiveQueryOptions,
   healthQueryOptions,
+  ingestionConnectionsQueryOptions,
+  ingestionRunsQueryOptions,
+  latestIngestionRunQueryOptions,
   operatingCashflowReportQueryOptions,
   plannedVsActualReportQueryOptions,
   spendingReportQueryOptions,
@@ -91,11 +103,13 @@ export { createAppQueryClient } from "@/api/queryClient";
 export { queryKeys } from "@/api/queryKeys";
 export {
   getDebtPaydownReport,
+  getFinancialHealthReport,
   getOperatingCashflowReport,
   getPlannedVsActualReport,
   getSpendingReport,
   simulateDebtPaydown,
   type DebtPaydownReportParams,
+  type FinancialHealthReportParams,
   type OperatingCashflowReportParams,
   type PlannedVsActualReportParams,
   type SpendingGroupBy,

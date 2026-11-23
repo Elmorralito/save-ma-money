@@ -3,14 +3,24 @@ import { queryOptions } from "@tanstack/react-query";
 import { getAccount, listAccounts, type ListAccountsParams } from "@/api/accounts";
 import { getCategory, listCategories, type ListCategoriesParams } from "@/api/categories";
 import { getHealth, getHealthLive } from "@/api/health";
+import {
+  getLatestIngestionRun,
+  listIngestionConnections,
+  listIngestionRuns,
+  type LatestIngestionRunParams,
+  type ListIngestionConnectionsParams,
+  type ListIngestionRunsParams,
+} from "@/api/ingestion";
 import { getClientContract } from "@/api/meta";
 import { queryKeys } from "@/api/queryKeys";
 import {
   getDebtPaydownReport,
+  getFinancialHealthReport,
   getOperatingCashflowReport,
   getPlannedVsActualReport,
   getSpendingReport,
   type DebtPaydownReportParams,
+  type FinancialHealthReportParams,
   type OperatingCashflowReportParams,
   type PlannedVsActualReportParams,
   type SpendingGroupBy,
@@ -117,6 +127,7 @@ function transactionsListFilters(
     transaction_type: params.transaction_type,
     exclude_transfer: params.exclude_transfer,
     status: params.status,
+    settlement_status: params.settlement_status,
     start_date: params.start_date,
     end_date: params.end_date,
     min_amount: params.min_amount,
@@ -226,6 +237,80 @@ export function debtPaydownReportQueryOptions(
   return queryOptions({
     queryKey: queryKeys.reports.debtPaydown(debtPaydownFilters(params)),
     queryFn: ({ signal }) => getDebtPaydownReport({ ...params, signal }),
+  });
+}
+
+function financialHealthFilters(
+  params: Omit<FinancialHealthReportParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    currency: params.currency ?? null,
+    target_liquidity_months: params.target_liquidity_months,
+  };
+}
+
+/** Shared query definition for ``GET /reports/financial-health``. */
+export function financialHealthReportQueryOptions(
+  params: Omit<FinancialHealthReportParams, "signal"> = {},
+) {
+  return queryOptions({
+    queryKey: queryKeys.reports.financialHealth(financialHealthFilters(params)),
+    queryFn: ({ signal }) => getFinancialHealthReport({ ...params, signal }),
+  });
+}
+
+function latestIngestionRunFilters(
+  params: Omit<LatestIngestionRunParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    connection_id: params.connection_id ?? null,
+  };
+}
+
+function ingestionRunsFilters(
+  params: Omit<ListIngestionRunsParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    connection_id: params.connection_id ?? null,
+    skip: params.skip,
+    limit: params.limit,
+  };
+}
+
+function ingestionConnectionsFilters(
+  params: Omit<ListIngestionConnectionsParams, "signal">,
+): Record<string, string | number | boolean | undefined | null> {
+  return {
+    skip: params.skip,
+    limit: params.limit,
+  };
+}
+
+/** Shared query definition for ``GET /ingestion/runs/latest``. */
+export function latestIngestionRunQueryOptions(
+  params: Omit<LatestIngestionRunParams, "signal"> = {},
+) {
+  return queryOptions({
+    queryKey: queryKeys.ingestion.latestRun(latestIngestionRunFilters(params)),
+    queryFn: ({ signal }) => getLatestIngestionRun({ ...params, signal }),
+  });
+}
+
+/** Shared query definition for ``GET /ingestion/runs``. */
+export function ingestionRunsQueryOptions(params: Omit<ListIngestionRunsParams, "signal"> = {}) {
+  return queryOptions({
+    queryKey: queryKeys.ingestion.runs(ingestionRunsFilters(params)),
+    queryFn: ({ signal }) => listIngestionRuns({ ...params, signal }),
+  });
+}
+
+/** Shared query definition for ``GET /ingestion/connections``. */
+export function ingestionConnectionsQueryOptions(
+  params: Omit<ListIngestionConnectionsParams, "signal"> = {},
+) {
+  return queryOptions({
+    queryKey: queryKeys.ingestion.connections(ingestionConnectionsFilters(params)),
+    queryFn: ({ signal }) => listIngestionConnections({ ...params, signal }),
   });
 }
 

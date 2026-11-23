@@ -38,6 +38,7 @@ from papita_txnsmodel.services.balance_views import refresh_balance_materialized
 from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.report_common import as_uuid, dtos_from_frame, resolve_currency_scope
 from papita_txnsmodel.services.report_debt import compute_debt_paydown, simulate_debt_paydown
+from papita_txnsmodel.services.report_health import compute_financial_health
 from papita_txnsmodel.services.report_variance import compute_planned_vs_actual
 from papita_txnsmodel.services.report_waterfall import compute_operating_cashflow
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
@@ -617,4 +618,72 @@ class ReportService(BaseModel):
             target_liquidity_months=target_liquidity_months,
             horizon_months=horizon_months,
             as_of=as_of,
+        )
+
+    def financial_health(  # pylint: disable=too-many-locals
+        self,
+        *,
+        owner: UsersDTO,
+        currency: str | None = None,
+        target_liquidity_months: float = 4.0,
+        as_of: date | None = None,
+        **kwargs,
+    ) -> dict[str, Any]:
+        """Compute API-driven Financial Health Scorecard for the authenticated owner."""
+        owner = self._require_owner(owner)
+        accounts = self._load_accounts(owner=owner, include_deleted=True, **kwargs)
+        categories = self._load_categories(owner=owner, **kwargs)
+        templates = self._load_templates(owner=owner, **kwargs)
+        cc_details = self._load_cc_details(accounts)
+        loan_details = self._load_loan_details(accounts)
+        financing = self._load_financing_links(owner=owner, **kwargs)
+        balances = self._load_balance_map(owner=owner, **kwargs)
+
+        active_included = [
+            acct for acct in accounts if acct.active and acct.closed_at is None and acct.include_in_balance
+        ]
+        active_all = [acct for acct in accounts if acct.active and acct.closed_at is None]
+        selected_currency, _, _ = resolve_currency_scope(
+            [acct.currency for acct in active_included],
+            [acct.currency for acct in active_all],
+            currency,
+        )
+
+        now_utc = datetime.now(timezone.utc)
+        start_90d = now_utc - timedelta(days=90)
+        txns_90d = self._load_transactions_dtos(owner=owner, start_date=start_90d, end_date=now_utc, **kwargs)
+        outflows_90d = 0.0
+        if txns_90d:
+            waterfall_90d = compute_operating_cashflow(
+                transactions=txns_90d,
+                accounts=accounts,
+                categories=categories,
+                cc_details_by_id=cc_details,
+                requested_currency=selected_currency,
+                include_monthly_series=False,
+            )
+            outflows_90d = float(waterfall_90d["waterfall"]["total_operating_outflows"])
+
+        debt_payload = compute_debt_paydown(
+            accounts=accounts,
+            loan_details_by_id=loan_details,
+            financing_links=financing,
+            balance_by_account_id=balances,
+            templates=templates,
+            categories=categories,
+            operating_outflows_90d=outflows_90d,
+            requested_currency=selected_currency,
+            include_excluded=False,
+            target_liquidity_months=target_liquidity_months,
+            as_of=as_of,
+        )
+        debt_payload.pop("_internal_ranked", None)
+
+        return compute_financial_health(
+            accounts=accounts,
+            loan_details_by_id=loan_details,
+            financing_links=financing,
+            balance_by_account_id=balances,
+            debt_payload=debt_payload,
+            requested_currency=selected_currency,
         )

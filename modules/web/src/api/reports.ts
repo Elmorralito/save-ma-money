@@ -3,6 +3,7 @@ import type {
   DebtPaydownReportResponse,
   DebtPaydownSimulationRequest,
   DebtPaydownSimulationResponse,
+  FinancialHealthReportResponse,
   OperatingCashflowReportResponse,
   PlannedVsActualReportResponse,
   SpendingReportResponse,
@@ -41,6 +42,12 @@ export type PlannedVsActualReportParams = {
 export type DebtPaydownReportParams = {
   currency?: string | null;
   include_excluded?: boolean;
+  target_liquidity_months?: number;
+  signal?: AbortSignal;
+};
+
+export type FinancialHealthReportParams = {
+  currency?: string | null;
   target_liquidity_months?: number;
   signal?: AbortSignal;
 };
@@ -129,5 +136,19 @@ export async function simulateDebtPaydown(
       body: JSON.stringify(body),
     },
   );
+  return result.data;
+}
+
+/** ``GET /api/v1/reports/financial-health`` — API-computed Financial Health Scorecard. */
+export async function getFinancialHealthReport(
+  params: FinancialHealthReportParams = {},
+): Promise<FinancialHealthReportResponse> {
+  const { signal, currency, target_liquidity_months } = params;
+  const path = `${REPORTS_PATH}/financial-health${buildQuery({
+    currency: currency ?? undefined,
+    target_liquidity_months:
+      target_liquidity_months !== undefined ? String(target_liquidity_months) : undefined,
+  })}`;
+  const result = await apiFetch<FinancialHealthReportResponse>(path, { signal });
   return result.data;
 }

@@ -609,6 +609,39 @@ class DebtPaydownSimulationResponse(BaseModel):
         return cls.model_validate(payload)
 
 
+class FinancialHealthScorecard(BaseModel):
+    """API-computed Financial Health Scorecard metrics across active included accounts."""
+
+    total_assets: float = 0.0
+    total_liabilities: float = 0.0
+    reconciled_net_worth: float = 0.0
+    liquid_cash_total: float = 0.0
+    baseline_monthly_burn: float = 0.0
+    liquid_runway_months: float | None = None
+    target_liquidity_months: float = 4.0
+    monthly_debt_service: float = 0.0
+    total_monthly_interest_drag: float = 0.0
+    debt_to_asset_ratio_pct: float | None = None
+    margin_ltv_pct: float | None = None
+    included_asset_count: int = 0
+    included_liability_count: int = 0
+    excluded_account_count: int = 0
+
+
+class FinancialHealthReportResponse(BaseModel):
+    """Response body for ``GET /reports/financial-health``."""
+
+    currency: str
+    available_currencies: list[str] = Field(default_factory=list)
+    multi_currency_warning: bool = False
+    scorecard: FinancialHealthScorecard
+
+    @classmethod
+    def from_service(cls, payload: dict[str, Any]) -> FinancialHealthReportResponse:
+        """Map ``ReportService.financial_health`` payload to API response."""
+        return cls.model_validate(payload)
+
+
 __all__ = [
     "BucketCategoryItem",
     "BucketVarianceItem",
@@ -623,6 +656,8 @@ __all__ = [
     "DebtPaydownSummary",
     "DebtTrajectoryPoint",
     "ExcludedLiabilitiesSummary",
+    "FinancialHealthReportResponse",
+    "FinancialHealthScorecard",
     "InTransitSummary",
     "LiabilitySimulationImpact",
     "LinkedAssetCarry",
