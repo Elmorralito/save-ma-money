@@ -11,6 +11,15 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict, Field
 
 from papita_ingestor_core.errors import IngestorParseError
+from papita_ingestor_core.importers.base import BaseBatchImporter
+from papita_ingestor_core.plugins import PluginManifest
+from papita_txnsmodel.model.enums import IngestionSource
+from papita_txnsmodel.services.portfolio_import import (
+    NormalizedPortfolioBatch,
+    PortfolioCashBalanceInput,
+    PortfolioPositionInput,
+    PortfolioTransferInput,
+)
 
 _PERIOD_END_RE = re.compile(
     r"([A-Za-z]+\s+\d{1,2},\s*\d{4})\s*$",
@@ -295,10 +304,67 @@ def parse_ibkr_activity_statement(csv_text: str) -> IBKRStatementSummary:  # pyl
     )
 
 
+class IBKRStatementImporter(BaseBatchImporter):
+    """``BaseBatchImporter`` plugin for IBKR Activity Statement CSV exports."""
+
+    registry_id = "ibkr-activity-csv"
+    PLUGIN_MANIFEST = PluginManifest(
+        plugin_id="ibkr-activity-csv",
+        kind="batch_importer",
+        ingestion_source=IngestionSource.CSV,
+        supported_media_types=("text/csv", "application/csv"),
+        capabilities=frozenset({"batch_import", "positions", "margin_ltv", "transfers"}),
+        description="Interactive Brokers Activity Statement CSV importer.",
+    )
+
+    @property
+    def importer_id(self) -> str:
+        return self.registry_id
+
+    @property
+    def manifest(self) -> PluginManifest:
+        return self.PLUGIN_MANIFEST
+
+    def can_import(
+        self,
+        *,
+        filename: str | None = None,
+        content_type: str | None = None,
+        sample: str | bytes = "",
+    ) -> bool:
+        text = sample.decode("utf-8", errors="ignore") if isinstance(sample, bytes) else sample
+        lowered = text.lower()
+        if any(
+            marker in lowered
+            for marker in ("open positions,header", "cash report,header", "statement,header", "account information,header")
+        ):
+            return True
+        if filename and filename.lower().endswith(".csv") and "ibkr" in filename.lower():
+            return True
+        return False
+
+    def parse_statement(self, payload: str | bytes) -> NormalizedPortfolioBatch:
+        csv_text = payload.decode("utf-8") if isinstance(payload, bytes) else payload
+        summary = parse_ibkr_activity_statement(csv_text)
+        return NormalizedPortfolioBatch(
+            provider_id=self.importer_id,
+            provider_label="IBKR",
+            ingestion_source=IngestionSource.CSV,
+            tags=["ibkr", "activity_statement", "settled"],
+            account_code=summary.account_code,
+            period=summary.period,
+            as_of=summary.as_of,
+            positions=[PortfolioPositionInput.model_validate(pos.model_dump()) for pos in summary.positions],
+            cash_balances=[PortfolioCashBalanceInput.model_validate(cb.model_dump()) for cb in summary.cash_balances],
+            transfers=[PortfolioTransferInput.model_validate(dep.model_dump()) for dep in summary.deposits_withdrawals],
+        )
+
+
 __all__ = [
     "IBKRCashBalance",
     "IBKRDepositWithdrawal",
     "IBKRPosition",
+    "IBKRStatementImporter",
     "IBKRStatementSummary",
     "parse_ibkr_activity_statement",
 ]

@@ -46,6 +46,18 @@ Homepage = "https://github.com/Elmorralito/save-ma-money/tree/main/modules/backe
 Repository = "https://github.com/Elmorralito/save-ma-money"
 Issues = "https://github.com/Elmorralito/save-ma-money/issues"
 
+[project.entry-points."papita.ingestor.sources"]
+gmail = "papita_ingestor_email.sources.gmail:GmailSource"
+
+[project.entry-points."papita.ingestor.parsers"]
+bancolombia-email = "papita_ingestor_email.parsers.bancolombia:BancolombiaParser"
+global66-email = "papita_ingestor_email.parsers.global66:Global66Parser"
+nequi-email = "papita_ingestor_email.parsers.nequi:NequiParser"
+fallback-email = "papita_ingestor_email.parsers.fallback:FallbackEmailParser"
+
+[project.entry-points."papita.ingestor.importers"]
+ibkr-activity-csv = "papita_ingestor_core.importers.ibkr:IBKRStatementImporter"
+
 [tool.poetry]
 packages = [
     { include = "backend", from = "src/" },

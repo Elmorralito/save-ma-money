@@ -1,4 +1,4 @@
-"""Ingestor error types."""
+"""Error taxonomy exports for papita_ingestor_core."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from papita_ingestor_core.errors.taxonomy import (
     IngestorFetchError,
     IngestorParseError,
     IngestorPersistError,
+    IngestorPluginError,
+    IngestorRateLimitError,
     IngestorValidationError,
 )
 
@@ -17,5 +19,7 @@ __all__ = [
     "IngestorFetchError",
     "IngestorParseError",
     "IngestorPersistError",
+    "IngestorPluginError",
+    "IngestorRateLimitError",
     "IngestorValidationError",
 ]

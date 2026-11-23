@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from papita_ingestor_core.registry import ConnectorRegistry
 from papita_ingestor_core.runner.ingestion_runner import OwnerProvider
 from papita_ingestor_core.sources.base import BaseIngestorSource
 from papita_ingestor_email.flow_settings import EmailFlowSettings
@@ -21,6 +22,8 @@ class EmailFlowDeps:  # pylint: disable=too-many-instance-attributes
     flow_settings: EmailFlowSettings | None = None
     gmail_settings: GmailSettings | None = None
     source: BaseIngestorSource | None = None
+    connector_id: str = "gmail"
+    registry: ConnectorRegistry | None = None
     bridge: Any | None = None
     owner: OwnerProvider | None = None
     establish_db: bool | None = None

@@ -13,6 +13,7 @@ from fastapi import Depends
 from pydantic import BaseModel
 from sqlmodel import Session
 
+from papita_ingestor_core.registry import get_default_registry
 from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsmodel.database.session import DatabaseSessionManager, get_session_manager
 from papita_txnsmodel.services.account_details import TradingAccountDetailsService
@@ -22,6 +23,7 @@ from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.ibkr_import import IBKRImportService
 from papita_txnsmodel.services.ingestion import IngestionBridgeService
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
+from papita_txnsmodel.services.portfolio_import import PortfolioImportService
 from papita_txnsmodel.services.reports import ReportService
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
 from papita_txnsmodel.services.users import UsersService
@@ -151,13 +153,27 @@ def get_ingestion_run_service(
     return _service_factory(IngestionRunService, connector)
 
 
+def get_portfolio_import_service(
+    connector: Annotated[DatabaseSessionManager, Depends(get_session_manager_dep)],
+) -> PortfolioImportService:
+    """Build provider-agnostic ``PortfolioImportService`` for batch importer routes."""
+    return PortfolioImportService(
+        accounts_service=_service_factory(AccountsService, connector),
+        trading_details_service=_service_factory(TradingAccountDetailsService, connector),
+        financing_service=_service_factory(AccountFinancingService, connector),
+        bridge_service=_service_factory(IngestionBridgeService, connector),
+    )
+
+
 def get_ibkr_import_service(
     connector: Annotated[DatabaseSessionManager, Depends(get_session_manager_dep)],
 ) -> IBKRImportService:
-    """Build ``IBKRImportService`` for Activity Statement CSV imports (PPT-101)."""
+    """Build ``IBKRImportService`` wired with the registered IBKR importer plugin."""
+    importer = get_default_registry().get_importer("ibkr-activity-csv")
     return IBKRImportService(
         accounts_service=_service_factory(AccountsService, connector),
         trading_details_service=_service_factory(TradingAccountDetailsService, connector),
         financing_service=_service_factory(AccountFinancingService, connector),
         bridge_service=_service_factory(IngestionBridgeService, connector),
+        statement_parser=importer.parse_statement,
     )

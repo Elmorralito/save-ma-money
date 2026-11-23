@@ -853,6 +853,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Registered Connectors
+         * @description List non-secret manifests for all registered ingestion plugins.
+         */
+        get: operations["list_registered_connectors_api_v1_ingestion_connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/ibkr/activity-statement": {
         parameters: {
             query?: never;
@@ -927,6 +947,26 @@ export interface paths {
         get: operations["get_latest_ingestion_run_api_v1_ingestion_runs_latest_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/statements/{importer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Statement By Plugin
+         * @description Import a broker/statement payload via any registered ``BaseBatchImporter`` plugin.
+         */
+        post: operations["import_statement_by_plugin_api_v1_ingestion_statements__importer_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2035,6 +2075,29 @@ export interface components {
         ClearPaidRequest: {
             /** As Of */
             as_of?: string | null;
+        };
+        /**
+         * ConnectorManifestResponse
+         * @description Non-secret metadata for a registered ingestion connector/parser/importer plugin.
+         */
+        ConnectorManifestResponse: {
+            /** Capabilities */
+            capabilities?: string[];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Ingestion Source */
+            ingestion_source: string;
+            /** Kind */
+            kind: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Supported Media Types */
+            supported_media_types?: string[];
+            /** Version */
+            version: string;
         };
         /**
          * CreditCardDetailsSchema
@@ -5150,6 +5213,38 @@ export interface operations {
             };
         };
     };
+    list_registered_connectors_api_v1_ingestion_connectors_get: {
+        parameters: {
+            query?: {
+                /** @description Optional plugin kind filter */
+                kind?: ("pull_source" | "record_parser" | "batch_importer" | "rate_feed") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorManifestResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     import_ibkr_activity_statement_api_v1_ingestion_ibkr_activity_statement_post: {
         parameters: {
             query?: never;
@@ -5238,6 +5333,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestionRunResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    import_statement_by_plugin_api_v1_ingestion_statements__importer_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                importer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IBKRImportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IBKRImportResponse"];
                 };
             };
             /** @description Validation Error */

@@ -27,6 +27,14 @@ class IngestorPersistError(IngestorError):
     """Persist / dead-letter failures after a validated payload."""
 
 
+class IngestorPluginError(IngestorError):
+    """Plugin discovery, registration, or configuration failures."""
+
+
+class IngestorRateLimitError(IngestorFetchError):
+    """Transient third-party rate-limit / backoff signal while fetching."""
+
+
 __all__ = [
     "IngestorError",
     "IngestorConnectionError",
@@ -34,4 +42,6 @@ __all__ = [
     "IngestorParseError",
     "IngestorValidationError",
     "IngestorPersistError",
+    "IngestorPluginError",
+    "IngestorRateLimitError",
 ]

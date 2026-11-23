@@ -1,6 +1,10 @@
 """Ingestion vertical slice (models, provenance, bridge, runner, email parsers/source, CLI, router)."""
 
+from papita_ingestor_core.importers.base import BaseBatchImporter
+from papita_ingestor_core.importers.ibkr import IBKRStatementImporter
 from papita_ingestor_core.parsers.base import BaseRecordParser, select_parser
+from papita_ingestor_core.plugins import PluginKind, PluginManifest
+from papita_ingestor_core.registry import ConnectorRegistry, get_default_registry
 from papita_ingestor_core.runner.ingestion_runner import IngestionRunner
 from papita_ingestor_core.sources.base import BaseIngestorSource
 from papita_ingestor_core.types.records import FetchFilter, ParsedRecord, RawRecord, RunResult
@@ -8,6 +12,7 @@ from papita_ingestor_email.flows.email_flow import build_email_ingestion_flow, b
 from papita_ingestor_email.parsers import (
     BancolombiaParser,
     FallbackEmailParser,
+    Global66Parser,
     NequiParser,
     default_email_parsers,
 )
@@ -25,14 +30,19 @@ from papita_txnsmodel.services.ingestion import (
     IngestTransactionResult,
 )
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
+from papita_txnsmodel.services.portfolio_import import NormalizedPortfolioBatch, PortfolioImportService
 
 __all__ = [
     "BancolombiaParser",
+    "BaseBatchImporter",
     "BaseIngestorSource",
     "BaseRecordParser",
+    "ConnectorRegistry",
     "FallbackEmailParser",
     "FetchFilter",
+    "Global66Parser",
     "GmailSource",
+    "IBKRStatementImporter",
     "IngestTransactionRequest",
     "IngestTransactionResult",
     "IngestionBridgeService",
@@ -43,7 +53,11 @@ __all__ = [
     "IngestionRunService",
     "IngestionRunner",
     "NequiParser",
+    "NormalizedPortfolioBatch",
     "ParsedRecord",
+    "PluginKind",
+    "PluginManifest",
+    "PortfolioImportService",
     "RawRecord",
     "RunResult",
     "TransactionIngestionProvenance",
@@ -51,6 +65,7 @@ __all__ = [
     "build_email_runner",
     "create_gmail_source",
     "default_email_parsers",
+    "get_default_registry",
     "router",
     "select_parser",
 ]

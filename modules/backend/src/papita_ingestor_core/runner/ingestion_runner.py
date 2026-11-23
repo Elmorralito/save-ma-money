@@ -54,11 +54,20 @@ class IngestionRunner:
         self._parsers = list(parsers) if parsers is not None else None
         self._settings = settings or BaseIngestorSettings()
 
-    def _resolve_owner(self) -> UsersDTO:
+    @property
+    def source_id(self) -> str:
+        """Stable registry identity of the wired source connector."""
+        return self._source.source_id
+
+    def resolve_owner(self) -> UsersDTO:
+        """Resolve the owner ``UsersDTO`` from a static DTO or zero-arg provider."""
         owner = self._owner() if callable(self._owner) else self._owner
         if owner is None or getattr(owner, "id", None) is None:
             raise ValueError("IngestionRunner owner must be a UsersDTO with an id")
         return owner
+
+    def _resolve_owner(self) -> UsersDTO:
+        return self.resolve_owner()
 
     def _resolve_parsers(self) -> list[BaseRecordParser]:
         """Cache parser instances once per run (avoid per-record construction)."""
@@ -122,15 +131,15 @@ class IngestionRunner:
 
         return result
 
-    def _parse_and_map(self, *, record: RawRecord, parsers: list[BaseRecordParser]):
-        """Select parser, parse/validate, and map to a bridge request."""
+    def _parse_and_map(self, *, record: RawRecord, parsers: list[BaseRecordParser]) -> list[Any]:
+        """Select parser, parse/validate, and map to one or more bridge requests."""
         if not (record.source_ref or "").strip():
             raise IngestorValidationError("RawRecord.source_ref is required for idempotent ingest")
 
         parser = select_parser(record, parsers)
         try:
-            parsed = parser.parse(record)
-            parsed = parser.validate(parsed)
+            parsed_items = list(parser.parse_many(record))
+            validated = [parser.validate(item) for item in parsed_items]
         except IngestorValidationError:
             raise
         except IngestorParseError:
@@ -138,9 +147,15 @@ class IngestionRunner:
         except Exception as exc:
             raise IngestorParseError(str(exc)) from exc
 
-        if not (parsed.source_ref or "").strip():
-            raise IngestorValidationError("ParsedRecord.source_ref is required for idempotent ingest")
-        return to_ingest_transaction_request(parsed)
+        if not validated:
+            raise IngestorParseError(f"Parser {parser.parser_id!r} produced no records")
+
+        requests: list[Any] = []
+        for parsed in validated:
+            if not (parsed.source_ref or "").strip():
+                raise IngestorValidationError("ParsedRecord.source_ref is required for idempotent ingest")
+            requests.append(to_ingest_transaction_request(parsed))
+        return requests
 
     def _persist(self, *, owner: UsersDTO, request: Any) -> str:
         """Call the bridge and return a known outcome string."""
@@ -188,12 +203,13 @@ class IngestionRunner:
         parsers: list[BaseRecordParser],
     ) -> None:
         try:
-            request = self._parse_and_map(record=record, parsers=parsers)
+            requests = self._parse_and_map(record=record, parsers=parsers)
             if self._settings.dry_run:
-                result.dry_run_skipped += 1
+                result.dry_run_skipped += len(requests)
                 return
-            outcome = self._persist(owner=owner, request=request)
-            self._count_outcome(result, outcome)
+            for request in requests:
+                outcome = self._persist(owner=owner, request=request)
+                self._count_outcome(result, outcome)
             self._acknowledge(record=record, result=result, count_as_failure=True)
         except (IngestorParseError, IngestorValidationError) as exc:
             self._dead_letter(owner=owner, record=record, result=result, exc=exc)

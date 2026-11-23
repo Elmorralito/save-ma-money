@@ -11,6 +11,11 @@ JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
+- **Plugin-based connector & parser architecture (`feat/plugin-connector-architecture`):**
+  - Added `PluginManifest`, `BaseBatchImporter`, thread-safe `ConnectorRegistry` (Python `importlib.metadata.entry_points` + explicit registration, manifest caching, `PAPITA_INGESTOR_ENABLED_PLUGINS` allowlist), `IngestorPluginError`/`IngestorRateLimitError`, `parse_many()`, and promoted provider-agnostic `run_status.py`/`status_mapping.py` into `papita_ingestor_core`.
+  - Declared `papita.ingestor.{sources,parsers,importers}` entry points in `modules/backend/pyproject.toml`; decoupled `GmailSource`, email parsers (`bancolombia-email`, `global66-email`, `nequi-email`, `fallback-email`), and `email_flow.py` (`--connector <id>` + registry lookup).
+  - Extracted provider-agnostic `PortfolioImportService` / `NormalizedPortfolioBatch` in `papita_txnsmodel/services/portfolio_import.py` (zero `papita_ingestor_*` imports), added `IBKRStatementImporter` (`ibkr-activity-csv`), and exposed `GET /api/v1/ingestion/connectors` + `POST /api/v1/ingestion/statements/{importer_id}` (synced `openapi.json` + `api.d.ts`).
+  - Added sibling `AuthProvider` protocol (`papita_txnsapi/core/auth_provider.py`, `register_auth_provider`, `get_auth_provider`) and wired `routers/v1/health.py` through it.
 - **PPT-101 (`#262`) IBKR Activity Statement + Global66 Wire Import, FX Valuation, and In-Transit Settlement:**
   - Added Alembic migration `p3e4f5a6b7c8` adding `accounts.fx_rate`, widening `trading_account_details.units` to `DECIMAL(22,8)`, adding `symbol`/`unit_price`/`fx_rate`/`unrealized_pnl` to `trading_account_details`, and updating `account_balances.sql` to filter `settlement_status = 'SETTLED'` so in-transit transfers do not distort reconciled balances.
   - Added `Global66Parser` (`papita_ingestor_email/parsers/global66.py`, registered in `default_email_parsers()`) emitting `TRANSFER` records with `settlement_status = IN_TRANSIT` (or `SETTLED`), wired `settlement_status` through `ParsedRecord` → `to_ingest_transaction_request`, and exposed `POST /api/v1/transactions/{transaction_id}/settle`.
