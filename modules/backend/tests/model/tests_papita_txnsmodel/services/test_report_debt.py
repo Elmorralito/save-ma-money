@@ -372,3 +372,80 @@ def test_debt_paydown_and_simulator_edge_cases() -> None:
     )
     assert sim_paid["accelerated_months_to_payoff"] == 1
     assert sim_paid["liquidity_guardrail"]["status"] == "warning"
+
+
+def test_debt_paydown_filters_foreign_templates_and_normalizes_signed_balances() -> None:
+    """Verify foreign recurring templates are excluded from burn and negative liability balances normalize."""
+    owner_id = uuid.uuid4()
+    usd_checking = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="USD Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="USD",
+        current_value=5000.0,
+    )
+    eur_checking = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="EUR Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="EUR",
+        current_value=2000.0,
+    )
+    signed_loan = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Signed Balance Loan",
+        account_kind=AccountKind.LOAN_MORTGAGE,
+        ledger_side=LedgerSide.LIABILITY,
+        currency="USD",
+        current_value=1200.0,
+        interest_rate=24.0,
+        interest_rate_basis=InterestRateBasis.APY,
+        periodic_payment=150.0,
+    ).model_copy(update={"current_value": -1200.0})
+    cat_exp = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Bills",
+        category_kind=CategoryKind.EXPENSE,
+    )
+    templates = [
+        TransactionTemplatesDTO(
+            id=uuid.uuid4(),
+            owner_id=owner_id,
+            category_id=cat_exp.id,
+            name="USD Expense",
+            planned_amount=400.0,
+            planned_day=5,
+            from_account_id=usd_checking.id,
+        ),
+        TransactionTemplatesDTO(
+            id=uuid.uuid4(),
+            owner_id=owner_id,
+            category_id=cat_exp.id,
+            name="EUR Expense",
+            planned_amount=9000.0,
+            planned_day=10,
+            from_account_id=eur_checking.id,
+        ),
+    ]
+
+    report = compute_debt_paydown(
+        accounts=[usd_checking, eur_checking, signed_loan],
+        loan_details_by_id={},
+        financing_links=[],
+        balance_by_account_id={},
+        templates=templates,
+        categories=[cat_exp],
+        operating_outflows_90d=0.0,
+        requested_currency="USD",
+        as_of=date(2026, 2, 1),
+    )
+
+    assert report["liquidity_context"]["baseline_monthly_burn"] == 400.0
+    assert len(report["liabilities"]) == 1
+    assert report["liabilities"][0]["balance"] == 1200.0
+    assert report["liabilities"][0]["monthly_interest_drag"] > 0.0

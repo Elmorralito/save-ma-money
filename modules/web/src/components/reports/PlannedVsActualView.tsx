@@ -135,6 +135,7 @@ export function PlannedVsActualView({ report }: PlannedVsActualViewProps) {
                 type="button"
                 size="sm"
                 variant={filterMode === key ? "default" : "outline"}
+                aria-pressed={filterMode === key}
                 onClick={() => {
                   setFilterMode(key);
                 }}

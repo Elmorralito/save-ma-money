@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,8 +10,13 @@ import type {
   DebtLiquidityContext,
   DebtPaydownSimulationRequest,
   DebtPaydownSimulationResponse,
-  PeriodicLumpSumInput,
 } from "@/types/domain";
+
+type PeriodicLumpRow = {
+  id: string;
+  month_of_year: number;
+  amount: string;
+};
 
 type DebtSimulatorPanelProps = {
   currency: string;
@@ -60,7 +65,8 @@ export function DebtSimulatorPanel({
     String(liquidityContext.target_liquidity_months ?? 4),
   );
   const [horizonMonths, setHorizonMonths] = useState("60");
-  const [periodicLumps, setPeriodicLumps] = useState<PeriodicLumpSumInput[]>([]);
+  const nextIdRef = useRef(0);
+  const [periodicLumps, setPeriodicLumps] = useState<PeriodicLumpRow[]>([]);
 
   function parseNonNegative(raw: string): number {
     const num = Number(raw);
@@ -78,7 +84,12 @@ export function DebtSimulatorPanel({
       extra_monthly_prepayment: parseNonNegative(extraMonthly),
       lump_sum_prepayment: parseNonNegative(lumpSum),
       lump_sum_month_offset: offset,
-      periodic_lump_sums: periodicLumps.filter((item) => item.amount > 0),
+      periodic_lump_sums: periodicLumps
+        .map((item) => ({
+          month_of_year: item.month_of_year,
+          amount: parseNonNegative(item.amount),
+        }))
+        .filter((item) => item.amount > 0),
       target_liquidity_months: runway,
       horizon_months: horizon,
     });
@@ -203,9 +214,14 @@ export function DebtSimulatorPanel({
               type="button"
               size="sm"
               variant="outline"
+              disabled={periodicLumps.length >= 12}
               onClick={() => {
                 if (periodicLumps.length < 12) {
-                  setPeriodicLumps([...periodicLumps, { month_of_year: 6, amount: 0 }]);
+                  nextIdRef.current += 1;
+                  setPeriodicLumps([
+                    ...periodicLumps,
+                    { id: `lump-${String(nextIdRef.current)}`, month_of_year: 6, amount: "" },
+                  ]);
                 }
               }}
             >
@@ -213,7 +229,7 @@ export function DebtSimulatorPanel({
             </Button>
           </div>
           {periodicLumps.map((entry, idx) => (
-            <div key={String(idx)} className="flex items-center gap-2">
+            <div key={entry.id} className="flex items-center gap-2">
               <NativeSelect
                 aria-label={`Periodic bonus month ${String(idx + 1)}`}
                 value={String(entry.month_of_year)}
@@ -234,10 +250,11 @@ export function DebtSimulatorPanel({
                 type="number"
                 min={0}
                 step="any"
-                value={String(entry.amount)}
+                placeholder="0"
+                value={entry.amount}
                 onChange={(event) => {
                   const next = [...periodicLumps];
-                  next[idx] = { ...entry, amount: parseNonNegative(event.target.value) };
+                  next[idx] = { ...entry, amount: event.target.value };
                   setPeriodicLumps(next);
                 }}
               />
@@ -247,7 +264,7 @@ export function DebtSimulatorPanel({
                 variant="ghost"
                 aria-label={`Remove periodic bonus ${String(idx + 1)}`}
                 onClick={() => {
-                  setPeriodicLumps(periodicLumps.filter((_, i) => i !== idx));
+                  setPeriodicLumps(periodicLumps.filter((item) => item.id !== entry.id));
                 }}
               >
                 ×

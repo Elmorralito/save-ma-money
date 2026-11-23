@@ -809,6 +809,8 @@ class ReportPlannedVsActualQuery(BaseModel):
         if self.currency is not None:
             self.currency = self.currency.strip().upper()
         self._parsed_bucket = parse_cashflow_bucket(self.cashflow_bucket) if self.cashflow_bucket is not None else None
+        if self._parsed_bucket is not None:
+            self.cashflow_bucket = self._parsed_bucket.value.lower()
         return self
 
     def service_kwargs(self) -> ReportPlannedVsActualServiceKwargs:

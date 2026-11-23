@@ -31,6 +31,9 @@ const VALUE_TONE_CLASSES: Record<Tone, string> = {
 
 /** Top 4-KPI executive summary strip driven entirely by API metrics & tones. */
 export function KpiSummaryStrip({ currency, waterfall, variance, debt }: KpiSummaryStripProps) {
+  const waterfallCurrency = waterfall?.currency ?? currency;
+  const varianceCurrency = variance?.currency ?? currency;
+  const debtCurrency = debt?.currency ?? currency;
   const wfTone: Tone = waterfall?.waterfall.status_tone ?? "neutral";
   const varTone: Tone = variance?.summary.status_tone ?? "neutral";
   const dragTone: Tone =
@@ -55,7 +58,11 @@ export function KpiSummaryStrip({ currency, waterfall, variance, debt }: KpiSumm
     >
       <KpiCard
         label="Operating Free Cashflow"
-        value={waterfall ? formatMoney(waterfall.waterfall.operating_free_cashflow, currency) : "—"}
+        value={
+          waterfall
+            ? formatMoney(waterfall.waterfall.operating_free_cashflow, waterfallCurrency)
+            : "—"
+        }
         sublabel={
           waterfall
             ? `Organic margin ${waterfall.waterfall.organic_fcf_margin_pct.toFixed(1)}% · Debt load ${waterfall.waterfall.debt_service_to_income_pct.toFixed(1)}%`
@@ -65,7 +72,7 @@ export function KpiSummaryStrip({ currency, waterfall, variance, debt }: KpiSumm
       />
       <KpiCard
         label="Planned vs. Actual FCF"
-        value={variance ? formatMoney(variance.summary.net_fcf_variance, currency) : "—"}
+        value={variance ? formatMoney(variance.summary.net_fcf_variance, varianceCurrency) : "—"}
         sublabel={
           variance
             ? `Adherence ${variance.summary.adherence_pct.toFixed(1)}% · ${String(variance.summary.reconciliation_flag_count)} alert(s)`
@@ -75,10 +82,10 @@ export function KpiSummaryStrip({ currency, waterfall, variance, debt }: KpiSumm
       />
       <KpiCard
         label="Monthly Interest Drag"
-        value={debt ? formatMoney(debt.summary.total_monthly_interest_drag, currency) : "—"}
+        value={debt ? formatMoney(debt.summary.total_monthly_interest_drag, debtCurrency) : "—"}
         sublabel={
           debt
-            ? `${formatMoney(debt.summary.total_annual_interest_drag, currency)}/yr · ${debt.summary.weighted_average_ea_pct.toFixed(2)}% avg EA`
+            ? `${formatMoney(debt.summary.total_annual_interest_drag, debtCurrency)}/yr · ${debt.summary.weighted_average_ea_pct.toFixed(2)}% avg EA`
             : "Loading debt drag…"
         }
         tone={debt ? dragTone : "neutral"}

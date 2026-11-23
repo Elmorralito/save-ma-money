@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any, Literal
 
 from papita_txnsmodel.access.account_details.dto import LoanAccountDetailsDTO
@@ -101,6 +101,7 @@ def _build_linked_asset_carry(
 def _compute_liquid_context(  # pylint: disable=too-many-arguments
     *,
     accounts: list[AccountsDTO],
+    accounts_by_id: dict[uuid.UUID, AccountsDTO],
     selected_currency: str,
     balance_by_account_id: dict[uuid.UUID, float],
     operating_outflows_90d: float,
@@ -130,6 +131,9 @@ def _compute_liquid_context(  # pylint: disable=too-many-arguments
         recurring_expenses = 0.0
         for tpl in templates:
             if not tpl.active or tpl.due_date is not None:
+                continue
+            tpl_acct = lookup_by_id(accounts_by_id, tpl.from_account_id)
+            if tpl_acct is not None and tpl_acct.currency.strip().upper() != selected_currency:
                 continue
             cat = lookup_by_id(categories_by_id, tpl.category_id)
             if cat is not None and cat.category_kind == CategoryKind.INCOME:
@@ -163,7 +167,7 @@ def compute_debt_paydown(  # pylint: disable=too-many-arguments,too-many-locals
     as_of: date | None = None,
 ) -> dict[str, Any]:
     """Rank active liabilities by effective annual rate and monthly interest drag."""
-    today = as_of or date.today()
+    today = as_of or datetime.now(timezone.utc).date()
     accounts_by_id = {acct.id: acct for acct in accounts if acct.id is not None}
     categories_by_id = {cat.id: cat for cat in (categories or []) if cat.id is not None}
 
@@ -202,7 +206,7 @@ def compute_debt_paydown(  # pylint: disable=too-many-arguments,too-many-locals
         is_excluded = (not acct.active) or (acct.closed_at is not None) or (not acct.include_in_balance) or is_paid_off
 
         bal = (
-            float(acct.current_value)
+            abs(float(acct.current_value))
             if acct.current_value is not None
             else abs(float(balance_by_account_id.get(acct.id, 0.0)))
         )
@@ -269,6 +273,7 @@ def compute_debt_paydown(  # pylint: disable=too-many-arguments,too-many-locals
 
     liquidity = _compute_liquid_context(
         accounts=accounts,
+        accounts_by_id=accounts_by_id,
         selected_currency=selected_currency,
         balance_by_account_id=balance_by_account_id,
         operating_outflows_90d=operating_outflows_90d,
@@ -425,7 +430,7 @@ def simulate_debt_paydown(  # pylint: disable=too-many-arguments,too-many-locals
     as_of: date | None = None,
 ) -> dict[str, Any]:
     """Compare baseline amortization against accelerated avalanche/snowball paydown."""
-    today = (as_of or date.today()).replace(day=1)
+    today = (as_of or datetime.now(timezone.utc).date()).replace(day=1)
     internal_ranked: list[dict[str, Any]] = paydown_report.get("_internal_ranked", [])
 
     def _clone_loans() -> list[_SimLoan]:

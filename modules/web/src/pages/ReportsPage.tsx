@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import {
@@ -59,6 +59,7 @@ export function ReportsPage() {
 
   const [draft, setDraft] = useState<ReportFilterValues>(initialFilters);
   const [applied, setApplied] = useState<ReportFilterValues>(initialFilters);
+  const tabRefs = useRef<Partial<Record<ReportTab, HTMLButtonElement | null>>>({});
 
   const contractQuery = useQuery(clientContractQueryOptions());
   const accountsQuery = useQuery(accountsListQueryOptions(ACCOUNT_LIST_PARAMS));
@@ -164,6 +165,29 @@ export function ReportsPage() {
     setSearchParams(next, { replace: true });
   }
 
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
+    let targetIndex: number | null = null;
+    if (event.key === "ArrowRight") {
+      targetIndex = (index + 1) % TABS.length;
+    } else if (event.key === "ArrowLeft") {
+      targetIndex = (index - 1 + TABS.length) % TABS.length;
+    } else if (event.key === "Home") {
+      targetIndex = 0;
+    } else if (event.key === "End") {
+      targetIndex = TABS.length - 1;
+    }
+    if (targetIndex === null) {
+      return;
+    }
+    event.preventDefault();
+    const nextTab = TABS[targetIndex];
+    if (!nextTab) {
+      return;
+    }
+    selectTab(nextTab.id);
+    tabRefs.current[nextTab.id]?.focus();
+  }
+
   function applyFilterValues(next: ReportFilterValues): void {
     if (next.currency !== applied.currency) {
       simulationMutation.reset();
@@ -227,18 +251,25 @@ export function ReportsPage() {
         aria-label="Report views"
         className="flex flex-wrap gap-1 border-b border-border pb-2"
       >
-        {TABS.map((tab) => {
+        {TABS.map((tab, index) => {
           const selected = activeTab === tab.id;
           return (
             <button
               key={tab.id}
+              ref={(el) => {
+                tabRefs.current[tab.id] = el;
+              }}
               type="button"
               role="tab"
               id={`tab-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
               aria-selected={selected}
               aria-controls={`panel-${tab.id}`}
               onClick={() => {
                 selectTab(tab.id);
+              }}
+              onKeyDown={(event) => {
+                handleTabKeyDown(event, index);
               }}
               className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 selected

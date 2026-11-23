@@ -13,6 +13,10 @@ Routes:
     ``GET /reports/trends`` — time-series income/expense buckets.
     ``GET /reports/export`` — CSV/JSON export of the above; xlsx/pdf → 501.
     ``GET /reports/budget-performance`` — deferred 501 (FR-09 / v4.1).
+    ``GET /reports/operating-cashflow`` — Operating Free Cashflow waterfall.
+    ``GET /reports/planned-vs-actual`` — Planned vs. Actual template variance.
+    ``GET /reports/debt-paydown`` — active liability interest-drag ranking.
+    ``POST /reports/debt-paydown/simulate`` — what-if avalanche/snowball simulator.
 
 Tenant scoping:
     All handlers depend on ``get_current_owner``. Ledger and balance reads never

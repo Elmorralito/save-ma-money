@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 from papita_txnsmodel.access.account_details.dto import CreditCardAccountDetailsDTO
@@ -148,8 +148,9 @@ def _detect_reconciliation_flags(
         txn_is_income = txn.transaction_kind == TransactionKind.INCOME
         for occ in open_occurrences:
             occ_is_income = occ.bucket in INCOME_BUCKETS
-            same_cat = txn_cat is not None and txn_cat == occ.category_id
-            if not (same_cat or txn_is_income == occ_is_income):
+            if txn_is_income != occ_is_income or occ.planned_amount <= 0:
+                continue
+            if txn_cat is not None and occ.category_id is not None and txn_cat != occ.category_id:
                 continue
             if (
                 abs(amount - occ.planned_amount) <= occ.planned_amount * 0.05
@@ -171,7 +172,7 @@ def _detect_reconciliation_flags(
                 )
                 break
 
-    seen_groups: dict[tuple[float, str, str, str, int, int], list[tuple[TransactionsDTO, date]]] = defaultdict(list)
+    seen_groups: dict[tuple[float, str, str, str], list[tuple[TransactionsDTO, date]]] = defaultdict(list)
     for txn in settled:
         txn_day = parse_timestamp(txn.transaction_ts).date()
         key = (
@@ -179,8 +180,6 @@ def _detect_reconciliation_flags(
             str(as_uuid(txn.category_id) or ""),
             str(as_uuid(txn.from_account_id) or ""),
             str(as_uuid(txn.to_account_id) or ""),
-            txn_day.year,
-            txn_day.month,
         )
         seen_groups[key].append((txn, txn_day))
 
@@ -245,7 +244,7 @@ def compute_planned_vs_actual(  # pylint: disable=too-many-arguments,too-many-lo
     as_of: date | None = None,
 ) -> dict[str, Any]:
     """Compare expanded planned templates against settled ledger postings."""
-    today = as_of or date.today()
+    today = as_of or datetime.now(timezone.utc).date()
     accounts_by_id = {acct.id: acct for acct in accounts if acct.id is not None}
     categories_by_id = {cat.id: cat for cat in categories if cat.id is not None}
     bucket_filter = cashflow_bucket.value if cashflow_bucket is not None else None
@@ -280,6 +279,7 @@ def compute_planned_vs_actual(  # pylint: disable=too-many-arguments,too-many-lo
     }
 
     unlinked_txns: list[tuple[TransactionsDTO, str]] = []
+    scoped_settled: list[TransactionsDTO] = []
     unplanned_groups: dict[tuple[uuid.UUID | None, str], dict[str, Any]] = {}
 
     for txn in settled:
@@ -288,6 +288,7 @@ def compute_planned_vs_actual(  # pylint: disable=too-many-arguments,too-many-lo
             continue
         if bucket_filter is not None and res.bucket != bucket_filter:
             continue
+        scoped_settled.append(txn)
 
         txn_day = parse_timestamp(txn.transaction_ts).date()
         tpl_id = as_uuid(txn.template_id)
@@ -403,7 +404,7 @@ def compute_planned_vs_actual(  # pylint: disable=too-many-arguments,too-many-lo
         status_tone = "negative"
 
     flags = _detect_reconciliation_flags(
-        settled=settled,
+        settled=scoped_settled,
         unlinked_txns=unlinked_txns,
         occurrences=occurrences,
         categories_by_id=categories_by_id,

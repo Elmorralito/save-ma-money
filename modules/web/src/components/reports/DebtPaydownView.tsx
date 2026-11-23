@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import { DebtSimulatorPanel } from "@/components/reports/DebtSimulatorPanel";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -33,10 +36,14 @@ export function DebtPaydownView({
   simulationError,
   onSimulate,
 }: DebtPaydownViewProps) {
+  const [showAllMonths, setShowAllMonths] = useState(false);
   const { summary, liquidity_context, excluded_liabilities, currency } = report;
   const liabilities = report.liabilities ?? [];
   const excludedNames = excluded_liabilities?.account_names ?? [];
   const simulationTrajectory = simulation?.monthly_trajectory ?? [];
+  const visibleTrajectory = showAllMonths
+    ? simulationTrajectory
+    : simulationTrajectory.slice(0, 24);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
@@ -175,8 +182,22 @@ export function DebtPaydownView({
           <div className="space-y-4">
             <TrajectorySvgChart trajectory={simulationTrajectory} currency={simulation.currency} />
             <div className="rounded-lg border border-border bg-card">
-              <div className="border-b border-border px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
                 <h3 className="text-sm font-semibold">Simulated Monthly Payoff Schedule</h3>
+                {simulationTrajectory.length > 24 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowAllMonths((prev) => !prev);
+                    }}
+                  >
+                    {showAllMonths
+                      ? "Show first 24 months"
+                      : `Show all ${String(simulationTrajectory.length)} months`}
+                  </Button>
+                ) : null}
               </div>
               <Table>
                 <TableHeader>
@@ -190,7 +211,7 @@ export function DebtPaydownView({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {simulationTrajectory.slice(0, 24).map((point) => (
+                  {visibleTrajectory.map((point) => (
                     <TableRow key={point.month}>
                       <TableCell className="font-medium">{point.month}</TableCell>
                       <TableCell className="text-right tabular-nums text-muted-foreground">

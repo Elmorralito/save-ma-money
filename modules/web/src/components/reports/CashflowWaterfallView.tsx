@@ -331,7 +331,14 @@ function BucketTableRow({
         </TableCell>
         <TableCell className="text-right">
           {hasCategories ? (
-            <Button type="button" size="sm" variant="ghost" onClick={onToggle}>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-expanded={expanded}
+              aria-label={`${expanded ? "Hide" : "Show"} top categories for ${item.label}`}
+              onClick={onToggle}
+            >
               {expanded ? "Hide" : "Top"}
             </Button>
           ) : (

@@ -388,4 +388,68 @@ describe("ReportsPage", () => {
     });
     expect(screen.getByRole("alert")).toHaveTextContent(/not found for your tenant/i);
   });
+
+  it("formats debt KPI using debt.currency when different from waterfall, supports ArrowRight tab navigation, and exposes aria-expanded on bucket toggle", async () => {
+    const user = userEvent.setup();
+    mockHappyPath();
+    vi.mocked(reportsApi.getDebtPaydownReport).mockResolvedValue({
+      currency: "COP",
+      available_currencies: ["USD", "COP"],
+      multi_currency_warning: true,
+      summary: {
+        total_debt: 5000000,
+        active_liability_count: 1,
+        total_monthly_interest_drag: 75000,
+        total_annual_interest_drag: 900000,
+        total_monthly_contractual_payment: 250000,
+        weighted_average_ea_pct: 19.0,
+        highest_rate_account_name: "Loan COP",
+        highest_rate_payoff_date: "2027-08-01",
+      },
+      liabilities: [],
+      liquidity_context: {
+        liquid_cash_total: 10000000,
+        baseline_monthly_burn: 2000000,
+        liquid_runway_months: 5,
+        target_liquidity_months: 4,
+        safe_lump_sum_headroom: 2000000,
+      },
+      excluded_liabilities: null,
+    });
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <ReportsPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Cashflow Waterfall")).toBeInTheDocument();
+    });
+
+    const toggleBtn = screen.getByRole("button", {
+      name: "Show top categories for Fixed Income",
+    });
+    expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggleBtn);
+    expect(
+      screen.getByRole("button", { name: "Hide top categories for Fixed Income" }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    // Debt KPI uses COP formatting rather than waterfall USD
+    await waitFor(() => {
+      expect(screen.getByText(/COP\s*75,000/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/\$75,000/)).not.toBeInTheDocument();
+
+    // WAI-ARIA ArrowRight moves selection & focus from Operating Cashflow to Planned vs. Actual
+    const firstTab = screen.getByRole("tab", { name: "Operating Cashflow" });
+    firstTab.focus();
+    await user.keyboard("{ArrowRight}");
+    const secondTab = screen.getByRole("tab", { name: "Planned vs. Actual" });
+    expect(secondTab).toHaveAttribute("aria-selected", "true");
+    expect(secondTab).toHaveFocus();
+  });
 });

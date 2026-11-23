@@ -554,3 +554,22 @@ class TestReportsRoutes:
         bypass_resp = client.get("/api/v1/reports/operating-cashflow", params=_SPENDING_PARAMS)
         assert bypass_resp.status_code == 200
         assert bypass_resp.headers["X-Cache"] == "BYPASS"
+
+        # Uppercase cashflow_bucket normalizes to canonical lowercase cache slug
+        from papita_txnsapi.schemas.query_params import ReportPlannedVsActualQuery
+        from papita_txnsmodel.model.enums import CashflowBucket
+
+        q = ReportPlannedVsActualQuery(
+            start_date="2026-02-01",
+            end_date="2026-02-28",
+            cashflow_bucket="FIXED_EXPENSE",
+        )
+        assert q.cashflow_bucket == "fixed_expense"
+        assert q.service_kwargs()["cashflow_bucket"] == CashflowBucket.FIXED_EXPENSE
+
+        upper_resp = client.get(
+            "/api/v1/reports/planned-vs-actual",
+            params={**_SPENDING_PARAMS, "cashflow_bucket": "FIXED_EXPENSE"},
+        )
+        assert upper_resp.status_code == 200
+        assert mock_service.planned_vs_actual.call_args.kwargs["cashflow_bucket"] == CashflowBucket.FIXED_EXPENSE

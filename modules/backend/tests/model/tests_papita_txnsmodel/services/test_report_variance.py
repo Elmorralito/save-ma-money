@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, timezone
 
+from papita_txnsmodel.access.account_details.dto import CreditCardAccountDetailsDTO
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.access.categories.dto import CategoriesDTO
 from papita_txnsmodel.access.transactions.dto import TransactionsDTO, TransactionTemplatesDTO
@@ -385,3 +386,149 @@ def test_planned_vs_actual_filters_statuses_and_zero_planned_branches() -> None:
     )
     assert mild_report["summary"]["adherence_pct"] == 0.0
     assert mild_report["summary"]["status_tone"] == "warning"
+
+
+def test_reconciliation_scoping_cross_month_duplicates_and_category_mismatch() -> None:
+    """Ensure flags respect cross-category mismatches, cross-month duplicates, and scoped exclusion."""
+    owner_id = uuid.uuid4()
+    checking = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Checking",
+        account_kind=AccountKind.CHECKING,
+        ledger_side=LedgerSide.ASSET,
+        currency="USD",
+    )
+    cc_cashflow_only = AccountsDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        name="Cashflow Card",
+        account_kind=AccountKind.CREDIT_CARD,
+        ledger_side=LedgerSide.LIABILITY,
+        currency="USD",
+    )
+    cat_rent = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Rent",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=CashflowBucket.FIXED_EXPENSE,
+    )
+    cat_dining = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Dining",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=CashflowBucket.VARIABLE_EXPENSE,
+    )
+    cat_unbucketed_var = CategoriesDTO(
+        id=uuid.uuid4(),
+        name="Variable Misc",
+        category_kind=CategoryKind.EXPENSE,
+        cashflow_bucket=None,
+    )
+
+    tpl_rent = TransactionTemplatesDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        category_id=cat_rent.id,
+        name="Apartment Rent",
+        planned_amount=500.0,
+        planned_day=1,
+        due_date=date(2026, 2, 1),
+        from_account_id=checking.id,
+    )
+    txns = [
+        # Unlinked dining expense on same date & amount as open Rent template -> MUST NOT flag unlinked_high_value
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=500.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 2, 1, 12, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            category_id=cat_dining.id,
+        ),
+        # Cross-month duplicates (Jan 31 & Feb 1) -> MUST trigger potential_duplicate
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=35.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 1, 31, 10, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            category_id=cat_dining.id,
+        ),
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=35.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 2, 1, 10, 0, tzinfo=timezone.utc),
+            from_account_id=checking.id,
+            category_id=cat_dining.id,
+        ),
+        # Excluded cashflow_only CC itemized duplicates (unbucketed cat) -> MUST NOT trigger any flags
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=22.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 2, 3, 9, 0, tzinfo=timezone.utc),
+            from_account_id=cc_cashflow_only.id,
+            category_id=cat_unbucketed_var.id,
+        ),
+        TransactionsDTO(
+            owner_id=owner_id,
+            transaction_kind=TransactionKind.EXPENSE,
+            amount=22.0,
+            currency="USD",
+            transaction_ts=datetime(2026, 2, 4, 9, 0, tzinfo=timezone.utc),
+            from_account_id=cc_cashflow_only.id,
+            category_id=cat_unbucketed_var.id,
+        ),
+    ]
+
+    report = compute_planned_vs_actual(
+        templates=[tpl_rent],
+        transactions=txns,
+        accounts=[checking, cc_cashflow_only],
+        categories=[cat_rent, cat_dining, cat_unbucketed_var],
+        cc_details_by_id={
+            cc_cashflow_only.id: CreditCardAccountDetailsDTO(
+                account_id=cc_cashflow_only.id,
+                credit_limit=1000.0,
+                cashflow_only=True,
+            )
+        },
+        start_day=date(2026, 1, 25),
+        end_day=date(2026, 2, 10),
+        requested_currency="USD",
+        as_of=date(2026, 2, 5),
+    )
+
+    flags = report["reconciliation_flags"]
+    codes = [flag["code"] for flag in flags]
+    assert "unlinked_high_value" not in codes
+    assert "unbucketed_category" not in codes
+    assert codes == ["potential_duplicate"]
+    assert flags[0]["amount"] == 35.0
+
+    # Bucket filter set to FIXED_EXPENSE excludes VARIABLE_EXPENSE duplicate postings from flags too
+    fixed_only = compute_planned_vs_actual(
+        templates=[tpl_rent],
+        transactions=txns,
+        accounts=[checking, cc_cashflow_only],
+        categories=[cat_rent, cat_dining, cat_unbucketed_var],
+        cc_details_by_id={
+            cc_cashflow_only.id: CreditCardAccountDetailsDTO(
+                account_id=cc_cashflow_only.id,
+                credit_limit=1000.0,
+                cashflow_only=True,
+            )
+        },
+        start_day=date(2026, 1, 25),
+        end_day=date(2026, 2, 10),
+        requested_currency="USD",
+        cashflow_bucket=CashflowBucket.FIXED_EXPENSE,
+        as_of=date(2026, 2, 5),
+    )
+    assert fixed_only["reconciliation_flags"] == []
