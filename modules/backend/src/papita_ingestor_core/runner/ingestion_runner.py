@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
+import re
 from collections.abc import Callable, Iterable, Iterator
 from typing import Any, TypeAlias
 
@@ -20,12 +23,36 @@ from papita_ingestor_core.settings.base import BaseIngestorSettings
 from papita_ingestor_core.sources.base import BaseIngestorSource
 from papita_ingestor_core.types.records import FetchFilter, RawRecord, RecordFailure, RunResult
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.enums import IngestionSource
 from papita_txnsmodel.services.ingestion import IngestionBridgeService
 
 logger = logging.getLogger(__name__)
 
 OwnerProvider: TypeAlias = UsersDTO | Callable[[], UsersDTO]
 _KNOWN_OUTCOMES = frozenset({"created", "updated", "reactivated"})
+_DOMAIN_RE = re.compile(r"@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
+_MAX_NON_EMAIL_DLQ_CHARS = 16_384
+
+
+def _safe_dlq_payload(record: RawRecord) -> str:
+    """Return a privacy-safe DLQ payload (redacts raw email content/attachments)."""
+    if record.ingestion_source == IngestionSource.EMAIL:
+        raw_bytes = record.content if isinstance(record.content, bytes) else record.content.encode("utf-8", "replace")
+        sender_meta = str(record.metadata.get("sender") or "")
+        domain_match = _DOMAIN_RE.search(sender_meta)
+        summary = {
+            "redacted": True,
+            "source_id": record.source_id,
+            "source_ref": record.source_ref,
+            "sender_domain": domain_match.group(1).lower() if domain_match else None,
+            "payload_bytes": len(raw_bytes),
+            "payload_sha256": hashlib.sha256(raw_bytes).hexdigest(),
+        }
+        return json.dumps(summary, sort_keys=True)
+    encoded = encode_raw_payload(record)
+    if len(encoded) > _MAX_NON_EMAIL_DLQ_CHARS:
+        return encoded[:_MAX_NON_EMAIL_DLQ_CHARS]
+    return encoded
 
 
 class IngestionRunner:
@@ -271,8 +298,8 @@ class IngestionRunner:
             self._bridge.record_dead_letter(
                 owner=owner,
                 ingestion_source=record.ingestion_source,
-                raw_payload=encode_raw_payload(record),
-                error_message=str(exc),
+                raw_payload=_safe_dlq_payload(record),
+                error_message=type(exc).__name__,
                 source_ref=record.source_ref,
             )
             dead_lettered = True

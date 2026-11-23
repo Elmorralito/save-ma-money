@@ -33,6 +33,10 @@ def execute_with_run_status(  # pylint: disable=too-many-arguments,too-many-loca
     connection_service: IngestionConnectionService | Any | None = None,
     run_service: IngestionRunService | Any | None = None,
     persist_status: bool = True,
+    email_senders: list[str] | None = None,
+    email_subjects: list[str] | None = None,
+    email_source_label: str | None = None,
+    email_query: str | None = None,
 ) -> RunResult:
     """Upsert connection -> start run -> ``runner.run`` -> finish run (or FAILED on abort).
 
@@ -58,7 +62,12 @@ def execute_with_run_status(  # pylint: disable=too-many-arguments,too-many-loca
                 deployment_name=deployment_name,
                 enabled=True,
                 lookback_hours=lookback_hours,
+                email_senders=list(email_senders or []),
+                email_subjects=list(email_subjects or []),
+                email_source_label=email_source_label,
+                email_query=email_query,
             ),
+            preserve_existing_config=True,
         )
         connection_id = connection.id
         started = run_svc.start_run(
@@ -88,7 +97,7 @@ def execute_with_run_status(  # pylint: disable=too-many-arguments,too-many-loca
             started_at=started_at,
             flow_name=flow_name,
             deployment_name=deployment_name,
-            error_summary=str(exc),
+            error_summary=type(exc).__name__,
         )
         raise
 

@@ -36,6 +36,10 @@ def execute_with_run_status(
         connection_service=connection_service,
         run_service=run_service,
         persist_status=persist_status,
+        email_senders=list(settings.email_senders),
+        email_subjects=list(settings.email_subjects),
+        email_source_label=settings.email_source_label,
+        email_query=settings.email_query,
     )
 
 

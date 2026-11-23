@@ -24,8 +24,10 @@ from papita_ingestor_email.runtime import (
 )
 from papita_ingestor_email.sources.gmail import GmailSource
 from papita_ingestor_email.wiring import EmailFlowDeps
+from papita_txnsmodel.access.ingestion.dto import IngestionConnectionDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.ingestion import IngestionBridgeService
+from papita_txnsmodel.services.ingestion_status import IngestionConnectionService
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +37,71 @@ _RUNNER_HEALTH_PORT = 8080
 
 
 def default_fetch_filter(settings: EmailFlowSettings) -> FetchFilter:
-    """Build a lookback ``since`` filter; ``fetch_limit`` stays on runner settings only."""
+    """Build lookback + channel filter; ``fetch_limit`` stays on runner settings only."""
     since = datetime.now(timezone.utc) - timedelta(hours=settings.lookback_hours)
-    return FetchFilter(since=since)
+    extra: dict[str, object] = {}
+    if settings.email_senders:
+        extra["senders"] = list(settings.email_senders)
+    if settings.email_subjects:
+        extra["subjects"] = list(settings.email_subjects)
+    if settings.email_source_label:
+        extra["source_label"] = settings.email_source_label
+    if settings.email_query:
+        extra["q"] = settings.email_query
+    return FetchFilter(since=since, extra=extra)
+
+
+def fetch_filter_from_connection(connection: IngestionConnectionDTO) -> FetchFilter:
+    """Build lookback + channel filter from an owner's persisted DB connection."""
+    since = datetime.now(timezone.utc) - timedelta(hours=connection.lookback_hours)
+    extra: dict[str, object] = {}
+    if connection.email_senders:
+        extra["senders"] = list(connection.email_senders)
+    if connection.email_subjects:
+        extra["subjects"] = list(connection.email_subjects)
+    if connection.email_source_label:
+        extra["source_label"] = connection.email_source_label
+    if connection.email_query:
+        extra["q"] = connection.email_query
+    return FetchFilter(since=since, extra=extra)
+
+
+def _has_channel_scope(fetch_filter: FetchFilter | None) -> bool:
+    """Return True when at least one narrowing email channel filter is configured."""
+    if fetch_filter is None or not fetch_filter.extra:
+        return False
+    extra = fetch_filter.extra
+    for key in ("senders", "sender", "source_label", "label", "subjects", "subject", "q"):
+        val = extra.get(key)
+        if isinstance(val, str) and val.strip():
+            return True
+        if isinstance(val, (list, tuple, set)) and any(str(item).strip() for item in val):
+            return True
+    return False
+
+
+def _load_db_connection(
+    *,
+    runner: IngestionRunner,
+    wiring: EmailFlowDeps,
+    flow_name: str,
+    should_persist_status: bool,
+) -> IngestionConnectionDTO | None:
+    """Load the owner's persisted email connection config when DB status is active."""
+    conn_svc = wiring.connection_service or (IngestionConnectionService() if should_persist_status else None)
+    if conn_svc is None or not hasattr(conn_svc, "get_connection_by_natural_key"):
+        return None
+    owner = runner._resolve_owner()  # pylint: disable=protected-access  # intentional plugin seam
+    try:
+        found = conn_svc.get_connection_by_natural_key(owner=owner, provider="email", flow_name=flow_name)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception(
+            "Failed to load persisted ingestion connection owner_id=%s flow_name=%s; falling back to env settings",
+            owner.id,
+            flow_name,
+        )
+        return None
+    return found if isinstance(found, IngestionConnectionDTO) else None
 
 
 def build_email_runner(deps: EmailFlowDeps | None = None) -> IngestionRunner:
@@ -121,8 +185,33 @@ def build_email_ingestion_flow(
 
     def _run_batch(fetch_filter: FetchFilter | None = None) -> RunResult:
         runner = build_email_runner(wiring)
-        eff_filter = fetch_filter if fetch_filter is not None else default_fetch_filter(settings)
         provider_label = "email" if wiring.connector_id == "gmail" else runner.source_id
+        eff_filter = fetch_filter
+        if eff_filter is None:
+            db_conn = _load_db_connection(
+                runner=runner,
+                wiring=wiring,
+                flow_name=name,
+                should_persist_status=should_persist_status,
+            )
+            if db_conn is not None:
+                if not db_conn.enabled:
+                    logger.info(
+                        "Skipping disabled email ingestion connection id=%s owner_id=%s",
+                        db_conn.id,
+                        db_conn.owner_id,
+                    )
+                    return RunResult()
+                eff_filter = fetch_filter_from_connection(db_conn)
+            else:
+                eff_filter = default_fetch_filter(settings)
+            if not _has_channel_scope(eff_filter):
+                logger.warning(
+                    "Skipping email ingestion: no channel filters configured for owner_id=%s flow_name=%s",
+                    settings.owner_id,
+                    name,
+                )
+                return RunResult()
         return execute_with_run_status(
             runner,
             eff_filter,
@@ -179,9 +268,27 @@ def _run_once_exit_code(result: RunResult) -> int:
     return 0
 
 
+def _apply_cli_filter_overrides(settings: EmailFlowSettings, args: argparse.Namespace) -> EmailFlowSettings:
+    """Return updated settings when optional CLI channel filter flags are supplied."""
+    updates: dict[str, object] = {}
+    if args.lookback_hours is not None:
+        updates["lookback_hours"] = args.lookback_hours
+    if args.sender is not None:
+        updates["email_senders"] = [part.strip() for item in args.sender for part in item.split(",") if part.strip()]
+    if args.subject is not None:
+        updates["email_subjects"] = [part.strip() for item in args.subject for part in item.split(",") if part.strip()]
+    if args.source_label is not None:
+        updates["email_source_label"] = args.source_label.strip() or None
+    if args.query is not None:
+        updates["email_query"] = args.query.strip() or None
+    if not updates:
+        return settings
+    return settings.model_copy(update=updates)
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI: ``--once`` for a single run; default serves the hourly schedule."""
-    parser = argparse.ArgumentParser(description="Papita email ingestion Prefect flow (PPT-082)")
+    parser = argparse.ArgumentParser(description="Papita email ingestion runner (PPT-082)")
     parser.add_argument(
         "--once",
         action="store_true",
@@ -192,6 +299,34 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=None,
         help="Override PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES when serving",
+    )
+    parser.add_argument(
+        "--lookback-hours",
+        type=int,
+        default=None,
+        help="Override PAPITA_INGESTOR_LOOKBACK_HOURS for fetched Gmail window",
+    )
+    parser.add_argument(
+        "--sender",
+        action="append",
+        default=None,
+        help="Override PAPITA_INGESTOR_EMAIL_SENDERS (repeatable or comma-separated)",
+    )
+    parser.add_argument(
+        "--subject",
+        action="append",
+        default=None,
+        help="Override PAPITA_INGESTOR_EMAIL_SUBJECTS (repeatable or comma-separated)",
+    )
+    parser.add_argument(
+        "--source-label",
+        default=None,
+        help="Override PAPITA_INGESTOR_EMAIL_SOURCE_LABEL (restrict to a Gmail label)",
+    )
+    parser.add_argument(
+        "--query",
+        default=None,
+        help="Override PAPITA_INGESTOR_EMAIL_QUERY (raw Gmail search fragment)",
     )
     parser.add_argument(
         "--skip-env-file",
@@ -218,7 +353,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     if not args.skip_env_file:
         load_environment_file(override=False)
-    settings = EmailFlowSettings()
+    settings = _apply_cli_filter_overrides(EmailFlowSettings(), args)
     preflight_owner: UsersDTO | None = None
     if not args.skip_preflight:
         if args.connector == "gmail":
@@ -257,7 +392,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.once:
         flow_fn = build_email_ingestion_flow(deps=deps)
         result = flow_fn(None)
-        logger.info("Email ingestion finished: %s", result.model_dump())
+        logger.info(
+            "Email ingestion finished: fetched=%d created=%d updated=%d reactivated=%d "
+            "failed=%d dead_lettered=%d acknowledged=%d dry_run_skipped=%d",
+            result.fetched,
+            result.created,
+            result.updated,
+            result.reactivated,
+            result.failed,
+            result.dead_lettered,
+            result.acknowledged,
+            result.dry_run_skipped,
+        )
         return _run_once_exit_code(result)
     serve_email_ingestion(
         deps=deps,
@@ -275,6 +421,7 @@ __all__ = [
     "build_email_ingestion_flow",
     "build_email_runner",
     "default_fetch_filter",
+    "fetch_filter_from_connection",
     "main",
     "serve_email_ingestion",
 ]

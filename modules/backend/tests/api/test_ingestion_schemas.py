@@ -31,6 +31,10 @@ def test_connection_response_from_dto_allowlisted_only() -> None:
         deployment_name="papita-email-ingestion-hourly",
         enabled=True,
         lookback_hours=24,
+        email_senders=["notificacionesbancolombia.com", "nequi.com.co"],
+        email_subjects=["Alertas y Notificaciones"],
+        email_source_label="Finanzas/Bancos",
+        email_query="in:inbox",
         created_at=now,
         updated_at=now,
     )
@@ -39,6 +43,10 @@ def test_connection_response_from_dto_allowlisted_only() -> None:
     assert payload["id"] == conn_id
     assert payload["provider"] == "email"
     assert payload["flow_name"] == "papita-email-ingestion"
+    assert payload["email_senders"] == ["notificacionesbancolombia.com", "nequi.com.co"]
+    assert payload["email_subjects"] == ["Alertas y Notificaciones"]
+    assert payload["email_source_label"] == "Finanzas/Bancos"
+    assert payload["email_query"] == "in:inbox"
     assert "owner_id" not in payload
     assert "raw_payload" not in payload
     assert "refresh_token" not in payload
@@ -49,6 +57,10 @@ def test_connection_response_from_dto_allowlisted_only() -> None:
         "deployment_name",
         "enabled",
         "lookback_hours",
+        "email_senders",
+        "email_subjects",
+        "email_source_label",
+        "email_query",
         "created_at",
         "updated_at",
     }

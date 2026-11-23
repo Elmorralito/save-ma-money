@@ -184,7 +184,13 @@ def test_email_flow_applies_lookback_and_persists_injected_fks() -> None:
     bridge = _FakeBridge()
     source = _FakeSource([_raw("ok-1")])
     owner_id = uuid.uuid4()
-    settings = EmailFlowSettings(owner_id=owner_id, flow_retries=0, lookback_hours=3, fetch_limit=7)
+    settings = EmailFlowSettings(
+        owner_id=owner_id,
+        flow_retries=0,
+        lookback_hours=3,
+        fetch_limit=7,
+        email_senders=["notificacionesbancolombia.com"],
+    )
 
     import papita_ingestor_email.flows.email_flow as email_flow_mod
 
@@ -247,7 +253,12 @@ def test_email_flow_persists_connection_and_run_status() -> None:
     bridge = _FakeBridge()
     source = _FakeSource([_raw("ok-status-1")])
     owner_id = uuid.uuid4()
-    settings = EmailFlowSettings(owner_id=owner_id, flow_retries=0, lookback_hours=6)
+    settings = EmailFlowSettings(
+        owner_id=owner_id,
+        flow_retries=0,
+        lookback_hours=6,
+        email_senders=["notificacionesbancolombia.com"],
+    )
     conn_svc = _FakeConnectionService()
     run_svc = _FakeRunService()
 
@@ -325,7 +336,12 @@ def test_email_flow_skips_status_persist_when_dry_run() -> None:
     bridge = _FakeBridge()
     source = _FakeSource([_raw("dry-1")])
     owner_id = uuid.uuid4()
-    settings = EmailFlowSettings(owner_id=owner_id, flow_retries=0, dry_run=True)
+    settings = EmailFlowSettings(
+        owner_id=owner_id,
+        flow_retries=0,
+        dry_run=True,
+        email_senders=["notificacionesbancolombia.com"],
+    )
     conn_svc = _FakeConnectionService()
     run_svc = _FakeRunService()
 
@@ -375,3 +391,226 @@ def test_real_bridge_path_establishes_database_and_verifies_owner() -> None:
         build_email_runner(EmailFlowDeps(flow_settings=settings))
         establish.assert_called_once_with(require=True)
         verify.assert_called_once_with(owner_id)
+
+
+def test_default_fetch_filter_defaults_empty_and_maps_channel_filters() -> None:
+    owner_id = uuid.uuid4()
+    default_settings = EmailFlowSettings(owner_id=owner_id)
+    default_filt = default_fetch_filter(default_settings)
+    assert default_filt.extra == {}
+
+    custom_settings = EmailFlowSettings(
+        owner_id=owner_id,
+        email_senders=["notificacionesbancolombia.com", "nequi.com.co"],
+        email_subjects=["Alertas y Notificaciones", "Compra"],
+        email_source_label="Finanzas/Bancos",
+        email_query="in:inbox",
+    )
+    custom_filt = default_fetch_filter(custom_settings)
+    assert custom_filt.extra == {
+        "senders": ["notificacionesbancolombia.com", "nequi.com.co"],
+        "subjects": ["Alertas y Notificaciones", "Compra"],
+        "source_label": "Finanzas/Bancos",
+        "q": "in:inbox",
+    }
+
+
+def test_flow_loads_per_user_db_connection_config_and_honors_disabled() -> None:
+    from papita_ingestor_email.flows import email_flow as email_flow_mod
+    from papita_txnsmodel.access.ingestion.dto import IngestionConnectionDTO
+
+    owner_id = uuid.uuid4()
+    owner = users_dto_for_owner_id(owner_id)
+    db_conn = IngestionConnectionDTO(
+        id=uuid.uuid4(),
+        owner_id=owner_id,
+        provider="email",
+        flow_name="papita-email-ingestion",
+        enabled=True,
+        lookback_hours=6,
+        email_senders=["chase.com", "global66.com"],
+        email_subjects=["Transaction Alert"],
+        email_source_label="Finanzas",
+        email_query="in:inbox",
+    )
+
+    class _ConfigConnectionService(_FakeConnectionService):
+        def __init__(self, connection: IngestionConnectionDTO | None) -> None:
+            super().__init__()
+            self._connection = connection
+
+        def get_connection_by_natural_key(self, **_kwargs: object) -> IngestionConnectionDTO | None:
+            return self._connection
+
+    source = _FakeSource([])
+    conn_svc = _ConfigConnectionService(db_conn)
+    run_svc = _FakeRunService()
+    flow_fn = email_flow_mod.build_email_ingestion_flow(
+        deps=EmailFlowDeps(
+            flow_settings=EmailFlowSettings(owner_id=owner_id, dry_run=False),
+            source=source,
+            bridge=_FakeBridge(),
+            owner=owner,
+            establish_db=False,
+            verify_owner=False,
+            connection_service=conn_svc,
+            run_service=run_svc,
+        )
+    )
+    flow_fn(None)
+    assert source.last_filter is not None
+    assert source.last_filter.extra == {
+        "senders": ["chase.com", "global66.com"],
+        "subjects": ["Transaction Alert"],
+        "source_label": "Finanzas",
+        "q": "in:inbox",
+    }
+    assert conn_svc.upserts[0]["kwargs"].get("preserve_existing_config") is True
+
+    disabled_source = _FakeSource([_raw("should-not-fetch")])
+    disabled_flow = email_flow_mod.build_email_ingestion_flow(
+        deps=EmailFlowDeps(
+            flow_settings=EmailFlowSettings(owner_id=owner_id, dry_run=False),
+            source=disabled_source,
+            bridge=_FakeBridge(),
+            owner=owner,
+            establish_db=False,
+            verify_owner=False,
+            connection_service=_ConfigConnectionService(db_conn.model_copy(update={"enabled": False})),
+            run_service=_FakeRunService(),
+        )
+    )
+    disabled_result = disabled_flow(None)
+    assert disabled_result.fetched == 0
+    assert disabled_source.last_filter is None
+
+
+def test_flow_fails_closed_when_no_channel_filters_configured() -> None:
+    from papita_ingestor_email.flows import email_flow as email_flow_mod
+
+    owner_id = uuid.uuid4()
+    source = _FakeSource([_raw("private-personal-email")])
+    flow_fn = email_flow_mod.build_email_ingestion_flow(
+        deps=EmailFlowDeps(
+            flow_settings=EmailFlowSettings(owner_id=owner_id, dry_run=False),
+            source=source,
+            bridge=_FakeBridge(),
+            owner=users_dto_for_owner_id(owner_id),
+            establish_db=False,
+            verify_owner=False,
+            connection_service=_FakeConnectionService(),
+            run_service=_FakeRunService(),
+        )
+    )
+    result = flow_fn(None)
+    assert result.fetched == 0
+    assert source.last_filter is None
+
+
+def test_email_dead_letter_redacts_raw_email_body() -> None:
+    import json
+
+    bridge = _FakeBridge()
+    secret_body = b"From: private@personal.com\r\nSubject: 2FA\r\n\r\nYour OTP is 998877"
+    source = _FakeSource(
+        [
+            RawRecord(
+                source_id="fake-gmail",
+                source_ref="msg-secret-1",
+                content=secret_body,
+                metadata={"sender": "Private User <private@personal.com>"},
+                ingestion_source=IngestionSource.EMAIL,
+            )
+        ]
+    )
+    owner_id = uuid.uuid4()
+    runner = build_email_runner(
+        EmailFlowDeps(
+            flow_settings=EmailFlowSettings(owner_id=owner_id),
+            source=source,
+            bridge=bridge,
+            owner=users_dto_for_owner_id(owner_id),
+            establish_db=False,
+            verify_owner=False,
+        )
+    )
+    result = runner.run()
+    assert result.dead_lettered == 1
+    assert len(bridge.dead_letters) == 1
+    dlq_payload = bridge.dead_letters[0]["raw_payload"]
+    assert "998877" not in dlq_payload
+    assert "private@personal.com" not in dlq_payload
+    parsed = json.loads(dlq_payload)
+    assert parsed["redacted"] is True
+    assert parsed["sender_domain"] == "personal.com"
+    assert parsed["source_ref"] == "msg-secret-1"
+
+
+def test_email_flow_settings_parses_env_channel_filters(monkeypatch: object) -> None:
+    import pytest
+
+    mp = monkeypatch
+    assert isinstance(mp, pytest.MonkeyPatch)
+    mp.setenv("PAPITA_INGESTOR_OWNER_ID", str(uuid.uuid4()))
+    mp.setenv("PAPITA_INGESTOR_EMAIL_SENDERS", "notificacionesbancolombia.com, nequi.com.co ")
+    mp.setenv("PAPITA_INGESTOR_EMAIL_SUBJECTS", '["Alertas y Notificaciones", "Transferencia"]')
+    mp.setenv("PAPITA_INGESTOR_EMAIL_SOURCE_LABEL", "  Bank Alerts  ")
+    mp.setenv("PAPITA_INGESTOR_EMAIL_QUERY", "  ")
+
+    settings = EmailFlowSettings()
+    assert settings.email_senders == ["notificacionesbancolombia.com", "nequi.com.co"]
+    assert settings.email_subjects == ["Alertas y Notificaciones", "Transferencia"]
+    assert settings.email_source_label == "Bank Alerts"
+    assert settings.email_query is None
+
+    mp.setenv("PAPITA_INGESTOR_EMAIL_SENDERS", "")
+    empty_sender_settings = EmailFlowSettings()
+    assert empty_sender_settings.email_senders == []
+    assert "senders" not in default_fetch_filter(empty_sender_settings).extra
+
+
+def test_cli_once_applies_channel_filter_overrides(monkeypatch: object) -> None:
+    import pytest
+
+    from papita_ingestor_core.types.records import RunResult
+    from papita_ingestor_email.flows import email_flow as email_flow_mod
+
+    mp = monkeypatch
+    assert isinstance(mp, pytest.MonkeyPatch)
+    mp.setenv("PAPITA_INGESTOR_OWNER_ID", str(uuid.uuid4()))
+    captured: list[EmailFlowSettings] = []
+
+    def _fake_build_flow(*, deps: EmailFlowDeps, **_kwargs: object) -> object:
+        assert deps.flow_settings is not None
+        captured.append(deps.flow_settings)
+        return lambda _f: RunResult(fetched=0)
+
+    with patch.object(email_flow_mod, "build_email_ingestion_flow", side_effect=_fake_build_flow):
+        exit_code = email_flow_mod.main(
+            [
+                "--once",
+                "--skip-env-file",
+                "--skip-preflight",
+                "--lookback-hours",
+                "4",
+                "--sender",
+                "alertasynotificaciones@notificacionesbancolombia.com,nequi.com.co",
+                "--subject",
+                "Alertas y Notificaciones",
+                "--source-label",
+                "Finanzas",
+                "--query",
+                "in:inbox",
+            ]
+        )
+
+    assert exit_code == 0
+    assert len(captured) == 1
+    assert captured[0].lookback_hours == 4
+    assert captured[0].email_senders == [
+        "alertasynotificaciones@notificacionesbancolombia.com",
+        "nequi.com.co",
+    ]
+    assert captured[0].email_subjects == ["Alertas y Notificaciones"]
+    assert captured[0].email_source_label == "Finanzas"
+    assert captured[0].email_query == "in:inbox"

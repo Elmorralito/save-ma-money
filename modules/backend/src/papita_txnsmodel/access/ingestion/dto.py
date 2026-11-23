@@ -40,7 +40,7 @@ class IngestionDeadLetterDTO(OwnedTableDTO):
 
 
 class IngestionConnectionDTO(OwnedTableDTO):
-    """Non-secret connection metadata for status APIs (PPT-083 / #177)."""
+    """Non-secret connection metadata and channel filters (PPT-083 / #177)."""
 
     __dao_type__ = IngestionConnection
 
@@ -48,7 +48,11 @@ class IngestionConnectionDTO(OwnedTableDTO):
     flow_name: str = Field(min_length=1, max_length=128)
     deployment_name: str | None = Field(default=None, max_length=128)
     enabled: bool = True
-    lookback_hours: int = Field(default=24, ge=1)
+    lookback_hours: int = Field(default=24, ge=1, le=720)
+    email_senders: list[str] = Field(default_factory=list)
+    email_subjects: list[str] = Field(default_factory=list)
+    email_source_label: str | None = Field(default=None, max_length=255)
+    email_query: str | None = None
 
 
 class IngestionRunDTO(OwnedTableDTO):

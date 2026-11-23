@@ -43,12 +43,19 @@ from papita_txnsapi.schemas.ingestion import (
     IBKRImportRequest,
     IBKRImportResponse,
     IngestionConnectionResponse,
+    IngestionConnectionUpdateRequest,
+    IngestionConnectionUpsertRequest,
     IngestionRunResponse,
 )
 from papita_txnsmodel.access.ingestion.dto import IngestionRunDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
 from papita_txnsmodel.services.ibkr_import import IBKRImportService
-from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
+from papita_txnsmodel.services.ingestion_status import (
+    IngestionConnectionService,
+    IngestionRunService,
+    UpdateIngestionConnectionRequest,
+    UpsertIngestionConnectionRequest,
+)
 from papita_txnsmodel.services.portfolio_import import PortfolioImportService
 
 router = APIRouter(
@@ -105,6 +112,29 @@ def list_ingestion_connections(
     )
 
 
+@router.put("/connections", response_model=IngestionConnectionResponse)
+def upsert_ingestion_connection(
+    payload: IngestionConnectionUpsertRequest,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+) -> IngestionConnectionResponse:
+    """Create or update an owner-scoped ingestion connection and its channel filters.
+
+    Args:
+        payload: Non-secret connection and email channel filter configuration.
+        owner: Authenticated tenant from JWT.
+        connection_service: Injected connection service.
+
+    Returns:
+        Saved allowlisted connection resource.
+    """
+    saved = connection_service.upsert_connection(
+        owner=owner,
+        request=UpsertIngestionConnectionRequest(**payload.model_dump()),
+    )
+    return IngestionConnectionResponse.from_dto(saved)
+
+
 @router.get("/connections/{connection_id}", response_model=IngestionConnectionResponse)
 def get_ingestion_connection(
     connection_id: uuid.UUID,
@@ -125,6 +155,47 @@ def get_ingestion_connection(
     if connection is None:
         raise _connection_not_found()
     return IngestionConnectionResponse.from_dto(connection)
+
+
+@router.patch("/connections/{connection_id}", response_model=IngestionConnectionResponse)
+def update_ingestion_connection(
+    connection_id: uuid.UUID,
+    payload: IngestionConnectionUpdateRequest,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+) -> IngestionConnectionResponse:
+    """Partially update channel filters or schedule settings on an owned connection.
+
+    Args:
+        connection_id: Connection primary key.
+        payload: Partial fields to update (unset fields are left unchanged).
+        owner: Authenticated tenant from JWT.
+        connection_service: Injected connection service.
+
+    Returns:
+        Updated allowlisted connection resource.
+    """
+    service_request = UpdateIngestionConnectionRequest(**payload.model_dump(exclude_unset=True))
+    updated = connection_service.update_connection(
+        owner=owner,
+        connection_id=connection_id,
+        request=service_request,
+    )
+    if updated is None:
+        raise _connection_not_found()
+    return IngestionConnectionResponse.from_dto(updated)
+
+
+@router.delete("/connections/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_ingestion_connection(
+    connection_id: uuid.UUID,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+) -> None:
+    """Disable and soft-delete an owner-scoped connection; returns 404 if not owned."""
+    deleted = connection_service.delete_connection(owner=owner, connection_id=connection_id)
+    if not deleted:
+        raise _connection_not_found()
 
 
 @router.get("/runs/latest", response_model=IngestionRunResponse)
