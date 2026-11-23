@@ -18,9 +18,9 @@ from papita_txnsmodel.database.session import DatabaseSessionManager, get_sessio
 from papita_txnsmodel.services.account_details import TradingAccountDetailsService
 from papita_txnsmodel.services.account_financing import AccountFinancingService
 from papita_txnsmodel.services.accounts import AccountsService
+from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.ibkr_import import IBKRImportService
 from papita_txnsmodel.services.ingestion import IngestionBridgeService
-from papita_txnsmodel.services.categories import CategoriesService
 from papita_txnsmodel.services.ingestion_status import IngestionConnectionService, IngestionRunService
 from papita_txnsmodel.services.reports import ReportService
 from papita_txnsmodel.services.transactions import TransactionsService, TransactionTemplatesService
