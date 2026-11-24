@@ -213,3 +213,49 @@ def test_sidecar_app_supports_both_api_and_cli_connections(monkeypatch: pytest.M
     assert stream.status_code == 200
     assert '"delta": "CLI reply"' in stream.text
     assert '"done": true' in stream.text
+
+
+def test_adapters_error_and_health_paths() -> None:
+    missing_cli = CLIAdapter(cli_name="cursor", binary_path="/nonexistent/cursor")
+    with patch("backend.domains.ai_agent.adapters.shutil.which", return_value=None):
+        assert asyncio.run(missing_cli.health()) is False
+        with pytest.raises(AIAgentError, match="not found"):
+            asyncio.run(missing_cli.generate(system_prompt="", user_prompt="hi"))
+
+    fail_proc = AsyncMock()
+    fail_proc.returncode = 2
+    fail_proc.communicate = AsyncMock(return_value=(b"", b"bad flag"))
+    with (
+        patch("backend.domains.ai_agent.adapters.shutil.which", return_value="/usr/bin/cursor"),
+        patch("backend.domains.ai_agent.adapters.asyncio.create_subprocess_exec", return_value=fail_proc),
+    ):
+        with pytest.raises(AIAgentError, match="exited with code 2"):
+            asyncio.run(missing_cli.generate(system_prompt="sys", user_prompt="hi"))
+
+    ollama = OllamaAdapter()
+    with patch(
+        "httpx.AsyncClient.get",
+        new=AsyncMock(return_value=httpx.Response(200, request=httpx.Request("GET", "http://x"))),
+    ):
+        assert asyncio.run(ollama.health()) is True
+    with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=httpx.ConnectError("down"))):
+        assert asyncio.run(ollama.health()) is False
+    with patch("httpx.AsyncClient.post", new=AsyncMock(side_effect=httpx.ConnectError("down"))):
+        with pytest.raises(AIAgentError, match="Ollama request failed"):
+            asyncio.run(ollama.generate(system_prompt="sys", user_prompt="hi"))
+
+    oai = OpenAICompatAdapter(api_key="local-key")
+    assert oai._headers() == {"Authorization": "Bearer local-key"}
+    with patch(
+        "httpx.AsyncClient.get",
+        new=AsyncMock(return_value=httpx.Response(200, request=httpx.Request("GET", "http://x"))),
+    ):
+        assert asyncio.run(oai.health()) is True
+    with patch("httpx.AsyncClient.post", new=AsyncMock(side_effect=httpx.ConnectError("down"))):
+        with pytest.raises(AIAgentError, match="OpenAI-compatible request failed"):
+            asyncio.run(oai.generate(system_prompt="sys", user_prompt="hi"))
+
+    failing_client = TestClient(create_sidecar_app(adapter=_FakeAdapter(fail=True)))
+    assert failing_client.post("/respond", json={"system_prompt": "s", "user_prompt": "hi"}).status_code == 502
+    err_stream = failing_client.post("/stream", json={"system_prompt": "s", "user_prompt": "hi"})
+    assert '"error": "stream boom"' in err_stream.text

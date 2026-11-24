@@ -49,6 +49,7 @@ testpaths = [
     "./modules/backend/tests/model",
     "./modules/backend/tests/ingestor_core",
     "./modules/backend/tests/ingestor_email",
+    "./modules/backend/tests/ai_agent",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

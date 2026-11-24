@@ -60,7 +60,7 @@ def _build_client(
     )
     app.dependency_overrides[get_current_owner] = lambda: owner
     app.dependency_overrides[get_settings] = lambda: custom_settings
-    app.dependency_overrides[get_report_service] = lambda: (report_service or _mock_report_service())
+    app.dependency_overrides[get_report_service] = lambda: report_service or _mock_report_service()
     return TestClient(app)
 
 
@@ -209,3 +209,57 @@ def test_ai_chat_can_omit_financial_context(include_ctx: bool) -> None:
     assert resp.status_code == 200
     assert resp.json()["context_included"] is False
     report_svc.financial_health.assert_not_called()
+
+
+def test_ai_chat_error_paths_and_stream() -> None:
+    owner = _make_owner()
+    report_svc = _mock_report_service()
+    report_svc.financial_health.side_effect = RuntimeError("db error")
+    tc = _build_client(
+        owner=owner,
+        ai_enabled=True,
+        allowed_owner_id=str(owner.id),
+        report_service=report_svc,
+    )
+
+    bad_conn_resp = httpx.Response(
+        400,
+        json={"detail": "Unknown AI connection"},
+        request=httpx.Request("POST", "http://ai-agent:8090/respond"),
+    )
+    with patch("httpx.AsyncClient.post", new=AsyncMock(return_value=bad_conn_resp)):
+        resp = tc.post("/api/v1/ai/chat", json={"prompt": "Hi", "connection": "cli:bad"})
+    assert resp.status_code == 400
+
+    with patch("httpx.AsyncClient.post", new=AsyncMock(side_effect=httpx.ConnectError("down"))):
+        resp_502 = tc.post("/api/v1/ai/chat", json={"prompt": "Hi"})
+    assert resp_502.status_code == 502
+
+    with patch("httpx.AsyncClient.get", new=AsyncMock(side_effect=httpx.ConnectError("down"))):
+        status_down = tc.get("/api/v1/ai/status")
+    assert status_down.status_code == 200
+    assert status_down.json()["available"] is False
+
+    class _FakeStreamResp:
+        def raise_for_status(self) -> None:
+            return None
+
+        async def aiter_lines(self):
+            yield 'data: {"delta": "chunk-1"}'
+            yield 'data: {"done": true}'
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+    with patch("httpx.AsyncClient.stream", return_value=_FakeStreamResp()):
+        stream_ok = tc.post("/api/v1/ai/chat/stream", json={"prompt": "Stream please", "connection": "ollama"})
+    assert stream_ok.status_code == 200
+    assert "chunk-1" in stream_ok.text
+
+    with patch("httpx.AsyncClient.stream", side_effect=httpx.ConnectError("down")):
+        stream_err = tc.post("/api/v1/ai/chat/stream", json={"prompt": "Stream fail"})
+    assert stream_err.status_code == 200
+    assert "Self-hosted AI sidecar unavailable" in stream_err.text
