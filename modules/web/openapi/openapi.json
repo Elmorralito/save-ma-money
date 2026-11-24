@@ -2262,7 +2262,7 @@
       },
       "IngestionConnectionResponse": {
         "additionalProperties": false,
-        "description": "Non-secret connection metadata for status APIs.\n\nAllowlist: identity + provider/flow labels + enabled/lookback only.",
+        "description": "Non-secret connection metadata and per-user channel filter configuration.\n\nAllowlist: identity + provider/flow labels + schedule/filter knobs only.",
         "properties": {
           "created_at": {
             "anyOf": [
@@ -2286,6 +2286,42 @@
               }
             ],
             "title": "Deployment Name"
+          },
+          "email_query": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Query"
+          },
+          "email_senders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Senders",
+            "type": "array"
+          },
+          "email_source_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Source Label"
+          },
+          "email_subjects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Subjects",
+            "type": "array"
           },
           "enabled": {
             "title": "Enabled",
@@ -2330,6 +2366,160 @@
           "lookback_hours"
         ],
         "title": "IngestionConnectionResponse",
+        "type": "object"
+      },
+      "IngestionConnectionUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Partial update payload for ``PATCH /ingestion/connections/{connection_id}``.",
+        "properties": {
+          "deployment_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Name"
+          },
+          "email_senders": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Senders"
+          },
+          "email_source_label": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Source Label"
+          },
+          "email_subjects": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Subjects"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "lookback_hours": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookback Hours"
+          }
+        },
+        "title": "IngestionConnectionUpdateRequest",
+        "type": "object"
+      },
+      "IngestionConnectionUpsertRequest": {
+        "additionalProperties": false,
+        "description": "Idempotent upsert payload for ``PUT /ingestion/connections``.\n\nOnly structured, validated channel filters are accepted (no raw Gmail ``q``).",
+        "properties": {
+          "deployment_name": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deployment Name"
+          },
+          "email_senders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Senders",
+            "type": "array"
+          },
+          "email_source_label": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Source Label"
+          },
+          "email_subjects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Email Subjects",
+            "type": "array"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "flow_name": {
+            "const": "papita-email-ingestion",
+            "default": "papita-email-ingestion",
+            "title": "Flow Name",
+            "type": "string"
+          },
+          "lookback_hours": {
+            "default": 24,
+            "maximum": 720.0,
+            "minimum": 1.0,
+            "title": "Lookback Hours",
+            "type": "integer"
+          },
+          "provider": {
+            "const": "email",
+            "default": "email",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "title": "IngestionConnectionUpsertRequest",
         "type": "object"
       },
       "IngestionRunResponse": {
@@ -7018,9 +7208,94 @@
         "tags": [
           "Ingestion"
         ]
+      },
+      "put": {
+        "description": "Create or update an owner-scoped ingestion connection and its channel filters.\n\nArgs:\n    payload: Non-secret connection and email channel filter configuration.\n    owner: Authenticated tenant from JWT.\n    connection_service: Injected connection service.\n\nReturns:\n    Saved allowlisted connection resource.",
+        "operationId": "upsert_ingestion_connection_api_v1_ingestion_connections_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionConnectionUpsertRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Upsert Ingestion Connection",
+        "tags": [
+          "Ingestion"
+        ]
       }
     },
     "/api/v1/ingestion/connections/{connection_id}": {
+      "delete": {
+        "description": "Disable and soft-delete an owner-scoped connection; returns 404 if not owned.",
+        "operationId": "delete_ingestion_connection_api_v1_ingestion_connections__connection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Delete Ingestion Connection",
+        "tags": [
+          "Ingestion"
+        ]
+      },
       "get": {
         "description": "Return one connection when owned by the caller; else 404.\n\nArgs:\n    connection_id: Connection primary key.\n    owner: Authenticated tenant from JWT.\n    connection_service: Injected connection status service.\n\nReturns:\n    Allowlisted connection resource.",
         "operationId": "get_ingestion_connection_api_v1_ingestion_connections__connection_id__get",
@@ -7064,6 +7339,63 @@
           }
         ],
         "summary": "Get Ingestion Connection",
+        "tags": [
+          "Ingestion"
+        ]
+      },
+      "patch": {
+        "description": "Partially update channel filters or schedule settings on an owned connection.\n\nArgs:\n    connection_id: Connection primary key.\n    payload: Partial fields to update (unset fields are left unchanged).\n    owner: Authenticated tenant from JWT.\n    connection_service: Injected connection service.\n\nReturns:\n    Updated allowlisted connection resource.",
+        "operationId": "update_ingestion_connection_api_v1_ingestion_connections__connection_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestionConnectionUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Ingestion Connection",
         "tags": [
           "Ingestion"
         ]

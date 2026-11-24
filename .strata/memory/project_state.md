@@ -11,6 +11,10 @@ JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
+- **Per-user email ingestion channel config & privacy hardening (`feat/email-ingestion-channel-config`):**
+  - Added Alembic migration `q4f5a6b7c8d9` adding `email_senders`, `email_subjects`, `email_source_label`, and `email_query` to `papita_transactions.ingestion_connections` and exposed owner-scoped `PUT /api/v1/ingestion/connections`, `PATCH /api/v1/ingestion/connections/{connection_id}`, and `DELETE /api/v1/ingestion/connections/{connection_id}` (strict sender/subject/label/lookback validation, no raw `email_query` on public API, allowlisted `provider`/`flow_name`).
+  - Extended `build_gmail_query()` (multi-sender/subject `OR` clauses, `source_label`, parenthesized raw `q`), wired `email_flow.py` to load per-user DB connection settings (honoring `enabled=False`, failing closed when no channel filters are configured, and preserving existing DB config on worker status upserts), and redacted email DLQ payloads + sanitized logs/`error_summary`.
+  - Synced `modules/web/openapi/openapi.json` and `modules/web/src/types/api.d.ts`.
 - **Plugin-based connector & parser architecture (`feat/plugin-connector-architecture`):**
   - Added `PluginManifest`, `BaseBatchImporter`, thread-safe `ConnectorRegistry` (Python `importlib.metadata.entry_points` + explicit registration, manifest caching, `PAPITA_INGESTOR_ENABLED_PLUGINS` allowlist), `IngestorPluginError`/`IngestorRateLimitError`, `parse_many()`, and promoted provider-agnostic `run_status.py`/`status_mapping.py` into `papita_ingestor_core`.
   - Declared `papita.ingestor.{sources,parsers,importers}` entry points in `modules/backend/pyproject.toml`; decoupled `GmailSource`, email parsers (`bancolombia-email`, `global66-email`, `nequi-email`, `fallback-email`), and `email_flow.py` (`--connector <id>` + registry lookup).

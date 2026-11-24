@@ -9,7 +9,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import TIMESTAMP, Column, ForeignKeyConstraint, Index, Integer, String, Text, text
+from sqlalchemy import ARRAY, TIMESTAMP, Column, ForeignKeyConstraint, Index, Integer, String, Text, text
 from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field
 
@@ -116,6 +116,16 @@ class IngestionConnection(BaseSQLModel, table=True):  # type: ignore
     deployment_name: str | None = Field(default=None, max_length=128, sa_type=String(128), nullable=True)
     enabled: bool = Field(nullable=False, default=True)
     lookback_hours: int = Field(nullable=False, default=24, sa_type=Integer)
+    email_senders: list[str] = Field(
+        sa_column=Column(ARRAY(String), nullable=False, server_default=text("'{}'::varchar[]")),
+        default_factory=list,
+    )
+    email_subjects: list[str] = Field(
+        sa_column=Column(ARRAY(String), nullable=False, server_default=text("'{}'::varchar[]")),
+        default_factory=list,
+    )
+    email_source_label: str | None = Field(default=None, max_length=255, sa_type=String(255), nullable=True)
+    email_query: str | None = Field(default=None, sa_type=Text, nullable=True)
 
 
 class IngestionRun(BaseSQLModel, table=True):  # type: ignore

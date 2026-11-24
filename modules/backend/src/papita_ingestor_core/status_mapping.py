@@ -29,13 +29,13 @@ def derive_run_status(result: RunResult) -> IngestionRunStatus:
 
 
 def summarize_failures(result: RunResult, *, max_lines: int = _MAX_FAILURE_LINES) -> str | None:
-    """Build a short error summary from failure messages (never raw payloads)."""
+    """Build a privacy-safe error summary (error class + ref only; never raw payloads/messages)."""
     if not result.failures:
         return None
     lines: list[str] = []
     for failure in result.failures[:max_lines]:
         ref = failure.source_ref or "?"
-        lines.append(f"{failure.error_type}@{ref}: {failure.message}")
+        lines.append(f"{failure.error_type}@{ref}")
     summary = "; ".join(lines)
     if len(result.failures) > max_lines:
         summary = f"{summary}; …(+{len(result.failures) - max_lines} more)"

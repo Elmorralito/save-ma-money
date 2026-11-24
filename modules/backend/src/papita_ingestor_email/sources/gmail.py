@@ -121,6 +121,8 @@ class GmailSource(BaseIngestorSource):
         query = build_gmail_query(fetch_filter, processed_label=self.settings.processed_label)
         remaining = fetch_filter.limit if fetch_filter is not None else None
         page_token = fetch_filter.cursor if fetch_filter is not None else None
+        logger.info("Fetching Gmail messages (limit=%s)", remaining)
+        logger.debug("Resolved Gmail query=%r (limit=%s)", query, remaining)
 
         try:
             yield from self._iter_messages(query=query, remaining=remaining, page_token=page_token)

@@ -354,4 +354,5 @@ def test_core_execute_with_run_status_handles_failures_and_errors() -> None:
         )
     req = run_svc2.finish_run.call_args.kwargs["request"]
     assert req.status == IngestionRunStatus.FAILED
-    assert "fetch boom" in (req.error_summary or "")
+    assert req.error_summary == "RuntimeError"
+    assert "fetch boom" not in (req.error_summary or "")

@@ -14,14 +14,21 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from papita_txnsapi.schemas.converters import enum_to_api_slug
 from papita_txnsmodel.access.base.dto import TableDTO
 from papita_txnsmodel.access.ingestion.dto import IngestionConnectionDTO, IngestionRunDTO
 from papita_txnsmodel.model.enums import IngestionRunStatus
+from papita_txnsmodel.services.ingestion_status import (
+    _MAX_LABEL_LEN,
+    _MAX_LOOKBACK_HOURS,
+    _validate_email_senders,
+    _validate_email_subjects,
+    _validate_source_label,
+)
 
 # Fields that must never appear on public ingestion status responses.
 _FORBIDDEN_RESPONSE_FIELDS = frozenset(
@@ -65,9 +72,9 @@ def _status_slug(value: IngestionRunStatus | str | Enum) -> str:
 
 
 class IngestionConnectionResponse(BaseModel):
-    """Non-secret connection metadata for status APIs.
+    """Non-secret connection metadata and per-user channel filter configuration.
 
-    Allowlist: identity + provider/flow labels + enabled/lookback only.
+    Allowlist: identity + provider/flow labels + schedule/filter knobs only.
     """
 
     model_config = ConfigDict(from_attributes=True, extra="forbid")
@@ -78,6 +85,10 @@ class IngestionConnectionResponse(BaseModel):
     deployment_name: str | None = None
     enabled: bool
     lookback_hours: int = Field(ge=1)
+    email_senders: list[str] = Field(default_factory=list)
+    email_subjects: list[str] = Field(default_factory=list)
+    email_source_label: str | None = None
+    email_query: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -98,9 +109,78 @@ class IngestionConnectionResponse(BaseModel):
             deployment_name=connection.deployment_name,
             enabled=bool(connection.enabled),
             lookback_hours=int(connection.lookback_hours),
+            email_senders=list(connection.email_senders),
+            email_subjects=list(connection.email_subjects),
+            email_source_label=connection.email_source_label,
+            email_query=connection.email_query,
             created_at=connection.created_at,
             updated_at=connection.updated_at,
         )
+
+
+class IngestionConnectionUpsertRequest(BaseModel):
+    """Idempotent upsert payload for ``PUT /ingestion/connections``.
+
+    Only structured, validated channel filters are accepted (no raw Gmail ``q``).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["email"] = "email"
+    flow_name: Literal["papita-email-ingestion"] = "papita-email-ingestion"
+    deployment_name: str | None = Field(default=None, max_length=128)
+    enabled: bool = True
+    lookback_hours: int = Field(default=24, ge=1, le=_MAX_LOOKBACK_HOURS)
+    email_senders: list[str] = Field(default_factory=list)
+    email_subjects: list[str] = Field(default_factory=list)
+    email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
+
+    @field_validator("email_senders")
+    @classmethod
+    def _clean_senders(cls, value: list[str]) -> list[str]:
+        return _validate_email_senders(value)
+
+    @field_validator("email_subjects")
+    @classmethod
+    def _clean_subjects(cls, value: list[str]) -> list[str]:
+        return _validate_email_subjects(value)
+
+    @field_validator("email_source_label")
+    @classmethod
+    def _clean_source_label(cls, value: str | None) -> str | None:
+        return _validate_source_label(value)
+
+
+class IngestionConnectionUpdateRequest(BaseModel):
+    """Partial update payload for ``PATCH /ingestion/connections/{connection_id}``."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    deployment_name: str | None = Field(default=None, max_length=128)
+    enabled: bool | None = None
+    lookback_hours: int | None = Field(default=None, ge=1, le=_MAX_LOOKBACK_HOURS)
+    email_senders: list[str] | None = None
+    email_subjects: list[str] | None = None
+    email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
+
+    @field_validator("email_senders")
+    @classmethod
+    def _clean_optional_senders(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return _validate_email_senders(value)
+
+    @field_validator("email_subjects")
+    @classmethod
+    def _clean_optional_subjects(cls, value: list[str] | None) -> list[str] | None:
+        if value is None:
+            return None
+        return _validate_email_subjects(value)
+
+    @field_validator("email_source_label")
+    @classmethod
+    def _clean_optional_label(cls, value: str | None) -> str | None:
+        return _validate_source_label(value)
 
 
 class IngestionRunResponse(BaseModel):
@@ -246,6 +326,8 @@ __all__ = [
     "IBKRImportResponse",
     "IBKRPositionImportResponse",
     "IngestionConnectionResponse",
+    "IngestionConnectionUpdateRequest",
+    "IngestionConnectionUpsertRequest",
     "IngestionRunResponse",
     "assert_ingestion_response_allowlist",
 ]

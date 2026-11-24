@@ -45,6 +45,9 @@ def _run_dto(owner: UsersDTO, *, connection_id: uuid.UUID | None = None) -> Inge
 
 def test_ingestion_routes_require_auth(client: TestClient) -> None:
     assert client.get("/api/v1/ingestion/connections").status_code == 401
+    assert client.put("/api/v1/ingestion/connections", json={}).status_code == 401
+    assert client.patch(f"/api/v1/ingestion/connections/{uuid.uuid4()}", json={}).status_code == 401
+    assert client.delete(f"/api/v1/ingestion/connections/{uuid.uuid4()}").status_code == 401
     assert client.get("/api/v1/ingestion/runs").status_code == 401
     assert client.get("/api/v1/ingestion/runs/latest").status_code == 401
 
@@ -114,6 +117,86 @@ def test_openapi_includes_ingestion_paths(client: TestClient) -> None:
     assert "/api/v1/ingestion/connections/{connection_id}" in paths
     assert "/api/v1/ingestion/runs" in paths
     assert "/api/v1/ingestion/runs/latest" in paths
-    # Read-only: no POST trigger route.
+    # No POST run-trigger route; connections support PUT/PATCH/DELETE config.
     assert "post" not in paths["/api/v1/ingestion/connections"]
+    assert "put" in paths["/api/v1/ingestion/connections"]
+    assert "patch" in paths["/api/v1/ingestion/connections/{connection_id}"]
+    assert "delete" in paths["/api/v1/ingestion/connections/{connection_id}"]
     assert "post" not in paths.get("/api/v1/ingestion/runs", {})
+
+
+def test_upsert_patch_and_delete_connection_channel_config(ingestion_client) -> None:
+    test_client, owner, mock_connections, _mock_runs = ingestion_client
+    conn = _connection_dto(owner).model_copy(
+        update={
+            "email_senders": ["notificacionesbancolombia.com", "nequi.com.co"],
+            "email_subjects": ["Alertas y Notificaciones"],
+            "email_source_label": "Finanzas/Bancos",
+        }
+    )
+    mock_connections.upsert_connection.return_value = conn
+
+    put_resp = test_client.put(
+        "/api/v1/ingestion/connections",
+        json={
+            "provider": "email",
+            "flow_name": "papita-email-ingestion",
+            "lookback_hours": 24,
+            "email_senders": ["notificacionesbancolombia.com", "nequi.com.co"],
+            "email_subjects": ["Alertas y Notificaciones"],
+            "email_source_label": "Finanzas/Bancos",
+        },
+    )
+    assert put_resp.status_code == 200
+    body = put_resp.json()
+    assert body["email_senders"] == ["notificacionesbancolombia.com", "nequi.com.co"]
+    assert body["email_subjects"] == ["Alertas y Notificaciones"]
+    assert body["email_source_label"] == "Finanzas/Bancos"
+    mock_connections.upsert_connection.assert_called_once()
+
+    patched_conn = conn.model_copy(update={"enabled": False, "email_senders": ["chase.com"]})
+    mock_connections.update_connection.return_value = patched_conn
+
+    patch_resp = test_client.patch(
+        f"/api/v1/ingestion/connections/{conn.id}",
+        json={"enabled": False, "email_senders": ["chase.com"]},
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["enabled"] is False
+    assert patch_resp.json()["email_senders"] == ["chase.com"]
+
+    mock_connections.update_connection.return_value = None
+    missing_resp = test_client.patch(
+        f"/api/v1/ingestion/connections/{uuid.uuid4()}",
+        json={"enabled": False},
+    )
+    assert missing_resp.status_code == 404
+
+    mock_connections.delete_connection.return_value = True
+    del_resp = test_client.delete(f"/api/v1/ingestion/connections/{conn.id}")
+    assert del_resp.status_code == 204
+
+    mock_connections.delete_connection.return_value = False
+    del_missing = test_client.delete(f"/api/v1/ingestion/connections/{uuid.uuid4()}")
+    assert del_missing.status_code == 404
+
+
+def test_connection_api_rejects_query_injection_and_unsafe_inputs(ingestion_client) -> None:
+    test_client, _owner, _mock_connections, _mock_runs = ingestion_client
+
+    # Raw email_query must not be accepted from public API.
+    assert test_client.put("/api/v1/ingestion/connections", json={"email_query": "OR in:anywhere"}).status_code == 422
+    # Sender query injection payload rejected.
+    assert (
+        test_client.put("/api/v1/ingestion/connections", json={"email_senders": ["a) OR in:anywhere ("]}).status_code
+        == 422
+    )
+    # Unsafe quotes/parens in subject rejected.
+    assert (
+        test_client.put("/api/v1/ingestion/connections", json={"email_subjects": ['Alert" OR in:anywhere']}).status_code
+        == 422
+    )
+    # Excessive lookback_hours rejected.
+    assert test_client.put("/api/v1/ingestion/connections", json={"lookback_hours": 9999}).status_code == 422
+    # Arbitrary provider/flow_name rejected.
+    assert test_client.put("/api/v1/ingestion/connections", json={"provider": "arbitrary"}).status_code == 422

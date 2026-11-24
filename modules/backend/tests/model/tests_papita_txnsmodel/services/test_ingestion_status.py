@@ -15,6 +15,7 @@ from papita_txnsmodel.services.ingestion_status import (
     IngestionConnectionService,
     IngestionRunService,
     RecordIngestionRunRequest,
+    UpdateIngestionConnectionRequest,
     UpsertIngestionConnectionRequest,
 )
 
@@ -135,3 +136,121 @@ def test_finish_run_raises_when_repository_returns_none() -> None:
                     created=1,
                 ),
             )
+
+
+def test_upsert_connection_preserves_existing_user_config_when_requested() -> None:
+    """Worker status upserts must not overwrite user-configured DB filters."""
+    owner = _owner()
+    existing_id = uuid.uuid4()
+    existing = IngestionConnectionDTO(
+        id=existing_id,
+        owner_id=owner.id,
+        provider="email",
+        flow_name="papita-email-ingestion",
+        deployment_name="papita-email-ingestion-hourly",
+        enabled=False,
+        lookback_hours=6,
+        email_senders=["chase.com", "global66.com"],
+        email_subjects=["Transaction Alert"],
+        email_source_label="Finanzas",
+        email_query="in:inbox",
+    )
+
+    service = IngestionConnectionService()
+    repo = MagicMock()
+    repo.get_by_natural_key.return_value = existing
+    repo.upsert_record.side_effect = lambda dto, **_kw: dto
+    service._connection_repository = repo  # noqa: SLF001
+
+    result = service.upsert_connection(
+        owner=owner,
+        request=UpsertIngestionConnectionRequest(
+            provider="email",
+            flow_name="papita-email-ingestion",
+            enabled=True,
+            lookback_hours=24,
+            email_senders=["notificacionesbancolombia.com"],
+        ),
+        preserve_existing_config=True,
+    )
+
+    assert result.id == existing_id
+    assert result.enabled is False
+    assert result.lookback_hours == 6
+    assert result.email_senders == ["chase.com", "global66.com"]
+    assert result.email_subjects == ["Transaction Alert"]
+    assert result.email_source_label == "Finanzas"
+    assert result.email_query == "in:inbox"
+
+
+def test_update_connection_applies_partial_updates_and_normalizes_terms() -> None:
+    owner = _owner()
+    conn_id = uuid.uuid4()
+    existing = IngestionConnectionDTO(
+        id=conn_id,
+        owner_id=owner.id,
+        provider="email",
+        flow_name="papita-email-ingestion",
+        enabled=True,
+        lookback_hours=24,
+        email_senders=["notificacionesbancolombia.com"],
+    )
+
+    service = IngestionConnectionService()
+    repo = MagicMock()
+    repo.upsert_record.side_effect = lambda dto, **_kw: dto
+    service._connection_repository = repo  # noqa: SLF001
+    service._repository = repo  # noqa: SLF001
+
+    with patch.object(service, "get", return_value=existing):
+        updated = service.update_connection(
+            owner=owner,
+            connection_id=conn_id,
+            request=UpdateIngestionConnectionRequest(
+                email_senders=[" nequi.com.co ", "nequi.com.co", ""],
+                email_source_label="  ",
+                lookback_hours=12,
+            ),
+        )
+
+    assert updated is not None
+    assert updated.email_senders == ["nequi.com.co"]
+    assert updated.email_source_label is None
+    assert updated.lookback_hours == 12
+    assert updated.enabled is True
+
+    with patch.object(service, "get", return_value=None):
+        assert (
+            service.update_connection(
+                owner=owner,
+                connection_id=uuid.uuid4(),
+                request=UpdateIngestionConnectionRequest(enabled=False),
+            )
+            is None
+        )
+
+
+def test_delete_connection_disables_and_soft_deletes() -> None:
+    owner = _owner()
+    conn_id = uuid.uuid4()
+    existing = IngestionConnectionDTO(
+        id=conn_id,
+        owner_id=owner.id,
+        provider="email",
+        flow_name="papita-email-ingestion",
+        enabled=True,
+        lookback_hours=24,
+    )
+    service = IngestionConnectionService()
+    repo = MagicMock()
+    service._connection_repository = repo  # noqa: SLF001
+    service._repository = repo  # noqa: SLF001
+
+    with patch.object(service, "get", return_value=existing), patch.object(service, "delete") as mock_delete:
+        assert service.delete_connection(owner=owner, connection_id=conn_id) is True
+        saved_dto = repo.upsert_record.call_args.args[0]
+        assert saved_dto.enabled is False
+        mock_delete.assert_called_once_with(obj=saved_dto, owner=owner, hard=False)
+
+    with patch.object(service, "get", return_value=None):
+        assert service.delete_connection(owner=owner, connection_id=uuid.uuid4()) is False

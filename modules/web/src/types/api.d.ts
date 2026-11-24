@@ -817,7 +817,19 @@ export interface paths {
          *         Paginated allowlisted connection resources.
          */
         get: operations["list_ingestion_connections_api_v1_ingestion_connections_get"];
-        put?: never;
+        /**
+         * Upsert Ingestion Connection
+         * @description Create or update an owner-scoped ingestion connection and its channel filters.
+         *
+         *     Args:
+         *         payload: Non-secret connection and email channel filter configuration.
+         *         owner: Authenticated tenant from JWT.
+         *         connection_service: Injected connection service.
+         *
+         *     Returns:
+         *         Saved allowlisted connection resource.
+         */
+        put: operations["upsert_ingestion_connection_api_v1_ingestion_connections_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -847,10 +859,27 @@ export interface paths {
         get: operations["get_ingestion_connection_api_v1_ingestion_connections__connection_id__get"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Ingestion Connection
+         * @description Disable and soft-delete an owner-scoped connection; returns 404 if not owned.
+         */
+        delete: operations["delete_ingestion_connection_api_v1_ingestion_connections__connection_id__delete"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update Ingestion Connection
+         * @description Partially update channel filters or schedule settings on an owned connection.
+         *
+         *     Args:
+         *         connection_id: Connection primary key.
+         *         payload: Partial fields to update (unset fields are left unchanged).
+         *         owner: Authenticated tenant from JWT.
+         *         connection_service: Injected connection service.
+         *
+         *     Returns:
+         *         Updated allowlisted connection resource.
+         */
+        patch: operations["update_ingestion_connection_api_v1_ingestion_connections__connection_id__patch"];
         trace?: never;
     };
     "/api/v1/ingestion/connectors": {
@@ -2722,15 +2751,23 @@ export interface components {
         };
         /**
          * IngestionConnectionResponse
-         * @description Non-secret connection metadata for status APIs.
+         * @description Non-secret connection metadata and per-user channel filter configuration.
          *
-         *     Allowlist: identity + provider/flow labels + enabled/lookback only.
+         *     Allowlist: identity + provider/flow labels + schedule/filter knobs only.
          */
         IngestionConnectionResponse: {
             /** Created At */
             created_at?: string | null;
             /** Deployment Name */
             deployment_name?: string | null;
+            /** Email Query */
+            email_query?: string | null;
+            /** Email Senders */
+            email_senders?: string[];
+            /** Email Source Label */
+            email_source_label?: string | null;
+            /** Email Subjects */
+            email_subjects?: string[];
             /** Enabled */
             enabled: boolean;
             /** Flow Name */
@@ -2746,6 +2783,62 @@ export interface components {
             provider: string;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * IngestionConnectionUpdateRequest
+         * @description Partial update payload for ``PATCH /ingestion/connections/{connection_id}``.
+         */
+        IngestionConnectionUpdateRequest: {
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Email Senders */
+            email_senders?: string[] | null;
+            /** Email Source Label */
+            email_source_label?: string | null;
+            /** Email Subjects */
+            email_subjects?: string[] | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Lookback Hours */
+            lookback_hours?: number | null;
+        };
+        /**
+         * IngestionConnectionUpsertRequest
+         * @description Idempotent upsert payload for ``PUT /ingestion/connections``.
+         *
+         *     Only structured, validated channel filters are accepted (no raw Gmail ``q``).
+         */
+        IngestionConnectionUpsertRequest: {
+            /** Deployment Name */
+            deployment_name?: string | null;
+            /** Email Senders */
+            email_senders?: string[];
+            /** Email Source Label */
+            email_source_label?: string | null;
+            /** Email Subjects */
+            email_subjects?: string[];
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Flow Name
+             * @default papita-email-ingestion
+             * @constant
+             */
+            flow_name: "papita-email-ingestion";
+            /**
+             * Lookback Hours
+             * @default 24
+             */
+            lookback_hours: number;
+            /**
+             * Provider
+             * @default email
+             * @constant
+             */
+            provider: "email";
         };
         /**
          * IngestionRunResponse
@@ -5182,6 +5275,39 @@ export interface operations {
             };
         };
     };
+    upsert_ingestion_connection_api_v1_ingestion_connections_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestionConnectionUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionConnectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_ingestion_connection_api_v1_ingestion_connections__connection_id__get: {
         parameters: {
             query?: never;
@@ -5192,6 +5318,70 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionConnectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_ingestion_connection_api_v1_ingestion_connections__connection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_ingestion_connection_api_v1_ingestion_connections__connection_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestionConnectionUpdateRequest"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
