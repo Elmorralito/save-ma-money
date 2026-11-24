@@ -208,6 +208,16 @@ class Settings(BaseSettings):
     REDIS_DEFAULT_TTL_SECONDS: int = 60
     REDIS_CACHE_TTL_ACCOUNTS_SECONDS: int = 60
     REDIS_CACHE_TTL_CATEGORIES_SECONDS: int = 300
+
+    # Self-hosted single-owner AI agent sidecar (optional Compose profile `ai-agent`)
+    AI_AGENT_ENABLED: bool = False
+    AI_AGENT_URL: str = "http://ai-agent:8090"
+    AI_AGENT_SHARED_SECRET: str | None = None
+    # Hard single-owner privacy lock: when AI_AGENT_ENABLED is True, only this user UUID
+    # may invoke /api/v1/ai/*. Left unset → fail-closed (503) to prevent multi-tenant bleed.
+    AI_AGENT_ALLOWED_OWNER_ID: str | None = None
+    AI_AGENT_TIMEOUT_SECONDS: float = Field(default=90.0, ge=5.0, le=300.0)
+    AI_AGENT_MAX_PROMPT_CHARS: int = Field(default=4000, ge=100, le=16000)
     REDIS_CACHE_TTL_REPORTS_SECONDS: int = 180
     REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: int = 15
     REDIS_IDEMPOTENCY_TTL_SECONDS: int = 86_400

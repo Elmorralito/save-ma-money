@@ -1,6 +1,226 @@
 {
   "components": {
     "schemas": {
+      "AIChatRequest": {
+        "additionalProperties": false,
+        "description": "User prompt submitted to the self-hosted AI sidecar.",
+        "properties": {
+          "connection": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[a-z0-9:_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "maxLength": 3,
+                "minLength": 3,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "include_financial_context": {
+            "default": true,
+            "title": "Include Financial Context",
+            "type": "boolean"
+          },
+          "prompt": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "prompt"
+        ],
+        "title": "AIChatRequest",
+        "type": "object"
+      },
+      "AIChatResponse": {
+        "additionalProperties": false,
+        "description": "Non-streaming reply from the self-hosted AI sidecar.",
+        "properties": {
+          "connection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connection"
+          },
+          "context_included": {
+            "title": "Context Included",
+            "type": "boolean"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "api",
+                  "cli"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reply",
+          "provider",
+          "context_included"
+        ],
+        "title": "AIChatResponse",
+        "type": "object"
+      },
+      "AIConnectionStatus": {
+        "additionalProperties": false,
+        "description": "Readiness and type metadata for one enabled AI connection (API or CLI).",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "api",
+              "cli"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "provider",
+          "ready"
+        ],
+        "title": "AIConnectionStatus",
+        "type": "object"
+      },
+      "AIStatusResponse": {
+        "additionalProperties": false,
+        "description": "Availability and enabled API/CLI connections for the self-hosted AI sidecar.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/AIConnectionStatus"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "default_connection": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Connection"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "single_owner_enforced": {
+            "title": "Single Owner Enforced",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "available",
+          "single_owner_enforced"
+        ],
+        "title": "AIStatusResponse",
+        "type": "object"
+      },
       "AccountCreate": {
         "additionalProperties": false,
         "description": "Request body for ``POST /accounts``.\n\nExactly one extension block should match ``account_kind``; others are ignored\nby ``extension_payload`` when absent.\n\nAttributes:\n    name: Display name; 1–255 characters after trimming.\n    description: Optional free-text description.\n    account_kind: Lowercase slug parsed to ``AccountKind``.\n    ledger_side: Lowercase slug parsed to ``LedgerSide``.\n    currency: ISO 4217 code; defaults to ``USD``.\n    initial_value: Optional opening balance before ledger postings (>= 0).\n    banking_details: Required shape for checking/savings/cash kinds.\n    trading_details: Required shape for investment brokerage kind.\n    real_estate_details: Required shape for real-estate kind.\n    credit_card_details: Required shape for credit-card kind.\n    loan_details: Required shape for loan/mortgage kind.",
@@ -6254,6 +6474,125 @@
         "summary": "Get Account Balance",
         "tags": [
           "Accounts"
+        ]
+      }
+    },
+    "/api/v1/ai/chat": {
+      "post": {
+        "description": "Forward a prompt (+ optional redacted financial snapshot) to the AI sidecar.",
+        "operationId": "ai_chat_api_v1_ai_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIChatResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Ai Chat",
+        "tags": [
+          "AI Agent"
+        ]
+      }
+    },
+    "/api/v1/ai/chat/stream": {
+      "post": {
+        "description": "Stream SSE response chunks from the self-hosted AI sidecar.",
+        "operationId": "ai_chat_stream_api_v1_ai_chat_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIChatRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Ai Chat Stream",
+        "tags": [
+          "AI Agent"
+        ]
+      }
+    },
+    "/api/v1/ai/status": {
+      "get": {
+        "description": "Return whether the self-hosted AI sidecar is enabled and reachable for this owner.",
+        "operationId": "get_ai_status_api_v1_ai_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Ai Status",
+        "tags": [
+          "AI Agent"
         ]
       }
     },
