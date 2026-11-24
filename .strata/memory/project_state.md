@@ -11,6 +11,9 @@ JWTs and links `users` by `sub`.
 
 ### Last completed (this session)
 
+- **Self-hosted single-owner AI sidecar (`feat/self-hosted-ai-agent-sidecar`):**
+  - Added optional Compose profile `ai-agent` (`backend.domains.ai_agent.{adapters,app}`) with `AIAgentRegistry` supporting simultaneous API (`ollama`, `openai_compat`) and headless CLI (`cli:claude`, `cli:agy`, `cli:cursor`) connections, scrubbed subprocess env (`shell=False`, no tools), constant-time `X-Papita-AI-Secret`, and SSE streaming.
+  - Exposed `/api/v1/ai/{status,chat,chat/stream}` in `papita_txnsapi` with fail-closed single-owner lock (`AI_AGENT_ENABLED` + `AI_AGENT_ALLOWED_OWNER_ID`), rate limiting, and redacted aggregated financial-health context; added nginx SSE location (`proxy_buffering off`) and synced `openapi.json` + `api.d.ts`.
 - **Per-user email ingestion channel config & privacy hardening (`feat/email-ingestion-channel-config`):**
   - Added Alembic migration `q4f5a6b7c8d9` adding `email_senders`, `email_subjects`, `email_source_label`, and `email_query` to `papita_transactions.ingestion_connections` and exposed owner-scoped `PUT /api/v1/ingestion/connections`, `PATCH /api/v1/ingestion/connections/{connection_id}`, and `DELETE /api/v1/ingestion/connections/{connection_id}` (strict sender/subject/label/lookback validation, no raw `email_query` on public API, allowlisted `provider`/`flow_name`).
   - Extended `build_gmail_query()` (multi-sender/subject `OR` clauses, `source_label`, parenthesized raw `q`), wired `email_flow.py` to load per-user DB connection settings (honoring `enabled=False`, failing closed when no channel filters are configured, and preserving existing DB config on worker status upserts), and redacted email DLQ payloads + sanitized logs/`error_summary`.

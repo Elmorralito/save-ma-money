@@ -142,6 +142,12 @@ services:
       REDIS_MAX_CONNECTIONS: "${REDIS_MAX_CONNECTIONS:-10}"
       API_RATE_LIMIT_ENABLED: "${API_RATE_LIMIT_ENABLED:-true}"
       API_RATE_LIMIT_DEFAULT_TIER: "${API_RATE_LIMIT_DEFAULT_TIER:-free}"
+      # Optional self-hosted single-owner AI sidecar (`--profile ai-agent`)
+      AI_AGENT_ENABLED: "${AI_AGENT_ENABLED:-false}"
+      AI_AGENT_URL: "${AI_AGENT_URL:-http://ai-agent:8090}"
+      AI_AGENT_SHARED_SECRET: "${AI_AGENT_SHARED_SECRET:-}"
+      AI_AGENT_ALLOWED_OWNER_ID: "${AI_AGENT_ALLOWED_OWNER_ID:-}"
+      AI_AGENT_TIMEOUT_SECONDS: "${AI_AGENT_TIMEOUT_SECONDS:-90}"
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -185,6 +191,46 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+
+  # Optional self-hosted single-owner AI sidecar (profile `ai-agent`) — private network only.
+  # Supports local Ollama (`ollama`), OpenAI-compatible servers (`openai_compat`),
+  # or local headless CLI tools (`cli`: claude / agy / cursor).
+  ai-agent:
+    profiles: ["ai-agent"]
+    build:
+      context: ./modules/backend
+    image: papita-backend:local
+    command: ["uvicorn", "backend.domains.ai_agent.app:app", "--host", "0.0.0.0", "--port", "8090"]
+    container_name: "${COMPOSE_NAME:-papita-transactions}-ai-agent"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Enable both API and CLI connections simultaneously (comma-separated):
+      # e.g. ollama,cli:claude,cli:agy,cli:cursor or openai_compat,cli:claude
+      AI_AGENT_ENABLED_CONNECTIONS: "${AI_AGENT_ENABLED_CONNECTIONS:-ollama,cli:claude}"
+      AI_AGENT_DEFAULT_CONNECTION: "${AI_AGENT_DEFAULT_CONNECTION:-ollama}"
+      AI_AGENT_BACKEND: "${AI_AGENT_BACKEND:-ollama}"
+      AI_AGENT_SHARED_SECRET: "${AI_AGENT_SHARED_SECRET:-}"
+      AI_AGENT_TIMEOUT_SECONDS: "${AI_AGENT_TIMEOUT_SECONDS:-90}"
+      AI_CLI_PROVIDER: "${AI_CLI_PROVIDER:-claude}"
+      AI_CLI_BINARY_PATH: "${AI_CLI_BINARY_PATH:-}"
+      AI_CLI_CLAUDE_BINARY_PATH: "${AI_CLI_CLAUDE_BINARY_PATH:-}"
+      AI_CLI_AGY_BINARY_PATH: "${AI_CLI_AGY_BINARY_PATH:-}"
+      AI_CLI_CURSOR_BINARY_PATH: "${AI_CLI_CURSOR_BINARY_PATH:-}"
+      OLLAMA_BASE_URL: "${OLLAMA_BASE_URL:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.2}"
+      AI_OPENAI_BASE_URL: "${AI_OPENAI_BASE_URL:-http://host.docker.internal:1234/v1}"
+      AI_OPENAI_MODEL: "${AI_OPENAI_MODEL:-local-model}"
+      AI_OPENAI_API_KEY: "${AI_OPENAI_API_KEY:-}"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=2)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # nginx SPA (PPT-057 / #122 + PPT-063 / #128). VITE_* baked at image build — not runtime on nginx.
   web:

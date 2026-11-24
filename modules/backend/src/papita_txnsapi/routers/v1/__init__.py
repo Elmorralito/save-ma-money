@@ -32,6 +32,7 @@ from fastapi import APIRouter, Depends
 from papita_txnsapi.dependencies.services import get_db
 from papita_txnsapi.routers.v1 import (
     accounts,
+    ai,
     auth,
     categories,
     health,
@@ -52,3 +53,4 @@ api_v1_router.include_router(transactions.router, dependencies=[Depends(get_db)]
 api_v1_router.include_router(transaction_templates.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(reports.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(ingestion.router, dependencies=[Depends(get_db)])
+api_v1_router.include_router(ai.router, dependencies=[Depends(get_db)])
