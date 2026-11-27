@@ -8,8 +8,8 @@ from enum import Enum
 class ProviderType(str, Enum):
     """Signup / identity channel for ``users.provider_type``.
 
-    ``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``
-    are Supabase Auth OAuth providers; values match Supabase provider ids.
+    ``EMAIL`` is password registration. ``GOOGLE`` and ``GITHUB`` are OAuth
+    channels (self-hosted Google PKCE is implemented; GitHub reserved).
     """
 
     EMAIL = "email"
@@ -18,7 +18,7 @@ class ProviderType(str, Enum):
 
     @classmethod
     def oauth_members(cls) -> frozenset[ProviderType]:
-        """Providers that complete via Supabase OAuth / ``POST /auth/sso``."""
+        """Providers that complete via OAuth PKCE (not email/password)."""
         return frozenset({cls.GOOGLE, cls.GITHUB})
 
     def is_oauth(self) -> bool:

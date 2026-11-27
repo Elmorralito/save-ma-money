@@ -330,4 +330,67 @@ describe("TransactionsPage", () => {
       expect(within(dialog).getByRole("alert")).toHaveTextContent(/bulk_too_large/);
     });
   });
+
+  it("filters, sorts, and opens edit or delete actions on transactions", async () => {
+    const user = userEvent.setup();
+    mockPickers();
+    vi.mocked(transactionsApi.listTransactions).mockResolvedValue({
+      items: [
+        {
+          id: "44444444-4444-4444-4444-444444444444",
+          description: "Coffee Shop",
+          transaction_type: "expense",
+          amount: 12.5,
+          currency: "USD",
+          account_id: "11111111-1111-1111-1111-111111111111",
+          category_id: "33333333-3333-3333-3333-333333333333",
+          transaction_date: "2026-01-10",
+          status: "completed",
+          settlement_status: "settled",
+          is_recurring: false,
+        },
+      ],
+      limit: 100,
+      skip: 0,
+      total: 1,
+    });
+    vi.mocked(transactionsApi.deleteTransaction).mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <TransactionsPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Coffee Shop")).toBeInTheDocument();
+    });
+
+    await user.selectOptions(
+      document.getElementById("txn-filter-account")!,
+      "11111111-1111-1111-1111-111111111111",
+    );
+    await user.selectOptions(
+      document.getElementById("txn-filter-category")!,
+      "33333333-3333-3333-3333-333333333333",
+    );
+    await user.selectOptions(document.getElementById("txn-filter-type")!, "expense");
+    await user.selectOptions(document.getElementById("txn-filter-status")!, "completed");
+    await user.type(document.getElementById("txn-filter-search")!, "Coffee");
+
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      await user.click(thBtn);
+    }
+
+    const editBtns = screen.queryAllByRole("button", { name: /Edit/i });
+    if (editBtns[0]) await user.click(editBtns[0]);
+    const closeBtn = screen.queryAllByRole("button", { name: /^Cancel$/i })[0];
+    if (closeBtn) await user.click(closeBtn);
+
+    const delBtns = screen.queryAllByRole("button", { name: /Delete/i });
+    if (delBtns[0]) await user.click(delBtns[0]);
+  }, 15_000);
 });

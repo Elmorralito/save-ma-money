@@ -1,7 +1,8 @@
-"""Authentication routes — register, login, OAuth/SSO, refresh, and logout.
+"""Authentication routes — register, login, Google OAuth PKCE, refresh, and logout.
 
-Maps HTTP under ``/api/v1/auth`` to Supabase Auth or local HS256 helpers.
-Business logic stays in ``papita_txnsmodel`` / ``core.supabase_auth``.
+Maps HTTP under ``/api/v1/auth`` to self-hosted HS256 JWT helpers and optional
+direct Google OAuth. Business logic stays in ``papita_txnsmodel`` /
+``core.security``.
 """
 
 # Auth surface is intentionally one router module (PPT-039/043/044).
@@ -9,40 +10,30 @@ Business logic stays in ``papita_txnsmodel`` / ``core.supabase_auth``.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import json
 import logging
+import secrets
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 
 from papita_txnsapi.config.settings import Settings, get_settings
-from papita_txnsapi.core.auth_errors import auth_error_detail, public_value_error_detail
-from papita_txnsapi.core.client_contract import ERROR_EMAIL_NOT_CONFIRMED, HEADER_ERROR_CODE
+from papita_txnsapi.core.oauth_txns import consume_oauth_txn, store_oauth_txn
 from papita_txnsapi.core.security import AuthSecurityManager
-from papita_txnsapi.core.supabase_auth import (
-    AuthApiError,
-    AuthError,
-    SupabaseSignUpProfile,
-    classify_supabase_auth_error,
-    supabase_admin_delete_user,
-    supabase_auth_user_created_recently,
-    supabase_establish_session,
-    supabase_exchange_code_for_session,
-    supabase_oauth_authorize_url,
-    supabase_refresh_session,
-    supabase_resend_signup_confirmation,
-    supabase_sign_out,
+from papita_txnsapi.dependencies.auth import (
+    AUTH_ACCESS_COOKIE,
+    AUTH_COOKIE_PATH,
+    get_auth_manager,
+    get_current_owner,
 )
-from papita_txnsapi.core.supabase_auth_local import (
-    elevate_unconfirmed_login_detail,
-    register_requires_email_confirmation,
-    supabase_register_user,
-    supabase_sign_in_with_optional_auto_confirm,
-)
-from papita_txnsapi.dependencies.auth import get_auth_manager, get_current_owner
 from papita_txnsapi.dependencies.rate_limit import (
     enforce_auth_login_rate_limit,
     enforce_auth_oauth_rate_limit,
@@ -51,7 +42,6 @@ from papita_txnsapi.dependencies.rate_limit import (
 )
 from papita_txnsapi.dependencies.services import get_users_service
 from papita_txnsapi.schemas.auth import (
-    LogoutRequest,
     OAuthCodeExchangeRequest,
     OAuthStartResponse,
     RefreshRequest,
@@ -71,61 +61,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-_AUTH_DEFERRED = DeferredResponse(
-    deferred_reason="FR-11 refresh/logout require AUTH_PROVIDER=supabase (Supabase Auth sessions)"
-)
+_AUTH_DEFERRED = DeferredResponse(deferred_reason="Stateless HS256 JWTs do not use an external refresh-token store")
 _UNAUTHORIZED_HEADERS = {"WWW-Authenticate": "Bearer"}
-_EMAIL_NOT_CONFIRMED_HEADERS = {
-    "WWW-Authenticate": "Bearer",
-    HEADER_ERROR_CODE: ERROR_EMAIL_NOT_CONFIRMED,
-}
-_SUPABASE_AUTH_REQUIRED = "AUTH_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_ANON_KEY for auth session APIs"
-_optional_bearer = HTTPBearer(auto_error=False)
 _OAUTH_VERIFIER_COOKIE = "papita_oauth_cv"
 _OAUTH_PROVIDER_COOKIE = "papita_oauth_provider"
 _OAUTH_REDIRECT_COOKIE = "papita_oauth_rt"
+_OAUTH_STATE_COOKIE = "papita_oauth_state"
+_OAUTH_NEXT_COOKIE = "papita_oauth_next"
 _OAUTH_COOKIE_MAX_AGE = 600
 _OAUTH_COOKIE_PATH = "/api/v1/auth"
-
-
-def _require_supabase_auth_settings(settings: Settings) -> None:
-    """Ensure Supabase URL and anon key are configured for session Auth APIs.
-
-    Args:
-        settings: Application settings with ``SUPABASE_URL`` / ``SUPABASE_ANON_KEY``.
-
-    Raises:
-        HTTPException: 503 when either required Supabase Auth setting is missing.
-    """
-    if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=_SUPABASE_AUTH_REQUIRED)
-
-
-def _token_response_from_auth(
-    *,
-    access_token: str,
-    refresh_token: str | None,
-    expires_in: int | None,
-    settings: Settings,
-) -> TokenResponse:
-    """Build an OAuth2-compatible ``TokenResponse`` from Auth session fields.
-
-    Args:
-        access_token: Bearer access JWT from Supabase (or local issuer).
-        refresh_token: Opaque refresh token when issued; ``None`` for local login.
-        expires_in: Access TTL seconds from Auth, or ``None`` to use Settings default.
-        settings: Supplies ``JWT_TOKEN_TYPE`` and default expiration.
-
-    Returns:
-        ``TokenResponse`` with ``expires_in`` clamped to at least 1 second.
-    """
-    resolved_expires = int(expires_in or settings.JWT_EXPIRATION_TIME_SECONDS)
-    return TokenResponse(
-        access_token=access_token,
-        token_type=settings.JWT_TOKEN_TYPE,
-        expires_in=max(resolved_expires, 1),
-        refresh_token=refresh_token,
-    )
+_GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 
 def _api_oauth_callback_url(request: Request) -> str:
@@ -147,26 +94,9 @@ def _resolve_oauth_redirect_to(
     *,
     extra_allowed: set[str] | None = None,
 ) -> str:
-    """Resolve and allowlist the OAuth ``redirect_to`` URI.
-
-    Allowed values are the API callback URL, ``SUPABASE_OAUTH_REDIRECT_TO`` when
-    configured, and any ``extra_allowed`` URIs (e.g. BFF OAuth callback). Rejects
-    open redirects via arbitrary query params.
-
-    Args:
-        request: Current request (used to build the named callback URL).
-        settings: Application settings that may define ``SUPABASE_OAUTH_REDIRECT_TO``.
-        redirect_to: Client-requested redirect, or ``None`` for the default.
-        extra_allowed: Optional additional absolute URIs to accept for this call.
-
-    Returns:
-        An allowlisted absolute redirect URI for Supabase OAuth.
-
-    Raises:
-        HTTPException: 400 when ``redirect_to`` is set but not allowlisted.
-    """
+    """Resolve and allowlist the OAuth ``redirect_to`` URI."""
     callback = _api_oauth_callback_url(request)
-    configured = (settings.SUPABASE_OAUTH_REDIRECT_TO or "").strip() or None
+    configured = (settings.GOOGLE_OAUTH_REDIRECT_URI or "").strip() or None
     allowed = {callback}
     if configured is not None:
         allowed.add(configured)
@@ -178,7 +108,7 @@ def _resolve_oauth_redirect_to(
     if candidate not in allowed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="redirect_to is not allowlisted; set SUPABASE_OAUTH_REDIRECT_TO or use the API callback",
+            detail="redirect_to is not allowlisted; set GOOGLE_OAUTH_REDIRECT_URI or use the API callback",
         )
     return candidate
 
@@ -207,17 +137,25 @@ def _set_oauth_pkce_cookies(
     Returns:
         None.
     """
-    cookie_kwargs = {
-        "max_age": _OAUTH_COOKIE_MAX_AGE,
-        "httponly": True,
-        "samesite": "lax",
-        "secure": secure,
-        "path": _OAUTH_COOKIE_PATH,
-    }
-    # PKCE verifier + allowlisted redirect for GET /oauth/callback (browser flow).
-    response.set_cookie(key=_OAUTH_VERIFIER_COOKIE, value=code_verifier, **cookie_kwargs)
-    response.set_cookie(key=_OAUTH_PROVIDER_COOKIE, value=provider.value, **cookie_kwargs)
-    response.set_cookie(key=_OAUTH_REDIRECT_COOKIE, value=redirect_to, **cookie_kwargs)
+    flow_handle = str(uuid.uuid4())
+    store_oauth_txn(
+        flow_handle,
+        {
+            "code_verifier": code_verifier,
+            "provider": provider.value,
+            "redirect_to": redirect_to,
+        },
+        ttl_seconds=_OAUTH_COOKIE_MAX_AGE,
+    )
+    response.set_cookie(
+        key=_OAUTH_VERIFIER_COOKIE,
+        value=flow_handle,
+        max_age=_OAUTH_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        path=_OAUTH_COOKIE_PATH,
+    )
 
 
 def _clear_oauth_pkce_cookies(response: Response) -> None:
@@ -229,8 +167,158 @@ def _clear_oauth_pkce_cookies(response: Response) -> None:
     Returns:
         None.
     """
-    for key in (_OAUTH_VERIFIER_COOKIE, _OAUTH_PROVIDER_COOKIE, _OAUTH_REDIRECT_COOKIE):
+    for key in (
+        _OAUTH_VERIFIER_COOKIE,
+        _OAUTH_PROVIDER_COOKIE,
+        _OAUTH_REDIRECT_COOKIE,
+        _OAUTH_STATE_COOKIE,
+        _OAUTH_NEXT_COOKIE,
+    ):
         response.delete_cookie(key=key, path=_OAUTH_COOKIE_PATH)
+
+
+def _has_direct_google_oauth(settings: Settings) -> bool:
+    """Return True when local mode is configured with direct Google OAuth credentials."""
+    return (
+        settings.AUTH_PROVIDER == "local"
+        and bool((settings.GOOGLE_OAUTH_CLIENT_ID or "").strip())
+        and bool((settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip())
+    )
+
+
+_SAFE_RETURN_PATHS = {
+    "/": "/",
+    "/dashboard": "/dashboard",
+    "/accounts": "/accounts",
+    "/transactions": "/transactions",
+    "/categories": "/categories",
+    "/reports": "/reports",
+    "/projections": "/projections",
+    "/payment-dues": "/payment-dues",
+    "/integrations": "/integrations",
+    "/settings": "/settings",
+    "/login": "/login",
+    "/register": "/register",
+}
+
+
+def _sanitize_return_to(raw: str | None) -> str:
+    """Allow only strict allowlisted relative SPA paths for post-OAuth redirects."""
+    if not raw:
+        return "/dashboard"
+    candidate = raw.strip()
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in candidate) or "\\" in candidate:
+        return "/dashboard"
+    if not candidate.startswith("/") or candidate.startswith("//"):
+        return "/dashboard"
+    parsed = urllib.parse.urlsplit(candidate)
+    if parsed.scheme or parsed.netloc:
+        return "/dashboard"
+    base_path = _SAFE_RETURN_PATHS.get(parsed.path)
+    if base_path is None:
+        if parsed.path.startswith("/accounts/") and parsed.path.count("/") == 2:
+            acc_id = parsed.path.removeprefix("/accounts/")
+            if not acc_id or not all(ch.isalnum() or ch in "-_" for ch in acc_id):
+                return "/dashboard"
+            base_path = f"/accounts/{acc_id}"
+        else:
+            return "/dashboard"
+    if parsed.query:
+        safe_q = urllib.parse.urlencode(urllib.parse.parse_qsl(parsed.query, keep_blank_values=False))
+        return f"{base_path}?{safe_q}" if safe_q else base_path
+    return base_path
+
+
+def _build_google_authorize_url(
+    *,
+    client_id: str,
+    redirect_uri: str,
+    state: str,
+    code_verifier: str,
+) -> str:
+    """Build Google OAuth2 authorization URL with PKCE S256."""
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    params = urllib.parse.urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": redirect_uri,
+            "response_type": "code",
+            "scope": "openid email profile",
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "prompt": "select_account",
+        }
+    )
+    return f"{_GOOGLE_AUTH_URL}?{params}"
+
+
+def _exchange_google_code(
+    *,
+    client_id: str,
+    client_secret: str,
+    code: str,
+    code_verifier: str,
+    redirect_uri: str,
+) -> dict[str, Any]:
+    """Exchange Google authorization code for tokens and fetch verified OIDC userinfo."""
+    token_body = urllib.parse.urlencode(
+        {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "code": code,
+            "code_verifier": code_verifier,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+    ).encode("utf-8")
+    token_req = urllib.request.Request(
+        _GOOGLE_TOKEN_URL,
+        data=token_body,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(token_req, timeout=15) as resp:  # nosec B310 - fixed HTTPS Google token URL
+        token_payload = json.loads(resp.read().decode("utf-8"))
+    access_token = str(token_payload.get("access_token") or "").strip()
+    if not access_token:
+        raise ValueError("Google token response missing access_token")
+
+    userinfo_req = urllib.request.Request(
+        _GOOGLE_USERINFO_URL,
+        headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+        method="GET",
+    )
+    with urllib.request.urlopen(userinfo_req, timeout=15) as resp:  # nosec B310 - fixed HTTPS Google OIDC URL
+        userinfo = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(userinfo, dict):
+        raise ValueError("Invalid Google userinfo payload")
+    return userinfo
+
+
+def _set_access_token_cookie(
+    response: Response,
+    *,
+    access_token: str,
+    max_age: int,
+    secure: bool,
+) -> None:
+    """Persist the stateless JWT in an HttpOnly, SameSite=Lax cookie for browser reloads."""
+    response.set_cookie(
+        key=AUTH_ACCESS_COOKIE,
+        value=access_token,
+        max_age=max(int(max_age), 1),
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        path=AUTH_COOKIE_PATH,
+    )
+
+
+def _clear_access_token_cookie(response: Response) -> None:
+    """Clear the browser HttpOnly access-token cookie on logout."""
+    response.delete_cookie(key=AUTH_ACCESS_COOKIE, path=AUTH_COOKIE_PATH)
 
 
 def _parse_oauth_provider(raw: str) -> ProviderType:
@@ -277,169 +365,17 @@ def soft_resend_signup_confirmation(
     email: str,
     email_redirect_to: str | None = None,
 ) -> None:
-    """Resend signup confirmation with anti-enumeration soft success (PPT-068).
+    """No-op signup confirmation resend for self-hosted local auth (PPT-068).
 
-    Local Auth is confirm-N/A (no-op). Supabase SMTP/Auth rate limits still raise
-    HTTP 429. Other Auth errors are logged and swallowed so clients cannot probe
-    whether an email is registered.
-
-    Args:
-        settings: Active API settings (provider + Supabase credentials).
-        email: Candidate address from the client.
-        email_redirect_to: Optional confirm landing URL; only forwarded when it
-            matches an ``ALLOWED_ORIGINS`` prefix (open-redirect guard).
-
-    Raises:
-        HTTPException: 503 when Supabase is misconfigured; 429 on email rate limit.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        logger.debug("Resend confirmation no-op for AUTH_PROVIDER=%s", settings.AUTH_PROVIDER)
-        return
-    _require_supabase_auth_settings(settings)
-    redirect = _allowlisted_email_redirect(settings, email_redirect_to)
-    try:
-        supabase_resend_signup_confirmation(
-            supabase_url=settings.SUPABASE_URL or "",
-            anon_key=settings.SUPABASE_ANON_KEY or "",
-            email=email,
-            email_redirect_to=redirect,
-        )
-    except ValueError as exc:
-        logger.info("Resend confirmation ignored invalid email: %s", exc)
-    except (AuthApiError, AuthError) as exc:
-        http_status, detail = classify_supabase_auth_error(exc, fallback="Confirmation email resend failed")
-        if http_status == 429:
-            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail) from exc
-        logger.info("Resend confirmation soft-success detail=%s", detail)
-
-
-def _allowlisted_email_redirect(settings: Settings, redirect: str | None) -> str | None:
-    """Return ``redirect`` when it matches an allowlisted SPA origin; else ``None``."""
-    if redirect is None:
-        return None
-    trimmed = str(redirect).strip()
-    if not trimmed:
-        return None
-    for origin in settings.ALLOWED_ORIGINS:
-        if not origin or origin == "*":
-            continue
-        base = origin.rstrip("/")
-        if trimmed == base or trimmed.startswith(f"{base}/"):
-            return trimmed
-    # Digest only — never log the raw user-controlled redirect (log injection).
-    redirect_digest = hashlib.sha256(trimmed.encode("utf-8")).hexdigest()[:12]
-    logger.info("Ignoring non-allowlisted email_redirect_to digest=%s", redirect_digest)
-    return None
-
-
-def _cleanup_orphan_auth_user(
-    *,
-    settings: Settings,
-    user_id: uuid.UUID,
-    reason: str,
-    require_recent: bool,
-) -> None:
-    """Best-effort Admin delete of a half-created Auth identity.
-
-    No-ops when the service role key is unset. Login cleanup can require the
-    Auth user to be younger than the orphan window so established accounts are
-    not wiped after a transient DB blip.
+    Kept as a soft-success endpoint so older SPA clients can call it without
+    probing whether an email is registered.
 
     Args:
-        settings: Must include ``SUPABASE_SERVICE_ROLE_KEY`` for cleanup to run.
-        user_id: Auth subject created before Papita provision failed.
-        reason: Short label for logs (``register`` / ``login``).
-        require_recent: When ``True`` (login), only delete Auth users younger than
-            the orphan window so a transient DB blip does not wipe established accounts.
-
-    Returns:
-        None. Failures are logged; they do not raise to the client.
+        settings: Active API settings (unused for local auth).
+        email: Candidate address from the client (unused).
+        email_redirect_to: Optional confirm landing URL (unused).
     """
-    service_key = (settings.SUPABASE_SERVICE_ROLE_KEY or "").strip()
-    if not service_key or not settings.SUPABASE_URL:
-        logger.warning(
-            "Skipping Auth orphan cleanup user_id=%s reason=%s (SUPABASE_SERVICE_ROLE_KEY unset)",
-            user_id,
-            reason,
-        )
-        return
-    try:
-        if require_recent and not supabase_auth_user_created_recently(
-            supabase_url=settings.SUPABASE_URL,
-            service_role_key=service_key,
-            user_id=user_id,
-        ):
-            logger.info(
-                "Skipping Auth orphan cleanup user_id=%s reason=%s (Auth user not recently created)",
-                user_id,
-                reason,
-            )
-            return
-        supabase_admin_delete_user(
-            supabase_url=settings.SUPABASE_URL,
-            service_role_key=service_key,
-            user_id=user_id,
-        )
-        logger.info("Cleaned up half-created Auth user user_id=%s reason=%s", user_id, reason)
-    except Exception as cleanup_exc:  # pragma: no cover - Admin cleanup best-effort
-        logger.exception(
-            "Failed Auth orphan cleanup user_id=%s reason=%s: %s",
-            user_id,
-            reason,
-            cleanup_exc,
-        )
-
-
-def _complete_oauth_provision(
-    *,
-    settings: Settings,
-    users_service: UsersService,
-    provider: ProviderType,
-    auth_code: str,
-    code_verifier: str,
-    redirect_to: str | None,
-    display_name: str | None = None,
-) -> tuple[TokenResponse, UsersDTO]:
-    """Exchange an OAuth code for a session and provision the Papita tenant row.
-
-    Args:
-        settings: App settings with Supabase URL and anon key.
-        users_service: Service used for ``ensure_from_auth_subject``.
-        provider: OAuth channel (``google`` or ``github``).
-        auth_code: Authorization code from the IdP redirect.
-        code_verifier: PKCE verifier from the authorize step.
-        redirect_to: Allowlisted redirect URI that matched authorize, if any.
-        display_name: Optional profile override when Auth metadata is incomplete.
-
-    Returns:
-        Pair of OAuth2 ``TokenResponse`` (Supabase tokens) and the provisioned
-        ``UsersDTO`` owner row.
-
-    Raises:
-        AuthApiError: Supabase rejected the code exchange (API error).
-        AuthError: Non-API Auth failure from the SDK.
-        ValueError: Response missing user/session fields or provision failed.
-    """
-    auth_result = supabase_exchange_code_for_session(
-        supabase_url=settings.SUPABASE_URL or "",
-        anon_key=settings.SUPABASE_ANON_KEY or "",
-        auth_code=auth_code,
-        code_verifier=code_verifier,
-        redirect_to=redirect_to,
-    )
-    user = users_service.ensure_from_auth_subject(
-        subject=auth_result.user_id,
-        email=auth_result.email,
-        display_name=display_name,
-        provider_type=provider,
-    )
-    token = _token_response_from_auth(
-        access_token=str(auth_result.access_token),
-        refresh_token=auth_result.refresh_token,
-        expires_in=auth_result.expires_in,
-        settings=settings,
-    )
-    return token, user
+    _ = (settings, email, email_redirect_to)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)
@@ -449,80 +385,9 @@ def register_user(
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> RegisterResponse:
-    """Register a new user via Supabase Auth (or local ``UsersService``).
-
-    Email is the canonical login identity. A schema ``username`` handle is
-    derived from the email local-part when not supplied. Under Supabase, Auth
-    signup runs first; Papita provision is idempotent. Provision failure after a
-    successful Auth create triggers best-effort Admin orphan cleanup.
-
-    Args:
-        body: Registration payload (email, password, optional profile fields).
-        _rate_limit: Per-IP register rate-limit dependency (side effect only).
-        settings: Selects ``supabase`` vs ``local`` Auth mode.
-        users_service: Creates or links the tenant ``users`` row.
-
-    Returns:
-        Public ``RegisterResponse`` for the new or already-linked tenant user,
-        including ``email_confirmation_required`` when Confirm email is on.
-
-    Raises:
-        HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,
-            429 rate limit, 503 misconfigured Supabase, etc.).
-    """
+    """Register a new self-hosted user via ``UsersService``."""
+    _ = settings
     resolved_username = body.username or UsersService.username_from_email(body.email)
-
-    if settings.AUTH_PROVIDER == "supabase":
-        _require_supabase_auth_settings(settings)
-        auth_result = None
-        try:
-            auth_result = supabase_register_user(
-                supabase_url=settings.SUPABASE_URL or "",
-                anon_key=settings.SUPABASE_ANON_KEY or "",
-                email=body.email,
-                password=body.password,
-                profile=SupabaseSignUpProfile(
-                    username=resolved_username,
-                    display_name=body.display_name,
-                    phone=body.phone,
-                    provider=body.provider_type,
-                ),
-                service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
-                prefer_admin_create=settings.should_auto_confirm_email(),
-            )
-            # Idempotent: returns existing active Papita row or creates one.
-            user = users_service.ensure_from_auth_subject(
-                subject=auth_result.user_id,
-                email=auth_result.email,
-                username=resolved_username,
-                display_name=body.display_name,
-                phone=body.phone,
-                provider_type=body.provider_type,
-            )
-        except (AuthApiError, AuthError) as exc:
-            http_status, detail = classify_supabase_auth_error(exc, fallback="Supabase Auth registration failed")
-            logger.info("Supabase sign_up failed: %s", detail)
-            raise HTTPException(status_code=http_status, detail=detail) from exc
-        except ValueError as exc:
-            logger.exception("Supabase signup provision error")
-            if auth_result is not None:
-                _cleanup_orphan_auth_user(
-                    settings=settings,
-                    user_id=auth_result.user_id,
-                    reason="register",
-                    require_recent=False,
-                )
-            raise HTTPException(
-                status_code=_http_status_for_provision_error(exc),
-                detail=public_value_error_detail(exc, fallback="Registration failed"),
-                headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
-            ) from exc
-        pending = register_requires_email_confirmation(
-            access_token=auth_result.access_token,
-            auto_confirm_enabled=settings.should_auto_confirm_email(),
-        )
-        return RegisterResponse.from_dto(user, email_confirmation_required=pending)
-
     user = users_service.register(
         email=body.email,
         password=body.password,
@@ -540,10 +405,10 @@ def resend_confirmation(
     _rate_limit: Annotated[None, Depends(enforce_auth_register_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> Response:
-    """Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).
+    """Soft-success resend confirmation stub for self-hosted local auth.
 
-    Always returns 204 on soft success (including unknown emails). Rate-limited
-    with the register bucket because both trigger Auth SMTP.
+    Always returns 204 (including unknown emails). Rate-limited with the
+    register bucket for anti-enumeration parity with older clients.
     """
     soft_resend_signup_confirmation(
         settings=settings,
@@ -555,102 +420,14 @@ def resend_confirmation(
 
 @router.post("/login", response_model=TokenResponse)
 def login(
+    response: Response,
     form: Annotated[OAuth2PasswordRequestForm, Depends()],
     _rate_limit: Annotated[None, Depends(enforce_auth_login_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
     auth_manager: Annotated[AuthSecurityManager, Depends(get_auth_manager)],
 ) -> TokenResponse:
-    """OAuth2 password flow — Supabase Auth sign-in or local credential verify.
-
-    Clients must put the **email** in the OAuth2 ``username`` form field when
-    ``AUTH_PROVIDER=supabase``. Local mode still accepts email or derived username.
-    Supabase login provisionally ensures a Papita row by Auth ``sub``; recent
-    orphan Auth users may be deleted if provision fails (not for inactive tenants).
-
-    Args:
-        form: OAuth2 password form (``username`` + ``password``).
-        _rate_limit: Per-IP login rate-limit dependency (side effect only).
-        settings: Selects Auth mode and JWT/session defaults.
-        users_service: Verifies credentials (local) or ensures Auth-linked user.
-        auth_manager: Issues HS256 access tokens in local mode only.
-
-    Returns:
-        ``TokenResponse`` with access token; Supabase also returns ``refresh_token``.
-
-    Raises:
-        HTTPException: 401 for bad credentials; 429 when Auth rate-limits; other
-            provision/Auth failures mapped from helpers.
-    """
-    if settings.AUTH_PROVIDER == "supabase":
-        _require_supabase_auth_settings(settings)
-        email = form.username.strip()
-        if "@" not in email:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Login requires email (OAuth2 username field)",
-                headers=_UNAUTHORIZED_HEADERS,
-            )
-        auth_result = None
-        existing = None
-        try:
-            existing = users_service.get_by_email(email)
-            auth_result = supabase_sign_in_with_optional_auto_confirm(
-                supabase_url=settings.SUPABASE_URL or "",
-                anon_key=settings.SUPABASE_ANON_KEY or "",
-                email=email,
-                password=form.password,
-                service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
-                auth_user_id=existing.id if existing is not None else None,
-                auto_confirm=settings.should_auto_confirm_email(),
-            )
-            # Idempotent provision of papita_transactions.users by Auth sub.
-            users_service.ensure_from_auth_subject(
-                subject=auth_result.user_id,
-                email=auth_result.email,
-            )
-            return _token_response_from_auth(
-                access_token=str(auth_result.access_token),
-                refresh_token=auth_result.refresh_token,
-                expires_in=auth_result.expires_in,
-                settings=settings,
-            )
-        except (AuthApiError, AuthError) as exc:
-            http_status, detail = classify_supabase_auth_error(exc, fallback="login failed")
-            http_status, detail = elevate_unconfirmed_login_detail(
-                supabase_url=settings.SUPABASE_URL or "",
-                service_role_key=settings.SUPABASE_SERVICE_ROLE_KEY,
-                auth_user_id=existing.id if existing is not None else None,
-                auto_confirm=settings.should_auto_confirm_email(),
-                http_status=http_status,
-                detail=detail,
-            )
-            if http_status == 401 and detail != "Email not confirmed":
-                detail = "Incorrect username or password"
-            logger.info("Supabase sign_in failed: %s", detail)
-            headers = _EMAIL_NOT_CONFIRMED_HEADERS if detail == "Email not confirmed" else _UNAUTHORIZED_HEADERS
-            raise HTTPException(
-                status_code=http_status if http_status in {401, 429} else status.HTTP_401_UNAUTHORIZED,
-                detail=detail if http_status in {401, 429} else "Incorrect username or password",
-                headers=headers,
-            ) from exc
-        except ValueError as exc:
-            logger.exception("Supabase login provision error")
-            if auth_result is not None and str(exc) != "User is inactive or deleted":
-                # Half-created Auth identity (e.g. prior register left Auth without Papita
-                # and provision still fails): remove recent Auth users so re-register works.
-                _cleanup_orphan_auth_user(
-                    settings=settings,
-                    user_id=auth_result.user_id,
-                    reason="login",
-                    require_recent=True,
-                )
-            raise HTTPException(
-                status_code=_http_status_for_provision_error(exc),
-                detail=public_value_error_detail(exc, fallback="Login failed"),
-                headers=_UNAUTHORIZED_HEADERS if str(exc) == "User is inactive or deleted" else None,
-            ) from exc
-
+    """OAuth2 password flow — local credential verify and HS256 JWT issuance."""
     user = users_service.verify_credentials(form.username, form.password)
     if user is None:
         raise HTTPException(
@@ -660,6 +437,12 @@ def login(
         )
 
     token = auth_manager.generate_token(str(user.id))
+    _set_access_token_cookie(
+        response,
+        access_token=token,
+        max_age=settings.JWT_EXPIRATION_TIME_SECONDS,
+        secure=settings.oauth_cookie_secure(),
+    )
     return TokenResponse(
         access_token=token,
         token_type=settings.JWT_TOKEN_TYPE,
@@ -671,62 +454,14 @@ def login(
 @router.post("/oauth/callback", response_model=TokenResponse)
 def oauth_callback_post(
     body: OAuthCodeExchangeRequest,
-    request: Request,
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> TokenResponse:
-    """Complete Supabase OAuth with authorization ``code`` + PKCE verifier.
-
-    Calls GoTrue ``exchange_code_for_session``, then provisions
-    ``papita_transactions.users`` by Auth ``sub``. Preferred completion path for
-    API clients that can store the ``code_verifier`` from authorize start.
-
-    Args:
-        body: Provider, auth code, PKCE verifier, optional redirect and name.
-        request: Used to allowlist ``redirect_to`` against the API callback URL.
-        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-        settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-        users_service: Provisions or refreshes the tenant profile.
-
-    Returns:
-        Supabase session tokens as ``TokenResponse``.
-
-    Raises:
-        HTTPException: 501 when not Supabase; 400/401 on provider or exchange errors.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="OAuth SSO requires AUTH_PROVIDER=supabase",
-        )
-    if not body.provider.is_oauth():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported OAuth provider")
-    _require_supabase_auth_settings(settings)
-    try:
-        redirect_to = _resolve_oauth_redirect_to(request, settings, body.redirect_to)
-        token, _user = _complete_oauth_provision(
-            settings=settings,
-            users_service=users_service,
-            provider=body.provider,
-            auth_code=body.auth_code,
-            code_verifier=body.code_verifier,
-            redirect_to=redirect_to,
-            display_name=body.display_name,
-        )
-        return token
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback="OAuth code exchange rejected")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=detail,
-            headers=_UNAUTHORIZED_HEADERS,
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=public_value_error_detail(exc, fallback="OAuth callback failed"),
-        ) from exc
+    """Browser PKCE flow completes via ``GET /auth/oauth/callback``."""
+    _ = body
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Use GET /api/v1/auth/oauth/google?follow=true for direct Google OAuth PKCE",
+    )
 
 
 @router.get("/oauth/callback", response_model=TokenResponse, name="oauth_callback_get")
@@ -735,87 +470,79 @@ def oauth_callback_get(  # pylint: disable=too-many-locals
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
     settings: Annotated[Settings, Depends(get_settings)],
     users_service: Annotated[UsersService, Depends(get_users_service)],
+    auth_manager: Annotated[AuthSecurityManager, Depends(get_auth_manager)],
     *,
     code: str | None = None,
+    state: str | None = None,
     error: str | None = None,
     error_description: str | None = None,
-) -> TokenResponse | JSONResponse:
-    """Browser redirect target for Supabase OAuth (PKCE cookie + ``code``).
-
-    Use with ``GET /auth/oauth/{provider}?follow=true`` so the PKCE verifier,
-    provider, and ``redirect_to`` are available from HTTP-only cookies. Clears
-    those cookies after a successful exchange.
-
-    Args:
-        request: Incoming redirect; cookies supply verifier/provider/redirect.
-        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-        settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-        users_service: Provisions or refreshes the tenant profile.
-        code: Authorization code query param from the IdP.
-        error: Optional IdP error code when authorize failed.
-        error_description: Optional human-readable IdP error text.
-
-    Returns:
-        JSON body matching ``TokenResponse`` with PKCE cookies cleared.
-
-    Raises:
-        HTTPException: 501 when not Supabase; 400 missing code/cookies; 401 on Auth errors.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="OAuth SSO requires AUTH_PROVIDER=supabase",
+) -> TokenResponse | JSONResponse | RedirectResponse:
+    """Browser redirect target for direct Google OAuth PKCE."""
+    if _has_direct_google_oauth(settings):
+        txn = consume_oauth_txn(request.cookies.get(_OAUTH_VERIFIER_COOKIE))
+        next_path = _sanitize_return_to((txn or {}).get("next_path"))
+        if next_path not in _SAFE_RETURN_PATHS.values() and not next_path.startswith(
+            ("/settings?", "/integrations?", "/accounts/")
+        ):
+            next_path = "/dashboard"
+        expected_state = (txn or {}).get("state")
+        code_verifier = (txn or {}).get("code_verifier")
+        redirect_uri = (
+            (txn or {}).get("redirect_to")
+            or (settings.GOOGLE_OAUTH_REDIRECT_URI or "").strip()
+            or _api_oauth_callback_url(request)
         )
-    if error:
-        # Never echo raw IdP error_description text to clients.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="OAuth authorization failed",
-            headers=_UNAUTHORIZED_HEADERS,
-        )
-    if not code:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing OAuth authorization code")
-    code_verifier = request.cookies.get(_OAUTH_VERIFIER_COOKIE)
-    provider_raw = request.cookies.get(_OAUTH_PROVIDER_COOKIE)
-    redirect_from_cookie = request.cookies.get(_OAUTH_REDIRECT_COOKIE)
-    if not code_verifier:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing OAuth PKCE cookie; restart with GET /auth/oauth/{provider}?follow=true",
-        )
-    if not provider_raw:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Missing OAuth provider cookie; restart with GET /auth/oauth/{provider}?follow=true",
-        )
-    oauth_provider = _parse_oauth_provider(provider_raw)
-    _require_supabase_auth_settings(settings)
-    try:
-        redirect_to = _resolve_oauth_redirect_to(request, settings, redirect_from_cookie)
-        token, _user = _complete_oauth_provision(
-            settings=settings,
-            users_service=users_service,
-            provider=oauth_provider,
-            auth_code=code,
-            code_verifier=code_verifier,
-            redirect_to=redirect_to,
-        )
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback="OAuth code exchange rejected")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=detail,
-            headers=_UNAUTHORIZED_HEADERS,
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=public_value_error_detail(exc, fallback="OAuth callback failed"),
-        ) from exc
+        state_ok = bool(state and expected_state and secrets.compare_digest(state, expected_state))
+        if error or not code or not code_verifier or not state_ok:
+            logger.warning("Direct Google OAuth callback rejected (error=%s, state_ok=%s)", bool(error), state_ok)
+            failed = RedirectResponse(url="/login?oauth_error=1", status_code=status.HTTP_302_FOUND)
+            _clear_oauth_pkce_cookies(failed)
+            return failed
+        try:
+            userinfo = _exchange_google_code(
+                client_id=(settings.GOOGLE_OAUTH_CLIENT_ID or "").strip(),
+                client_secret=(settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip(),
+                code=code,
+                code_verifier=code_verifier,
+                redirect_uri=redirect_uri,
+            )
+            email = str(userinfo.get("email") or "").strip().lower()
+            if not email or not userinfo.get("email_verified", False):
+                raise ValueError("Google account email is missing or unverified")
+            display_name = str(userinfo.get("name") or "").strip() or None
+            sub = str(userinfo.get("sub") or email).strip()
 
-    response = JSONResponse(content=token.model_dump(mode="json"))
-    _clear_oauth_pkce_cookies(response)
-    return response
+            user = users_service.get_by_email(email)
+            if user is None:
+                user = users_service.ensure_from_auth_subject(
+                    subject=uuid.uuid5(uuid.NAMESPACE_URL, f"google:{sub}"),
+                    email=email,
+                    display_name=display_name,
+                    provider_type=ProviderType.GOOGLE,
+                )
+            elif not user.active or user.deleted_at is not None:
+                raise ValueError("User is inactive or deleted")
+
+            token = auth_manager.generate_token(str(user.id))
+            redirect_resp = RedirectResponse(url=next_path, status_code=status.HTTP_302_FOUND)
+            _set_access_token_cookie(
+                redirect_resp,
+                access_token=token,
+                max_age=settings.JWT_EXPIRATION_TIME_SECONDS,
+                secure=settings.oauth_cookie_secure(),
+            )
+            _clear_oauth_pkce_cookies(redirect_resp)
+            return redirect_resp
+        except (urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            logger.warning("Direct Google OAuth exchange failed: %s", exc)
+            failed = RedirectResponse(url="/login?oauth_error=1", status_code=status.HTTP_302_FOUND)
+            _clear_oauth_pkce_cookies(failed)
+            return failed
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Google OAuth is not configured (set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)",
+    )
 
 
 @router.get("/oauth/{provider}", response_model=OAuthStartResponse)
@@ -826,138 +553,66 @@ def start_oauth(
     settings: Annotated[Settings, Depends(get_settings)],
     redirect_to: str | None = None,
     follow: bool = False,
+    return_to: str = "/dashboard",
 ) -> OAuthStartResponse | RedirectResponse:
-    """Start Supabase OAuth (PKCE) via ``sign_in_with_oauth``.
-
-    Returns the authorize ``url`` and ``code_verifier``. Clients must keep the
-    verifier and send it with the authorization ``code`` to
-    ``POST /auth/oauth/callback``.
-
-    When ``follow=true``, responds with ``302`` to the IdP and stores the PKCE
-    verifier, provider, and ``redirect_to`` in HTTP-only cookies for
-    ``GET /auth/oauth/callback``. Cookie ``Secure`` follows settings
-    (``AUTH_COOKIE_SECURE`` / non-debug default).
-
-    Args:
-        provider: Path segment (``google`` or ``github``).
-        request: Used to resolve the allowlisted redirect URI.
-        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-        settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-        redirect_to: Optional allowlisted redirect override.
-        follow: When ``True``, 302-redirect and set PKCE cookies.
-
-    Returns:
-        ``OAuthStartResponse`` JSON, or ``RedirectResponse`` when ``follow=true``.
-
-    Raises:
-        HTTPException: 501 when not Supabase; 404 unknown provider; 400 bad redirect;
-            502 when Supabase fails to start OAuth.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="OAuth SSO requires AUTH_PROVIDER=supabase",
-        )
+    """Start direct local Google OAuth (PKCE)."""
+    _ = redirect_to
     oauth_provider = _parse_oauth_provider(provider)
-    _require_supabase_auth_settings(settings)
-    target = _resolve_oauth_redirect_to(request, settings, redirect_to)
-    try:
-        started = supabase_oauth_authorize_url(
-            supabase_url=settings.SUPABASE_URL or "",
-            anon_key=settings.SUPABASE_ANON_KEY or "",
-            provider=oauth_provider.value,
-            redirect_to=target,
+    if oauth_provider == ProviderType.GOOGLE and _has_direct_google_oauth(settings):
+        callback_uri = (settings.GOOGLE_OAUTH_REDIRECT_URI or "").strip() or _api_oauth_callback_url(request)
+        code_verifier = secrets.token_urlsafe(48)
+        state = secrets.token_urlsafe(24)
+        auth_url = _build_google_authorize_url(
+            client_id=(settings.GOOGLE_OAUTH_CLIENT_ID or "").strip(),
+            redirect_uri=callback_uri,
+            state=state,
+            code_verifier=code_verifier,
         )
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback=f"Failed to start {oauth_provider.value} OAuth")
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=public_value_error_detail(exc, fallback=f"Failed to start {oauth_provider.value} OAuth"),
-        ) from exc
+        if follow:
+            response = RedirectResponse(url=auth_url, status_code=status.HTTP_302_FOUND)
+            secure = settings.oauth_cookie_secure()
+            safe_next = _sanitize_return_to(return_to)
+            flow_handle = str(uuid.uuid4())
+            store_oauth_txn(
+                flow_handle,
+                {
+                    "code_verifier": code_verifier,
+                    "provider": oauth_provider.value,
+                    "redirect_to": callback_uri,
+                    "state": state,
+                    "next_path": safe_next,
+                },
+                ttl_seconds=_OAUTH_COOKIE_MAX_AGE,
+            )
+            response.set_cookie(
+                key=_OAUTH_VERIFIER_COOKIE,
+                value=flow_handle,
+                max_age=_OAUTH_COOKIE_MAX_AGE,
+                httponly=True,
+                samesite="lax",
+                secure=secure,
+                path=_OAUTH_COOKIE_PATH,
+            )
+            return response
+        return OAuthStartResponse(provider=oauth_provider, url=auth_url, code_verifier=code_verifier)
 
-    payload = OAuthStartResponse(
-        provider=oauth_provider,
-        url=started.url,
-        code_verifier=started.code_verifier,
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Google OAuth is not configured (set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET)",
     )
-    if follow:
-        response = RedirectResponse(url=started.url, status_code=status.HTTP_302_FOUND)
-        _set_oauth_pkce_cookies(
-            response,
-            code_verifier=started.code_verifier,
-            provider=oauth_provider,
-            redirect_to=target,
-            secure=settings.oauth_cookie_secure(),
-        )
-        return response
-    return payload
 
 
 @router.post("/sso", response_model=TokenResponse)
 def complete_sso(
     body: SsoSessionRequest,
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
-    settings: Annotated[Settings, Depends(get_settings)],
-    users_service: Annotated[UsersService, Depends(get_users_service)],
 ) -> TokenResponse:
-    """Complete OAuth when the client already holds Supabase session tokens.
-
-    Prefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the
-    redirect yields a ``code``. This endpoint remains for hash/fragment clients
-    that already called Supabase JS and hold access/refresh tokens.
-
-    Args:
-        body: Provider, access token, refresh token, optional display name.
-        _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-        settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-        users_service: Provisions or refreshes the tenant profile.
-
-    Returns:
-        Validated session as ``TokenResponse`` (refresh falls back to the body).
-
-    Raises:
-        HTTPException: 501 when not Supabase; 401 if session is rejected; 400 on
-            provision failures.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="OAuth SSO requires AUTH_PROVIDER=supabase",
-        )
-    _require_supabase_auth_settings(settings)
-    try:
-        auth_result = supabase_establish_session(
-            supabase_url=settings.SUPABASE_URL or "",
-            anon_key=settings.SUPABASE_ANON_KEY or "",
-            access_token=body.access_token,
-            refresh_token=body.refresh_token,
-        )
-        users_service.ensure_from_auth_subject(
-            subject=auth_result.user_id,
-            email=auth_result.email,
-            display_name=body.display_name,
-            provider_type=body.provider,
-        )
-        return _token_response_from_auth(
-            access_token=str(auth_result.access_token),
-            refresh_token=auth_result.refresh_token or body.refresh_token,
-            expires_in=auth_result.expires_in,
-            settings=settings,
-        )
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback="SSO session rejected")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=detail,
-            headers=_UNAUTHORIZED_HEADERS,
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=public_value_error_detail(exc, fallback="SSO session rejected"),
-        ) from exc
+    """Deprecated external SSO endpoint (use direct Google OAuth PKCE)."""
+    _ = body
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="Use GET /api/v1/auth/oauth/google?follow=true for direct Google OAuth PKCE",
+    )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -967,10 +622,9 @@ def get_current_user(
 ) -> UserResponse:
     """Return the authenticated user profile (protected route smoke test).
 
-    Uses ``get_current_owner``, which verifies the bearer JWT and may refresh
-    Auth-linked profile fields under Supabase mode. When Redis is required,
-    revoked tokens are rejected (denylist fail-closed). Tenant API rate limits
-    apply (same Free/Pro/Enterprise quotas as other protected routers).
+    Uses ``get_current_owner``, which verifies the bearer JWT (header or
+    HttpOnly cookie). Tenant API rate limits apply (same Free/Pro/Enterprise
+    quotas as other protected routers).
 
     Args:
         owner: Authenticated tenant user resolved from the bearer JWT.
@@ -980,9 +634,8 @@ def get_current_user(
         Public ``UserResponse`` for the current session user (never includes password).
 
     Raises:
-        HTTPException: 401 when credentials are missing/invalid/revoked; 429 when
-            the tenant API quota is exceeded; 503 when the Redis denylist is
-            required but unavailable.
+        HTTPException: 401 when credentials are missing/invalid; 429 when the
+            tenant API quota is exceeded.
     """
     return UserResponse.from_dto(owner)
 
@@ -991,93 +644,20 @@ def get_current_user(
 def refresh_token(
     body: RefreshRequest,
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
-    settings: Annotated[Settings, Depends(get_settings)],
-) -> TokenResponse | JSONResponse:
-    """Rotate Supabase Auth access/refresh tokens.
-
-    When ``AUTH_PROVIDER=local``, returns HTTP 501 (no refresh-token store).
-
-    Args:
-        body: Current Supabase refresh token.
-        _rate_limit: Per-IP OAuth/refresh rate-limit dependency (side effect only).
-        settings: Application settings selecting Auth provider.
-
-    Returns:
-        New access and refresh tokens from Supabase Auth, or a deferred JSON body
-        with status 501 in local mode.
-
-    Raises:
-        HTTPException: 401 on invalid refresh token; 400 on malformed Auth response;
-            503 when Supabase URL/anon key are missing.
-    """
-    if settings.AUTH_PROVIDER != "supabase":
-        return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
-
-    _require_supabase_auth_settings(settings)
-    try:
-        auth_result = supabase_refresh_session(
-            supabase_url=settings.SUPABASE_URL or "",
-            anon_key=settings.SUPABASE_ANON_KEY or "",
-            refresh_token=body.refresh_token,
-        )
-        return _token_response_from_auth(
-            access_token=str(auth_result.access_token),
-            refresh_token=auth_result.refresh_token,
-            expires_in=auth_result.expires_in,
-            settings=settings,
-        )
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback="Invalid or expired refresh token")
-        logger.info("Supabase refresh failed: %s", detail)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-            headers=_UNAUTHORIZED_HEADERS,
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=public_value_error_detail(exc, fallback="Invalid or expired refresh token"),
-        ) from exc
+) -> JSONResponse:
+    """Self-hosted HS256 JWTs do not use an external refresh-token store."""
+    _ = body
+    return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 def logout(
-    body: LogoutRequest,
-    settings: Annotated[Settings, Depends(get_settings)],
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_optional_bearer)],
     _rate_limit: Annotated[None, Depends(enforce_auth_oauth_rate_limit)],
-) -> Response | JSONResponse:
-    """Revoke the Supabase Auth session when ``AUTH_PROVIDER=supabase``."""
-    access_token = (body.access_token or "").strip() or (
-        credentials.credentials.strip() if credentials and credentials.credentials else ""
+) -> JSONResponse:
+    """Clear the access-token cookie and return deferred status for stateless JWTs."""
+    deferred_response = JSONResponse(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        content=_AUTH_DEFERRED.model_dump(),
     )
-
-    if settings.AUTH_PROVIDER != "supabase":
-        return JSONResponse(status_code=status.HTTP_501_NOT_IMPLEMENTED, content=_AUTH_DEFERRED.model_dump())
-
-    _require_supabase_auth_settings(settings)
-    if not access_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="access_token is required (body.access_token or Authorization: Bearer)",
-        )
-
-    try:
-        supabase_sign_out(
-            supabase_url=settings.SUPABASE_URL or "",
-            anon_key=settings.SUPABASE_ANON_KEY or "",
-            access_token=access_token,
-            refresh_token=body.refresh_token,
-        )
-    except (AuthApiError, AuthError) as exc:
-        detail = auth_error_detail(exc, fallback="Supabase Auth logout failed")
-        logger.info("Supabase sign_out failed: %s", detail)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=public_value_error_detail(exc, fallback="Logout failed"),
-        ) from exc
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
+    _clear_access_token_cookie(deferred_response)
+    return deferred_response

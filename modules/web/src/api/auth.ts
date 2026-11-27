@@ -4,6 +4,7 @@ import {
   getAccessExpiresAt,
   getAccessToken,
   getRefreshToken,
+  isPapitaApiError,
   setAuthTokens,
 } from "@/api/http";
 
@@ -44,11 +45,8 @@ function unauthenticatedSession(): BffSession {
   };
 }
 
-/** Resolve current session via stateless Bearer token + ``GET /api/v1/auth/me``. */
+/** Resolve current session via Bearer token or HttpOnly cookie + ``GET /api/v1/auth/me``. */
 export async function getBffSession(signal?: AbortSignal): Promise<BffSession> {
-  if (!getAccessToken()) {
-    return unauthenticatedSession();
-  }
   try {
     const { data: user } = await apiFetch<BffUser>("/api/v1/auth/me", {
       signal,
@@ -61,12 +59,15 @@ export async function getBffSession(signal?: AbortSignal): Promise<BffSession> {
         provider: user.provider ?? user.provider_type ?? "email",
       },
       csrf_token: null,
-      session_backend: "bearer",
+      session_backend: getAccessToken() ? "bearer" : "cookie",
       access_expires_at: getAccessExpiresAt(),
     };
-  } catch {
-    clearAuthTokens();
-    return unauthenticatedSession();
+  } catch (error) {
+    if (isPapitaApiError(error) && (error.status === 401 || error.status === 403)) {
+      clearAuthTokens();
+      return unauthenticatedSession();
+    }
+    throw error;
   }
 }
 
@@ -153,37 +154,33 @@ export async function bffRefresh(signal?: AbortSignal): Promise<BffSession> {
   return getBffSession(signal);
 }
 
-/** ``POST /api/v1/auth/logout`` — clears in-memory Bearer session. */
+/** ``POST /api/v1/auth/logout`` — clears in-memory tokens and HttpOnly session cookie. */
 export async function bffLogout(): Promise<void> {
   const access = getAccessToken();
   const refresh = getRefreshToken();
   clearAuthTokens();
-  if (!access) {
-    return;
-  }
   try {
     await apiFetch<undefined>("/api/v1/auth/logout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        access_token: access,
+        ...(access ? { access_token: access } : {}),
         refresh_token: refresh ?? "local-stateless",
       }),
       skipAuthRefresh: true,
     });
   } catch {
-    // Stateless local mode returns 501; clearing tokens in memory is sufficient.
+    // Stateless local mode returns 501 after clearing the HttpOnly cookie.
   }
 }
 
-export type BffOAuthProvider = "google" | "github";
+export type BffOAuthProvider = "google";
 
-/** Same-origin OAuth start URL (`/api/v1/auth/oauth/{provider}?follow=true`). */
+/** Same-origin OAuth start URL (`/api/v1/auth/oauth/{provider}?follow=true&return_to=...`). */
 export function bffOAuthStartUrl(
   provider: BffOAuthProvider,
   returnTo: string = "/dashboard",
 ): string {
-  void returnTo;
-  const params = new URLSearchParams({ follow: "true" });
+  const params = new URLSearchParams({ follow: "true", return_to: returnTo });
   return `/api/v1/auth/oauth/${provider}?${params.toString()}`;
 }

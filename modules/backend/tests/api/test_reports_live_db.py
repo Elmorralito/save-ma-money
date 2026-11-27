@@ -62,7 +62,7 @@ class TestReportsLiveDb:
         UsersService.ensure_password_manager()
         get_settings.cache_clear()
         os.environ["DATABASE_URL"] = str(POSTGRES_URL)
-        yield TestClient(create_app())
+        yield TestClient(create_app(), headers={"Origin": "http://testserver"})
         close_database()
 
     def test_seeded_spending_and_cash_flow_totals(self, live_client: TestClient) -> None:

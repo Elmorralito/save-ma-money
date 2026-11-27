@@ -14,6 +14,7 @@ from papita_ingestor_email.parsers import (
     FallbackEmailParser,
     Global66Parser,
     NequiParser,
+    NuParser,
     default_email_parsers,
 )
 from papita_ingestor_email.sources.gmail import GmailSource, create_gmail_source
@@ -53,6 +54,7 @@ __all__ = [
     "IngestionRunService",
     "IngestionRunner",
     "NequiParser",
+    "NuParser",
     "NormalizedPortfolioBatch",
     "ParsedRecord",
     "PluginKind",

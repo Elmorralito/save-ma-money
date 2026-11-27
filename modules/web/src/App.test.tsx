@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import App from "@/App";
 import * as authApi from "@/api/auth";
 import * as accountsApi from "@/api/accounts";
 import * as ingestionApi from "@/api/ingestion";
@@ -22,6 +23,7 @@ vi.mock("@/api/auth", () => ({
   bffRegister: vi.fn(),
   bffRefresh: vi.fn(),
   bffResendConfirmation: vi.fn(),
+  bffOAuthStartUrl: vi.fn(() => "/api/v1/auth/oauth/google"),
 }));
 
 vi.mock("@/api/accounts", () => ({
@@ -75,7 +77,7 @@ vi.mock("@/api/health", () => ({
     timestamp: "2026-07-29T00:00:00Z",
     database: "connected",
     auth: "skipped",
-    auth_detail: "auth provider is local — supabase probe skipped",
+    auth_detail: "local auth active",
     redis: "skipped",
     redis_detail: "redis disabled",
   })),
@@ -361,9 +363,21 @@ describe("DashboardPage (authenticated)", () => {
       "Rent hold",
     );
     expect(screen.getByRole("region", { name: "Due soon" })).toHaveTextContent("Electric bill");
-    expect(screen.getByRole("region", { name: "Quick links" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Workspace" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Balances and account details/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Bills and payment deadlines/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /View spending report/i })).toBeInTheDocument();
+  });
+
+  it("renders top-level App router for /login", async () => {
+    window.history.pushState({}, "", "/login");
+    render(
+      <QueryTestProvider>
+        <App />
+      </QueryTestProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Continue with Google/i })).toBeInTheDocument();
+    });
   });
 });

@@ -86,3 +86,115 @@ export async function listIngestionConnections(
   const result = await apiFetch<PaginatedIngestionConnections>(path, { signal });
   return result.data;
 }
+
+export type EmailParserMode =
+  "auto" | "bancolombia-email" | "global66-email" | "nequi-email" | "nu-email" | "custom_regex";
+
+export type EmailRuleTransactionType = "auto" | "income" | "expense" | "transfer";
+
+export type EmailParsingRule = {
+  id?: string | null;
+  name: string;
+  enabled: boolean;
+  parser_mode: EmailParserMode;
+  sender_match: string;
+  subject_match: string;
+  amount_regex: string;
+  transaction_type: EmailRuleTransactionType;
+  currency: string;
+  default_account_id?: string | null;
+  default_category_id?: string | null;
+  description_template: string;
+};
+
+export type EmailIngestionConnection = {
+  id: string;
+  provider: string;
+  flow_name: string;
+  deployment_name?: string | null;
+  enabled: boolean;
+  lookback_hours: number;
+  email_senders: string[];
+  email_subjects: string[];
+  email_source_label?: string | null;
+  email_query?: string | null;
+  gmail_access_enabled: boolean;
+  gmail_connected: boolean;
+  gmail_connected_email?: string | null;
+  parsing_rules: EmailParsingRule[];
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type UpsertEmailIngestionConfigPayload = {
+  provider?: "email";
+  flow_name?: "papita-email-ingestion";
+  enabled: boolean;
+  lookback_hours: number;
+  email_senders: string[];
+  email_subjects: string[];
+  email_source_label?: string | null;
+  gmail_access_enabled: boolean;
+  parsing_rules: EmailParsingRule[];
+};
+
+export type EmailParseTestPayload = {
+  sender: string;
+  subject: string;
+  body: string;
+  rules?: EmailParsingRule[];
+};
+
+export type EmailParseTestResult = {
+  matched: boolean;
+  matched_rule_name?: string | null;
+  parser_used?: string | null;
+  transaction_type?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  description?: string | null;
+  default_account_id?: string | null;
+  default_category_id?: string | null;
+  error?: string | null;
+};
+
+/** Same-origin URL to start per-user Gmail OAuth (`gmail.modify`). */
+export function gmailOAuthStartUrl(): string {
+  return `${INGESTION_PATH}/gmail/oauth/start`;
+}
+
+/** ``PUT /api/v1/ingestion/connections`` — save per-user Gmail access, filters, and parsing rules. */
+export async function upsertEmailIngestionConnection(
+  payload: UpsertEmailIngestionConfigPayload,
+): Promise<EmailIngestionConnection> {
+  const result = await apiFetch<EmailIngestionConnection>(`${INGESTION_PATH}/connections`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      provider: "email",
+      flow_name: "papita-email-ingestion",
+      ...payload,
+    }),
+  });
+  return result.data;
+}
+
+/** ``POST /api/v1/ingestion/gmail/disconnect`` — clear stored per-user Gmail refresh token. */
+export async function disconnectGmailConnection(): Promise<EmailIngestionConnection> {
+  const result = await apiFetch<EmailIngestionConnection>(`${INGESTION_PATH}/gmail/disconnect`, {
+    method: "POST",
+  });
+  return result.data;
+}
+
+/** ``POST /api/v1/ingestion/email/test-parse`` — dry-run sample email against parsing rules. */
+export async function testEmailParse(
+  payload: EmailParseTestPayload,
+): Promise<EmailParseTestResult> {
+  const result = await apiFetch<EmailParseTestResult>(`${INGESTION_PATH}/email/test-parse`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return result.data;
+}

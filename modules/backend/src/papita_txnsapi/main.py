@@ -25,6 +25,7 @@ from papita_txnsapi.core.handlers import register_exception_handlers
 from papita_txnsapi.core.rate_limit import bind_rate_limiters
 from papita_txnsapi.core.redis import close_redis, init_redis
 from papita_txnsapi.middleware.client_contract import ClientContractMiddleware
+from papita_txnsapi.middleware.cookie_csrf import CookieCsrfMiddleware
 from papita_txnsapi.middleware.request_logging import RequestLoggingMiddleware
 from papita_txnsapi.middleware.security_headers import SecurityHeadersMiddleware
 from papita_txnsapi.routers.v1 import api_v1_router
@@ -39,6 +40,7 @@ _PROD_CORS_HEADERS = [
     "Accept",
     "Idempotency-Key",
     "X-Request-ID",
+    "X-Requested-With",
 ]
 
 
@@ -117,6 +119,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=allow_headers,
     )
     app.add_middleware(SecurityHeadersMiddleware)
+    app.add_middleware(CookieCsrfMiddleware)
     app.add_middleware(ClientContractMiddleware)
     # Settings requires non-empty ALLOWED_HOSTS when DEBUG=false (staging/prod).
     if not app_settings.DEBUG:

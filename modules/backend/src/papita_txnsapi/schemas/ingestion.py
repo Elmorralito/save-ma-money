@@ -27,6 +27,7 @@ from papita_txnsmodel.services.ingestion_status import (
     _MAX_LOOKBACK_HOURS,
     _validate_email_senders,
     _validate_email_subjects,
+    _validate_parsing_rules,
     _validate_source_label,
 )
 
@@ -71,6 +72,66 @@ def _status_slug(value: IngestionRunStatus | str | Enum) -> str:
     return str(value).strip().lower()
 
 
+class EmailParsingRuleSchema(BaseModel):
+    """Per-user structured email parsing rule and account/category target mapping."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str | None = Field(default=None, max_length=64)
+    name: str = Field(min_length=1, max_length=120)
+    enabled: bool = True
+    parser_mode: Literal[
+        "auto",
+        "bancolombia-email",
+        "global66-email",
+        "nequi-email",
+        "nu-email",
+        "custom_regex",
+    ] = "auto"
+    sender_match: str = Field(default="", max_length=255)
+    subject_match: str = Field(default="", max_length=120)
+    amount_regex: str = Field(default="", max_length=256)
+    transaction_type: Literal["auto", "income", "expense", "transfer"] = "auto"
+    currency: str = Field(default="COP", min_length=3, max_length=3)
+    default_account_id: uuid.UUID | None = None
+    default_category_id: uuid.UUID | None = None
+    description_template: str = Field(default="", max_length=160)
+
+
+class EmailParseTestRequest(BaseModel):
+    """Dry-run sample email payload for testing parsing rules."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    sender: str = Field(min_length=1, max_length=255)
+    subject: str = Field(default="", max_length=255)
+    body: str = Field(min_length=1, max_length=16_000)
+    rules: list[EmailParsingRuleSchema] | None = None
+
+    @field_validator("rules")
+    @classmethod
+    def _clean_test_rules(cls, value: list[EmailParsingRuleSchema] | None) -> list[EmailParsingRuleSchema] | None:
+        if value is None:
+            return None
+        cleaned = _validate_parsing_rules([item.model_dump(mode="json") for item in value])
+        return [EmailParsingRuleSchema.model_validate(item) for item in cleaned]
+
+
+class EmailParseTestResponse(BaseModel):
+    """Dry-run parse preview result."""
+
+    matched: bool
+    matched_rule_name: str | None = None
+    parser_used: str | None = None
+    transaction_type: str | None = None
+    amount: float | None = None
+    currency: str | None = None
+    description: str | None = None
+    default_account_id: uuid.UUID | None = None
+    default_category_id: uuid.UUID | None = None
+    error: str | None = None
+
+
 class IngestionConnectionResponse(BaseModel):
     """Non-secret connection metadata and per-user channel filter configuration.
 
@@ -89,19 +150,18 @@ class IngestionConnectionResponse(BaseModel):
     email_subjects: list[str] = Field(default_factory=list)
     email_source_label: str | None = None
     email_query: str | None = None
+    gmail_access_enabled: bool = False
+    gmail_connected: bool = False
+    gmail_connected_email: str | None = None
+    parsing_rules: list[EmailParsingRuleSchema] = Field(default_factory=list)
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
     @classmethod
     def from_dto(cls, connection: IngestionConnectionDTO) -> IngestionConnectionResponse:
-        """Build an API response from ``IngestionConnectionDTO``.
-
-        Args:
-            connection: Owner-scoped connection row from the model service.
-
-        Returns:
-            Allowlisted connection resource (no credentials).
-        """
+        """Build an API response from ``IngestionConnectionDTO``."""
+        raw_rules = list(getattr(connection, "parsing_rules", None) or [])
+        parsed_rules = [EmailParsingRuleSchema.model_validate(item) for item in raw_rules]
         return cls(
             id=_require_uuid(connection.id, field_name="Connection id"),
             provider=connection.provider,
@@ -113,6 +173,10 @@ class IngestionConnectionResponse(BaseModel):
             email_subjects=list(connection.email_subjects),
             email_source_label=connection.email_source_label,
             email_query=connection.email_query,
+            gmail_access_enabled=bool(getattr(connection, "gmail_access_enabled", False)),
+            gmail_connected=bool(getattr(connection, "gmail_refresh_token_enc", None)),
+            gmail_connected_email=getattr(connection, "gmail_connected_email", None),
+            parsing_rules=parsed_rules,
             created_at=connection.created_at,
             updated_at=connection.updated_at,
         )
@@ -134,6 +198,8 @@ class IngestionConnectionUpsertRequest(BaseModel):
     email_senders: list[str] = Field(default_factory=list)
     email_subjects: list[str] = Field(default_factory=list)
     email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
+    gmail_access_enabled: bool | None = None
+    parsing_rules: list[EmailParsingRuleSchema] | None = None
 
     @field_validator("email_senders")
     @classmethod
@@ -150,6 +216,14 @@ class IngestionConnectionUpsertRequest(BaseModel):
     def _clean_source_label(cls, value: str | None) -> str | None:
         return _validate_source_label(value)
 
+    @field_validator("parsing_rules")
+    @classmethod
+    def _clean_rules(cls, value: list[EmailParsingRuleSchema] | None) -> list[EmailParsingRuleSchema] | None:
+        if value is None:
+            return None
+        cleaned = _validate_parsing_rules([item.model_dump(mode="json") for item in value])
+        return [EmailParsingRuleSchema.model_validate(item) for item in cleaned]
+
 
 class IngestionConnectionUpdateRequest(BaseModel):
     """Partial update payload for ``PATCH /ingestion/connections/{connection_id}``."""
@@ -162,6 +236,8 @@ class IngestionConnectionUpdateRequest(BaseModel):
     email_senders: list[str] | None = None
     email_subjects: list[str] | None = None
     email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
+    gmail_access_enabled: bool | None = None
+    parsing_rules: list[EmailParsingRuleSchema] | None = None
 
     @field_validator("email_senders")
     @classmethod
@@ -181,6 +257,14 @@ class IngestionConnectionUpdateRequest(BaseModel):
     @classmethod
     def _clean_optional_label(cls, value: str | None) -> str | None:
         return _validate_source_label(value)
+
+    @field_validator("parsing_rules")
+    @classmethod
+    def _clean_optional_rules(cls, value: list[EmailParsingRuleSchema] | None) -> list[EmailParsingRuleSchema] | None:
+        if value is None:
+            return None
+        cleaned = _validate_parsing_rules([item.model_dump(mode="json") for item in value])
+        return [EmailParsingRuleSchema.model_validate(item) for item in cleaned]
 
 
 class IngestionRunResponse(BaseModel):

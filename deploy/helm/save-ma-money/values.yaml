@@ -1,0 +1,116 @@
+# Default values for save-ma-money on Papita k8s-ha.
+# Secrets are never stored here; reference pre-created Kubernetes Secrets via existingSecret.
+
+imagePullSecrets: []
+
+backend:
+  replicas: 1
+  image:
+    repository: ghcr.io/elmorralito/save-ma-money-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  existingSecret: papita-backend-secrets
+  port: 8000
+  env:
+    PAPITA_ENV: production
+    AUTH_PROVIDER: local
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+web:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/elmorralito/save-ma-money-web
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 8080
+  service:
+    type: ClusterIP
+    nodePort: null
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+migrate:
+  enabled: true
+
+# Legacy interval-polling email ingestor Deployment.
+# Keep disabled when orchestrator.ingestor.enabled is true to avoid duplicate polling.
+ingestor:
+  enabled: false
+  replicas: 1
+  existingSecret: papita-ingestor-gmail
+  env:
+    PAPITA_ENV: production
+    AUTH_PROVIDER: local
+    PAPITA_INGESTOR_LOOKBACK_HOURS: "24"
+    PAPITA_INGESTOR_SCHEDULE_INTERVAL_MINUTES: "60"
+    PAPITA_INGESTOR_DRY_RUN: "false"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 192Mi
+    limits:
+      cpu: 250m
+      memory: 384Mi
+
+# Shared Hatchet Lite orchestrator integration (Papita k8s-ha `orchestrator` namespace).
+# Requires a tenant-scoped Secret with HATCHET_CLIENT_TOKEN (minted via lab `mint-tenant-token.sh`).
+orchestrator:
+  # -- Secret holding HATCHET_CLIENT_TOKEN / HATCHET_CLIENT_HOST_PORT / HATCHET_CLIENT_TLS_STRATEGY.
+  existingSecret: ""
+  ingestor:
+    # -- Hatchet worker for `email-ingest` + `email-ingest-cron` (`--orchestrator`).
+    enabled: false
+    replicas: 1
+    gmailExistingSecret: papita-ingestor-gmail
+    env:
+      PAPITA_ENV: production
+      HATCHET_CLIENT_HOST_PORT: "hatchet-lite-grpc.orchestrator.svc.cluster.local:7070"
+      HATCHET_CLIENT_TLS_STRATEGY: "none"
+      HATCHET_CLIENT_WORKER_HEALTHCHECK_ENABLED: "true"
+      PAPITA_INGESTOR_ORCHESTRATOR_CRON: "0 * * * *"
+      PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS: "1"
+      PAPITA_INGESTOR_LOOKBACK_HOURS: "24"
+      PAPITA_INGESTOR_DRY_RUN: "false"
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        cpu: 300m
+        memory: 384Mi
+
+networkPolicy:
+  enabled: false
+  orchestratorNamespace: orchestrator
+  ingressNamespace: ingress-nginx
+  # Private lab LAN + Tailscale VPN CIDRs only (no public/cloud egress).
+  vpnCidrs:
+    - 172.16.0.0/16
+    - 100.64.0.0/10
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: papita.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          service: backend
+        - path: /
+          pathType: Prefix
+          service: web
+  tls: []

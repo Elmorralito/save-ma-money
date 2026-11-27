@@ -1,0 +1,6 @@
+apiVersion: v2
+name: save-ma-money
+description: Helm chart for save-ma-money (backend API, web SPA, migrations, and Hatchet email ingestor) on Papita k8s-ha
+type: application
+version: 0.1.0
+appVersion: "latest"

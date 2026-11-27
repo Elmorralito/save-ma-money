@@ -11,4 +11,6 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   { to: "/transactions", label: "Transactions" },
   { to: "/payment-dues", label: "Payment dues" },
   { to: "/reports", label: "Reports" },
+  { to: "/projections", label: "Projections" },
+  { to: "/settings", label: "Settings" },
 ] as const;

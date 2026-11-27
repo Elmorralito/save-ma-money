@@ -1,6 +1,6 @@
 """Health probe response schemas.
 
-Pydantic models for aggregate health, database communication, Supabase Auth,
+Pydantic models for aggregate health, database communication, self-hosted Auth,
 Kubernetes readiness, and liveness endpoints. These are response-only shapes
 with no conversion to model DTOs.
 
@@ -41,7 +41,7 @@ class HealthResponse(BaseModel):
         timestamp: UTC time when the probe was evaluated.
         database: Database connectivity label (``connected`` or ``disconnected``).
         database_latency_ms: Round-trip probe latency in milliseconds when connected.
-        auth: Supabase Auth connectivity (``connected``, ``disconnected``, or ``skipped``).
+        auth: Auth connectivity (``connected``, ``disconnected``, or ``skipped``).
         auth_latency_ms: Auth probe latency when a live Auth check ran successfully.
         auth_detail: Allowlisted Auth probe detail.
         redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).
@@ -90,11 +90,11 @@ class DatabaseHealthResponse(BaseModel):
 
 
 class AuthHealthResponse(BaseModel):
-    """API↔Supabase Auth communication health for ``GET /health/auth``.
+    """Self-hosted Auth communication health for ``GET /health/auth``.
 
     Attributes:
         status: ``healthy`` when Auth is up (or local skip); ``unhealthy`` otherwise.
-        provider: Active ``AUTH_PROVIDER`` value.
+        provider: Active ``AUTH_PROVIDER`` value (``local``).
         reachable: Whether the Auth probe succeeded (local skip counts as reachable).
         latency_ms: Round-trip Auth health latency when a network probe ran.
         checked_at: UTC time when the probe ran.
@@ -104,7 +104,7 @@ class AuthHealthResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", use_enum_values=True)
 
     status: Literal["healthy", "unhealthy"]
-    provider: Literal["local", "supabase"]
+    provider: Literal["local"]
     reachable: bool
     latency_ms: float | None = Field(default=None, ge=0.0, le=60_000.0)
     checked_at: datetime

@@ -64,35 +64,23 @@ class TestAuthRateLimit:
         assert blocked.status_code == 429
 
     def test_oauth_returns_429_after_limit_exceeded(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from types import SimpleNamespace
-        from unittest.mock import patch
-
         monkeypatch.setenv("AUTH_RATE_LIMIT_ENABLED", "true")
         monkeypatch.setenv("AUTH_OAUTH_RATE_LIMIT_PER_MINUTE", "2")
-        monkeypatch.setenv("AUTH_PROVIDER", "supabase")
-        monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
-        monkeypatch.setenv("SUPABASE_ANON_KEY", "test-anon-key")
+        monkeypatch.setenv("AUTH_PROVIDER", "local")
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_ID", "test-google-client-id")
+        monkeypatch.setenv("GOOGLE_OAUTH_CLIENT_SECRET", "test-google-client-secret")
         monkeypatch.setenv("JWT_SECRET_KEY", "test-jwt-secret-key-minimum-32-characters")
         monkeypatch.setenv("DATABASE_URL", "")
         get_settings.cache_clear()
         get_rate_limiter().reset()
         AuthSecurityManager.reset_instances()
-        started = SimpleNamespace(
-            provider="google",
-            url="https://example.supabase.co/auth/v1/authorize?provider=google",
-            code_verifier="pkce-verifier-0123456789abcdef",
-        )
-        with patch("papita_txnsapi.routers.v1.auth.supabase_oauth_authorize_url", return_value=started):
-            client = TestClient(create_app())
-            assert client.get("/api/v1/auth/oauth/google").status_code == 200
-            assert client.get("/api/v1/auth/oauth/google").status_code == 200
-            blocked = client.get("/api/v1/auth/oauth/google")
+        client = TestClient(create_app())
+        assert client.get("/api/v1/auth/oauth/google").status_code == 200
+        assert client.get("/api/v1/auth/oauth/google").status_code == 200
+        blocked = client.get("/api/v1/auth/oauth/google")
         assert blocked.status_code == 429
         AuthSecurityManager.reset_instances()
         get_settings.cache_clear()
-        monkeypatch.setenv("AUTH_PROVIDER", "local")
-        monkeypatch.delenv("SUPABASE_URL", raising=False)
-        monkeypatch.delenv("SUPABASE_ANON_KEY", raising=False)
 
 
 class TestJwtTypeValidation:

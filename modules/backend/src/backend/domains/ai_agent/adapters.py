@@ -20,6 +20,14 @@ from typing import Literal, Protocol
 
 import httpx
 
+from backend.domains.ai_agent.resilience import (
+    CHAT_RETRY_POLICY,
+    CLI_RETRY_POLICY,
+    execute_with_retry,
+    is_retryable_cli_error,
+    is_retryable_http_error,
+)
+
 ConnectionKind = Literal["api", "cli"]
 
 _MAX_OUTPUT_BYTES = 65_536
@@ -37,15 +45,59 @@ _SCRUBBED_ENV_PREFIXES = (
 _CLI_SPECS: dict[str, tuple[str, list[str]]] = {
     # Claude Code non-interactive print mode with all local tools disabled.
     "claude": ("claude", ["-p", "--output-format", "text", "--tools", ""]),
-    # Antigravity CLI non-interactive single-turn mode.
-    "agy": ("agy", ["chat", "--non-interactive"]),
+    # Antigravity CLI non-interactive single-turn print mode (`-p` takes the prompt).
+    "agy": ("agy", ["--output-format", "text", "--disable-slash-commands", "-p"]),
+    # OpenAI Codex / GPT CLI non-interactive exec mode.
+    "codex": ("codex", ["exec", "--skip-git-repo-check"]),
     # Cursor agent CLI non-interactive print mode.
     "cursor": ("cursor", ["agent", "--print"]),
+}
+
+_CLI_MODEL_FLAGS: dict[str, str] = {
+    "claude": "--model",
+    "agy": "--model",
+    "codex": "-m",
+    "cursor": "--model",
 }
 
 
 class AIAgentError(RuntimeError):
     """Raised when an AI sidecar adapter fails or times out."""
+
+
+@dataclass(frozen=True, slots=True)
+class AIModelInfo:
+    """Discoverable model identifier and display label."""
+
+    id: str
+    label: str
+
+
+_CURATED_CLI_MODELS: dict[str, tuple[AIModelInfo, ...]] = {
+    "claude": (
+        AIModelInfo(id="claude-sonnet-4-20250514", label="Claude Sonnet 4"),
+        AIModelInfo(id="claude-opus-4-20250514", label="Claude Opus 4"),
+        AIModelInfo(id="claude-3-7-sonnet-latest", label="Claude 3.7 Sonnet"),
+        AIModelInfo(id="claude-3-5-haiku-latest", label="Claude 3.5 Haiku"),
+    ),
+    "codex": (
+        AIModelInfo(id="o4-mini", label="OpenAI o4-mini"),
+        AIModelInfo(id="o3", label="OpenAI o3"),
+        AIModelInfo(id="gpt-5", label="OpenAI GPT-5"),
+        AIModelInfo(id="gpt-4.1", label="OpenAI GPT-4.1"),
+        AIModelInfo(id="gpt-4o", label="OpenAI GPT-4o"),
+    ),
+    "cursor": (
+        AIModelInfo(id="auto", label="Cursor Auto"),
+        AIModelInfo(id="claude-sonnet-4", label="Claude Sonnet 4"),
+        AIModelInfo(id="gpt-4.1", label="GPT-4.1"),
+        AIModelInfo(id="gemini-2.5-pro", label="Gemini 2.5 Pro"),
+    ),
+    "agy": (
+        AIModelInfo(id="gemini-2.5-pro", label="Gemini 2.5 Pro"),
+        AIModelInfo(id="gemini-2.5-flash", label="Gemini 2.5 Flash"),
+    ),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,10 +127,25 @@ class AIAgentAdapter(Protocol):
     async def health(self) -> bool:
         """Return True when the underlying CLI binary or local model endpoint is ready."""
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> AIResponse:
+    async def list_models(self) -> list[AIModelInfo]:
+        """Return exact model IDs supported by this adapter."""
+
+    async def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AIResponse:
         """Produce a single complete response."""
 
-    def stream(self, *, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
+    def stream(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AsyncIterator[str]:
         """Yield incremental response text chunks."""
 
 
@@ -132,41 +199,112 @@ class CLIAdapter:
         return self._cli_name
 
     def _resolve_binary(self) -> str | None:
-        return shutil.which(self._binary)
+        found = shutil.which(self._binary)
+        if found:
+            return found
+        if os.sep not in self._binary:
+            local_bin = os.path.expanduser(f"~/.local/bin/{self._binary}")
+            if os.path.isfile(local_bin) and os.access(local_bin, os.X_OK):
+                return local_bin
+        return None
 
     async def health(self) -> bool:
         return self._resolve_binary() is not None
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> AIResponse:
+    async def list_models(self) -> list[AIModelInfo]:
+        resolved = self._resolve_binary()
+        if resolved and self._cli_name == "agy":
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    resolved,
+                    "models",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=_scrubbed_subprocess_env(),
+                )
+                stdout, _stderr = await asyncio.wait_for(proc.communicate(), timeout=12.0)
+                if proc.returncode == 0:
+                    discovered: list[AIModelInfo] = []
+                    for raw_line in stdout.decode("utf-8", errors="replace").splitlines():
+                        line = raw_line.strip()
+                        if "\t" not in line:
+                            continue
+                        model_id, label = line.split("\t", 1)
+                        model_id = model_id.strip()
+                        label = label.strip() or model_id
+                        if model_id:
+                            discovered.append(AIModelInfo(id=model_id, label=label))
+                    if discovered:
+                        return discovered
+            except (TimeoutError, OSError):
+                pass
+        return list(_CURATED_CLI_MODELS.get(self._cli_name, ()))
+
+    def _build_args(self, model: str | None) -> list[str]:
+        args = list(self._args)
+        cleaned = (model or "").strip()
+        if not cleaned or cleaned.lower() == "default":
+            return args
+        flag = _CLI_MODEL_FLAGS.get(self._cli_name)
+        if not flag:
+            return args
+        if self._cli_name == "agy" and "-p" in args:
+            idx = args.index("-p")
+            return [*args[:idx], flag, cleaned, *args[idx:]]
+        return [*args, flag, cleaned]
+
+    async def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AIResponse:
         resolved = self._resolve_binary()
         if not resolved:
             raise AIAgentError(f"AI CLI binary {self._binary!r} not found in PATH")
 
         combined_prompt = _compose_cli_prompt(system_prompt, user_prompt)
-        proc = await asyncio.create_subprocess_exec(
-            resolved,
-            *self._args,
-            combined_prompt,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            env=_scrubbed_subprocess_env(),
+        cli_args = self._build_args(model)
+
+        async def _run_once() -> AIResponse:
+            proc = await asyncio.create_subprocess_exec(
+                resolved,
+                *cli_args,
+                combined_prompt,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=_scrubbed_subprocess_env(),
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=self._timeout)
+            except TimeoutError as exc:
+                proc.kill()
+                await proc.wait()
+                raise AIAgentError(f"AI CLI {self._cli_name} timed out after {self._timeout:.0f}s") from exc
+
+            if proc.returncode != 0:
+                err_hint = stderr.decode("utf-8", errors="replace").strip()[:200]
+                raise AIAgentError(f"AI CLI {self._cli_name} exited with code {proc.returncode}: {err_hint}")
+
+            reply = stdout[:_MAX_OUTPUT_BYTES].decode("utf-8", errors="replace").strip()
+            return AIResponse(reply=reply, provider=self.provider_name, model=(model or "").strip() or self.model_name)
+
+        return await execute_with_retry(
+            _run_once,
+            policy=CLI_RETRY_POLICY,
+            is_retryable=is_retryable_cli_error,
+            label=f"cli:{self._cli_name}",
         )
-        try:
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=self._timeout)
-        except TimeoutError as exc:
-            proc.kill()
-            await proc.wait()
-            raise AIAgentError(f"AI CLI {self._cli_name} timed out after {self._timeout:.0f}s") from exc
 
-        if proc.returncode != 0:
-            err_hint = stderr.decode("utf-8", errors="replace").strip()[:200]
-            raise AIAgentError(f"AI CLI {self._cli_name} exited with code {proc.returncode}: {err_hint}")
-
-        reply = stdout[:_MAX_OUTPUT_BYTES].decode("utf-8", errors="replace").strip()
-        return AIResponse(reply=reply, provider=self.provider_name, model=self.model_name)
-
-    async def stream(self, *, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
-        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt)
+    async def stream(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AsyncIterator[str]:
+        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt, model=model)
         if response.reply:
             yield response.reply
 
@@ -205,29 +343,67 @@ class OllamaAdapter:
         except httpx.HTTPError:
             return False
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> AIResponse:
+    async def list_models(self) -> list[AIModelInfo]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{self._base_url}/api/tags")
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+        except httpx.HTTPError:
+            return []
+        models = []
+        for item in data.get("models") or []:
+            if isinstance(item, dict) and isinstance(item.get("name"), str) and item["name"].strip():
+                name = item["name"].strip()
+                models.append(AIModelInfo(id=name, label=name))
+        return models
+
+    async def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AIResponse:
+        target_model = (model or "").strip() or self._model
         payload = {
-            "model": self._model,
+            "model": target_model,
             "stream": False,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
         }
-        try:
+
+        async def _do_post() -> dict[str, object]:
             async with httpx.AsyncClient(timeout=self._timeout) as client:
                 resp = await client.post(f"{self._base_url}/api/chat", json=payload)
                 resp.raise_for_status()
-                data = resp.json()
+                return dict(resp.json())
+
+        try:
+            data = await execute_with_retry(
+                _do_post,
+                policy=CHAT_RETRY_POLICY,
+                is_retryable=is_retryable_http_error,
+                label="ollama:chat",
+            )
         except httpx.HTTPError as exc:
             raise AIAgentError(f"Ollama request failed: {type(exc).__name__}") from exc
 
         message = data.get("message") or {}
         reply = str(message.get("content") or "").strip()[:_MAX_OUTPUT_BYTES]
-        return AIResponse(reply=reply, provider=self.provider_name, model=self._model)
+        return AIResponse(reply=reply, provider=self.provider_name, model=target_model)
 
-    async def stream(self, *, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
-        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt)
+    async def stream(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AsyncIterator[str]:
+        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt, model=model)
         if response.reply:
             yield response.reply
 
@@ -273,9 +449,32 @@ class OpenAICompatAdapter:
         except httpx.HTTPError:
             return False
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> AIResponse:
+    async def list_models(self) -> list[AIModelInfo]:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(f"{self._base_url}/models", headers=self._headers())
+                if resp.status_code != 200:
+                    return []
+                data = resp.json()
+        except httpx.HTTPError:
+            return []
+        models = []
+        for item in data.get("data") or []:
+            if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"].strip():
+                mid = item["id"].strip()
+                models.append(AIModelInfo(id=mid, label=mid))
+        return models
+
+    async def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AIResponse:
+        target_model = (model or "").strip() or self._model
         payload = {
-            "model": self._model,
+            "model": target_model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -297,10 +496,16 @@ class OpenAICompatAdapter:
         content = ""
         if choices and isinstance(choices[0], dict):
             content = str((choices[0].get("message") or {}).get("content") or "")
-        return AIResponse(reply=content.strip()[:_MAX_OUTPUT_BYTES], provider=self.provider_name, model=self._model)
+        return AIResponse(reply=content.strip()[:_MAX_OUTPUT_BYTES], provider=self.provider_name, model=target_model)
 
-    async def stream(self, *, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
-        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt)
+    async def stream(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        model: str | None = None,
+    ) -> AsyncIterator[str]:
+        response = await self.generate(system_prompt=system_prompt, user_prompt=user_prompt, model=model)
         if response.reply:
             yield response.reply
 

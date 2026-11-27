@@ -249,6 +249,7 @@ def _register_builtin_plugins(registry: ConnectorRegistry, *, allowlist: set[str
         from papita_ingestor_email.parsers.fallback import FallbackEmailParser
         from papita_ingestor_email.parsers.global66 import Global66Parser
         from papita_ingestor_email.parsers.nequi import NequiParser
+        from papita_ingestor_email.parsers.nu import NuParser
         from papita_ingestor_email.sources.gmail import GmailSource
     except ImportError:
         return
@@ -256,7 +257,7 @@ def _register_builtin_plugins(registry: ConnectorRegistry, *, allowlist: set[str
     if _allowed(GmailSource.registry_id) and GmailSource.registry_id not in registry.source_ids():
         registry.register_source(GmailSource.registry_id, GmailSource)
 
-    for parser_cls in (BancolombiaParser, Global66Parser, NequiParser, FallbackEmailParser):
+    for parser_cls in (BancolombiaParser, Global66Parser, NequiParser, NuParser, FallbackEmailParser):
         if _allowed(parser_cls.registry_id) and parser_cls.registry_id not in registry.parser_ids():
             registry.register_parser(parser_cls.registry_id, parser_cls)
 

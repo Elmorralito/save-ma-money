@@ -132,6 +132,16 @@ class OwnerPeriodBalancesRepository(metaclass=MetaSingleton):
         """Run a filtered SELECT against a period balance materialized view."""
         if not isinstance(_db_session, Session):
             raise TypeError("Session not supported.")
+        if view_name not in _PERIOD_VIEWS:
+            raise ValueError(f"Unsupported balance view: {view_name!r}")
+        if period_column not in {"balance_month", "balance_quarter", "balance_half"}:
+            raise ValueError(f"Unsupported period column: {period_column!r}")
+        if order_by not in {
+            "balance_year DESC, balance_month DESC, currency",
+            "balance_year DESC, balance_quarter DESC, currency",
+            "balance_year DESC, balance_half DESC, currency",
+        }:
+            raise ValueError(f"Unsupported order_by clause: {order_by!r}")
 
         statement_sql = f"SELECT * FROM {SCHEMA_NAME}.{view_name} WHERE owner_id = :owner_id"
         params: dict[str, object] = {"owner_id": owner.id}

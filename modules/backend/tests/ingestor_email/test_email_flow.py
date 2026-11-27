@@ -427,6 +427,7 @@ def test_flow_loads_per_user_db_connection_config_and_honors_disabled() -> None:
         provider="email",
         flow_name="papita-email-ingestion",
         enabled=True,
+        gmail_access_enabled=True,
         lookback_hours=6,
         email_senders=["chase.com", "global66.com"],
         email_subjects=["Transaction Alert"],

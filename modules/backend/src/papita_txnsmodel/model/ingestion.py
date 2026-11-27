@@ -9,8 +9,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ARRAY, TIMESTAMP, Column, ForeignKeyConstraint, Index, Integer, String, Text, text
+from sqlalchemy import ARRAY, TIMESTAMP, Boolean, Column, ForeignKeyConstraint, Index, Integer, String, Text, text
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field
 
 from .base import SCHEMA_NAME, BaseSQLModel
@@ -126,6 +127,16 @@ class IngestionConnection(BaseSQLModel, table=True):  # type: ignore
     )
     email_source_label: str | None = Field(default=None, max_length=255, sa_type=String(255), nullable=True)
     email_query: str | None = Field(default=None, sa_type=Text, nullable=True)
+    gmail_access_enabled: bool = Field(
+        default=False,
+        sa_column=Column(Boolean, nullable=False, server_default=text("false")),
+    )
+    gmail_connected_email: str | None = Field(default=None, max_length=255, sa_type=String(255), nullable=True)
+    gmail_refresh_token_enc: str | None = Field(default=None, sa_type=Text, nullable=True)
+    parsing_rules: list[dict] = Field(
+        sa_column=Column(JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+        default_factory=list,
+    )
 
 
 class IngestionRun(BaseSQLModel, table=True):  # type: ignore

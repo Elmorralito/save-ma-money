@@ -1,0 +1,29 @@
+# Papita k8s-ha lab values: Hatchet orchestrator owns scheduled/on-demand email ingestion.
+# Legacy polling Deployment stays off.
+
+ingestor:
+  enabled: false
+
+orchestrator:
+  existingSecret: papita-hatchet
+  ingestor:
+    enabled: true
+    replicas: 1
+    gmailExistingSecret: papita-ingestor-gmail
+    env:
+      PAPITA_ENV: staging
+      HATCHET_CLIENT_HOST_PORT: "hatchet-lite-grpc.orchestrator.svc.cluster.local:7070"
+      HATCHET_CLIENT_TLS_STRATEGY: "none"
+      HATCHET_CLIENT_WORKER_HEALTHCHECK_ENABLED: "true"
+      PAPITA_INGESTOR_ORCHESTRATOR_CRON: "0 * * * *"
+      PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS: "1"
+      PAPITA_INGESTOR_LOOKBACK_HOURS: "168"
+      PAPITA_INGESTOR_DRY_RUN: "false"
+
+networkPolicy:
+  enabled: true
+  orchestratorNamespace: orchestrator
+  ingressNamespace: ingress-nginx
+  vpnCidrs:
+    - 172.16.0.0/16
+    - 100.64.0.0/10

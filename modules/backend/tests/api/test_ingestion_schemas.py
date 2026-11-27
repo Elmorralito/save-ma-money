@@ -50,6 +50,7 @@ def test_connection_response_from_dto_allowlisted_only() -> None:
     assert "owner_id" not in payload
     assert "raw_payload" not in payload
     assert "refresh_token" not in payload
+    assert "gmail_refresh_token_enc" not in payload
     assert set(IngestionConnectionResponse.model_fields) == {
         "id",
         "provider",
@@ -61,6 +62,10 @@ def test_connection_response_from_dto_allowlisted_only() -> None:
         "email_subjects",
         "email_source_label",
         "email_query",
+        "gmail_access_enabled",
+        "gmail_connected",
+        "gmail_connected_email",
+        "parsing_rules",
         "created_at",
         "updated_at",
     }

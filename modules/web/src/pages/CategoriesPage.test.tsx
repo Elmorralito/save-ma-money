@@ -141,14 +141,16 @@ describe("CategoriesPage", () => {
       expect(screen.getByText("Groceries")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete category" }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     await waitFor(() => {
       expect(screen.getByText("(read-only)")).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    for (const btn of screen.getAllByRole("button", { name: "Global category (read-only)" })) {
+      expect(btn).toBeDisabled();
+    }
   });
 
   it("maps global edit 404 to read-only", async () => {
@@ -189,7 +191,7 @@ describe("CategoriesPage", () => {
       expect(screen.getByText("Groceries")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Edit category" }));
     const dialog = await screen.findByRole("dialog");
     await user.clear(within(dialog).getByLabelText("Name"));
     await user.type(within(dialog).getByLabelText("Name"), "Food");
@@ -202,6 +204,8 @@ describe("CategoriesPage", () => {
     await waitFor(() => {
       expect(screen.getByText("(read-only)")).toBeInTheDocument();
     });
-    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    for (const btn of screen.getAllByRole("button", { name: "Global category (read-only)" })) {
+      expect(btn).toBeDisabled();
+    }
   });
 });

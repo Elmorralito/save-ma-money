@@ -78,6 +78,7 @@ async function tryTokenRefresh(): Promise<boolean> {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
+          "X-Requested-With": "fetch",
         },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
@@ -110,7 +111,8 @@ async function tryTokenRefresh(): Promise<boolean> {
 }
 
 /**
- * Thin Fetch wrapper for papita_txnsapi (Stateless Bearer JWT — PPT-100).
+ * Thin Fetch wrapper for papita_txnsapi (Bearer JWT + HttpOnly cookie — PPT-100).
+ * Always sends ``X-Requested-With`` so cookie CSRF middleware can allow SPA mutations.
  */
 export async function apiFetch<T>(
   path: string,
@@ -118,6 +120,9 @@ export async function apiFetch<T>(
 ): Promise<ApiFetchResult<T>> {
   const method = (options.method ?? "GET").toUpperCase();
   const headers = new Headers(options.headers);
+  if (!headers.has("X-Requested-With")) {
+    headers.set("X-Requested-With", "fetch");
+  }
   if (!headers.has("Accept")) {
     headers.set("Accept", options.accept ?? "application/json");
   }

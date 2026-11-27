@@ -14,7 +14,7 @@ import logging
 import warnings
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Literal, Self
 from urllib.parse import urlparse
 
 from pydantic import Field, field_validator, model_validator
@@ -48,40 +48,23 @@ LOGGER_CONFIG_PATH = Path(__file__).parent / "logger.yaml"
 logger = logging.getLogger(API_LIB_NAME)
 
 
-def is_supabase_transaction_pooler_url(url: str) -> bool:
-    """Return True when ``url`` targets a Supabase transaction pooler (B1).
-
-    Args:
-        url: SQLAlchemy / PostgreSQL connection URL.
-
-    Returns:
-        True for ``:6543``, ``*.pooler.supabase.com``, or ``pgbouncer=true`` query.
-    """
+def is_transaction_pooler_url(url: str) -> bool:
+    """Return True when ``url`` targets a PgBouncer transaction pooler (``:6543`` or ``pgbouncer=true``)."""
     parsed = urlparse(url)
-    host = (parsed.hostname or "").lower()
-    if host == "pooler.supabase.com" or host.endswith(".pooler.supabase.com"):
-        return True
     if parsed.port == 6543:
         return True
     return "pgbouncer=true" in url.lower()
 
 
 def postgres_engine_kwargs(*, url: str, pool_size: int) -> dict:
-    """Build SQLAlchemy ``create_engine`` kwargs for PostgreSQL (PPT-039).
+    """Build SQLAlchemy ``create_engine`` kwargs for PostgreSQL.
 
     Always enables ``pool_pre_ping``. Uses a bounded ``pool_size`` from Settings.
     On transaction-pooler URLs, sets ``max_overflow=0`` so workers do not burst
     extra connections against PgBouncer transaction mode.
-
-    Args:
-        url: PostgreSQL SQLAlchemy URL.
-        pool_size: Configured ``DATABASE_POOL_SIZE``.
-
-    Returns:
-        Keyword arguments passed to :func:`configure_database`.
     """
     kwargs: dict = {"pool_pre_ping": True, "pool_size": pool_size}
-    if is_supabase_transaction_pooler_url(url):
+    if is_transaction_pooler_url(url):
         kwargs["max_overflow"] = 0
     return kwargs
 
@@ -106,15 +89,13 @@ class Settings(BaseSettings):
         LOG_FILE: Optional path to a logging YAML file; defaults to ``logger.yaml``.
         DATABASE_POOL_SIZE: SQLAlchemy connection pool size for PostgreSQL
             (wired into ``create_engine`` via PPT-039; default 5).
-        JWT_SECRET_KEY: Symmetric signing key for local HS256 tokens (required when
-            ``AUTH_PROVIDER=local``; unused for verification when ``supabase``).
-        JWT_TOKEN_TYPE: Expected ``type`` claim for local bearer tokens.
-        JWT_ALGORITHM: Local JWT signing algorithm (default HS256).
-        JWT_EXPIRATION_TIME_SECONDS: Local access token lifetime in seconds.
-        AUTH_PROVIDER: ``local`` (API-issued HS256) or ``supabase`` (JWKS verify).
-        SUPABASE_URL: Project URL for JWKS / Auth API when ``AUTH_PROVIDER=supabase``.
-        SUPABASE_ANON_KEY: Optional anon key for register/login pass-through.
-        SUPABASE_JWT_AUDIENCE: Expected ``aud`` claim (default ``authenticated``).
+        JWT_SECRET_KEY: Symmetric signing key for self-hosted HS256 tokens.
+        JWT_TOKEN_TYPE: Expected ``type`` claim for bearer tokens.
+        JWT_ALGORITHM: JWT signing algorithm (default HS256).
+        JWT_EXPIRATION_TIME_SECONDS: Access token lifetime in seconds.
+        AUTH_PROVIDER: ``local`` (API-issued HS256; only supported value).
+        GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET: Direct Google PKCE.
+        GOOGLE_OAUTH_REDIRECT_URI: Optional fixed OAuth callback URI override.
         ALLOWED_ORIGINS: CORS allowed origins list (``*`` only when ``DEBUG=true``).
         ALLOWED_HOSTS: TrustedHost allowlist; required (non-empty) when ``DEBUG=false``.
         DOCS_ENABLED: Expose ``/api/docs``, ``/api/redoc``, and ``/api/openapi.json``.
@@ -170,16 +151,14 @@ class Settings(BaseSettings):
     JWT_TOKEN_TYPE: Literal["bearer", "refresh"] = "bearer"
     JWT_ALGORITHM: Literal["HS256"] = "HS256"
     JWT_EXPIRATION_TIME_SECONDS: int = 3600
-    AUTH_PROVIDER: Literal["local", "supabase"] = "local"
-    SUPABASE_URL: str | None = None
-    SUPABASE_ANON_KEY: str | None = None
-    # Server-only; used to delete orphan Auth users after failed provision.
-    SUPABASE_SERVICE_ROLE_KEY: str | None = None
-    SUPABASE_JWT_AUDIENCE: str = "authenticated"
-    SUPABASE_OAUTH_REDIRECT_TO: str | None = None
-    # When True, confirm Auth emails via Admin API after signup / on login retry when
-    # Supabase "Confirm email" left the user without a session. ``None`` → enabled for
-    # ``PAPITA_ENV=local`` only (never default-on in staging/production).
+    AUTH_PROVIDER: Literal["local"] = "local"
+    # Direct Google OAuth2 for self-hosted PKCE sign-in (falls back to GMAIL_CLIENT_* when unset).
+    GOOGLE_OAUTH_CLIENT_ID: str | None = None
+    GOOGLE_OAUTH_CLIENT_SECRET: str | None = None
+    GMAIL_CLIENT_ID: str | None = None
+    GMAIL_CLIENT_SECRET: str | None = None
+    GMAIL_TOKEN_ENCRYPTION_KEY: str | None = None
+    GOOGLE_OAUTH_REDIRECT_URI: str | None = None
     AUTH_AUTO_CONFIRM_EMAIL: bool | None = None
     ALLOWED_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"])
     ALLOWED_HOSTS: list[str] = Field(default_factory=list)
@@ -218,6 +197,9 @@ class Settings(BaseSettings):
     AI_AGENT_ALLOWED_OWNER_ID: str | None = None
     AI_AGENT_TIMEOUT_SECONDS: float = Field(default=90.0, ge=5.0, le=300.0)
     AI_AGENT_MAX_PROMPT_CHARS: int = Field(default=4000, ge=100, le=16000)
+    # Optional built-in LAN Qwen financial LoRA inference server (Ollama or OpenAI-compatible)
+    QWEN_FINANCE_BASE_URL: str | None = None
+    QWEN_FINANCE_MODEL: str = "qwen-finance-lora"
     REDIS_CACHE_TTL_REPORTS_SECONDS: int = 180
     REDIS_CACHE_TTL_TRANSACTIONS_SECONDS: int = 15
     REDIS_IDEMPOTENCY_TTL_SECONDS: int = 86_400
@@ -248,78 +230,20 @@ class Settings(BaseSettings):
             return value.strip()
         return None
 
-    @field_validator("SUPABASE_URL", mode="before")
-    @classmethod
-    def coerce_supabase_url(cls, value: str | None) -> str | None:
-        """Normalize blank Supabase URLs to ``None``.
-
-        Args:
-            value: Raw env string or ``None``.
-
-        Returns:
-            Stripped URL or ``None``.
-        """
-        if value is None:
-            return None
-        if isinstance(value, str) and value.strip() != "":
-            return value.strip().rstrip("/")
-        return None
-
     @field_validator("REDIS_URL", mode="before")
     @classmethod
     def coerce_redis_url(cls, value: str | None) -> str | None:
-        """Normalize blank Redis URLs to ``None``.
-
-        Args:
-            value: Raw env string or ``None``.
-
-        Returns:
-            Stripped URL or ``None``.
-        """
+        """Normalize blank Redis URLs to ``None``."""
         if value is None:
             return None
         if isinstance(value, str) and value.strip() != "":
             return value.strip()
         return None
 
-    @model_validator(mode="before")
-    @classmethod
-    def prefer_supabase_when_url_configured(cls, data: Any) -> Any:
-        """Default ``AUTH_PROVIDER=supabase`` when ``SUPABASE_URL`` is set and provider unset.
-
-        Keeps explicit ``AUTH_PROVIDER=local`` for unit tests. Staging/local env files
-        that only set ``SUPABASE_URL`` (+ anon key) activate Auth without a second flag.
-
-        Args:
-            data: Raw settings input mapping.
-
-        Returns:
-            Input with ``AUTH_PROVIDER`` filled when applicable.
-        """
-        if not isinstance(data, dict):
-            return data
-        provider = data.get("AUTH_PROVIDER")
-        if provider is not None and str(provider).strip() != "":
-            return data
-        url = data.get("SUPABASE_URL")
-        if isinstance(url, str) and url.strip() != "":
-            return {**data, "AUTH_PROVIDER": "supabase"}
-        return data
-
     @field_validator("JWT_ALGORITHM", mode="before")
     @classmethod
     def allowlist_jwt_algorithm(cls, value: str | None) -> str:
-        """Reject JWT algorithms outside the local HS256 allowlist.
-
-        Args:
-            value: Raw algorithm string from env or constructor.
-
-        Returns:
-            Normalized algorithm name.
-
-        Raises:
-            ValueError: When the algorithm is missing or not allowlisted.
-        """
+        """Reject JWT algorithms outside the local HS256 allowlist."""
         algorithm = (value or "").strip().upper()
         if algorithm not in JWT_ALGORITHM_ALLOWLIST:
             allowed = ", ".join(sorted(JWT_ALGORITHM_ALLOWLIST))
@@ -328,28 +252,19 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def build_model(self) -> Self:
-        """Validate Auth provider config, establish DB connector, configure loggers.
-
-        Returns:
-            The validated settings instance with ``DATABASE_URL`` as a connector class.
-
-        Raises:
-            ValueError: When ``AUTH_PROVIDER=supabase`` without ``SUPABASE_URL``,
-                when ``REDIS_ENABLED`` without ``REDIS_URL``, when production CORS
-                uses ``*``, or when local JWT secret is shorter than the minimum.
-        """
-        if self.AUTH_PROVIDER == "supabase" and not self.SUPABASE_URL:
-            raise ValueError("SUPABASE_URL is required when AUTH_PROVIDER=supabase")
+        """Validate Auth provider config, establish DB connector, configure loggers."""
+        if not (self.GOOGLE_OAUTH_CLIENT_ID or "").strip() and (self.GMAIL_CLIENT_ID or "").strip():
+            object.__setattr__(self, "GOOGLE_OAUTH_CLIENT_ID", self.GMAIL_CLIENT_ID.strip())
+        if not (self.GOOGLE_OAUTH_CLIENT_SECRET or "").strip() and (self.GMAIL_CLIENT_SECRET or "").strip():
+            object.__setattr__(self, "GOOGLE_OAUTH_CLIENT_SECRET", self.GMAIL_CLIENT_SECRET.strip())
         if self.REDIS_ENABLED and not self.REDIS_URL:
             raise ValueError("REDIS_URL is required when REDIS_ENABLED=true")
         if not self.DEBUG and "*" in self.ALLOWED_ORIGINS:
             raise ValueError("ALLOWED_ORIGINS cannot include '*' when DEBUG=false (CORS credentials)")
         if not self.DEBUG and not [host for host in self.ALLOWED_HOSTS if str(host).strip()]:
             raise ValueError("ALLOWED_HOSTS must be non-empty when DEBUG=false (TrustedHost)")
-        if self.AUTH_PROVIDER == "local" and len(self.JWT_SECRET_KEY.strip()) < JWT_SECRET_MIN_LENGTH:
-            raise ValueError(
-                f"JWT_SECRET_KEY must be at least {JWT_SECRET_MIN_LENGTH} characters when AUTH_PROVIDER=local"
-            )
+        if len(self.JWT_SECRET_KEY.strip()) < JWT_SECRET_MIN_LENGTH:
+            raise ValueError(f"JWT_SECRET_KEY must be at least {JWT_SECRET_MIN_LENGTH} characters")
         if not self.DEBUG and self.LOG_LEVEL == "DEBUG":
             object.__setattr__(self, "LOG_LEVEL", "INFO")
 

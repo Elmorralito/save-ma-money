@@ -1,26 +1,56 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Menu, PanelLeftClose } from "lucide-react";
+import {
+  ArrowLeftRight,
+  BarChart3,
+  Calculator,
+  CalendarClock,
+  Landmark,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Menu,
+  PanelLeftClose,
+  Settings,
+  Tags,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { bffLogout } from "@/api/auth";
 import { queryKeys } from "@/api/queryKeys";
 import { BrandLogo } from "@/components/layout/BrandLogo";
+import { GlobalSearchBar } from "@/components/layout/GlobalSearchBar";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
 import { sessionUserLabel } from "@/components/layout/sessionUserLabel";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
+import { useMessages } from "@/i18n/LocaleProvider";
 import { cn } from "@/lib/utils";
 
 const NAV_OPEN_STORAGE_KEY = "papita.navOpen";
 
+const NAV_ICONS: Record<string, LucideIcon> = {
+  "/dashboard": LayoutDashboard,
+  "/accounts": Landmark,
+  "/categories": Tags,
+  "/transactions": ArrowLeftRight,
+  "/payment-dues": CalendarClock,
+  "/reports": BarChart3,
+  "/projections": Calculator,
+  "/integrations": Mail,
+  "/settings": Settings,
+};
+
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return cn(
-    "block rounded-md px-3 py-2 text-sm font-medium transition-colors",
+    "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
     isActive
-      ? "bg-sidebar-accent text-sidebar-accent-foreground"
-      : "text-sidebar-foreground hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+      ? "bg-white/[0.09] text-white ring-1 ring-emerald-400/25"
+      : "text-sidebar-foreground/75 hover:bg-white/[0.05] hover:text-white",
   );
 }
 
@@ -56,6 +86,7 @@ function isMobileViewport(): boolean {
 /** Authenticated app shell: hideable nav + header session chip. */
 export function AppLayout() {
   const title = import.meta.env.VITE_APP_TITLE ?? "Papita";
+  const messages = useMessages();
   const [isNavOpen, setIsNavOpen] = useState(readStoredNavOpen);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -105,7 +136,7 @@ export function AppLayout() {
       <aside
         id="app-main-nav"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 max-w-[85vw] flex-col border-r border-sidebar-border bg-sidebar transition-transform duration-200",
+          "fixed inset-y-0 left-0 z-40 flex w-64 max-w-[85vw] flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-transform duration-200",
           isNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
         aria-label="Main navigation"
@@ -113,41 +144,68 @@ export function AppLayout() {
         // Closed drawer must not remain in the tab order (aria-hidden alone is insufficient).
         {...(!isNavOpen ? { inert: true } : {})}
       >
-        <div className="flex h-14 items-center justify-between gap-2 px-4">
-          <BrandLogo
-            title={title}
-            className="min-w-0 text-sidebar-foreground"
-            imageClassName="size-8"
-          />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-x-6 -top-12 h-56 opacity-70"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 30% 20%, oklch(0.32 0.09 200 / 0.40), transparent 68%), radial-gradient(circle at 80% 70%, oklch(0.28 0.08 165 / 0.25), transparent 65%)",
+          }}
+        />
+        <div className="relative z-10 flex h-14 items-center justify-between gap-2 px-4">
+          <BrandLogo title={title} className="min-w-0 text-white" imageClassName="size-7" />
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="shrink-0"
+            className="shrink-0 text-sidebar-foreground/75 hover:bg-white/10 hover:text-white"
             onClick={closeNav}
             aria-label="Hide navigation"
           >
             <PanelLeftClose />
           </Button>
         </div>
-        <Separator className="bg-sidebar-border" />
-        <nav className="flex flex-1 flex-col gap-1 p-3" aria-label="App sections">
-          {APP_NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={navLinkClassName}
-              onClick={() => {
-                // Collapse the drawer on small screens after navigation.
-                if (isMobileViewport()) {
-                  closeNav();
-                }
-              }}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+        <Separator className="relative z-10 bg-white/10" />
+        <nav className="relative z-10 flex flex-1 flex-col gap-1 p-3" aria-label="App sections">
+          {APP_NAV_ITEMS.map((item) => {
+            const Icon = NAV_ICONS[item.to];
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={navLinkClassName}
+                onClick={() => {
+                  // Collapse the drawer on small screens after navigation.
+                  if (isMobileViewport()) {
+                    closeNav();
+                  }
+                }}
+              >
+                {({ isActive }) => (
+                  <>
+                    {Icon ? (
+                      <Icon
+                        aria-hidden="true"
+                        className={cn(
+                          "size-4 shrink-0 transition-colors",
+                          isActive
+                            ? "text-emerald-300"
+                            : "text-sidebar-foreground/55 group-hover:text-emerald-300/80",
+                        )}
+                      />
+                    ) : null}
+                    <span>{messages.nav[item.to] ?? item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
         </nav>
+        <div className="relative z-10 border-t border-white/10 px-4 py-3">
+          <p className="text-xs text-white/65">
+            {title} · {messages.personalLedger}
+          </p>
+        </div>
       </aside>
 
       {isNavOpen ? (
@@ -165,50 +223,64 @@ export function AppLayout() {
           isNavOpen ? "md:pl-64" : "md:pl-0",
         )}
       >
-        <header className="flex h-14 items-center gap-3 border-b border-border px-3 sm:px-4">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={toggleNav}
-            aria-label={isNavOpen ? "Hide navigation" : "Show navigation"}
-            aria-expanded={isNavOpen}
-            aria-controls="app-main-nav"
-          >
-            {isNavOpen ? <PanelLeftClose /> : <Menu />}
-          </Button>
-          <div className="min-w-0 flex-1">
+        <header className="papita-header-accent sticky top-0 z-20 grid h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 border-b border-border px-4 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0 rounded-full"
+              onClick={toggleNav}
+              aria-label={isNavOpen ? "Hide navigation" : "Show navigation"}
+              aria-expanded={isNavOpen}
+              aria-controls="app-main-nav"
+            >
+              {isNavOpen ? <PanelLeftClose /> : <Menu />}
+            </Button>
             <BrandLogo
               title={title}
-              className={cn("text-muted-foreground", isNavOpen && "md:hidden")}
+              className={cn("shrink-0 text-foreground", isNavOpen && "md:hidden")}
               imageClassName="size-7"
             />
           </div>
-          <div className="flex min-w-0 items-center gap-2" aria-live="polite">
+          <div className="mx-auto w-full max-w-2xl min-w-0">
+            <GlobalSearchBar />
+          </div>
+          <div className="flex shrink-0 items-center gap-2" aria-live="polite">
+            <LanguageSwitcher compact />
+            <span aria-hidden="true" className="hidden h-5 w-px bg-border sm:inline-block" />
             {sessionChip ? (
-              <span
-                className="max-w-28 truncate text-sm text-muted-foreground sm:max-w-48"
+              <Link
+                to="/settings"
+                title={sessionChip}
+                className="inline-flex h-9 max-w-36 items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-card sm:max-w-44"
                 data-testid="session-user-chip"
               >
-                {sessionChip}
-              </span>
+                <User aria-hidden="true" className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate">{sessionChip}</span>
+              </Link>
             ) : null}
             {canSignOut ? (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="h-9 gap-1.5 rounded-full bg-card/90 px-3 text-xs text-muted-foreground hover:border-destructive/40 hover:bg-destructive/5 hover:text-destructive"
                 disabled={logoutMutation.isPending}
+                aria-label={logoutMutation.isPending ? messages.signingOut : messages.signOut}
                 onClick={() => {
                   logoutMutation.mutate();
                 }}
               >
-                {logoutMutation.isPending ? "Signing out…" : "Sign out"}
+                <LogOut aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="hidden lg:inline">
+                  {logoutMutation.isPending ? messages.signingOut : messages.signOut}
+                </span>
               </Button>
             ) : null}
           </div>
         </header>
-        <main className="min-w-0 flex-1 px-3 py-6 sm:px-6">
+        <main className="papita-main-interactive min-w-0 flex-1 px-[1.375rem] py-4 text-sm">
           <Outlet />
         </main>
       </div>

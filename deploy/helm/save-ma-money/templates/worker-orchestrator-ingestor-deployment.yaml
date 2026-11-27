@@ -1,0 +1,47 @@
+{{- if .Values.orchestrator.ingestor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "papita.fullname" . }}-worker-ingestor
+  labels:
+    {{- include "papita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker-ingestor
+spec:
+  replicas: {{ .Values.orchestrator.ingestor.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: worker-ingestor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: worker-ingestor
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: orchestrator-ingestor
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["python", "-m", "backend.domains.ingestion.cli", "--orchestrator", "--skip-env-file"]
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backend.existingSecret }}
+            {{- if .Values.orchestrator.existingSecret }}
+            - secretRef:
+                name: {{ .Values.orchestrator.existingSecret }}
+            {{- end }}
+            {{- if .Values.orchestrator.ingestor.gmailExistingSecret }}
+            - secretRef:
+                name: {{ .Values.orchestrator.ingestor.gmailExistingSecret }}
+            {{- end }}
+          {{- with .Values.orchestrator.ingestor.env }}
+          env:
+            {{- include "papita.envMap" . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.orchestrator.ingestor.resources | nindent 12 }}
+{{- end }}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime
 import uuid
+from typing import Any
 
 from pydantic import Field
 
@@ -53,6 +54,10 @@ class IngestionConnectionDTO(OwnedTableDTO):
     email_subjects: list[str] = Field(default_factory=list)
     email_source_label: str | None = Field(default=None, max_length=255)
     email_query: str | None = None
+    gmail_access_enabled: bool = False
+    gmail_connected_email: str | None = Field(default=None, max_length=255)
+    gmail_refresh_token_enc: str | None = None
+    parsing_rules: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class IngestionRunDTO(OwnedTableDTO):

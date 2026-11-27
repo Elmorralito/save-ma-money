@@ -9,7 +9,7 @@ import pytest
 from papita_txnsapi.config.settings import (
     Settings,
     get_settings,
-    is_supabase_transaction_pooler_url,
+    is_transaction_pooler_url,
     postgres_engine_kwargs,
 )
 from papita_txnsmodel.database.session import DatabaseSessionManager, get_session_manager
@@ -21,18 +21,14 @@ class TestPoolerUrlDetection:
     """URL classification for B1 transaction pooler."""
 
     def test_port_6543(self) -> None:
-        assert is_supabase_transaction_pooler_url(
-            "postgresql+psycopg2://u:p@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
-        )
+        assert is_transaction_pooler_url("postgresql+psycopg2://u:p@aws-0-us-east-1.pooler.example.com:6543/postgres")
 
     def test_pgbouncer_query(self) -> None:
-        assert is_supabase_transaction_pooler_url(
-            "postgresql+psycopg2://u:p@db.example.com:5432/postgres?pgbouncer=true"
-        )
+        assert is_transaction_pooler_url("postgresql+psycopg2://u:p@db.example.com:5432/postgres?pgbouncer=true")
 
     def test_direct_5432_is_not_pooler(self) -> None:
-        assert not is_supabase_transaction_pooler_url(
-            "postgresql+psycopg2://postgres:p@db.ref.supabase.co:5432/postgres?sslmode=require"
+        assert not is_transaction_pooler_url(
+            "postgresql+psycopg2://postgres:p@db.example.com:5432/postgres?sslmode=require"
         )
 
 

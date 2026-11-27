@@ -110,7 +110,7 @@ class TestTransactionTemplatesLiveDb:
         os.environ.setdefault("AUTH_PROVIDER", "local")
         os.environ["REDIS_ENABLED"] = "false"
         get_settings.cache_clear()
-        yield TestClient(create_app())
+        yield TestClient(create_app(), headers={"Origin": "http://testserver"})
         close_database()
         clear_transactions_service_cache()
         clear_transaction_templates_service_cache()

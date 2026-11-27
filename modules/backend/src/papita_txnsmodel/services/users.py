@@ -13,6 +13,7 @@ import hashlib
 import logging
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from pydantic import Field
@@ -305,10 +306,10 @@ class UsersService(BaseService):
         """Derive a local ``users.username`` that satisfies ``USERNAME_REGEX``.
 
         Prefers a valid ``preferred_username``; otherwise derives from email
-        (canonical login identity); finally ``sb_<hex>`` from the Auth subject.
+        (canonical login identity); finally ``u_<hex>`` from the OIDC subject.
 
         Args:
-            subject: Auth subject UUID (Supabase ``sub``).
+            subject: Stable subject UUID (e.g. uuid5 of ``google:<sub>``).
             email: Claim or signup email.
             preferred_username: Optional username hint from the client / claims.
 
@@ -319,7 +320,7 @@ class UsersService(BaseService):
         if preferred_username:
             candidates.append(preferred_username.strip())
         candidates.append(UsersService.username_from_email(email))
-        candidates.append(f"sb_{subject.hex[:20]}")
+        candidates.append(f"u_{subject.hex[:20]}")
 
         for raw in candidates:
             candidate = raw[:255]
@@ -327,7 +328,7 @@ class UsersService(BaseService):
                 candidate = (candidate + subject.hex)[:12]
             if _USERNAME_RE.fullmatch(candidate):
                 return candidate
-        return f"sb_{subject.hex[:20]}"
+        return f"u_{subject.hex[:20]}"
 
     def ensure_from_auth_subject(
         self,
@@ -339,19 +340,19 @@ class UsersService(BaseService):
         phone: str | None = None,
         provider_type: ProviderType | str | None = None,
     ) -> UsersDTO:
-        """Load or create a tenant profile row for a Supabase Auth ``sub``.
+        """Load or create a tenant profile for an external OIDC subject (Google PKCE).
 
-        ``users.id`` equals the Auth user id. Credentials stay in Supabase Auth;
-        ``password`` is ``None`` and ``auth_provider`` is ``supabase``.
+        ``users.id`` equals the stable subject UUID. Passwordless OAuth profiles
+        store ``password=None`` with ``auth_provider='local'``.
 
-        When the row already exists, optional profile fields from Auth
+        When the row already exists, optional profile fields from the IdP
         (``display_name``, ``phone``, ``provider_type``, and claim ``email``) are
         refreshed when provided — ``provider_type=None`` leaves the stored channel
         unchanged so password login does not overwrite OAuth.
 
         Args:
-            subject: Auth subject UUID to use as ``users.id`` (``auth.users.id``).
-            email: User email from Auth claims (required for new rows; refreshes
+            subject: Stable subject UUID to use as ``users.id``.
+            email: User email from IdP claims (required for new rows; refreshes
                 existing rows when it differs and does not collide).
             username: Optional preferred username for new rows.
             display_name: Optional human-readable name (create + refresh).
@@ -400,7 +401,7 @@ class UsersService(BaseService):
         username_owner = self._lookup_by_identifier(preferred, require_active=False)
         if username_owner is not None and username_owner.id != subject:
             # Collision on derived username — fall back to subject-based name.
-            preferred = f"sb_{subject.hex[:20]}"
+            preferred = f"u_{subject.hex[:20]}"
             username_owner = self._lookup_by_identifier(preferred, require_active=False)
             if username_owner is not None and username_owner.id != subject:
                 raise ValueError("Username already registered")
@@ -417,13 +418,13 @@ class UsersService(BaseService):
                 "username": preferred,
                 "email": normalized_email,
                 "password": None,
-                "auth_provider": "supabase",
+                "auth_provider": "local",
                 "display_name": display_name,
                 "phone": phone,
                 "provider_type": resolved_provider,
             }
         )
-        logger.info("Provisioning tenant user linked to Auth subject user_id=%s", subject)
+        logger.info("Provisioning tenant user linked to OIDC subject user_id=%s", subject)
         return self.create(obj=user, owner=None)
 
     def _refresh_auth_profile(
@@ -435,7 +436,7 @@ class UsersService(BaseService):
         phone: str | None,
         provider_type: ProviderType | str | None,
     ) -> UsersDTO:
-        """Update stored profile fields from Auth when values are provided."""
+        """Update stored profile fields from an external IdP when values are provided."""
         changed = False
         normalized_email = (email or "").strip().lower()
         if normalized_email and normalized_email != existing.email:
@@ -468,7 +469,45 @@ class UsersService(BaseService):
         if not changed:
             return existing
 
-        existing.password = None
-        existing.auth_provider = "supabase"
-        logger.debug("Refreshing Auth-linked profile user_id=%s", existing.id)
+        resolved_channel = (
+            existing.provider_type
+            if isinstance(existing.provider_type, ProviderType)
+            else ProviderType(str(existing.provider_type or ProviderType.EMAIL.value).lower())
+        )
+        # Passwordless OAuth profiles stay passwordless; never wipe a local hash.
+        if resolved_channel.is_oauth():
+            existing.password = None
+        existing.auth_provider = "local"
+        logger.debug("Refreshing OIDC-linked profile user_id=%s", existing.id)
         return self.create(obj=existing, owner=None)
+
+    def update_user_settings(
+        self,
+        *,
+        owner: UsersDTO,
+        display_name: str | None = None,
+        update_display_name: bool = False,
+        phone: str | None = None,
+        update_phone: bool = False,
+        preferences: dict[str, object] | None = None,
+    ) -> UsersDTO:
+        """Persist profile fields and domain preferences for an authenticated owner."""
+        if owner is None or owner.id is None:
+            raise ValueError("Authenticated owner with id is required.")
+        existing = self.get_owner(owner.id)
+        if existing is None:
+            raise ValueError("User not found.")
+
+        if update_display_name:
+            existing.display_name = (display_name or "").strip() or None
+        if update_phone:
+            existing.phone = (phone or "").strip() or None
+        if preferences is not None:
+            merged = dict(existing.preferences or {})
+            merged.update(preferences)
+            existing.preferences = merged
+
+        existing.updated_at = datetime.now(timezone.utc)
+        # Re-validate DTO (phone E.164 check, display_name trim, etc.) before saving.
+        validated = UsersDTO.model_validate(existing.model_dump())
+        return self.create(obj=validated, owner=None)

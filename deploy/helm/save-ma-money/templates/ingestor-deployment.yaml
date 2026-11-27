@@ -1,0 +1,43 @@
+{{- if .Values.ingestor.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "papita.fullname" . }}-ingestor
+  labels:
+    {{- include "papita.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingestor
+spec:
+  replicas: {{ .Values.ingestor.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: ingestor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: ingestor
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ingestor
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          command: ["python", "-m", "backend.domains.ingestion.cli", "--skip-env-file"]
+          envFrom:
+            - secretRef:
+                name: {{ .Values.backend.existingSecret }}
+            {{- if .Values.ingestor.existingSecret }}
+            - secretRef:
+                name: {{ .Values.ingestor.existingSecret }}
+            {{- end }}
+          {{- with .Values.ingestor.env }}
+          env:
+            {{- include "papita.envMap" . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.ingestor.resources | nindent 12 }}
+{{- end }}

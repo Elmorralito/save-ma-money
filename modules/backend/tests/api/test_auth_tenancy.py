@@ -59,7 +59,7 @@ class TestAuthTenancyLiveDb:
         """API client bound to live Postgres via Settings DATABASE_URL."""
         get_settings.cache_clear()
         os.environ["DATABASE_URL"] = str(POSTGRES_URL)
-        return TestClient(create_app())
+        return TestClient(create_app(), headers={"Origin": "http://testserver"})
 
     def test_register_login_and_cross_tenant_account_isolation(self, live_client: TestClient) -> None:
         suffix = uuid.uuid4().hex[:8]

@@ -97,7 +97,7 @@ class TestTransactionsMovementsLiveDb:
         get_settings.cache_clear()
         os.environ["DATABASE_URL"] = str(POSTGRES_URL)
         os.environ.setdefault("AUTH_PROVIDER", "local")
-        yield TestClient(create_app())
+        yield TestClient(create_app(), headers={"Origin": "http://testserver"})
         close_database()
 
     def test_transactions_crud_lifecycle(self, live_client: TestClient) -> None:

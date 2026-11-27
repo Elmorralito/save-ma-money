@@ -70,7 +70,7 @@ class TestAccountsCategoriesLiveDb:
         """API client bound to live Postgres via ``DATABASE_URL``."""
         get_settings.cache_clear()
         os.environ["DATABASE_URL"] = str(POSTGRES_URL)
-        return TestClient(create_app())
+        return TestClient(create_app(), headers={"Origin": "http://testserver"})
 
     def test_accounts_crud_lifecycle(self, live_client: TestClient) -> None:
         """Create, read, update, balance, and soft-delete an account via HTTP."""

@@ -1,4 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowLeftRight,
+  ArrowUpRight,
+  BarChart3,
+  CalendarClock,
+  Clock,
+  Landmark,
+  Send,
+  Tags,
+  type LucideIcon,
+} from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -14,10 +25,12 @@ import {
 } from "@/api/queries";
 import { markTemplatePaid } from "@/api/transactionTemplates";
 import { bffSessionQueryOptions } from "@/auth/sessionQueries";
+import { ScopedAIPanel, ScopedAITrigger, useScopedAIToggle } from "@/components/ai/ScopedAICopilot";
 import { FinancialHealthScorecard } from "@/components/home/FinancialHealthScorecard";
 import { LivePulseSection } from "@/components/home/LivePulseSection";
 import { APP_NAV_ITEMS } from "@/components/layout/navItems";
 import { Button } from "@/components/ui/button";
+import { useLocale, useMessages } from "@/i18n/LocaleProvider";
 import { formatApiError } from "@/lib/formatApiError";
 import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
@@ -39,7 +52,11 @@ const IN_TRANSIT_PARAMS = {
 const DUE_SOON_PARAMS = { window_days: 14, include_paid: false } as const;
 const DUE_SOON_LIMIT = 5;
 
-function currentMonthWindow(): { start_date: string; end_date: string; label: string } {
+function currentMonthWindow(locale: string): {
+  start_date: string;
+  end_date: string;
+  label: string;
+} {
   const now = new Date();
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
@@ -48,7 +65,7 @@ function currentMonthWindow(): { start_date: string; end_date: string; label: st
   const pad = (n: number) => String(n).padStart(2, "0");
   const start_date = `${String(start.getUTCFullYear())}-${pad(start.getUTCMonth() + 1)}-${pad(start.getUTCDate())}`;
   const end_date = `${String(end.getUTCFullYear())}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}`;
-  const label = start.toLocaleDateString("en-US", {
+  const label = start.toLocaleDateString(locale, {
     month: "short",
     year: "numeric",
     timeZone: "UTC",
@@ -58,9 +75,13 @@ function currentMonthWindow(): { start_date: string; end_date: string; label: st
 
 /** Automation-first authenticated Home dashboard (PPT-088 / #181). */
 export function DashboardPage() {
+  const { locale } = useLocale();
+  const messages = useMessages();
+  const m = messages.dashboard;
   const queryClient = useQueryClient();
   const [selectedCurrency, setSelectedCurrency] = useState<string | null>(null);
-  const monthWindow = useMemo(() => currentMonthWindow(), []);
+  const heroAi = useScopedAIToggle();
+  const monthWindow = useMemo(() => currentMonthWindow(locale), [locale]);
   const sessionQuery = useQuery(bffSessionQueryOptions());
   const financialHealthQuery = useQuery(
     financialHealthReportQueryOptions({
@@ -110,30 +131,85 @@ export function DashboardPage() {
   const inTransitTotal = inTransitQuery.data?.total ?? inTransitMovements.length;
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {greetingName ? `Welcome back, ${greetingName}` : "Dashboard"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Live financial health, ingestion status, in-transit transfers, upcoming dues, and
-            Operating Free Cashflow.
-          </p>
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-7">
+      <header className="animate-papita-card-enter relative overflow-hidden rounded-2xl border border-white/10 bg-[#04090c] p-6 text-white">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-5">
+          <div className="space-y-1.5">
+            <h1 className="text-[clamp(1.5rem,2vw,1.75rem)] leading-[1.2] font-semibold tracking-[-0.02em] text-balance text-white">
+              {greetingName ? `${m.welcomePrefix} ${greetingName}` : m.title}
+            </h1>
+            <p className="max-w-[54ch] text-sm leading-relaxed text-white/75">{m.subtitle}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <ScopedAITrigger
+              open={heroAi.open}
+              panelId={heroAi.panelId}
+              onToggle={heroAi.toggle}
+              compact={false}
+              tone="dark"
+            />
+            <Button
+              asChild
+              size="sm"
+              title="Log a new income, expense, or transfer"
+              className="bg-emerald-500 text-[#04090c] hover:bg-emerald-400"
+            >
+              <Link to="/transactions">{m.newActivity}</Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              title="Inspect monthly cashflow waterfall and top spending categories"
+              className="border-white/20 bg-white/[0.06] text-white hover:bg-white/[0.12] hover:text-white"
+            >
+              <Link to="/reports">{m.viewSpendingReport}</Link>
+            </Button>
+            <section
+              aria-label="Session status"
+              title="HttpOnly BFF session cookie lifetime"
+              className="rounded-xl border border-white/12 bg-white/[0.06] px-3.5 py-2 text-right text-white"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-emerald-300/90">
+                {m.accessToken}
+              </p>
+              <SessionTtlCountdown expiresAt={sessionQuery.data?.access_expires_at ?? null} />
+            </section>
+          </div>
         </div>
+      </header>
 
-        <section aria-label="Session status" className="space-y-0.5 text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Access token
-          </p>
-          <SessionTtlCountdown expiresAt={sessionQuery.data?.access_expires_at ?? null} />
-          {sessionQuery.data?.session_backend ? (
-            <p className="text-xs text-muted-foreground">
-              Session store: {sessionQuery.data.session_backend}
-            </p>
-          ) : null}
-        </section>
-      </div>
+      <ScopedAIPanel
+        id={heroAi.panelId}
+        open={heroAi.open}
+        onClose={heroAi.close}
+        module="dashboard"
+        view="overview"
+        control="dashboard-hero"
+        title={m.title}
+        currency={activeCurrency ?? undefined}
+        surfaceContext={{
+          currency: activeCurrency,
+          month_label: monthWindow.label,
+          due_soon_count: dueSoon.length,
+          accounts_count: accounts.length,
+          pending_transfers: pendingTotal,
+          in_transit_transfers: inTransitTotal,
+        }}
+        suggestedPrompts={
+          locale === "es-CO"
+            ? [
+                "Resume mi panorama general hoy: patrimonio, liquidez, flujo y próximos pagos.",
+                "¿Hay alguna alerta urgente entre mis vencimientos y transferencias?",
+                "¿Qué acción financiera me recomiendas revisar primero?",
+              ]
+            : [
+                "Summarize my overall snapshot today across net worth, runway, cashflow, and dues.",
+                "Are there any urgent alerts across due bills and in-transit transfers?",
+                "Which module should I review next based on today's numbers?",
+              ]
+        }
+      />
 
       <FinancialHealthScorecard
         report={financialHealthQuery.data}
@@ -154,119 +230,200 @@ export function DashboardPage() {
         monthLabel={monthWindow.label}
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <SnapshotPanel
-          title="In-transit transfers"
-          viewAllTo="/transactions"
-          isPending={inTransitQuery.isPending}
-          isError={inTransitQuery.isError}
-          itemCount={inTransitMovements.length}
-          emptyLabel="No in-transit transfers awaiting settlement"
-          emptyActionTo="/transactions"
-          emptyActionLabel="View transactions"
-          footer={inTransitTotal > 0 ? `${String(inTransitTotal)} awaiting settlement` : null}
-        >
-          <ul className="divide-y divide-border">
-            {inTransitMovements.map((movement) => (
-              <PendingMovementRow key={movement.id} movement={movement} />
-            ))}
-          </ul>
-        </SnapshotPanel>
-
-        <SnapshotPanel
-          title="Pending transfers"
-          viewAllTo="/transactions"
-          isPending={pendingQuery.isPending}
-          isError={pendingQuery.isError}
-          itemCount={pendingMovements.length}
-          emptyLabel="No pending transfers"
-          emptyActionTo="/transactions"
-          emptyActionLabel="Schedule a transfer"
-          footer={pendingTotal > 0 ? `${String(pendingTotal)} waiting to execute` : null}
-        >
-          <ul className="divide-y divide-border">
-            {pendingMovements.map((movement) => (
-              <PendingMovementRow key={movement.id} movement={movement} />
-            ))}
-          </ul>
-        </SnapshotPanel>
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <SnapshotPanel
-          title="Due soon"
-          viewAllTo="/payment-dues"
-          isPending={duesQuery.isPending}
-          isError={duesQuery.isError}
-          itemCount={dueSoon.length}
-          emptyLabel="Nothing due in the next 14 days"
-          emptyActionTo="/payment-dues"
-          emptyActionLabel="Add a payment due"
-          footer={
-            dueSoonAll.length > dueSoon.length
-              ? `Showing ${String(dueSoon.length)} of ${String(dueSoonAll.length)}`
-              : dueSoonAll.length > 0
-                ? `${String(dueSoonAll.length)} in the next ${String(DUE_SOON_PARAMS.window_days)} days`
-                : null
-          }
-        >
-          <ul className="divide-y divide-border">
-            {dueSoon.map((due) => (
-              <DueSoonRow
-                key={`${due.template.id}-${due.due_date}`}
-                due={due}
-                markPaidPending={markPaidMutation.isPending}
-                onMarkPaid={() => {
-                  markPaidMutation.mutate(due.template.id);
-                }}
-              />
-            ))}
-          </ul>
-        </SnapshotPanel>
-
-        <SnapshotPanel
-          title="Accounts"
-          viewAllTo="/accounts"
-          isPending={accountsQuery.isPending}
-          isError={accountsQuery.isError}
-          itemCount={accounts.length}
-          emptyLabel="No accounts yet"
-          emptyActionTo="/accounts"
-          emptyActionLabel="Add an account"
-          footer={
-            accountsTotal > accounts.length
-              ? `Showing ${String(accounts.length)} of ${String(accountsTotal)}`
-              : null
-          }
-        >
-          <ul className="divide-y divide-border">
-            {accounts.map((account) => (
-              <AccountRow key={account.id} account={account} />
-            ))}
-          </ul>
-        </SnapshotPanel>
-      </div>
-
-      <section aria-label="Quick links" className="grid gap-3 sm:grid-cols-2">
-        {QUICK_LINKS.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className="rounded-lg border border-border bg-card p-4 text-card-foreground transition-colors hover:bg-accent/40"
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div className="space-y-6">
+          <SnapshotPanel
+            title={m.dueSoon}
+            aiSpec={{
+              module: "dashboard",
+              view: "due-soon",
+              control: "due-soon-card",
+              title: m.dueSoon,
+              currency: activeCurrency ?? undefined,
+              surfaceContext: {
+                window_days: DUE_SOON_PARAMS.window_days,
+                due_count: dueSoonAll.length,
+                items: dueSoon.map((d) => ({
+                  name: d.template.name,
+                  due_date: d.due_date,
+                  amount: d.template.planned_amount,
+                })),
+              },
+              suggestedPrompts:
+                locale === "es-CO"
+                  ? [
+                      "Prioriza mis próximos pagos programados y su impacto en caja.",
+                      "¿Alguno de estos cobros requiere cobertura líquida inmediata?",
+                    ]
+                  : [
+                      "Prioritize these upcoming due bills by date and cash impact.",
+                      "Do any upcoming bills strain my current liquid balance?",
+                    ],
+            }}
+            icon={CalendarClock}
+            iconTone="bg-warning-soft text-warning"
+            viewAllTo="/payment-dues"
+            viewAllLabel={m.viewAll}
+            isPending={duesQuery.isPending}
+            isError={duesQuery.isError}
+            itemCount={dueSoon.length}
+            emptyLabel={m.nothingDue}
+            emptyActionTo="/payment-dues"
+            emptyActionLabel={m.addPaymentDue}
+            footer={
+              dueSoonAll.length > dueSoon.length
+                ? `${String(dueSoon.length)} / ${String(dueSoonAll.length)}`
+                : dueSoonAll.length > 0
+                  ? `${String(dueSoonAll.length)} (${String(DUE_SOON_PARAMS.window_days)}d)`
+                  : null
+            }
           >
-            <p className="text-sm font-semibold tracking-tight">{item.label}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{quickLinkHint(item.to)}</p>
-          </Link>
-        ))}
-      </section>
+            <ul className="divide-y divide-border">
+              {dueSoon.map((due) => (
+                <DueSoonRow
+                  key={`${due.template.id}-${due.due_date}`}
+                  due={due}
+                  markPaidPending={markPaidMutation.isPending}
+                  onMarkPaid={() => {
+                    markPaidMutation.mutate(due.template.id);
+                  }}
+                />
+              ))}
+            </ul>
+          </SnapshotPanel>
 
-      <div className="flex flex-wrap gap-2">
-        <Button asChild>
-          <Link to="/transactions">New activity</Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link to="/reports">View spending report</Link>
-        </Button>
+          <SnapshotPanel
+            title={m.accounts}
+            aiSpec={{
+              module: "dashboard",
+              view: "accounts-snapshot",
+              control: "accounts-card",
+              title: m.accounts,
+              currency: activeCurrency ?? undefined,
+              surfaceContext: {
+                total_accounts: accountsTotal,
+                shown: accounts.map((a) => ({
+                  name: a.name,
+                  kind: a.account_kind,
+                  currency: a.currency,
+                  balance: a.balance,
+                })),
+              },
+              suggestedPrompts:
+                locale === "es-CO"
+                  ? [
+                      "Resume la distribución entre activos y pasivos en estas cuentas.",
+                      "¿Cómo se distribuyen mis saldos por moneda y tipo de cuenta?",
+                    ]
+                  : [
+                      "Summarize the asset vs. liability distribution across these accounts.",
+                      "How are my balances distributed by currency and account kind?",
+                    ],
+            }}
+            icon={Landmark}
+            iconTone="bg-success-soft text-success"
+            viewAllTo="/accounts"
+            viewAllLabel={m.viewAll}
+            isPending={accountsQuery.isPending}
+            isError={accountsQuery.isError}
+            itemCount={accounts.length}
+            emptyLabel={m.noAccounts}
+            emptyActionTo="/accounts"
+            emptyActionLabel={m.addAccount}
+            footer={
+              accountsTotal > accounts.length
+                ? `${String(accounts.length)} / ${String(accountsTotal)}`
+                : null
+            }
+          >
+            <ul className="divide-y divide-border">
+              {accounts.map((account) => (
+                <AccountRow key={account.id} account={account} />
+              ))}
+            </ul>
+          </SnapshotPanel>
+        </div>
+
+        <div className="space-y-6">
+          <SnapshotPanel
+            title={m.inTransitTransfers}
+            icon={Send}
+            iconTone="bg-warning-soft text-warning"
+            viewAllTo="/transactions"
+            viewAllLabel={m.viewAll}
+            isPending={inTransitQuery.isPending}
+            isError={inTransitQuery.isError}
+            itemCount={inTransitMovements.length}
+            emptyLabel={m.noInTransit}
+            emptyActionTo="/transactions"
+            emptyActionLabel={m.viewTransactions}
+            footer={inTransitTotal > 0 ? String(inTransitTotal) : null}
+          >
+            <ul className="divide-y divide-border">
+              {inTransitMovements.map((movement) => (
+                <PendingMovementRow key={movement.id} movement={movement} />
+              ))}
+            </ul>
+          </SnapshotPanel>
+
+          <SnapshotPanel
+            title={m.pendingTransfers}
+            icon={Clock}
+            iconTone="bg-info-soft text-info"
+            viewAllTo="/transactions"
+            viewAllLabel={m.viewAll}
+            isPending={pendingQuery.isPending}
+            isError={pendingQuery.isError}
+            itemCount={pendingMovements.length}
+            emptyLabel={m.noPending}
+            emptyActionTo="/transactions"
+            emptyActionLabel={m.scheduleTransfer}
+            footer={pendingTotal > 0 ? String(pendingTotal) : null}
+          >
+            <ul className="divide-y divide-border">
+              {pendingMovements.map((movement) => (
+                <PendingMovementRow key={movement.id} movement={movement} />
+              ))}
+            </ul>
+          </SnapshotPanel>
+
+          <section aria-label={m.workspace} className="space-y-2.5">
+            <h2 className="text-sm leading-[1.3] font-semibold tracking-[-0.01em] text-balance">
+              {m.workspace}
+            </h2>
+            <div className="divide-y divide-border rounded-xl border border-border bg-card">
+              {QUICK_LINKS.map((item) => {
+                const meta = quickLinkMeta(item.to);
+                const Icon = meta.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className="group flex items-center justify-between gap-3 px-4 py-2.5 text-card-foreground transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-accent/25"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className={`flex size-7 shrink-0 items-center justify-center rounded-md ${meta.tone}`}
+                      >
+                        <Icon aria-hidden="true" className="size-3.5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {messages.nav[item.to] ?? item.label}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{meta.hint}</p>
+                      </div>
+                    </div>
+                    <ArrowUpRight
+                      aria-hidden="true"
+                      className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary"
+                    />
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );
@@ -288,7 +445,7 @@ function SessionTtlCountdown({ expiresAt }: { expiresAt: number | null }) {
   }, [expiresAt]);
 
   if (expiresAt === null) {
-    return <p className="text-sm text-muted-foreground">Session lifetime unavailable</p>;
+    return <p className="mt-0.5 text-sm text-white/70">Session lifetime unavailable</p>;
   }
 
   const remaining = secondsUntil(expiresAt, nowMs);
@@ -296,9 +453,13 @@ function SessionTtlCountdown({ expiresAt }: { expiresAt: number | null }) {
   const isExpired = remaining <= 0;
 
   return (
-    <p className="text-sm" data-testid="session-ttl">
-      <span className="text-muted-foreground">Time left to live: </span>
-      <span className={isExpired ? "font-medium text-destructive" : "font-medium tabular-nums"}>
+    <p className="mt-0.5 text-sm" data-testid="session-ttl">
+      <span className="text-white/65">Time left to live: </span>
+      <span
+        className={
+          isExpired ? "font-medium text-rose-300" : "font-semibold tabular-nums text-emerald-300"
+        }
+      >
         {label}
       </span>
     </p>
@@ -307,7 +468,11 @@ function SessionTtlCountdown({ expiresAt }: { expiresAt: number | null }) {
 
 function SnapshotPanel({
   title,
+  aiSpec,
+  icon: Icon,
+  iconTone,
   viewAllTo,
+  viewAllLabel = "View all",
   isPending,
   isError,
   itemCount,
@@ -318,7 +483,20 @@ function SnapshotPanel({
   children,
 }: {
   title: string;
+  aiSpec?: {
+    module: string;
+    view: string;
+    control: string;
+    title: string;
+    currency?: string;
+    surfaceContext: Record<string, unknown>;
+    suggestedPrompts: readonly string[];
+  };
+  icon: LucideIcon;
+  iconTone: string;
+  delayMs?: number;
   viewAllTo: string;
+  viewAllLabel?: string;
   isPending: boolean;
   isError: boolean;
   itemCount: number;
@@ -329,34 +507,81 @@ function SnapshotPanel({
   children: ReactNode;
 }) {
   const isEmpty = !isPending && !isError && itemCount === 0;
+  const cardAi = useScopedAIToggle();
 
   return (
     <section aria-label={title} className="space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">{title}</h2>
-        <Link
-          to={viewAllTo}
-          className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-        >
-          View all
-        </Link>
-      </div>
-      {isPending ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
-      {isError ? (
-        <p className="text-sm text-destructive" role="alert">
-          Could not load {title.toLowerCase()}.
-        </p>
-      ) : null}
-      {isEmpty ? (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">{emptyLabel}</p>
-          <Button asChild variant="outline" size="sm">
-            <Link to={emptyActionTo}>{emptyActionLabel}</Link>
-          </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={`flex size-7 shrink-0 items-center justify-center rounded-lg ${iconTone}`}
+          >
+            <Icon aria-hidden="true" className="size-3.5" />
+          </span>
+          <h2 className="truncate text-sm font-semibold tracking-tight">{title}</h2>
+          {!isPending && !isError && itemCount > 0 ? (
+            <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium tabular-nums text-muted-foreground">
+              {String(itemCount)}
+            </span>
+          ) : null}
         </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {aiSpec ? (
+            <ScopedAITrigger open={cardAi.open} panelId={cardAi.panelId} onToggle={cardAi.toggle} />
+          ) : null}
+          <Link
+            to={viewAllTo}
+            className="shrink-0 text-xs font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {viewAllLabel}
+          </Link>
+        </div>
+      </div>
+      {aiSpec ? (
+        <ScopedAIPanel
+          id={cardAi.panelId}
+          open={cardAi.open}
+          onClose={cardAi.close}
+          module={aiSpec.module}
+          view={aiSpec.view}
+          control={aiSpec.control}
+          title={aiSpec.title}
+          currency={aiSpec.currency}
+          surfaceContext={aiSpec.surfaceContext}
+          suggestedPrompts={aiSpec.suggestedPrompts}
+        />
       ) : null}
-      {!isPending && !isError && itemCount > 0 ? children : null}
-      {footer && !isEmpty ? <p className="text-xs text-muted-foreground">{footer}</p> : null}
+      <div className="rounded-xl border border-border bg-card p-5 text-card-foreground">
+        {isPending ? (
+          <div className="space-y-3" aria-label={`Loading ${title.toLowerCase()}`}>
+            {[0, 1, 2].map((idx) => (
+              <div key={idx} className="flex items-center justify-between gap-3">
+                <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-16 animate-pulse rounded bg-muted/70" />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {isError ? (
+          <p className="text-sm text-destructive" role="alert">
+            Could not load {title.toLowerCase()}.
+          </p>
+        ) : null}
+        {isEmpty ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">{emptyLabel}</p>
+            <Button asChild variant="outline" size="sm">
+              <Link to={emptyActionTo}>{emptyActionLabel}</Link>
+            </Button>
+          </div>
+        ) : null}
+        {!isPending && !isError && itemCount > 0 ? children : null}
+        {footer && !isEmpty ? (
+          <p className="mt-3 border-t border-border pt-2.5 text-xs text-muted-foreground">
+            {footer}
+          </p>
+        ) : null}
+      </div>
     </section>
   );
 }
@@ -390,7 +615,7 @@ function PendingMovementRow({ movement }: { movement: TransactionResponse }) {
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate font-medium">{label}</span>
           {movement.settlement_status === "in_transit" ? (
-            <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+            <span className="shrink-0 rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning">
               In transit
             </span>
           ) : null}
@@ -445,19 +670,43 @@ function DueSoonRow({
   );
 }
 
-function quickLinkHint(path: string): string {
+function quickLinkMeta(path: string): { hint: string; icon: LucideIcon; tone: string } {
   switch (path) {
     case "/accounts":
-      return "Balances and account details";
+      return {
+        hint: "Balances and account details",
+        icon: Landmark,
+        tone: "bg-success-soft text-success",
+      };
     case "/categories":
-      return "Income and expense labels";
+      return {
+        hint: "Income and expense labels",
+        icon: Tags,
+        tone: "bg-primary/12 text-primary",
+      };
     case "/transactions":
-      return "Income, expenses, and transfers";
+      return {
+        hint: "Income, expenses, and transfers",
+        icon: ArrowLeftRight,
+        tone: "bg-info-soft text-info",
+      };
     case "/payment-dues":
-      return "Bills and payment deadlines";
+      return {
+        hint: "Bills and payment deadlines",
+        icon: CalendarClock,
+        tone: "bg-warning-soft text-warning",
+      };
     case "/reports":
-      return "Spending breakdowns";
+      return {
+        hint: "Spending breakdowns",
+        icon: BarChart3,
+        tone: "bg-accent text-accent-foreground",
+      };
     default:
-      return "Open this section";
+      return {
+        hint: "Open this section",
+        icon: ArrowUpRight,
+        tone: "bg-muted text-muted-foreground",
+      };
   }
 }

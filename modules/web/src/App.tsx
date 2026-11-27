@@ -6,6 +6,7 @@ import { RequireAuth } from "@/auth/RequireAuth";
 import { BreakingChangesGuard } from "@/components/contract/BreakingChangesGuard";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PublicLayout } from "@/components/layout/PublicLayout";
+import { LocaleProvider } from "@/i18n/LocaleProvider";
 
 const LoginPage = lazy(async () => {
   const mod = await import("@/pages/LoginPage");
@@ -47,9 +48,17 @@ const ReportsPage = lazy(async () => {
   const mod = await import("@/pages/ReportsPage");
   return { default: mod.ReportsPage };
 });
+const ProjectionsPage = lazy(async () => {
+  const mod = await import("@/pages/ProjectionsPage");
+  return { default: mod.ProjectionsPage };
+});
 const PaymentDuesPage = lazy(async () => {
   const mod = await import("@/pages/PaymentDuesPage");
   return { default: mod.PaymentDuesPage };
+});
+const SettingsPage = lazy(async () => {
+  const mod = await import("@/pages/SettingsPage");
+  return { default: mod.SettingsPage };
 });
 
 function RouteFallback() {
@@ -62,40 +71,48 @@ function RouteFallback() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <BreakingChangesGuard />
-      <AuthRedirectBridge />
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route element={<PublicLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/check-email" element={<CheckEmailPage />} />
-            <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
-          </Route>
+    <LocaleProvider>
+      <BrowserRouter>
+        <BreakingChangesGuard />
+        <AuthRedirectBridge />
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/check-email" element={<CheckEmailPage />} />
+              <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
+            </Route>
 
-          <Route
-            element={
-              <RequireAuth>
-                <AppLayout />
-              </RequireAuth>
-            }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/accounts" element={<AccountsPage />} />
-            <Route path="/accounts/:accountId" element={<AccountDetailPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/transactions" element={<TransactionsPage />} />
-            <Route path="/payment-dues" element={<PaymentDuesPage />} />
-            <Route path="/movements" element={<Navigate to="/transactions" replace />} />
-            <Route path="/reports" element={<ReportsPage />} />
-          </Route>
+            <Route
+              element={
+                <RequireAuth>
+                  <AppLayout />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/accounts" element={<AccountsPage />} />
+              <Route path="/accounts/:accountId" element={<AccountDetailPage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/payment-dues" element={<PaymentDuesPage />} />
+              <Route path="/movements" element={<Navigate to="/transactions" replace />} />
+              <Route path="/reports" element={<ReportsPage />} />
+              <Route path="/projections" element={<ProjectionsPage />} />
+              <Route
+                path="/integrations"
+                element={<Navigate to="/settings?tab=integrations" replace />}
+              />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </LocaleProvider>
   );
 }
 

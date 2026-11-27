@@ -104,6 +104,8 @@ services:
     restart: unless-stopped
     networks:
       - papita-local-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${API_PORT:-8000}:8000"
     environment:
@@ -113,11 +115,6 @@ services:
       DEBUG: "${DEBUG:-true}"
       DOCS_ENABLED: "${DOCS_ENABLED:-true}"
       AUTH_PROVIDER: "${AUTH_PROVIDER:-local}"
-      SUPABASE_URL: "${SUPABASE_URL:-}"
-      SUPABASE_ANON_KEY: "${SUPABASE_ANON_KEY:-}"
-      SUPABASE_SERVICE_ROLE_KEY: "${SUPABASE_SERVICE_ROLE_KEY:-}"
-      SUPABASE_JWT_AUDIENCE: "${SUPABASE_JWT_AUDIENCE:-authenticated}"
-      SUPABASE_OAUTH_REDIRECT_TO: "${SUPABASE_OAUTH_REDIRECT_TO:-}"
       AUTH_RATE_LIMIT_ENABLED: "${AUTH_RATE_LIMIT_ENABLED:-true}"
       AUTH_OAUTH_RATE_LIMIT_PER_MINUTE: "${AUTH_OAUTH_RATE_LIMIT_PER_MINUTE:-20}"
       AUTH_COOKIE_SECURE: "${AUTH_COOKIE_SECURE:-false}"
@@ -148,6 +145,8 @@ services:
       AI_AGENT_SHARED_SECRET: "${AI_AGENT_SHARED_SECRET:-}"
       AI_AGENT_ALLOWED_OWNER_ID: "${AI_AGENT_ALLOWED_OWNER_ID:-}"
       AI_AGENT_TIMEOUT_SECONDS: "${AI_AGENT_TIMEOUT_SECONDS:-90}"
+      QWEN_FINANCE_BASE_URL: "${QWEN_FINANCE_BASE_URL:-}"
+      QWEN_FINANCE_MODEL: "${QWEN_FINANCE_MODEL:-qwen-finance-lora}"
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -186,6 +185,54 @@ services:
       GMAIL_TOKEN_URI: "${GMAIL_TOKEN_URI:-https://oauth2.googleapis.com/token}"
       GMAIL_PROCESSED_LABEL: "${GMAIL_PROCESSED_LABEL:-PAPITA_PROCESSED}"
       GMAIL_TOKEN_FILE: "${GMAIL_TOKEN_FILE:-}"
+      HATCHET_CLIENT_TOKEN: "${HATCHET_CLIENT_TOKEN:-}"
+      HATCHET_CLIENT_HOST_PORT: "${HATCHET_CLIENT_HOST_PORT:-}"
+      HATCHET_CLIENT_TLS_STRATEGY: "${HATCHET_CLIENT_TLS_STRATEGY:-none}"
+      PAPITA_INGESTOR_ORCHESTRATOR_CRON: "${PAPITA_INGESTOR_ORCHESTRATOR_CRON:-0 * * * *}"
+      PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS: "${PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS:-1}"
+    healthcheck:
+      disable: true
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  # Optional Hatchet-orchestrated email ingestion worker (profile `ingestor-orchestrator`).
+  ingestor-orchestrator:
+    profiles: ["ingestor-orchestrator"]
+    build:
+      context: ./modules/backend
+    image: papita-backend:local
+    command: ["python", "-m", "backend.domains.ingestion.cli", "--orchestrator", "--skip-env-file"]
+    container_name: "${COMPOSE_NAME:-papita-transactions}-ingestor-orchestrator"
+    restart: unless-stopped
+    networks:
+      - papita-local-net
+    environment:
+      PAPITA_ENV: "${PAPITA_ENV:-local}"
+      DATABASE_URL: "postgresql+psycopg2://${DB_USER:-admin}:${DB_PASSWORD:-admin}@postgres-db:${DB_PORT:-5435}/${DB_NAME:-papita}"
+      PAPITA_INGESTOR_OWNER_ID: "${PAPITA_INGESTOR_OWNER_ID:-}"
+      PAPITA_INGESTOR_LOOKBACK_HOURS: "${PAPITA_INGESTOR_LOOKBACK_HOURS:-24}"
+      PAPITA_INGESTOR_DRY_RUN: "${PAPITA_INGESTOR_DRY_RUN:-false}"
+      PAPITA_INGESTOR_EMAIL_SENDERS: "${PAPITA_INGESTOR_EMAIL_SENDERS:-}"
+      PAPITA_INGESTOR_EMAIL_SUBJECTS: "${PAPITA_INGESTOR_EMAIL_SUBJECTS:-}"
+      PAPITA_INGESTOR_EMAIL_SOURCE_LABEL: "${PAPITA_INGESTOR_EMAIL_SOURCE_LABEL:-}"
+      PAPITA_INGESTOR_EMAIL_QUERY: "${PAPITA_INGESTOR_EMAIL_QUERY:-}"
+      PAPITA_INGESTOR_ORCHESTRATOR_CRON: "${PAPITA_INGESTOR_ORCHESTRATOR_CRON:-0 * * * *}"
+      PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS: "${PAPITA_INGESTOR_ORCHESTRATOR_WORKER_SLOTS:-1}"
+      GMAIL_CLIENT_ID: "${GMAIL_CLIENT_ID:-}"
+      GMAIL_CLIENT_SECRET: "${GMAIL_CLIENT_SECRET:-}"
+      GMAIL_REFRESH_TOKEN: "${GMAIL_REFRESH_TOKEN:-}"
+      GMAIL_TOKEN_URI: "${GMAIL_TOKEN_URI:-https://oauth2.googleapis.com/token}"
+      GMAIL_PROCESSED_LABEL: "${GMAIL_PROCESSED_LABEL:-PAPITA_PROCESSED}"
+      GMAIL_TOKEN_FILE: "${GMAIL_TOKEN_FILE:-}"
+      HATCHET_CLIENT_TOKEN: "${HATCHET_CLIENT_TOKEN:-}"
+      HATCHET_CLIENT_HOST_PORT: "${HATCHET_CLIENT_HOST_PORT:-hatchet-lite-grpc.orchestrator.svc.cluster.local:7070}"
+      HATCHET_CLIENT_TLS_STRATEGY: "${HATCHET_CLIENT_TLS_STRATEGY:-none}"
+      HATCHET_CLIENT_WORKER_HEALTHCHECK_ENABLED: "true"
+    healthcheck:
+      disable: true
     depends_on:
       postgres-db:
         condition: service_healthy

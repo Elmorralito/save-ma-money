@@ -6,7 +6,7 @@ tenant-scoped CRUD routes.
 
 Routes exposed (prefix relative to app mount):
     ``/health`` — liveness, readiness, database, Auth, and composite health (no tenant scope).
-    ``/auth`` — register, login, profile; refresh/logout via Supabase Auth sessions.
+    ``/auth`` — register, login, profile; cookie/Bearer session (refresh/logout deferred for HS256).
     ``/bff/auth`` — HttpOnly cookie session (PPT-049); JWTs stay server-side.
     ``/accounts`` — tenant-scoped account CRUD via :class:`~papita_txnsmodel.services.accounts.AccountsService`.
     ``/categories`` — tenant + global seed categories via
@@ -38,7 +38,10 @@ from papita_txnsapi.routers.v1 import (
     health,
     ingestion,
     meta,
+    projections,
     reports,
+    search,
+    settings,
     transaction_templates,
     transactions,
 )
@@ -47,6 +50,9 @@ api_v1_router = APIRouter()
 api_v1_router.include_router(health.router)
 api_v1_router.include_router(meta.router)
 api_v1_router.include_router(auth.router, dependencies=[Depends(get_db)])
+api_v1_router.include_router(settings.router, dependencies=[Depends(get_db)])
+api_v1_router.include_router(projections.router, dependencies=[Depends(get_db)])
+api_v1_router.include_router(search.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(accounts.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(categories.router, dependencies=[Depends(get_db)])
 api_v1_router.include_router(transactions.router, dependencies=[Depends(get_db)])

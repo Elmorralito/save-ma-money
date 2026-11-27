@@ -39,7 +39,7 @@ class TestRedisHealth:
         assert payload["detail"] == RedisProbeDetail.DISABLED
 
     @patch("papita_txnsapi.routers.v1.health.probe_database", return_value=_connected_db())
-    @patch("papita_txnsapi.routers.v1.health.probe_supabase_auth", return_value=_auth_skipped())
+    @patch("papita_txnsapi.routers.v1.health.probe_local_auth", return_value=_auth_skipped())
     @patch(
         "papita_txnsapi.routers.v1.health.ping_redis",
         return_value=RedisProbeResult(
@@ -102,7 +102,7 @@ class TestRedisHealth:
         datetime.fromisoformat(payload["checked_at"].replace("Z", "+00:00"))
 
     @patch("papita_txnsapi.routers.v1.health.probe_database", return_value=_connected_db())
-    @patch("papita_txnsapi.routers.v1.health.probe_supabase_auth", return_value=_auth_skipped())
+    @patch("papita_txnsapi.routers.v1.health.probe_local_auth", return_value=_auth_skipped())
     @patch(
         "papita_txnsapi.routers.v1.health.ping_redis",
         return_value=RedisProbeResult(

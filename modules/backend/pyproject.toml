@@ -23,7 +23,7 @@ dependencies = [
     "alembic-utils (>=0.8.8,<0.9.0)",
     "pyyaml (>=6.0.3,<7.0)",
     "tabulate (>=0.10.0,<0.11.0)",
-    "python-dateutil (>=3.0.0)",
+    "python-dateutil (>=2.9.0.post0,<4.0.0)",
     "fastapi (>=0.162.5,<0.163.0)",
     "starlette (>=1.7.0,<2.0.0)",
     "pydantic-settings (>=2.15.0,<3.0.0)",
@@ -34,11 +34,11 @@ dependencies = [
     "uvicorn[standard] (>=0.54.0,<0.55.0)",
     "python-multipart (>=0.0.32,<0.0.33)",
     "httpx (>=0.28.1,<0.29.0)",
-    "supabase (>=2.33.0,<3.0.0)",
     "redis (>=8.1.0,<8.2.0)",
     "google-auth-oauthlib (>=1.5.0,<2.0.0)",
     "google-auth (>=2.62.2,<3.0.0)",
     "google-api-python-client (>=2.202.0,<3.0.0)",
+    "hatchet-sdk (>=1.46,<2.0)",
 ]
 
 [project.urls]
@@ -53,6 +53,7 @@ gmail = "papita_ingestor_email.sources.gmail:GmailSource"
 bancolombia-email = "papita_ingestor_email.parsers.bancolombia:BancolombiaParser"
 global66-email = "papita_ingestor_email.parsers.global66:Global66Parser"
 nequi-email = "papita_ingestor_email.parsers.nequi:NequiParser"
+nu-email = "papita_ingestor_email.parsers.nu:NuParser"
 fallback-email = "papita_ingestor_email.parsers.fallback:FallbackEmailParser"
 
 [project.entry-points."papita.ingestor.importers"]
