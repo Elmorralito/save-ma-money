@@ -10,7 +10,7 @@ def test_refresh_returns_501_when_local(client: TestClient) -> None:
     assert response.status_code == 501
     payload = response.json()
     assert "detail" in payload
-    assert "supabase" in (payload.get("deferred_reason") or "").lower()
+    assert "refresh-token" in (payload.get("deferred_reason") or "").lower()
 
 
 def test_logout_returns_501_when_local(client: TestClient) -> None:

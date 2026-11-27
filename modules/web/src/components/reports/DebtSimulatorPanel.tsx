@@ -1,6 +1,8 @@
 import { useRef, useState, type FormEvent } from "react";
 
+import { ScopedAIPanel, ScopedAITrigger, useScopedAIToggle } from "@/components/ai/ScopedAICopilot";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -57,6 +59,8 @@ export function DebtSimulatorPanel({
   errorMessage,
   onSimulate,
 }: DebtSimulatorPanelProps) {
+  const { locale } = useLocale();
+  const simulatorAi = useScopedAIToggle();
   const [strategy, setStrategy] = useState<"avalanche" | "snowball">("avalanche");
   const [extraMonthly, setExtraMonthly] = useState("0");
   const [lumpSum, setLumpSum] = useState("0");
@@ -97,12 +101,51 @@ export function DebtSimulatorPanel({
 
   return (
     <aside className="space-y-4 rounded-lg border border-border bg-card p-4 lg:sticky lg:top-6 lg:self-start">
-      <div>
-        <h3 className="text-sm font-semibold">Prepayment Simulator</h3>
-        <p className="text-xs text-muted-foreground">
-          All amortization math & runway guardrails are calculated by the backend.
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold">Prepayment Simulator</h3>
+          <p className="text-xs text-muted-foreground">
+            All amortization math &amp; runway guardrails are calculated by the backend.
+          </p>
+        </div>
+        <ScopedAITrigger
+          open={simulatorAi.open}
+          panelId={simulatorAi.panelId}
+          onToggle={simulatorAi.toggle}
+        />
       </div>
+
+      <ScopedAIPanel
+        id={simulatorAi.panelId}
+        open={simulatorAi.open}
+        onClose={simulatorAi.close}
+        module="reports"
+        view="debt"
+        control="debt-simulator"
+        title="Prepayment Simulator"
+        currency={currency}
+        surfaceContext={{
+          currency,
+          strategy,
+          extra_monthly_prepayment: parseNonNegative(extraMonthly),
+          lump_sum_prepayment: parseNonNegative(lumpSum),
+          liquid_cash_total: liquidityContext.liquid_cash_total,
+          safe_lump_sum_headroom: liquidityContext.safe_lump_sum_headroom,
+          simulation_months_saved: simulation?.months_saved ?? null,
+          simulation_interest_saved: simulation?.total_interest_saved ?? null,
+        }}
+        suggestedPrompts={
+          locale === "es-CO"
+            ? [
+                "¿Conviene más avalancha o bola de nieve para este perfil de deuda?",
+                "¿Cuánto abono extra es prudente según mi margen líquido disponible?",
+              ]
+            : [
+                "Should I use avalanche or snowball for this liability mix?",
+                "How much extra prepayment fits safely within my liquid headroom?",
+              ]
+        }
+      />
 
       <div className="rounded-md bg-muted/50 p-3 text-xs">
         <div className="flex justify-between">

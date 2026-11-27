@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Papita Local CLI Bridge",
+  "version": "0.1.0",
+  "description": "Explicitly-consented Native Messaging bridge allowing Papita to run pinned local AI CLIs (agy, claude, codex, cursor) on your machine.",
+  "permissions": ["nativeMessaging", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Papita Local CLI Bridge",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://localhost/*",
+        "https://127.0.0.1/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "papita-cli-bridge@papita.local",
+      "strict_min_version": "115.0"
+    }
+  }
+}

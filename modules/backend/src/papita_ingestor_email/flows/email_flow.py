@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from papita_ingestor_core.registry import get_default_registry
 from papita_ingestor_core.runner.ingestion_runner import IngestionRunner
 from papita_ingestor_core.types.records import FetchFilter, RunResult
+from papita_ingestor_email.enrichment import EmailFKEnricher
 from papita_ingestor_email.flow_settings import EmailFlowSettings
 from papita_ingestor_email.owner import users_dto_for_owner_id
 from papita_ingestor_email.parsers import default_email_parsers
@@ -78,6 +79,46 @@ def _has_channel_scope(fetch_filter: FetchFilter | None) -> bool:
         if isinstance(val, (list, tuple, set)) and any(str(item).strip() for item in val):
             return True
     return False
+
+
+def _attach_fk_enricher(*, runner: IngestionRunner, db_conn: IngestionConnectionDTO) -> None:
+    """Attach an ``EmailFKEnricher`` backed by ``db_conn.parsing_rules`` and owner accounts/categories."""
+    try:
+        from sqlalchemy import or_, select
+
+        from papita_txnsmodel.database.session import get_session_manager
+        from papita_txnsmodel.model.accounts import Accounts
+        from papita_txnsmodel.model.categories import Categories
+
+        owner = runner._resolve_owner()  # pylint: disable=protected-access
+        if owner.id is None:
+            return
+        mgr = get_session_manager()
+        with mgr.session_scope() as session:
+            acc_rows = session.scalars(
+                select(Accounts).where(Accounts.owner_id == owner.id, Accounts.active == True)  # noqa: E712
+            ).all()
+            cat_rows = session.scalars(
+                select(Categories).where(
+                    or_(Categories.owner_id == owner.id, Categories.owner_id.is_(None)),
+                    Categories.active == True,  # noqa: E712
+                )
+            ).all()
+            accounts = [{"id": a.id, "name": a.name} for a in acc_rows]
+            categories = [
+                {
+                    "id": c.id,
+                    "name": c.name,
+                    "category_kind": c.category_kind.value
+                    if hasattr(c.category_kind, "value")
+                    else str(c.category_kind),
+                }
+                for c in cat_rows
+            ]
+        rules = list(getattr(db_conn, "parsing_rules", None) or [])
+        runner.set_enricher(EmailFKEnricher(parsing_rules=rules, accounts=accounts, categories=categories))
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Failed to attach EmailFKEnricher; proceeding without FK enrichment")
 
 
 def _load_db_connection(
@@ -187,17 +228,26 @@ def build_email_ingestion_flow(
         runner = build_email_runner(wiring)
         provider_label = "email" if wiring.connector_id == "gmail" else runner.source_id
         eff_filter = fetch_filter
+        db_conn = _load_db_connection(
+            runner=runner,
+            wiring=wiring,
+            flow_name=name,
+            should_persist_status=should_persist_status,
+        )
+        if db_conn is not None:
+            _attach_fk_enricher(runner=runner, db_conn=db_conn)
         if eff_filter is None:
-            db_conn = _load_db_connection(
-                runner=runner,
-                wiring=wiring,
-                flow_name=name,
-                should_persist_status=should_persist_status,
-            )
             if db_conn is not None:
                 if not db_conn.enabled:
                     logger.info(
                         "Skipping disabled email ingestion connection id=%s owner_id=%s",
+                        db_conn.id,
+                        db_conn.owner_id,
+                    )
+                    return RunResult()
+                if not getattr(db_conn, "gmail_access_enabled", True):
+                    logger.info(
+                        "Skipping email ingestion: per-user Gmail access is disabled id=%s owner_id=%s",
                         db_conn.id,
                         db_conn.owner_id,
                     )
@@ -349,10 +399,19 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Disable Prefect runner /health webserver when serving",
     )
+    parser.add_argument(
+        "--orchestrator",
+        action="store_true",
+        help="Run as a Hatchet orchestrator worker (requires HATCHET_CLIENT_TOKEN)",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     if not args.skip_env_file:
         load_environment_file(override=False)
+    if args.orchestrator:
+        from papita_ingestor_email.orchestrator import run_orchestrator_worker
+
+        return run_orchestrator_worker(skip_env_file=True)
     settings = _apply_cli_filter_overrides(EmailFlowSettings(), args)
     preflight_owner: UsersDTO | None = None
     if not args.skip_preflight:

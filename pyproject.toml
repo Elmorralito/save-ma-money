@@ -10,7 +10,6 @@ include = ["README.md"]
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 cryptography = ">=50.0.0,<51.0.0"
-supabase = ">=2.13.0,<3.0.0"
 
 [tool.poetry.group.development.dependencies]
 papita-backend = { path = "modules/backend", develop = true }

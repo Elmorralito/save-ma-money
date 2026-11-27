@@ -71,3 +71,33 @@ class TestAuthProtected:
         me_response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert me_response.status_code == 200
         assert me_response.json()["username"] == "johndoe"
+
+    def test_login_sets_httponly_cookie_and_survives_reload(self, users_client: tuple[TestClient, MagicMock]) -> None:
+        client, mock_service = users_client
+        user = make_user()
+        mock_service.verify_credentials.return_value = user
+        mock_service.get_owner.return_value = user
+
+        login_response = client.post(
+            "/api/v1/auth/login",
+            data={"username": "johndoe", "password": VALID_PASSWORD},
+        )
+        assert login_response.status_code == 200
+        set_cookie = login_response.headers.get("set-cookie", "")
+        assert "papita_access_token=" in set_cookie
+        assert "HttpOnly" in set_cookie
+
+        # Without Authorization header, TestClient sends the HttpOnly cookie.
+        me_response = client.get("/api/v1/auth/me")
+        assert me_response.status_code == 200
+        assert me_response.json()["username"] == "johndoe"
+
+        # Logout clears the cookie even in local (501) mode.
+        logout_response = client.post(
+            "/api/v1/auth/logout",
+            headers={"Origin": "http://testserver"},
+            json={"refresh_token": "local-stateless"},
+        )
+        assert logout_response.status_code == 501
+        assert "papita_access_token=" in logout_response.headers.get("set-cookie", "")
+        assert "Max-Age=0" in logout_response.headers.get("set-cookie", "")

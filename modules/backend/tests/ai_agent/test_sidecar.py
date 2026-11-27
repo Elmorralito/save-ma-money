@@ -59,14 +59,14 @@ class _FakeAdapter:
     async def health(self) -> bool:
         return self._ready
 
-    async def generate(self, *, system_prompt: str, user_prompt: str) -> AIResponse:
-        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+    async def generate(self, *, system_prompt: str, user_prompt: str, model: str | None = None) -> AIResponse:
+        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt, "model": model})
         if self._fail:
             raise AIAgentError("adapter boom")
-        return AIResponse(reply=self._reply, provider=self.provider_name, model=self.model_name)
+        return AIResponse(reply=self._reply, provider=self.provider_name, model=model or self.model_name)
 
-    async def stream(self, *, system_prompt: str, user_prompt: str) -> AsyncIterator[str]:
-        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt})
+    async def stream(self, *, system_prompt: str, user_prompt: str, model: str | None = None) -> AsyncIterator[str]:
+        self.calls.append({"system_prompt": system_prompt, "user_prompt": user_prompt, "model": model})
         if self._fail:
             raise AIAgentError("stream boom")
         yield self._reply

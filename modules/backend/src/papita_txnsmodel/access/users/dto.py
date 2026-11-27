@@ -4,14 +4,15 @@ This module defines the DTOs used for representing users and entities owned by
 users. It handles data validation, normalization, and serialization for user
 records and ownership-aware tables.
 
-``UsersDTO.id`` aligns with Supabase Auth ``sub`` when ``auth_provider='supabase'``.
+Self-hosted identity uses ``auth_provider='local'`` (password and/or Google OAuth).
+Legacy rows may still store ``auth_provider='supabase'`` until backfilled.
 """
 
 import hashlib
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import Field, field_serializer, field_validator, model_serializer, model_validator
 
@@ -33,9 +34,9 @@ class UsersDTO(TableDTO):
     Attributes:
         username: Unique handle (6–255, ``USERNAME_REGEX``).
         email: Unique email (lowercased).
-        password: Plain password for local auth, Argon2 hash from DB, or ``None`` when
-            identity is owned by Supabase Auth.
-        auth_provider: ``supabase`` (MVP IdP) or ``local`` (tests / transitional HS256).
+        password: Plain password for local email auth, Argon2 hash from DB, or ``None``
+            for passwordless Google OAuth profiles.
+        auth_provider: ``local`` (self-hosted) or legacy ``supabase`` rows.
         display_name: Optional human-readable name.
         phone: Optional E.164-style phone number.
         provider_type: Signup channel (``email``, ``google``, or ``github``).
@@ -50,10 +51,11 @@ class UsersDTO(TableDTO):
         str, Field(strip_whitespace=True, to_lower=True, min_length=5, max_length=255, pattern=EMAIL_REGEX)
     ]
     password: str | None = None
-    auth_provider: AuthProvider = "supabase"
+    auth_provider: AuthProvider = "local"
     display_name: Annotated[str | None, Field(default=None, strip_whitespace=True, max_length=255)] = None
     phone: Annotated[str | None, Field(default=None, strip_whitespace=True, max_length=32)] = None
     provider_type: ProviderType = ProviderType.EMAIL
+    preferences: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("provider_type", mode="before")
     @classmethod
@@ -139,8 +141,8 @@ class UsersDTO(TableDTO):
     def _assign_username_based_id(cls, data: object) -> object:
         """Assign a deterministic username-based UUID when ``id`` is omitted (local only).
 
-        Supabase Auth rows must pass ``id = Auth sub`` explicitly. Local/test users
-        without an id still receive the historical uuid5(username) value.
+        OAuth-linked rows pass ``id`` explicitly (stable subject UUID). Local email
+        users without an id still receive the historical uuid5(username) value.
 
         Args:
             data: Raw model input (dict or other).
@@ -152,7 +154,7 @@ class UsersDTO(TableDTO):
             return data
         if data.get("id") is not None:
             return data
-        provider = data.get("auth_provider") or "supabase"
+        provider = data.get("auth_provider") or "local"
         if provider != "local":
             return data
         username = data.get("username")
@@ -173,13 +175,20 @@ class UsersDTO(TableDTO):
             Self: The normalized user DTO instance.
 
         Raises:
-            ValueError: When ``auth_provider=local`` and password is missing.
+            ValueError: When ``auth_provider=local``, signup channel is email, and
+                password is missing.
         """
         now = datetime.now(timezone.utc)
         self.created_at = self.created_at or now
         self.updated_at = self.updated_at or now
         if self.auth_provider == "local" and not self.password:
-            raise ValueError("Local auth users require a password")
+            provider = (
+                self.provider_type
+                if isinstance(self.provider_type, ProviderType)
+                else ProviderType(str(self.provider_type or ProviderType.EMAIL.value).lower())
+            )
+            if not provider.is_oauth():
+                raise ValueError("Local auth users require a password")
         if self.auth_provider == "supabase":
             self.password = None
         return self
@@ -188,8 +197,8 @@ class UsersDTO(TableDTO):
     def _serialize(self) -> dict:
         """Serialize the user DTO to a dictionary.
 
-        Hashes a plain local password before persistence. Supabase rows store
-        ``password=None``.
+        Hashes a plain local password before persistence. Passwordless OAuth and
+        legacy external-IdP rows store ``password=None``.
 
         Returns:
             dict: The serialized user data.
@@ -208,6 +217,7 @@ class UsersDTO(TableDTO):
             "provider_type": (
                 self.provider_type.value if isinstance(self.provider_type, ProviderType) else self.provider_type
             ),
+            "preferences": dict(self.preferences or {}),
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "deleted_at": self.deleted_at,

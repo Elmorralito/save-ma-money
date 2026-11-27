@@ -1,14 +1,15 @@
-"""Users model (v3) — tenant profile linked to Supabase Auth identity.
+"""Users model (v3) — self-hosted tenant profile identity.
 
-``users.id`` **is** the Supabase Auth user id (``auth.users.id`` / JWT ``sub``).
-Credentials live in the Supabase Auth project; ``password`` is only used for the
-legacy/local HS256 test path (``auth_provider='local'``).
+``users.id`` is the JWT ``sub`` (uuid5 of username for email signup, or a stable
+OIDC-derived UUID for Google PKCE). Credentials are local Argon2 hashes and/or
+passwordless OAuth profiles under ``auth_provider='local'``.
 """
 
 import uuid
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, List
 
-from sqlalchemy import text
+from sqlalchemy import Column, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, Relationship
 
 from .base import BaseSQLModel
@@ -22,16 +23,16 @@ if TYPE_CHECKING:
 
 
 class Users(BaseSQLModel, table=True):  # type: ignore
-    """Tenant root user row pointing at a Supabase Auth subject.
+    """Tenant root user row for self-hosted local / Google OAuth identity.
 
     Attributes:
-        id: Primary key — equal to Supabase Auth ``users.id`` (JWT ``sub``).
+        id: Primary key — JWT ``sub`` for the tenant owner.
         username: Display / login handle for the app profile.
-        email: Email mirrored from Auth claims (unique).
-        password: Argon2 hash for ``auth_provider=local`` only; ``None`` when Auth-managed.
-        auth_provider: ``supabase`` (MVP) or ``local`` (unit tests / transitional).
-        display_name: Optional human-readable name from Auth / registration.
-        phone: Optional phone number mirrored for Auth profile lookup.
+        email: Canonical login email (unique).
+        password: Argon2 hash for email/password signup; ``None`` for OAuth-only.
+        auth_provider: ``local`` (self-hosted); legacy rows may still say ``supabase``.
+        display_name: Optional human-readable name from registration / IdP.
+        phone: Optional phone number for profile lookup.
         provider_type: Signup channel — ``email``, ``google``, or ``github``.
     """
 
@@ -48,12 +49,12 @@ class Users(BaseSQLModel, table=True):  # type: ignore
     email: str = Field(nullable=False, index=True, unique=True)
     password: str | None = Field(default=None, nullable=True)
     auth_provider: str = Field(
-        default="supabase",
+        default="local",
         max_length=32,
         nullable=False,
         sa_column_kwargs={
-            "server_default": text("'supabase'"),
-            "comment": "Identity authority: supabase | local",
+            "server_default": text("'local'"),
+            "comment": "Identity authority: local | legacy supabase",
         },
     )
     display_name: str | None = Field(default=None, max_length=255, nullable=True)
@@ -66,6 +67,15 @@ class Users(BaseSQLModel, table=True):  # type: ignore
             "server_default": text("'email'"),
             "comment": "Signup channel: email | google | github",
         },
+    )
+    preferences: dict[str, Any] = Field(
+        default_factory=dict,
+        sa_column=Column(
+            JSONB,
+            nullable=False,
+            server_default=text("'{}'::jsonb"),
+            comment="Per-user domain settings and preferences (currency, locale, ledger defaults, alerts, security)",
+        ),
     )
 
     owned_accounts: List["Accounts"] = Relationship(

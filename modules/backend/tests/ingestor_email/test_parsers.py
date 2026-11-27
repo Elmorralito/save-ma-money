@@ -73,6 +73,7 @@ def test_default_email_parsers_returns_all_defaults() -> None:
         "bancolombia-email",
         "global66-email",
         "nequi-email",
+        "nu-email",
         "fallback-email",
     }
 

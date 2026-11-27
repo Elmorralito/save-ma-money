@@ -31,4 +31,31 @@ describe("accountFormSchema", () => {
     const result = accountFormSchema.safeParse(emptyAccountFormState({ name: "  " }));
     expect(result.success).toBe(false);
   });
+
+  it("validates extension-specific required fields for trading, credit card, loan, and real estate", () => {
+    const trading = accountFormSchema.safeParse(
+      emptyAccountFormState({ account_kind: "investment_brokerage", name: "IBKR" }),
+    );
+    expect(trading.success).toBe(false);
+
+    const cc = accountFormSchema.safeParse(
+      emptyAccountFormState({ account_kind: "credit_card", name: "Visa" }),
+    );
+    expect(cc.success).toBe(false);
+
+    const loan = accountFormSchema.safeParse(
+      emptyAccountFormState({
+        account_kind: "loan_mortgage",
+        name: "Mortgage",
+        loan_insurance_payment: "",
+        loan_extras_payment: "",
+      }),
+    );
+    expect(loan.success).toBe(false);
+
+    const re = accountFormSchema.safeParse(
+      emptyAccountFormState({ account_kind: "real_estate", name: "Apt" }),
+    );
+    expect(re.success).toBe(false);
+  });
 });

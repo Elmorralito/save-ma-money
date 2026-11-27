@@ -18,6 +18,13 @@ from papita_ingestor_core.errors import IngestorConnectionError, IngestorFetchEr
 from papita_ingestor_core.plugins import PluginManifest
 from papita_ingestor_core.sources import BaseIngestorSource
 from papita_ingestor_core.types.records import FetchFilter, RawRecord
+from papita_ingestor_email.parsers.security import (
+    SAFE_MIME_HEADERS,
+    extract_sender_addr,
+    redact_sensitive_text,
+    sanitize_untrusted_text,
+    verify_email_authentication,
+)
 from papita_ingestor_email.runtime import require_gmail_auth_env
 from papita_ingestor_email.settings import GmailSettings
 from papita_ingestor_email.sources.query import build_gmail_query
@@ -27,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 _GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
 _LIST_PAGE_SIZE = 100
+MAX_RAW_MESSAGE_BYTES = 2 * 1024 * 1024  # 2 MiB hard ceiling per Gmail message
+_MAX_RAW_B64_CHARS = (MAX_RAW_MESSAGE_BYTES * 4) // 3 + 16
 
 
 class GmailSource(BaseIngestorSource):
@@ -94,7 +103,7 @@ class GmailSource(BaseIngestorSource):
             self._connected = False
             if isinstance(exc, IngestorConnectionError):
                 raise
-            raise IngestorConnectionError(f"Gmail connect failed: {exc}") from exc
+            raise IngestorConnectionError(f"Gmail connect failed: {redact_sensitive_text(str(exc))}") from exc
         self._connected = True
         logger.info("Connected Gmail source (processed_label=%s)", self.settings.processed_label)
 
@@ -111,7 +120,7 @@ class GmailSource(BaseIngestorSource):
             self._service.users().getProfile(userId="me").execute()
             return True
         except Exception as exc:
-            logger.warning("Gmail health_check failed: %s", exc)
+            logger.warning("Gmail health_check failed: %s", redact_sensitive_text(str(exc)))
             return False
 
     def fetch(self, fetch_filter: FetchFilter | None = None) -> Iterable[RawRecord]:
@@ -122,14 +131,13 @@ class GmailSource(BaseIngestorSource):
         remaining = fetch_filter.limit if fetch_filter is not None else None
         page_token = fetch_filter.cursor if fetch_filter is not None else None
         logger.info("Fetching Gmail messages (limit=%s)", remaining)
-        logger.debug("Resolved Gmail query=%r (limit=%s)", query, remaining)
 
         try:
             yield from self._iter_messages(query=query, remaining=remaining, page_token=page_token)
         except IngestorFetchError:
             raise
         except Exception as exc:
-            raise IngestorFetchError(f"Gmail fetch failed: {exc}") from exc
+            raise IngestorFetchError(f"Gmail fetch failed: {redact_sensitive_text(str(exc))}") from exc
 
     def acknowledge(self, record: RawRecord) -> None:
         if not self._connected or self._service is None or self._label_id is None:
@@ -144,7 +152,9 @@ class GmailSource(BaseIngestorSource):
                 body={"addLabelIds": [self._label_id]},
             ).execute()
         except Exception as exc:
-            raise IngestorFetchError(f"Gmail acknowledge failed for {record.source_ref}: {exc}") from exc
+            raise IngestorFetchError(
+                f"Gmail acknowledge failed for {record.source_ref}: {redact_sensitive_text(str(exc))}"
+            ) from exc
         logger.debug("Acknowledged Gmail message %s with label %s", record.source_ref, self.settings.processed_label)
 
     def _build_service(self) -> Resource:
@@ -233,7 +243,10 @@ class GmailSource(BaseIngestorSource):
                 if not message_id:
                     continue
                 message = self._service.users().messages().get(userId="me", id=message_id, format="raw").execute()
-                yield self._to_raw_record(message)
+                record = self._to_raw_record(message)
+                if record is None:
+                    continue
+                yield record
                 if left is not None:
                     left -= 1
                     if left <= 0:
@@ -243,20 +256,44 @@ class GmailSource(BaseIngestorSource):
             if not token:
                 return
 
-    def _to_raw_record(self, message: dict[str, Any]) -> RawRecord:
+    def _to_raw_record(self, message: dict[str, Any]) -> RawRecord | None:
         message_id = str(message["id"])
         raw_b64 = message.get("raw") or ""
+        if len(raw_b64) > _MAX_RAW_B64_CHARS:
+            logger.warning(
+                "Skipping oversized Gmail message_id=%s (encoded_len=%d > max=%d)",
+                message_id,
+                len(raw_b64),
+                _MAX_RAW_B64_CHARS,
+            )
+            return None
         content = base64.urlsafe_b64decode(raw_b64 + "=" * (-len(raw_b64) % 4))
+        if len(content) > MAX_RAW_MESSAGE_BYTES:
+            logger.warning(
+                "Skipping oversized Gmail message_id=%s (bytes=%d > max=%d)",
+                message_id,
+                len(content),
+                MAX_RAW_MESSAGE_BYTES,
+            )
+            return None
         subject, sender, headers = _parse_mime_headers(content)
+        is_authentic, auth_reason = verify_email_authentication(headers)
+        if not is_authentic:
+            logger.warning(
+                "Skipping unauthenticated/spoofed Gmail message_id=%s (reason=%s)",
+                message_id,
+                auth_reason,
+            )
+            return None
         metadata: dict[str, Any] = {
             "subject": subject,
             "sender": sender,
             "headers": headers,
             "thread_id": message.get("threadId"),
             "label_ids": message.get("labelIds") or [],
-            "snippet": message.get("snippet"),
             "internal_date": message.get("internalDate"),
             "history_id": message.get("historyId"),
+            "auth_verification": auth_reason,
         }
         return RawRecord(
             source_id=self.source_id,
@@ -276,8 +313,15 @@ def _parse_mime_headers(content: bytes) -> tuple[str | None, str | None, dict[st
     if not content:
         return None, None, {}
     parsed = BytesParser(policy=policy.default).parsebytes(content)
-    headers = {str(key): str(value) for key, value in parsed.items()}
-    return parsed.get("Subject"), parsed.get("From"), headers
+    headers: dict[str, str] = {}
+    for key, value in parsed.items():
+        if str(key).lower() in SAFE_MIME_HEADERS:
+            headers[str(key)] = sanitize_untrusted_text(str(value), max_len=1024)
+    raw_subject = parsed.get("Subject")
+    subject = sanitize_untrusted_text(str(raw_subject), max_len=512) if raw_subject else None
+    raw_from = parsed.get("From")
+    sender = extract_sender_addr(str(raw_from)) if raw_from else None
+    return subject, sender, headers
 
 
 __all__ = ["GmailSource", "create_gmail_source"]

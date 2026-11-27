@@ -32,7 +32,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          scanners: vuln,misconfig
+          scanners: vuln,misconfig,secret
           severity: CRITICAL,HIGH
           limit-severities-for-sarif: true
           format: sarif

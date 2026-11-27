@@ -46,18 +46,18 @@ export function AccountDetailPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-1">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <header className="space-y-1 border-b border-border pb-5">
         <Link
           to="/accounts"
-          className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+          className="text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           ← Accounts
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           {account?.name ?? "Account detail"}
         </h1>
-      </div>
+      </header>
 
       <QueryState
         isPending={detailQuery.isPending}
@@ -71,33 +71,51 @@ export function AccountDetailPage() {
       >
         {account ? (
           <div className="space-y-4">
-            <dl className="grid gap-3 sm:grid-cols-2">
+            <dl className="grid gap-4 rounded-xl border border-border bg-card p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <dt className="text-xs text-muted-foreground">Balance</dt>
-                <dd className="text-lg font-medium tabular-nums">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Balance
+                </dt>
+                <dd className="mt-1 text-xl font-semibold tabular-nums">
                   {formatMoney(account.balance, account.currency)}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Kind / side</dt>
-                <dd className="text-sm">
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Kind / side
+                </dt>
+                <dd className="mt-1 text-sm font-medium">
                   {formatSlugLabel(account.account_kind)} · {formatSlugLabel(account.ledger_side)}
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Status</dt>
-                <dd className="text-sm">{account.is_active ? "Active" : "Inactive"}</dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Status
+                </dt>
+                <dd className="mt-1">
+                  <span
+                    className={
+                      account.is_active
+                        ? "inline-flex rounded-full bg-success-soft px-2.5 py-0.5 text-xs font-medium text-success"
+                        : "inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground"
+                    }
+                  >
+                    {account.is_active ? "Active" : "Inactive"}
+                  </span>
+                </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground">Currency</dt>
-                <dd className="text-sm">{account.currency}</dd>
+                <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Currency
+                </dt>
+                <dd className="mt-1 text-sm font-medium">{account.currency}</dd>
               </div>
             </dl>
 
             {account.banking_details ? (
-              <section className="rounded-md border border-border p-3 text-sm">
-                <h2 className="font-medium">Banking</h2>
-                <p className="text-muted-foreground">
+              <section className="rounded-xl border border-border bg-card p-5 text-sm shadow-xs">
+                <h2 className="font-semibold">Banking</h2>
+                <p className="mt-1 text-muted-foreground">
                   {account.banking_details.entity}
                   {account.banking_details.account_number
                     ? ` · ${account.banking_details.account_number}`

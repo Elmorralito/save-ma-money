@@ -12,7 +12,7 @@ import logging
 import re
 import uuid
 from datetime import datetime, timezone
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -26,10 +26,71 @@ from papita_txnsmodel.services.base import BaseService
 logger = logging.getLogger(__name__)
 
 _MAX_FILTER_TERMS = 20
+_MAX_PARSING_RULES = 25
+_MAX_REGEX_LEN = 256
 _MAX_SENDER_LEN = 255
 _MAX_SUBJECT_LEN = 120
 _MAX_LABEL_LEN = 128
 _MAX_LOOKBACK_HOURS = 720
+# Reject nested quantifiers, backreferences, and lookbehinds that can trigger ReDoS.
+_UNSAFE_REGEX_RE = re.compile(r"(?:\([^)]*(?:[+*]|\{\d+,\d*\})[^)]*\)\s*(?:[+*?]|\{\d+,\d*\})|\\[1-9]|\(\?<[=!])")
+
+
+def _validate_parsing_rules(rules: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Validate structured per-user email parsing rules and regex syntax."""
+    if not rules:
+        return []
+    if len(rules) > _MAX_PARSING_RULES:
+        raise ValueError(f"parsing_rules cannot contain more than {_MAX_PARSING_RULES} entries.")
+    validated: list[dict[str, Any]] = []
+    allowed_modes = {"auto", "bancolombia-email", "global66-email", "nequi-email", "nu-email", "custom_regex"}
+    allowed_types = {"auto", "income", "expense", "transfer"}
+    for idx, raw in enumerate(rules):
+        if not isinstance(raw, dict):
+            raise ValueError(f"parsing_rules[{idx}] must be an object.")
+        name = str(raw.get("name") or "").strip()
+        if not name or len(name) > 120:
+            raise ValueError(f"parsing_rules[{idx}].name must be 1–120 characters.")
+        mode = str(raw.get("parser_mode") or "auto").strip().lower()
+        if mode not in allowed_modes:
+            raise ValueError(f"parsing_rules[{idx}].parser_mode {mode!r} is not supported.")
+        txn_type = str(raw.get("transaction_type") or "auto").strip().lower()
+        if txn_type not in allowed_types:
+            raise ValueError(f"parsing_rules[{idx}].transaction_type {txn_type!r} is not supported.")
+        amount_regex = str(raw.get("amount_regex") or "").strip()
+        if len(amount_regex) > _MAX_REGEX_LEN:
+            raise ValueError(f"parsing_rules[{idx}].amount_regex exceeds {_MAX_REGEX_LEN} characters.")
+        if amount_regex:
+            if _UNSAFE_REGEX_RE.search(amount_regex):
+                raise ValueError(
+                    f"parsing_rules[{idx}].amount_regex uses nested quantifiers, backreferences, or lookbehinds."
+                )
+            try:
+                re.compile(amount_regex)
+            except re.error as exc:
+                raise ValueError(f"parsing_rules[{idx}].amount_regex is invalid regex: {exc}") from exc
+        currency = str(raw.get("currency") or "COP").strip().upper()
+        if len(currency) != 3 or not currency.isalpha():
+            raise ValueError(f"parsing_rules[{idx}].currency must be a 3-letter ISO code.")
+        validated.append(
+            {
+                "id": str(raw.get("id") or uuid.uuid4()),
+                "name": name,
+                "enabled": bool(raw.get("enabled", True)),
+                "parser_mode": mode,
+                "sender_match": str(raw.get("sender_match") or "").strip()[:255],
+                "subject_match": str(raw.get("subject_match") or "").strip()[:120],
+                "amount_regex": amount_regex,
+                "transaction_type": txn_type,
+                "currency": currency,
+                "default_account_id": str(raw["default_account_id"]) if raw.get("default_account_id") else None,
+                "default_category_id": str(raw["default_category_id"]) if raw.get("default_category_id") else None,
+                "description_template": str(raw.get("description_template") or "").strip()[:160],
+            }
+        )
+    return validated
+
+
 _SENDER_TERM_RE = re.compile(
     r"^(?:[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+|[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+)$"
 )
@@ -109,6 +170,8 @@ class UpsertIngestionConnectionRequest(BaseModel):
     email_subjects: list[str] = Field(default_factory=list)
     email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
     email_query: str | None = None
+    gmail_access_enabled: bool | None = None
+    parsing_rules: list[dict[str, Any]] | None = None
 
     @field_validator("email_senders")
     @classmethod
@@ -130,6 +193,13 @@ class UpsertIngestionConnectionRequest(BaseModel):
     def _clean_optional_fields(cls, value: str | None) -> str | None:
         return _normalize_optional_text(value)
 
+    @field_validator("parsing_rules")
+    @classmethod
+    def _clean_parsing_rules(cls, value: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+        if value is None:
+            return None
+        return _validate_parsing_rules(value)
+
 
 class UpdateIngestionConnectionRequest(BaseModel):
     """Partial update payload for an existing owner-scoped connection."""
@@ -143,6 +213,8 @@ class UpdateIngestionConnectionRequest(BaseModel):
     email_subjects: list[str] | None = None
     email_source_label: str | None = Field(default=None, max_length=_MAX_LABEL_LEN)
     email_query: str | None = None
+    gmail_access_enabled: bool | None = None
+    parsing_rules: list[dict[str, Any]] | None = None
 
     @field_validator("email_senders")
     @classmethod
@@ -167,6 +239,13 @@ class UpdateIngestionConnectionRequest(BaseModel):
     @classmethod
     def _clean_optional_fields(cls, value: str | None) -> str | None:
         return _normalize_optional_text(value)
+
+    @field_validator("parsing_rules")
+    @classmethod
+    def _clean_optional_parsing_rules(cls, value: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+        if value is None:
+            return None
+        return _validate_parsing_rules(value)
 
 
 class RecordIngestionRunRequest(BaseModel):
@@ -242,6 +321,13 @@ class IngestionConnectionService(BaseService):
         if existing is not None and existing.id is not None:
             payload["id"] = existing.id
             payload["created_at"] = existing.created_at
+            # Always preserve server-managed encrypted OAuth token & connected email on config upsert.
+            payload["gmail_refresh_token_enc"] = existing.gmail_refresh_token_enc
+            payload["gmail_connected_email"] = existing.gmail_connected_email
+            if payload.get("gmail_access_enabled") is None:
+                payload["gmail_access_enabled"] = existing.gmail_access_enabled
+            if payload.get("parsing_rules") is None:
+                payload["parsing_rules"] = list(existing.parsing_rules)
             is_active = bool(getattr(existing, "active", True))
             if not is_active:
                 reactivate = True
@@ -254,6 +340,13 @@ class IngestionConnectionService(BaseService):
                 payload["email_subjects"] = list(existing.email_subjects)
                 payload["email_source_label"] = existing.email_source_label
                 payload["email_query"] = existing.email_query
+                payload["gmail_access_enabled"] = existing.gmail_access_enabled
+                payload["parsing_rules"] = list(existing.parsing_rules)
+        else:
+            if payload.get("gmail_access_enabled") is None:
+                payload["gmail_access_enabled"] = False
+            if payload.get("parsing_rules") is None:
+                payload["parsing_rules"] = []
         dto = IngestionConnectionDTO.model_validate({**payload, "owner_id": owner.id})
         upserted = self._connection_repository.upsert_record(
             dto,
@@ -350,6 +443,59 @@ class IngestionConnectionService(BaseService):
         if len(frame.columns) == 1 and isinstance(frame.iloc[0, 0], dao):
             return [IngestionConnectionDTO.from_dao(cell) for cell in frame.iloc[:, 0]]
         return [IngestionConnectionDTO.model_validate(row) for row in frame.to_dict(orient="records")]
+
+    def set_gmail_credentials(
+        self,
+        *,
+        owner: UsersDTO,
+        connected_email: str | None,
+        encrypted_refresh_token: str | None,
+        access_enabled: bool,
+        provider: str = "email",
+        flow_name: str = "papita-email-ingestion",
+        **kwargs,
+    ) -> IngestionConnectionDTO:
+        """Persist or clear per-user encrypted Gmail refresh token and access toggle."""
+        owner = self._owned(owner)
+        existing = self._connection_repository.get_by_natural_key(
+            owner=owner,
+            provider=provider,
+            flow_name=flow_name,
+            include_deleted=True,
+            **kwargs,
+        )
+        if existing is None:
+            dto = IngestionConnectionDTO(
+                owner_id=owner.id,
+                provider=provider,
+                flow_name=flow_name,
+                enabled=True,
+                lookback_hours=24,
+                gmail_access_enabled=access_enabled,
+                gmail_connected_email=connected_email,
+                gmail_refresh_token_enc=encrypted_refresh_token,
+            )
+            return self._connection_repository.upsert_record(
+                dto,
+                owner=owner,
+                on_conflict_do=self.on_conflict_do,
+                **kwargs,
+            )
+        updated = existing.model_copy(
+            update={
+                "active": True,
+                "deleted_at": None,
+                "gmail_access_enabled": access_enabled,
+                "gmail_connected_email": connected_email,
+                "gmail_refresh_token_enc": encrypted_refresh_token,
+            }
+        )
+        return self._connection_repository.upsert_record(
+            updated,
+            owner=owner,
+            on_conflict_do=OnUpsertConflictDo.UPDATE,
+            **kwargs,
+        )
 
     def get_connection(
         self,

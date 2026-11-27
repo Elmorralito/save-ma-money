@@ -16,16 +16,37 @@ Tenant scoping:
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import json
+import logging
+import re
+import secrets
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import RedirectResponse
 from redis import Redis
 
 from papita_ingestor_core.errors import IngestorParseError, IngestorPluginError
 from papita_ingestor_core.plugins import PluginKind
 from papita_ingestor_core.registry import get_default_registry
+from papita_ingestor_core.types.records import RawRecord
+from papita_ingestor_email.parsers.bancolombia import BancolombiaParser
+from papita_ingestor_email.parsers.global66 import Global66Parser
+from papita_ingestor_email.parsers.nequi import NequiParser
+from papita_ingestor_email.parsers.nu import NuParser
+from papita_ingestor_email.parsers.security import redact_sensitive_text
+from papita_txnsapi.config.settings import Settings, get_settings
 from papita_txnsapi.core.cache import CacheNamespace, bump_cache_versions
+from papita_txnsapi.core.oauth_txns import consume_oauth_txn, store_oauth_txn
 from papita_txnsapi.dependencies.auth import get_current_owner
 from papita_txnsapi.dependencies.pagination import PaginationParams, get_pagination
 from papita_txnsapi.dependencies.rate_limit import enforce_tenant_api_rate_limit
@@ -35,11 +56,15 @@ from papita_txnsapi.dependencies.services import (
     get_ingestion_connection_service,
     get_ingestion_run_service,
     get_portfolio_import_service,
+    get_users_service,
 )
 from papita_txnsapi.schemas.common import PaginatedResponse
 from papita_txnsapi.schemas.converters import enum_to_api_slug
 from papita_txnsapi.schemas.ingestion import (
     ConnectorManifestResponse,
+    EmailParseTestRequest,
+    EmailParseTestResponse,
+    EmailParsingRuleSchema,
     IBKRImportRequest,
     IBKRImportResponse,
     IngestionConnectionResponse,
@@ -49,6 +74,7 @@ from papita_txnsapi.schemas.ingestion import (
 )
 from papita_txnsmodel.access.ingestion.dto import IngestionRunDTO
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.enums import IngestionSource
 from papita_txnsmodel.services.ibkr_import import IBKRImportService
 from papita_txnsmodel.services.ingestion_status import (
     IngestionConnectionService,
@@ -57,6 +83,20 @@ from papita_txnsmodel.services.ingestion_status import (
     UpsertIngestionConnectionRequest,
 )
 from papita_txnsmodel.services.portfolio_import import PortfolioImportService
+from papita_txnsmodel.services.users import UsersService
+
+logger = logging.getLogger(__name__)
+
+_GMAIL_OAUTH_COOKIE_PATH = "/api/v1/ingestion/gmail"
+_GMAIL_OAUTH_CV_COOKIE = "papita_gmail_cv"
+_GMAIL_OAUTH_STATE_COOKIE = "papita_gmail_state"
+_GMAIL_OAUTH_OWNER_COOKIE = "papita_gmail_owner"
+_GMAIL_OAUTH_REDIRECT_COOKIE = "papita_gmail_rt"
+_GMAIL_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+_GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token"
+_GMAIL_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+_GMAIL_SCOPES = "openid email https://www.googleapis.com/auth/gmail.modify"
+_GENERIC_AMOUNT_RE = re.compile(r"(?:US\$|COP\$|\$)\s*([\d.,]+)")
 
 router = APIRouter(
     prefix="/ingestion",
@@ -130,7 +170,7 @@ def upsert_ingestion_connection(
     """
     saved = connection_service.upsert_connection(
         owner=owner,
-        request=UpsertIngestionConnectionRequest(**payload.model_dump()),
+        request=UpsertIngestionConnectionRequest(**payload.model_dump(mode="json")),
     )
     return IngestionConnectionResponse.from_dto(saved)
 
@@ -175,7 +215,7 @@ def update_ingestion_connection(
     Returns:
         Updated allowlisted connection resource.
     """
-    service_request = UpdateIngestionConnectionRequest(**payload.model_dump(exclude_unset=True))
+    service_request = UpdateIngestionConnectionRequest(**payload.model_dump(exclude_unset=True, mode="json"))
     updated = connection_service.update_connection(
         owner=owner,
         connection_id=connection_id,
@@ -340,6 +380,425 @@ def import_statement_by_plugin(
         CacheNamespace.ACCOUNTS,
     )
     return IBKRImportResponse.model_validate(result.model_dump(mode="python"))
+
+
+_GMAIL_REVOKE_URL = "https://oauth2.googleapis.com/revoke"
+
+
+def _fernet_for_settings(settings: Settings) -> MultiFernet:
+    """Build domain-separated Fernet encryption for per-user Gmail refresh tokens.
+
+    Prefers dedicated ``GMAIL_TOKEN_ENCRYPTION_KEY`` when configured; otherwise
+    derives a purpose-bound key via HKDF-SHA256 from ``JWT_SECRET_KEY``. Retains
+    the legacy SHA-256 key as a decryption-only fallback for seamless rotation.
+    """
+    primary_ikm = (settings.GMAIL_TOKEN_ENCRYPTION_KEY or settings.JWT_SECRET_KEY).encode("utf-8")
+    hkdf_key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b"papita-gmail-oauth-v1",
+        info=b"papita:gmail-refresh-token:v1",
+    ).derive(primary_ikm)
+    primary = Fernet(base64.urlsafe_b64encode(hkdf_key))
+    legacy_digest = hashlib.sha256(settings.JWT_SECRET_KEY.encode("utf-8")).digest()
+    legacy = Fernet(base64.urlsafe_b64encode(legacy_digest))
+    return MultiFernet([primary, legacy])
+
+
+def _revoke_google_token_best_effort(refresh_token: str) -> None:
+    """Best-effort revocation of a Gmail OAuth refresh token at Google's revoke endpoint."""
+    try:
+        body = urllib.parse.urlencode({"token": refresh_token}).encode("utf-8")
+        req = urllib.request.Request(
+            _GMAIL_REVOKE_URL,
+            data=body,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10):  # nosec B310 - fixed Google revoke URL
+            return
+    except (urllib.error.URLError, TimeoutError, OSError) as exc:
+        logger.warning("Best-effort Google token revocation failed: %s", redact_sensitive_text(str(exc)))
+
+
+def _clear_gmail_oauth_cookies(response: RedirectResponse) -> None:
+    for key in (
+        _GMAIL_OAUTH_CV_COOKIE,
+        _GMAIL_OAUTH_STATE_COOKIE,
+        _GMAIL_OAUTH_OWNER_COOKIE,
+        _GMAIL_OAUTH_REDIRECT_COOKIE,
+    ):
+        response.delete_cookie(key=key, path=_GMAIL_OAUTH_COOKIE_PATH)
+
+
+def _seal_gmail_oauth_txn(
+    settings: Settings,
+    *,
+    owner_id: str,
+    state: str,
+    code_verifier: str,
+    callback_uri: str,
+) -> str:
+    """Cryptographically seal Gmail OAuth context to prevent owner_id cookie tampering (IDOR)."""
+    payload = json.dumps(
+        {
+            "owner_id": owner_id,
+            "state": state,
+            "code_verifier": code_verifier,
+            "callback_uri": callback_uri,
+        },
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return _fernet_for_settings(settings).encrypt(payload).decode("ascii")
+
+
+def _unseal_gmail_oauth_txn(settings: Settings, token: str | None) -> dict[str, str] | None:
+    """Verify and decrypt the sealed Gmail OAuth transaction cookie (10-minute TTL)."""
+    if not token:
+        return None
+    try:
+        raw = _fernet_for_settings(settings).decrypt(token.encode("ascii"), ttl=600)
+        data = json.loads(raw.decode("utf-8"))
+        if not isinstance(data, dict):
+            return None
+        return {k: str(v) for k, v in data.items() if isinstance(v, str)}
+    except (InvalidToken, ValueError, json.JSONDecodeError):
+        return None
+
+
+def _parse_amount_number(raw: str) -> float | None:
+    cleaned = raw.strip().replace(" ", "")
+    if not cleaned:
+        return None
+    if "," in cleaned and "." in cleaned:
+        if cleaned.rfind(",") > cleaned.rfind("."):
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        else:
+            cleaned = cleaned.replace(",", "")
+    elif "," in cleaned:
+        parts = cleaned.split(",")
+        if len(parts[-1]) == 2:
+            cleaned = "".join(parts[:-1]) + "." + parts[-1]
+        else:
+            cleaned = cleaned.replace(",", "")
+    try:
+        val = float(cleaned)
+        return val if val > 0 else None
+    except ValueError:
+        return None
+
+
+@router.get("/gmail/oauth/start", response_model=None)
+def start_gmail_oauth(
+    request: Request,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> RedirectResponse:
+    """Start per-user incremental Gmail OAuth flow (``gmail.modify`` scope)."""
+    client_id = (settings.GOOGLE_OAUTH_CLIENT_ID or "").strip()
+    client_secret = (settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip()
+    if not client_id or not client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Google OAuth client credentials are not configured on the API server.",
+        )
+
+    base = str(request.base_url).rstrip("/")
+    callback_uri = f"{base}/api/v1/ingestion/gmail/oauth/callback"
+    code_verifier = secrets.token_urlsafe(48)
+    state = secrets.token_urlsafe(24)
+    digest = hashlib.sha256(code_verifier.encode("ascii")).digest()
+    challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+    params = urllib.parse.urlencode(
+        {
+            "client_id": client_id,
+            "redirect_uri": callback_uri,
+            "response_type": "code",
+            "scope": _GMAIL_SCOPES,
+            "state": state,
+            "code_challenge": challenge,
+            "code_challenge_method": "S256",
+            "access_type": "offline",
+            "prompt": "consent",
+            "login_hint": owner.email,
+        }
+    )
+    response = RedirectResponse(url=f"{_GMAIL_AUTH_URL}?{params}", status_code=status.HTTP_302_FOUND)
+    cookie_kwargs = {
+        "max_age": 600,
+        "httponly": True,
+        "samesite": "lax",
+        "secure": settings.oauth_cookie_secure(),
+        "path": _GMAIL_OAUTH_COOKIE_PATH,
+    }
+    flow_handle = str(uuid.uuid4())
+    store_oauth_txn(
+        flow_handle,
+        {
+            "owner_id": str(owner.id),
+            "state": state,
+            "code_verifier": code_verifier,
+            "callback_uri": callback_uri,
+        },
+        ttl_seconds=600,
+    )
+    response.set_cookie(key=_GMAIL_OAUTH_STATE_COOKIE, value=flow_handle, **cookie_kwargs)
+    return response
+
+
+@router.get("/gmail/oauth/callback", response_model=None)
+def gmail_oauth_callback(
+    request: Request,
+    settings: Annotated[Settings, Depends(get_settings)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+    users_service: Annotated[UsersService, Depends(get_users_service)],
+    *,
+    code: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+) -> RedirectResponse:
+    """Complete per-user Gmail OAuth and store encrypted refresh token on ingestion_connections."""
+    txn = consume_oauth_txn(request.cookies.get(_GMAIL_OAUTH_STATE_COOKIE))
+    expected_state = txn.get("state") if txn else None
+    code_verifier = txn.get("code_verifier") if txn else None
+    owner_raw = txn.get("owner_id") if txn else None
+    callback_uri = txn.get("callback_uri") if txn else None
+    if (
+        error
+        or not code
+        or not code_verifier
+        or not expected_state
+        or not state
+        or not secrets.compare_digest(state, expected_state)
+        or not owner_raw
+    ):
+        failed = RedirectResponse(url="/settings?tab=integrations&gmail=error", status_code=status.HTTP_302_FOUND)
+        _clear_gmail_oauth_cookies(failed)
+        return failed
+
+    try:
+        owner = users_service.get_owner(uuid.UUID(owner_raw))
+        if owner is None:
+            raise ValueError("Owner not found")
+        token_body = urllib.parse.urlencode(
+            {
+                "client_id": (settings.GOOGLE_OAUTH_CLIENT_ID or "").strip(),
+                "client_secret": (settings.GOOGLE_OAUTH_CLIENT_SECRET or "").strip(),
+                "code": code,
+                "code_verifier": code_verifier,
+                "redirect_uri": callback_uri
+                or f"{str(request.base_url).rstrip('/')}/api/v1/ingestion/gmail/oauth/callback",
+                "grant_type": "authorization_code",
+            }
+        ).encode("utf-8")
+        token_req = urllib.request.Request(
+            _GMAIL_TOKEN_URL,
+            data=token_body,
+            headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(token_req, timeout=15) as resp:  # nosec B310 - fixed Google token URL
+            token_payload = json.loads(resp.read().decode("utf-8"))
+
+        access_token = str(token_payload.get("access_token") or "").strip()
+        refresh_token = str(token_payload.get("refresh_token") or "").strip()
+        if not refresh_token:
+            raise ValueError("Google did not return a refresh_token")
+
+        connected_email = owner.email
+        if access_token:
+            ui_req = urllib.request.Request(
+                _GMAIL_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}", "Accept": "application/json"},
+                method="GET",
+            )
+            with urllib.request.urlopen(ui_req, timeout=15) as resp:  # nosec B310 - fixed Google userinfo URL
+                ui = json.loads(resp.read().decode("utf-8"))
+                if isinstance(ui, dict) and ui.get("email"):
+                    connected_email = str(ui["email"]).strip().lower()
+
+        encrypted = _fernet_for_settings(settings).encrypt(refresh_token.encode("utf-8")).decode("ascii")
+        connection_service.set_gmail_credentials(
+            owner=owner,
+            connected_email=connected_email,
+            encrypted_refresh_token=encrypted,
+            access_enabled=True,
+        )
+        ok_resp = RedirectResponse(url="/settings?tab=integrations&gmail=connected", status_code=status.HTTP_302_FOUND)
+        _clear_gmail_oauth_cookies(ok_resp)
+        return ok_resp
+    except (urllib.error.URLError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        logger.warning("Per-user Gmail OAuth callback failed: %s", redact_sensitive_text(str(exc)))
+        failed = RedirectResponse(url="/settings?tab=integrations&gmail=error", status_code=status.HTTP_302_FOUND)
+        _clear_gmail_oauth_cookies(failed)
+        return failed
+
+
+@router.post("/gmail/disconnect", response_model=IngestionConnectionResponse)
+def disconnect_gmail(
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+) -> IngestionConnectionResponse:
+    """Revoke Gmail OAuth refresh token at Google, wipe encrypted DB token, and disable access."""
+    existing = connection_service.get_connection_by_natural_key(
+        owner=owner,
+        provider="email",
+        flow_name="papita-email-ingestion",
+    )
+    if existing is not None and existing.gmail_refresh_token_enc:
+        try:
+            raw_token = (
+                _fernet_for_settings(settings).decrypt(existing.gmail_refresh_token_enc.encode("ascii")).decode("utf-8")
+            )
+            if raw_token:
+                _revoke_google_token_best_effort(raw_token)
+        except InvalidToken:
+            logger.warning("Could not decrypt stored Gmail token during disconnect for owner_id=%s", owner.id)
+
+    updated = connection_service.set_gmail_credentials(
+        owner=owner,
+        connected_email=None,
+        encrypted_refresh_token=None,
+        access_enabled=False,
+    )
+    return IngestionConnectionResponse.from_dto(updated)
+
+
+@router.post("/email/test-parse", response_model=EmailParseTestResponse)
+def test_email_parse(
+    payload: EmailParseTestRequest,
+    owner: Annotated[UsersDTO, Depends(get_current_owner)],
+    connection_service: Annotated[IngestionConnectionService, Depends(get_ingestion_connection_service)],
+) -> EmailParseTestResponse:
+    """Dry-run sample email against the user's configured parsing rules and built-in bank parsers."""
+    rules: list[EmailParsingRuleSchema]
+    if payload.rules is not None:
+        rules = payload.rules
+    else:
+        existing = connection_service.list_connections(owner=owner, skip=0, limit=1)
+        rules = [EmailParsingRuleSchema.model_validate(item) for item in existing[0].parsing_rules] if existing else []
+
+    sender_l = payload.sender.strip().lower()
+    subject_l = payload.subject.strip().lower()
+    raw_record = RawRecord(
+        source_id="gmail",
+        ingestion_source=IngestionSource.EMAIL,
+        source_ref="dry-run-test-parse",
+        content=payload.body.encode("utf-8"),
+        metadata={"sender": payload.sender.strip(), "subject": payload.subject.strip()},
+    )
+    builtin_parsers = {
+        "bancolombia-email": BancolombiaParser(),
+        "global66-email": Global66Parser(),
+        "nequi-email": NequiParser(),
+        "nu-email": NuParser(),
+    }
+
+    for rule in rules:
+        if not rule.enabled:
+            continue
+        if rule.sender_match and rule.sender_match.lower() not in sender_l:
+            continue
+        if rule.subject_match and rule.subject_match.lower() not in subject_l:
+            continue
+
+        if rule.parser_mode in builtin_parsers:
+            parser = builtin_parsers[rule.parser_mode]
+            if parser.can_parse(raw_record):
+                try:
+                    parsed = parser.parse(raw_record)
+                    return EmailParseTestResponse(
+                        matched=True,
+                        matched_rule_name=rule.name,
+                        parser_used=rule.parser_mode,
+                        transaction_type=(
+                            rule.transaction_type
+                            if rule.transaction_type != "auto"
+                            else enum_to_api_slug(parsed.transaction_kind)
+                        ),
+                        amount=parsed.amount,
+                        currency=parsed.currency or rule.currency,
+                        description=rule.description_template or parsed.description,
+                        default_account_id=rule.default_account_id,
+                        default_category_id=rule.default_category_id,
+                    )
+                except IngestorParseError as exc:
+                    return EmailParseTestResponse(
+                        matched=False,
+                        matched_rule_name=rule.name,
+                        parser_used=rule.parser_mode,
+                        error=str(exc),
+                    )
+            continue
+        elif rule.parser_mode == "auto":
+            for pid, parser in builtin_parsers.items():
+                if parser.can_parse(raw_record):
+                    try:
+                        parsed = parser.parse(raw_record)
+                        return EmailParseTestResponse(
+                            matched=True,
+                            matched_rule_name=rule.name,
+                            parser_used=pid,
+                            transaction_type=(
+                                rule.transaction_type
+                                if rule.transaction_type != "auto"
+                                else enum_to_api_slug(parsed.transaction_kind)
+                            ),
+                            amount=parsed.amount,
+                            currency=parsed.currency or rule.currency,
+                            description=rule.description_template or parsed.description,
+                            default_account_id=rule.default_account_id,
+                            default_category_id=rule.default_category_id,
+                        )
+                    except IngestorParseError as exc:
+                        return EmailParseTestResponse(
+                            matched=False,
+                            matched_rule_name=rule.name,
+                            parser_used=pid,
+                            error=str(exc),
+                        )
+
+        # Custom regex (or fallback for auto when sender/subject matched)
+        regex_pattern = re.compile(rule.amount_regex) if rule.amount_regex else _GENERIC_AMOUNT_RE
+        match = regex_pattern.search(f"{payload.subject}\n{payload.body}")
+        if match:
+            raw_amt = match.group(1) if match.lastindex else match.group(0)
+            amount = _parse_amount_number(raw_amt)
+            if amount is not None:
+                return EmailParseTestResponse(
+                    matched=True,
+                    matched_rule_name=rule.name,
+                    parser_used="custom_regex",
+                    transaction_type="expense" if rule.transaction_type == "auto" else rule.transaction_type,
+                    amount=amount,
+                    currency=rule.currency,
+                    description=rule.description_template or payload.subject.strip() or rule.name,
+                    default_account_id=rule.default_account_id,
+                    default_category_id=rule.default_category_id,
+                )
+
+    # Fallback: try built-in parsers even if no custom rule matched
+    for pid, parser in builtin_parsers.items():
+        if parser.can_parse(raw_record):
+            try:
+                parsed = parser.parse(raw_record)
+                return EmailParseTestResponse(
+                    matched=True,
+                    matched_rule_name=None,
+                    parser_used=pid,
+                    transaction_type=enum_to_api_slug(parsed.transaction_kind),
+                    amount=parsed.amount,
+                    currency=parsed.currency,
+                    description=parsed.description,
+                )
+            except IngestorParseError as exc:
+                return EmailParseTestResponse(matched=False, parser_used=pid, error=str(exc))
+
+    return EmailParseTestResponse(
+        matched=False,
+        error="No rule or built-in parser matched this email. Add a custom regex rule or check sender/subject.",
+    )
 
 
 @router.get("/connectors", response_model=list[ConnectorManifestResponse])

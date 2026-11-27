@@ -1,16 +1,16 @@
 """Authentication request and response schemas for ``/api/v1/auth/*``.
 
-Defines JSON bodies for registration, Supabase session refresh/logout, OAuth
-(PKCE) start/callback and SSO token handoff, plus the public user profile and
-OAuth2-compatible token payload returned by auth endpoints.
+Defines JSON bodies for registration, session refresh/logout, Google OAuth
+(PKCE) start/callback, plus the public user profile and OAuth2-compatible token
+payload returned by auth endpoints.
 
 Passwords are accepted on write paths only and are never serialized on
 ``UserResponse``. Email is the canonical client login identity;
 ``users.username`` is a derived handle for the schema unique constraint.
-``AUTH_PROVIDER=local`` (tests) uses HS256 tokens; production uses Supabase Auth.
+Self-hosted ``AUTH_PROVIDER=local`` issues HS256 access tokens.
 
 Key exports:
-    AuthProviderType: Wire literal for credential store (``supabase`` | ``local``).
+    AuthProviderType: Wire literal for credential store (``local`` | legacy ``supabase``).
     RegisterRequest: ``POST /auth/register`` body.
     RefreshRequest / LogoutRequest: Session rotation and revoke bodies.
     OAuthStartResponse / OAuthCodeExchangeRequest / SsoSessionRequest: OAuth/SSO.
@@ -19,6 +19,7 @@ Key exports:
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -26,18 +27,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from papita_txnsmodel.access.users.dto import UsersDTO
+from papita_txnsmodel.model.contstants import PASSWORD_REGEX
 from papita_txnsmodel.model.enums import ProviderType
 
-# Wire label for where credentials live: Supabase Auth vs local test hashes.
-AuthProviderType = Literal["supabase", "local"]
+_PASSWORD_RE = re.compile(PASSWORD_REGEX)
+
+# Wire label for where credentials live (legacy ``supabase`` retained for old rows).
+AuthProviderType = Literal["local", "supabase"]
 
 
 class RegisterRequest(BaseModel):
     """JSON body for ``POST /auth/register``.
 
-    Creates an Auth user (Supabase) or local password row, then provisions
-    ``papita_transactions.users``. Password signup is email-only; Google/GitHub
-    must use the OAuth/SSO routes.
+    Creates a local password row in ``papita_transactions.users``. Password
+    signup is email-only; Google must use the OAuth PKCE routes.
 
     Attributes:
         email: Contact email and canonical login identifier; 5–255 characters.
@@ -56,6 +59,17 @@ class RegisterRequest(BaseModel):
     phone: str | None = Field(default=None, min_length=7, max_length=32)
     provider: Literal["email"] = ProviderType.EMAIL.value
     username: str | None = Field(default=None, min_length=6, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def _validate_password_complexity(cls, value: str) -> str:
+        """Enforce password complexity at the API boundary without leaking input."""
+        if not _PASSWORD_RE.match(value):
+            raise ValueError(
+                "Password must be 8-128 characters long, include at least one uppercase letter, "
+                "one lowercase letter, one number, and one special character."
+            )
+        return value
 
     @property
     def provider_type(self) -> ProviderType:
@@ -82,12 +96,12 @@ class ResendConfirmationRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    """JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).
+    """JSON body for ``POST /auth/refresh`` (deferred under self-hosted HS256).
 
-    Local Auth mode does not accept this body meaningfully (route returns 501).
+    Self-hosted local mode returns 501 (no external refresh-token store).
 
     Attributes:
-        refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.
+        refresh_token: Opaque refresh token from a prior session (unused locally).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -96,14 +110,14 @@ class RefreshRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    """JSON body for ``POST /auth/logout`` (session revoke).
+    """JSON body for ``POST /auth/logout`` (session cookie clear / revoke).
 
-    Under Supabase, ``refresh_token`` is required for GoTrue ``sign_out``.
-    ``access_token`` may also be supplied via ``Authorization: Bearer`` on the
-    route when omitted here. When Redis is enabled, the access JWT is denylisted.
+    Self-hosted mode clears the HttpOnly access cookie and returns 501 for
+    external refresh-token revoke. ``access_token`` may also arrive via
+    ``Authorization: Bearer``.
 
     Attributes:
-        refresh_token: Refresh token to invalidate at Supabase Auth.
+        refresh_token: Refresh token placeholder (unused locally).
         access_token: Optional access JWT for precise session revoke / denylist.
     """
 
@@ -122,7 +136,7 @@ class OAuthStartResponse(BaseModel):
 
     Attributes:
         provider: OAuth channel (``google`` or ``github`` only).
-        url: Supabase / IdP authorize URL including the PKCE challenge.
+        url: Google / IdP authorize URL including the PKCE challenge.
         code_verifier: PKCE verifier the client must retain for code exchange.
     """
 
@@ -139,18 +153,17 @@ class OAuthStartResponse(BaseModel):
 
 
 class OAuthCodeExchangeRequest(BaseModel):
-    """JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).
+    """JSON body for ``POST /auth/oauth/callback`` (legacy PKCE code exchange).
 
-    Completes OAuth when the client holds the authorization ``code`` and the
-    PKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``
-    when the redirect yields a ``code``.
+    Browser PKCE completes via ``GET /auth/oauth/callback``. This POST body is
+    retained for older clients and returns 501 under self-hosted Google OAuth.
 
     Attributes:
         provider: OAuth provider (``google`` or ``github``).
         auth_code: Authorization ``code`` from the OAuth redirect query string.
         code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.
         redirect_to: Optional redirect URI that must match the authorize step.
-        display_name: Optional profile override when Auth metadata is incomplete.
+        display_name: Optional profile override when IdP metadata is incomplete.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -170,17 +183,16 @@ class OAuthCodeExchangeRequest(BaseModel):
 
 
 class SsoSessionRequest(BaseModel):
-    """JSON body for ``POST /auth/sso`` after client-side Supabase OAuth tokens.
+    """JSON body for ``POST /auth/sso`` (deprecated external SSO handoff).
 
-    Use when the SPA already obtained an Auth session (e.g. fragment/hash flow).
-    Prefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the
-    redirect yields a ``code``.
+    Prefer ``GET /auth/oauth/google?follow=true`` for direct Google OAuth PKCE.
+    This endpoint returns 501 under self-hosted auth.
 
     Attributes:
         provider: OAuth provider (``google`` or ``github``).
-        access_token: Supabase access JWT from the OAuth session.
-        refresh_token: Supabase refresh token from the OAuth session.
-        display_name: Optional profile override when Auth metadata is incomplete.
+        access_token: External access JWT from a client-side OAuth session.
+        refresh_token: External refresh token from a client-side OAuth session.
+        display_name: Optional profile override when IdP metadata is incomplete.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -202,17 +214,17 @@ class UserResponse(BaseModel):
     """Public user profile returned by register and ``GET /auth/me``.
 
     Never includes password or other secrets. ``provider`` is the signup channel
-    (email/Google/GitHub); ``auth_provider`` is where credentials are stored
-    (``supabase`` vs local tests).
+    (email/Google/GitHub); ``auth_provider`` is the credential store label
+    (``local``, or legacy ``supabase``).
 
     Attributes:
-        id: Tenant user id (Auth ``sub`` when ``auth_provider`` is ``supabase``).
+        id: Tenant user id (JWT ``sub``).
         username: Unique handle (often derived from email).
         email: Canonical login email.
         display_name: Optional human-readable name.
-        phone: Optional phone from Auth/profile.
+        phone: Optional phone from profile.
         provider: Signup / identity channel (``ProviderType``).
-        auth_provider: Credential store label (``supabase`` or ``local``).
+        auth_provider: Credential store label (``local`` or legacy ``supabase``).
         created_at: Row creation timestamp (required on the DTO).
     """
 
@@ -224,7 +236,7 @@ class UserResponse(BaseModel):
     display_name: str | None = None
     phone: str | None = None
     provider: ProviderType = ProviderType.EMAIL
-    auth_provider: AuthProviderType = "supabase"
+    auth_provider: AuthProviderType = "local"
     created_at: datetime
 
     @classmethod
@@ -232,8 +244,8 @@ class UserResponse(BaseModel):
         """Build an API response from a model ``UsersDTO``.
 
         Maps ``provider_type`` (including legacy ``phone`` → ``email``) and
-        normalizes ``auth_provider`` to the wire literal. Any non-local
-        ``auth_provider`` value is treated as ``supabase``.
+        normalizes ``auth_provider`` to the wire literal. Unknown values map to
+        ``local`` (self-hosted default).
 
         Args:
             user: Persisted tenant user from ``UsersService``.
@@ -254,7 +266,7 @@ class UserResponse(BaseModel):
                 provider = ProviderType.EMAIL if raw == "phone" else ProviderType(raw)
             except ValueError:
                 provider = ProviderType.EMAIL
-        auth_provider: AuthProviderType = "local" if user.auth_provider == "local" else "supabase"
+        auth_provider: AuthProviderType = "supabase" if user.auth_provider == "supabase" else "local"
         return cls(
             id=user.id,
             username=user.username,
@@ -270,10 +282,9 @@ class UserResponse(BaseModel):
 class RegisterResponse(UserResponse):
     """Public register result with optional email-confirmation pending signal (PPT-068).
 
-    When Supabase Confirm email is on and Admin auto-confirm is off, Auth may
-    create the user without issuing a session. ``email_confirmation_required``
-    tells the SPA to show check-email UX instead of prompting an immediate login.
-    Local Auth and Admin auto-confirm paths leave the flag ``False``.
+    Self-hosted local register always issues a usable account immediately, so
+    ``email_confirmation_required`` stays ``False``. The flag remains on the
+    wire for older SPA clients.
     """
 
     email_confirmation_required: bool = False
@@ -305,14 +316,14 @@ class RegisterResponse(UserResponse):
 class TokenResponse(BaseModel):
     """OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.
 
-    Local login sets ``refresh_token`` to ``None``. Supabase paths populate both
-    access and refresh tokens when Auth issues a session.
+    Self-hosted HS256 login sets ``refresh_token`` to ``None`` (no external
+    refresh-token store).
 
     Attributes:
         access_token: Bearer JWT for protected API routes.
         token_type: Always ``bearer`` for clients that expect OAuth2 shape.
         expires_in: Access-token lifetime in seconds (``>= 1``).
-        refresh_token: Optional Supabase refresh token for rotation/logout.
+        refresh_token: Optional refresh token (always ``None`` for self-hosted HS256).
     """
 
     access_token: str

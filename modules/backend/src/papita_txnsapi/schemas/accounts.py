@@ -30,6 +30,7 @@ from papita_txnsmodel.access.account_details.dto import (
 )
 from papita_txnsmodel.access.accounts.dto import AccountsDTO
 from papita_txnsmodel.model.enums import AccountKind, RealEstateAreaUnit, RealEstateOwnership
+from papita_txnsmodel.utils.datautils import dataframe_row_to_mapping
 
 # API extension field names keyed by account kind (G1).
 _EXTENSION_API_FIELD: dict[AccountKind, str] = {
@@ -594,7 +595,7 @@ def accounts_from_dataframe(df: pd.DataFrame) -> list[AccountsDTO]:
     dao_type = AccountsDTO.__dao_type__
     accounts: list[AccountsDTO] = []
     for _, row in df.iterrows():
-        row_dict = row.to_dict()
+        row_dict = dataframe_row_to_mapping(row)
         if "Accounts" in row_dict and isinstance(row_dict["Accounts"], dao_type):
             accounts.append(AccountsDTO.from_dao(row_dict["Accounts"]))
             continue

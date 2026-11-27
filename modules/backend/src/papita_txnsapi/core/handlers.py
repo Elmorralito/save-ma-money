@@ -19,6 +19,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from papita_txnsapi.config.settings import Settings
@@ -132,6 +133,15 @@ def register_exception_handlers(app: FastAPI) -> None:
             (or temporary compat 400), other safe domain messages → 400,
             suspected driver leaks → generic 400. Adds ``X-Papita-Error-Code`` when known.
         """
+        if isinstance(exc, ValidationError):
+            first_msg = exc.errors()[0].get("msg", "Invalid request") if exc.errors() else "Invalid request"
+            clean_msg = first_msg.removeprefix("Value error, ").strip() or "Invalid request"
+            return JSONResponse(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                content={"detail": clean_msg},
+                headers=_with_error_code(None, ERROR_INVALID_REQUEST),
+            )
+
         message = str(exc)
         settings = _settings_from_request(request)
         if message in _CONFLICT_MESSAGES:

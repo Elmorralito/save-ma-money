@@ -37,6 +37,28 @@ class SidecarPromptRequest(BaseModel):
     system_prompt: str = Field(default="", max_length=16_000)
     user_prompt: str = Field(min_length=1, max_length=8_000)
     connection: str | None = Field(default=None, max_length=64)
+    model: str | None = Field(default=None, max_length=128)
+
+
+class SidecarModelItem(BaseModel):
+    """Discoverable model option exposed by a sidecar adapter."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    label: str
+
+
+class SidecarModelsResponse(BaseModel):
+    """Models returned by ``GET /models`` for a specific sidecar connection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    connection: str
+    kind: ConnectionKind
+    provider: str
+    ready: bool
+    models: list[SidecarModelItem] = Field(default_factory=list)
 
 
 class SidecarPromptResponse(BaseModel):
@@ -138,6 +160,23 @@ def create_sidecar_app(
             connections=connections,
         )
 
+    @sidecar.get(
+        "/models",
+        response_model=SidecarModelsResponse,
+        dependencies=[Depends(_verify_shared_secret)],
+    )
+    async def list_models(connection: str | None = None) -> SidecarModelsResponse:
+        conn_id, selected = _resolve(connection)
+        is_ready = bool(await selected.health())
+        discovered = await selected.list_models() if is_ready else []
+        return SidecarModelsResponse(
+            connection=conn_id,
+            kind=selected.connection_kind,
+            provider=selected.provider_name,
+            ready=is_ready,
+            models=[SidecarModelItem(id=item.id, label=item.label) for item in discovered],
+        )
+
     @sidecar.post(
         "/respond",
         response_model=SidecarPromptResponse,
@@ -149,6 +188,7 @@ def create_sidecar_app(
             result = await selected.generate(
                 system_prompt=payload.system_prompt,
                 user_prompt=payload.user_prompt,
+                model=payload.model,
             )
         except AIAgentError as exc:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
@@ -172,6 +212,7 @@ def create_sidecar_app(
                 async for chunk in selected.stream(
                     system_prompt=payload.system_prompt,
                     user_prompt=payload.user_prompt,
+                    model=payload.model,
                 ):
                     yield f"data: {json.dumps({'delta': chunk})}\n\n"
                 yield f"data: {json.dumps({'done': True})}\n\n"

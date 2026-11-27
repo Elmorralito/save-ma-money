@@ -18,6 +18,19 @@
             ],
             "title": "Connection"
           },
+          "control": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "pattern": "^[a-z0-9:_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Control"
+          },
           "currency": {
             "anyOf": [
               {
@@ -36,11 +49,62 @@
             "title": "Include Financial Context",
             "type": "boolean"
           },
+          "locale": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "pattern": "^[a-zA-Z0-9_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Locale"
+          },
+          "module": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[a-z0-9:_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Module"
+          },
           "prompt": {
             "maxLength": 4000,
             "minLength": 1,
             "title": "Prompt",
             "type": "string"
+          },
+          "surface_context": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Surface Context"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[a-z0-9:_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "View"
           }
         },
         "required": [
@@ -111,6 +175,257 @@
         "title": "AIChatResponse",
         "type": "object"
       },
+      "AIConfigResponse": {
+        "additionalProperties": false,
+        "description": "Owner-scoped AI/LLM configuration (secrets are never returned in plaintext).",
+        "properties": {
+          "api_key_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Hint"
+          },
+          "api_permission_granted": {
+            "default": false,
+            "title": "Api Permission Granted",
+            "type": "boolean"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "cli_permission_granted": {
+            "default": false,
+            "title": "Cli Permission Granted",
+            "type": "boolean"
+          },
+          "default_connection": {
+            "default": "cli:agy",
+            "title": "Default Connection",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "has_api_key": {
+            "default": false,
+            "title": "Has Api Key",
+            "type": "boolean"
+          },
+          "include_financial_context_by_default": {
+            "default": true,
+            "title": "Include Financial Context By Default",
+            "type": "boolean"
+          },
+          "lan_permission_granted": {
+            "default": false,
+            "title": "Lan Permission Granted",
+            "type": "boolean"
+          },
+          "mode": {
+            "default": "sidecar",
+            "enum": [
+              "sidecar",
+              "lan_local",
+              "api_key"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "payment_dues_ai_enabled": {
+            "default": true,
+            "title": "Payment Dues Ai Enabled",
+            "type": "boolean"
+          },
+          "reports_ai_enabled": {
+            "default": true,
+            "title": "Reports Ai Enabled",
+            "type": "boolean"
+          }
+        },
+        "title": "AIConfigResponse",
+        "type": "object"
+      },
+      "AIConfigUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Update owner-scoped AI/LLM provider, CLI/LAN/API mode, model, or encrypted API key.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "api_permission_granted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Permission Granted"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "clear_api_key": {
+            "default": false,
+            "title": "Clear Api Key",
+            "type": "boolean"
+          },
+          "cli_permission_granted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cli Permission Granted"
+          },
+          "default_connection": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[a-z0-9:_-]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Connection"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "include_financial_context_by_default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Include Financial Context By Default"
+          },
+          "lan_permission_granted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lan Permission Granted"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sidecar",
+                  "lan_local",
+                  "api_key"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mode"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "payment_dues_ai_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Dues Ai Enabled"
+          },
+          "reports_ai_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reports Ai Enabled"
+          }
+        },
+        "title": "AIConfigUpdateRequest",
+        "type": "object"
+      },
       "AIConnectionStatus": {
         "additionalProperties": false,
         "description": "Readiness and type metadata for one enabled AI connection (API or CLI).",
@@ -154,6 +469,135 @@
           "ready"
         ],
         "title": "AIConnectionStatus",
+        "type": "object"
+      },
+      "AIModelOption": {
+        "additionalProperties": false,
+        "description": "Selectable exact model ID and readable label.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "AIModelOption",
+        "type": "object"
+      },
+      "AIModelsRequest": {
+        "additionalProperties": false,
+        "description": "Discover exact model IDs for a CLI/sidecar, LAN/local model, or direct API provider.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          },
+          "base_url": {
+            "anyOf": [
+              {
+                "maxLength": 256,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Url"
+          },
+          "connection": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[a-z0-9:_-]+$",
+            "title": "Connection",
+            "type": "string"
+          },
+          "mode": {
+            "default": "sidecar",
+            "enum": [
+              "sidecar",
+              "lan_local",
+              "api_key"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection"
+        ],
+        "title": "AIModelsRequest",
+        "type": "object"
+      },
+      "AIModelsResponse": {
+        "additionalProperties": false,
+        "description": "Available exact model IDs discovered for the requested provider connection.",
+        "properties": {
+          "connection": {
+            "title": "Connection",
+            "type": "string"
+          },
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "mode": {
+            "enum": [
+              "sidecar",
+              "lan_local",
+              "api_key"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/AIModelOption"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "source": {
+            "default": "live",
+            "enum": [
+              "live",
+              "curated"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
+          "mode",
+          "ready"
+        ],
+        "title": "AIModelsResponse",
         "type": "object"
       },
       "AIStatusResponse": {
@@ -332,6 +776,259 @@
           "ledger_side"
         ],
         "title": "AccountCreate",
+        "type": "object"
+      },
+      "AccountProjectionConfigUpdate": {
+        "additionalProperties": true,
+        "properties": {
+          "annual_appreciation_pct": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": -30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Appreciation Pct"
+          },
+          "annual_fee_pct": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Fee Pct"
+          },
+          "annual_fx_drift_pct": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": -30.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Fx Drift Pct"
+          },
+          "annual_inflation_pct": {
+            "anyOf": [
+              {
+                "maximum": 30.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Inflation Pct"
+          },
+          "annual_property_tax_pct": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Property Tax Pct"
+          },
+          "annual_rate_pct": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": -50.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Rate Pct"
+          },
+          "extra_monthly_payment": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Monthly Payment"
+          },
+          "horizon_years": {
+            "anyOf": [
+              {
+                "maximum": 40.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Horizon Years"
+          },
+          "investment_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Investment Type"
+          },
+          "linked_mortgage_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linked Mortgage Id"
+          },
+          "monthly_contribution": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Contribution"
+          },
+          "monthly_hoa_and_maintenance": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Hoa And Maintenance"
+          },
+          "monthly_insurance": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Insurance"
+          },
+          "monthly_payment": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Payment"
+          },
+          "monthly_rent_income": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Rent Income"
+          },
+          "occupancy_pct": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupancy Pct"
+          },
+          "pay_in_one_installment": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay In One Installment"
+          },
+          "rate_convention": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate Convention"
+          },
+          "remaining_months": {
+            "anyOf": [
+              {
+                "maximum": 480.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Months"
+          },
+          "tax_on_gains_pct": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax On Gains Pct"
+          }
+        },
+        "title": "AccountProjectionConfigUpdate",
         "type": "object"
       },
       "AccountResponse": {
@@ -631,7 +1328,7 @@
       },
       "AuthHealthResponse": {
         "additionalProperties": false,
-        "description": "API↔Supabase Auth communication health for ``GET /health/auth``.\n\nAttributes:\n    status: ``healthy`` when Auth is up (or local skip); ``unhealthy`` otherwise.\n    provider: Active ``AUTH_PROVIDER`` value.\n    reachable: Whether the Auth probe succeeded (local skip counts as reachable).\n    latency_ms: Round-trip Auth health latency when a network probe ran.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of Auth status (never raw errors).",
+        "description": "Self-hosted Auth communication health for ``GET /health/auth``.\n\nAttributes:\n    status: ``healthy`` when Auth is up (or local skip); ``unhealthy`` otherwise.\n    provider: Active ``AUTH_PROVIDER`` value (``local``).\n    reachable: Whether the Auth probe succeeded (local skip counts as reachable).\n    latency_ms: Round-trip Auth health latency when a network probe ran.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of Auth status (never raw errors).",
         "properties": {
           "checked_at": {
             "format": "date-time",
@@ -655,10 +1352,7 @@
             "title": "Latency Ms"
           },
           "provider": {
-            "enum": [
-              "local",
-              "supabase"
-            ],
+            "const": "local",
             "title": "Provider",
             "type": "string"
           },
@@ -686,14 +1380,10 @@
         "type": "object"
       },
       "AuthProbeDetail": {
-        "description": "Allowlisted Auth probe detail strings returned to HTTP clients.\n\nMembers are stable wire labels for OpenAPI / operators — never raw exception\ntext. Values:\n\n* ``HEALTHY`` — GoTrue health returned a success status.\n* ``SKIPPED_LOCAL`` — ``AUTH_PROVIDER=local``; no network call.\n* ``NOT_CONFIGURED`` — Supabase URL or anon key missing.\n* ``UNREACHABLE`` — timeout or transport failure reaching Auth.\n* ``PROBE_FAILED`` — unexpected error or Auth HTTP 4xx on the probe.\n* ``UNHEALTHY_STATUS`` — Auth HTTP 5xx on the health endpoint.",
+        "description": "Allowlisted Auth probe detail strings returned to HTTP clients.",
         "enum": [
-          "supabase auth healthy",
-          "auth provider is local — supabase probe skipped",
-          "supabase auth not configured",
-          "supabase auth unreachable",
-          "supabase auth probe failed",
-          "supabase auth reported unhealthy"
+          "local auth healthy",
+          "local auth active"
         ],
         "title": "AuthProbeDetail",
         "type": "string"
@@ -1408,6 +2098,216 @@
         "title": "CreditCardDetailsSchema",
         "type": "object"
       },
+      "CreditCardProjectionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_rate_pct": {
+            "default": 25.0,
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Annual Rate Pct",
+            "type": "number"
+          },
+          "balance": {
+            "minimum": 0.0,
+            "title": "Balance",
+            "type": "number"
+          },
+          "currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "handling_fee": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Handling Fee",
+            "type": "number"
+          },
+          "max_months": {
+            "default": 120,
+            "maximum": 360.0,
+            "minimum": 1.0,
+            "title": "Max Months",
+            "type": "integer"
+          },
+          "monthly_new_spend": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Monthly New Spend",
+            "type": "number"
+          },
+          "monthly_payment": {
+            "exclusiveMinimum": 0.0,
+            "title": "Monthly Payment",
+            "type": "number"
+          },
+          "pay_in_one_installment": {
+            "default": false,
+            "title": "Pay In One Installment",
+            "type": "boolean"
+          },
+          "rate_convention": {
+            "default": "CO_EA",
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          }
+        },
+        "required": [
+          "balance",
+          "monthly_payment"
+        ],
+        "title": "CreditCardProjectionRequest",
+        "type": "object"
+      },
+      "CreditCardProjectionResponse": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "effective_annual_rate_pct": {
+            "title": "Effective Annual Rate Pct",
+            "type": "number"
+          },
+          "monthly_rate_pct": {
+            "title": "Monthly Rate Pct",
+            "type": "number"
+          },
+          "months_to_payoff": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Months To Payoff"
+          },
+          "rate_convention": {
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/CreditCardProjectionRow"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "total_fees": {
+            "title": "Total Fees",
+            "type": "number"
+          },
+          "total_interest": {
+            "title": "Total Interest",
+            "type": "number"
+          },
+          "total_paid": {
+            "title": "Total Paid",
+            "type": "number"
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Warning"
+          }
+        },
+        "required": [
+          "currency",
+          "rate_convention",
+          "monthly_rate_pct",
+          "effective_annual_rate_pct",
+          "months_to_payoff",
+          "total_interest",
+          "total_fees",
+          "total_paid",
+          "schedule"
+        ],
+        "title": "CreditCardProjectionResponse",
+        "type": "object"
+      },
+      "CreditCardProjectionRow": {
+        "properties": {
+          "closing_balance": {
+            "title": "Closing Balance",
+            "type": "number"
+          },
+          "fee_charged": {
+            "title": "Fee Charged",
+            "type": "number"
+          },
+          "interest_charged": {
+            "title": "Interest Charged",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "integer"
+          },
+          "new_spend": {
+            "title": "New Spend",
+            "type": "number"
+          },
+          "opening_balance": {
+            "title": "Opening Balance",
+            "type": "number"
+          },
+          "payment": {
+            "title": "Payment",
+            "type": "number"
+          },
+          "payment_date": {
+            "title": "Payment Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "payment_date",
+          "opening_balance",
+          "new_spend",
+          "interest_charged",
+          "fee_charged",
+          "payment",
+          "closing_balance"
+        ],
+        "title": "CreditCardProjectionRow",
+        "type": "object"
+      },
       "DatabaseHealthResponse": {
         "additionalProperties": false,
         "description": "API↔database communication health for ``GET /health/database``.\n\nAttributes:\n    status: ``healthy`` when the probe succeeds; ``unhealthy`` otherwise.\n    connected: Whether the API could execute the constant probe against PostgreSQL.\n    latency_ms: Round-trip duration in milliseconds when connected.\n    checked_at: UTC time when the probe ran.\n    detail: Allowlisted explanation of the communication status (never raw errors).",
@@ -1958,6 +2858,278 @@
         "title": "DebtTrajectoryPoint",
         "type": "object"
       },
+      "EmailParseTestRequest": {
+        "additionalProperties": false,
+        "description": "Dry-run sample email payload for testing parsing rules.",
+        "properties": {
+          "body": {
+            "maxLength": 16000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailParsingRuleSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rules"
+          },
+          "sender": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Sender",
+            "type": "string"
+          },
+          "subject": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sender",
+          "body"
+        ],
+        "title": "EmailParseTestRequest",
+        "type": "object"
+      },
+      "EmailParseTestResponse": {
+        "description": "Dry-run parse preview result.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "default_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Account Id"
+          },
+          "default_category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Category Id"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "boolean"
+          },
+          "matched_rule_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Rule Name"
+          },
+          "parser_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parser Used"
+          },
+          "transaction_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Type"
+          }
+        },
+        "required": [
+          "matched"
+        ],
+        "title": "EmailParseTestResponse",
+        "type": "object"
+      },
+      "EmailParsingRuleSchema": {
+        "additionalProperties": false,
+        "description": "Per-user structured email parsing rule and account/category target mapping.",
+        "properties": {
+          "amount_regex": {
+            "default": "",
+            "maxLength": 256,
+            "title": "Amount Regex",
+            "type": "string"
+          },
+          "currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "default_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Account Id"
+          },
+          "default_category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Category Id"
+          },
+          "description_template": {
+            "default": "",
+            "maxLength": 160,
+            "title": "Description Template",
+            "type": "string"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parser_mode": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "bancolombia-email",
+              "global66-email",
+              "nequi-email",
+              "nu-email",
+              "custom_regex"
+            ],
+            "title": "Parser Mode",
+            "type": "string"
+          },
+          "sender_match": {
+            "default": "",
+            "maxLength": 255,
+            "title": "Sender Match",
+            "type": "string"
+          },
+          "subject_match": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Subject Match",
+            "type": "string"
+          },
+          "transaction_type": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "income",
+              "expense",
+              "transfer"
+            ],
+            "title": "Transaction Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "EmailParsingRuleSchema",
+        "type": "object"
+      },
       "ExcludedLiabilitiesSummary": {
         "description": "Optional summary of paid-off or balance-excluded liabilities.",
         "properties": {
@@ -2107,6 +3279,147 @@
         "title": "FinancialHealthScorecard",
         "type": "object"
       },
+      "GlobalSearchHitResponse": {
+        "additionalProperties": false,
+        "description": "One typed search hit; the client maps ``kind`` to a deep link or action.",
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "subtitle": {
+            "title": "Subtitle",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "title",
+          "subtitle"
+        ],
+        "title": "GlobalSearchHitResponse",
+        "type": "object"
+      },
+      "GlobalSearchResponse": {
+        "additionalProperties": false,
+        "description": "Interleaved owner-scoped hits plus the kinds actually searched.",
+        "properties": {
+          "account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalSearchHitResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "q": {
+            "title": "Q",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q",
+          "limit"
+        ],
+        "title": "GlobalSearchResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2122,7 +3435,7 @@
       },
       "HealthResponse": {
         "additionalProperties": false,
-        "description": "Aggregate health status for ``GET /health``.\n\nAttributes:\n    status: Overall service health label (``healthy`` or ``degraded``).\n    version: Application version string from package metadata.\n    timestamp: UTC time when the probe was evaluated.\n    database: Database connectivity label (``connected`` or ``disconnected``).\n    database_latency_ms: Round-trip probe latency in milliseconds when connected.\n    auth: Supabase Auth connectivity (``connected``, ``disconnected``, or ``skipped``).\n    auth_latency_ms: Auth probe latency when a live Auth check ran successfully.\n    auth_detail: Allowlisted Auth probe detail.\n    redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).\n    redis_latency_ms: Redis probe latency when a live Redis check ran successfully.\n    redis_detail: Allowlisted Redis probe detail.",
+        "description": "Aggregate health status for ``GET /health``.\n\nAttributes:\n    status: Overall service health label (``healthy`` or ``degraded``).\n    version: Application version string from package metadata.\n    timestamp: UTC time when the probe was evaluated.\n    database: Database connectivity label (``connected`` or ``disconnected``).\n    database_latency_ms: Round-trip probe latency in milliseconds when connected.\n    auth: Auth connectivity (``connected``, ``disconnected``, or ``skipped``).\n    auth_latency_ms: Auth probe latency when a live Auth check ran successfully.\n    auth_detail: Allowlisted Auth probe detail.\n    redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).\n    redis_latency_ms: Redis probe latency when a live Redis check ran successfully.\n    redis_detail: Allowlisted Redis probe detail.",
         "properties": {
           "auth": {
             "default": "skipped",
@@ -2136,7 +3449,7 @@
           },
           "auth_detail": {
             "$ref": "#/components/schemas/AuthProbeDetail",
-            "default": "auth provider is local — supabase probe skipped"
+            "default": "local auth active"
           },
           "auth_latency_ms": {
             "anyOf": [
@@ -2551,6 +3864,27 @@
             "title": "Flow Name",
             "type": "string"
           },
+          "gmail_access_enabled": {
+            "default": false,
+            "title": "Gmail Access Enabled",
+            "type": "boolean"
+          },
+          "gmail_connected": {
+            "default": false,
+            "title": "Gmail Connected",
+            "type": "boolean"
+          },
+          "gmail_connected_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmail Connected Email"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -2560,6 +3894,13 @@
             "minimum": 1.0,
             "title": "Lookback Hours",
             "type": "integer"
+          },
+          "parsing_rules": {
+            "items": {
+              "$ref": "#/components/schemas/EmailParsingRuleSchema"
+            },
+            "title": "Parsing Rules",
+            "type": "array"
           },
           "provider": {
             "title": "Provider",
@@ -2655,6 +3996,17 @@
             ],
             "title": "Enabled"
           },
+          "gmail_access_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmail Access Enabled"
+          },
           "lookback_hours": {
             "anyOf": [
               {
@@ -2667,6 +4019,20 @@
               }
             ],
             "title": "Lookback Hours"
+          },
+          "parsing_rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailParsingRuleSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parsing Rules"
           }
         },
         "title": "IngestionConnectionUpdateRequest",
@@ -2725,12 +4091,37 @@
             "title": "Flow Name",
             "type": "string"
           },
+          "gmail_access_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gmail Access Enabled"
+          },
           "lookback_hours": {
             "default": 24,
             "maximum": 720.0,
             "minimum": 1.0,
             "title": "Lookback Hours",
             "type": "integer"
+          },
+          "parsing_rules": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EmailParsingRuleSchema"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parsing Rules"
           },
           "provider": {
             "const": "email",
@@ -2896,6 +4287,222 @@
           "dry_run_skipped"
         ],
         "title": "IngestionRunResponse",
+        "type": "object"
+      },
+      "InvestmentProjectionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_fee_pct": {
+            "default": 0.1,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Annual Fee Pct",
+            "type": "number"
+          },
+          "annual_fx_drift_pct": {
+            "default": 0.0,
+            "maximum": 30.0,
+            "minimum": -30.0,
+            "title": "Annual Fx Drift Pct",
+            "type": "number"
+          },
+          "annual_inflation_pct": {
+            "default": 5.0,
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Annual Inflation Pct",
+            "type": "number"
+          },
+          "currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "expected_annual_return_pct": {
+            "default": 8.0,
+            "maximum": 150.0,
+            "minimum": -50.0,
+            "title": "Expected Annual Return Pct",
+            "type": "number"
+          },
+          "horizon_years": {
+            "default": 10,
+            "maximum": 40.0,
+            "minimum": 1.0,
+            "title": "Horizon Years",
+            "type": "integer"
+          },
+          "initial_amount": {
+            "minimum": 0.0,
+            "title": "Initial Amount",
+            "type": "number"
+          },
+          "investment_type": {
+            "default": "us_equity_etf",
+            "enum": [
+              "hysa_co",
+              "fiduciary_co",
+              "cdt_co",
+              "voluntary_pension",
+              "us_equity_etf",
+              "crypto",
+              "private_equity",
+              "real_estate_fund"
+            ],
+            "title": "Investment Type",
+            "type": "string"
+          },
+          "monthly_contribution": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Monthly Contribution",
+            "type": "number"
+          },
+          "rate_convention": {
+            "default": "US_APY",
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "tax_on_gains_pct": {
+            "default": 15.0,
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Tax On Gains Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "initial_amount"
+        ],
+        "title": "InvestmentProjectionRequest",
+        "type": "object"
+      },
+      "InvestmentProjectionResponse": {
+        "properties": {
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "effective_net_annual_pct": {
+            "title": "Effective Net Annual Pct",
+            "type": "number"
+          },
+          "estimated_tax": {
+            "title": "Estimated Tax",
+            "type": "number"
+          },
+          "final_after_tax_value": {
+            "title": "Final After Tax Value",
+            "type": "number"
+          },
+          "final_gross_value": {
+            "title": "Final Gross Value",
+            "type": "number"
+          },
+          "final_real_value": {
+            "title": "Final Real Value",
+            "type": "number"
+          },
+          "investment_type": {
+            "enum": [
+              "hysa_co",
+              "fiduciary_co",
+              "cdt_co",
+              "voluntary_pension",
+              "us_equity_etf",
+              "crypto",
+              "private_equity",
+              "real_estate_fund"
+            ],
+            "title": "Investment Type",
+            "type": "string"
+          },
+          "rate_convention": {
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/InvestmentProjectionYear"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "total_contributed": {
+            "title": "Total Contributed",
+            "type": "number"
+          },
+          "total_net_gain": {
+            "title": "Total Net Gain",
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "investment_type",
+          "rate_convention",
+          "effective_net_annual_pct",
+          "total_contributed",
+          "final_gross_value",
+          "final_real_value",
+          "estimated_tax",
+          "final_after_tax_value",
+          "total_net_gain",
+          "schedule"
+        ],
+        "title": "InvestmentProjectionResponse",
+        "type": "object"
+      },
+      "InvestmentProjectionYear": {
+        "properties": {
+          "after_tax_value": {
+            "title": "After Tax Value",
+            "type": "number"
+          },
+          "contributed": {
+            "title": "Contributed",
+            "type": "number"
+          },
+          "cumulative_gain": {
+            "title": "Cumulative Gain",
+            "type": "number"
+          },
+          "gross_value": {
+            "title": "Gross Value",
+            "type": "number"
+          },
+          "real_value": {
+            "title": "Real Value",
+            "type": "number"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "contributed",
+          "gross_value",
+          "cumulative_gain",
+          "real_value",
+          "after_tax_value"
+        ],
+        "title": "InvestmentProjectionYear",
         "type": "object"
       },
       "LiabilitySimulationImpact": {
@@ -3074,6 +4681,249 @@
         "title": "LivenessResponse",
         "type": "object"
       },
+      "LoanAmortizationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_rate_pct": {
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Annual Rate Pct",
+            "type": "number"
+          },
+          "currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "extra_lump_sum": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Extra Lump Sum",
+            "type": "number"
+          },
+          "extra_monthly_payment": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Extra Monthly Payment",
+            "type": "number"
+          },
+          "lump_sum_month": {
+            "default": 1,
+            "maximum": 480.0,
+            "minimum": 1.0,
+            "title": "Lump Sum Month",
+            "type": "integer"
+          },
+          "method": {
+            "default": "french_fixed",
+            "enum": [
+              "french_fixed",
+              "german_constant_principal"
+            ],
+            "title": "Method",
+            "type": "string"
+          },
+          "monthly_insurance": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Monthly Insurance",
+            "type": "number"
+          },
+          "principal": {
+            "exclusiveMinimum": 0.0,
+            "title": "Principal",
+            "type": "number"
+          },
+          "rate_convention": {
+            "default": "CO_EA",
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "remaining_months": {
+            "maximum": 480.0,
+            "minimum": 1.0,
+            "title": "Remaining Months",
+            "type": "integer"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          }
+        },
+        "required": [
+          "principal",
+          "annual_rate_pct",
+          "remaining_months"
+        ],
+        "title": "LoanAmortizationRequest",
+        "type": "object"
+      },
+      "LoanAmortizationResponse": {
+        "properties": {
+          "annual_rate_pct": {
+            "title": "Annual Rate Pct",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "effective_annual_rate_pct": {
+            "title": "Effective Annual Rate Pct",
+            "type": "number"
+          },
+          "interest_saved_vs_baseline": {
+            "title": "Interest Saved Vs Baseline",
+            "type": "number"
+          },
+          "monthly_rate_pct": {
+            "title": "Monthly Rate Pct",
+            "type": "number"
+          },
+          "months_saved_vs_baseline": {
+            "title": "Months Saved Vs Baseline",
+            "type": "integer"
+          },
+          "payoff_months": {
+            "title": "Payoff Months",
+            "type": "integer"
+          },
+          "rate_convention": {
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Rate Convention",
+            "type": "string"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/LoanAmortizationRow"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "scheduled_monthly_payment": {
+            "title": "Scheduled Monthly Payment",
+            "type": "number"
+          },
+          "total_insurance": {
+            "title": "Total Insurance",
+            "type": "number"
+          },
+          "total_interest": {
+            "title": "Total Interest",
+            "type": "number"
+          },
+          "total_monthly_outflow": {
+            "title": "Total Monthly Outflow",
+            "type": "number"
+          },
+          "total_paid": {
+            "title": "Total Paid",
+            "type": "number"
+          }
+        },
+        "required": [
+          "currency",
+          "rate_convention",
+          "annual_rate_pct",
+          "monthly_rate_pct",
+          "effective_annual_rate_pct",
+          "scheduled_monthly_payment",
+          "total_monthly_outflow",
+          "payoff_months",
+          "total_interest",
+          "total_insurance",
+          "total_paid",
+          "interest_saved_vs_baseline",
+          "months_saved_vs_baseline",
+          "schedule"
+        ],
+        "title": "LoanAmortizationResponse",
+        "type": "object"
+      },
+      "LoanAmortizationRow": {
+        "properties": {
+          "closing_balance": {
+            "title": "Closing Balance",
+            "type": "number"
+          },
+          "cumulative_interest": {
+            "title": "Cumulative Interest",
+            "type": "number"
+          },
+          "extra_paid": {
+            "title": "Extra Paid",
+            "type": "number"
+          },
+          "insurance_paid": {
+            "title": "Insurance Paid",
+            "type": "number"
+          },
+          "interest_paid": {
+            "title": "Interest Paid",
+            "type": "number"
+          },
+          "month": {
+            "title": "Month",
+            "type": "integer"
+          },
+          "opening_balance": {
+            "title": "Opening Balance",
+            "type": "number"
+          },
+          "payment_date": {
+            "title": "Payment Date",
+            "type": "string"
+          },
+          "principal_paid": {
+            "title": "Principal Paid",
+            "type": "number"
+          },
+          "scheduled_payment": {
+            "title": "Scheduled Payment",
+            "type": "number"
+          },
+          "total_outflow": {
+            "title": "Total Outflow",
+            "type": "number"
+          }
+        },
+        "required": [
+          "month",
+          "payment_date",
+          "opening_balance",
+          "scheduled_payment",
+          "principal_paid",
+          "interest_paid",
+          "insurance_paid",
+          "extra_paid",
+          "total_outflow",
+          "closing_balance",
+          "cumulative_interest"
+        ],
+        "title": "LoanAmortizationRow",
+        "type": "object"
+      },
       "LoanDetailsSchema": {
         "additionalProperties": false,
         "description": "Loan extension fields.\n\nAttributes:\n    is_paid_off: Whether the loan balance has been fully settled.\n    insurance_payment: Recurring insurance component of the payment (>= 0).\n    extras_payment: Additional recurring fees beyond principal/interest (>= 0).",
@@ -3097,36 +4947,6 @@
           }
         },
         "title": "LoanDetailsSchema",
-        "type": "object"
-      },
-      "LogoutRequest": {
-        "additionalProperties": false,
-        "description": "JSON body for ``POST /auth/logout`` (session revoke).\n\nUnder Supabase, ``refresh_token`` is required for GoTrue ``sign_out``.\n``access_token`` may also be supplied via ``Authorization: Bearer`` on the\nroute when omitted here. When Redis is enabled, the access JWT is denylisted.\n\nAttributes:\n    refresh_token: Refresh token to invalidate at Supabase Auth.\n    access_token: Optional access JWT for precise session revoke / denylist.",
-        "properties": {
-          "access_token": {
-            "anyOf": [
-              {
-                "maxLength": 8192,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Access Token"
-          },
-          "refresh_token": {
-            "maxLength": 4096,
-            "minLength": 1,
-            "title": "Refresh Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "refresh_token"
-        ],
-        "title": "LogoutRequest",
         "type": "object"
       },
       "MarkPaidRequest": {
@@ -3253,7 +5073,7 @@
       },
       "OAuthCodeExchangeRequest": {
         "additionalProperties": false,
-        "description": "JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).\n\nCompletes OAuth when the client holds the authorization ``code`` and the\nPKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``\nwhen the redirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    auth_code: Authorization ``code`` from the OAuth redirect query string.\n    code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.\n    redirect_to: Optional redirect URI that must match the authorize step.\n    display_name: Optional profile override when Auth metadata is incomplete.",
+        "description": "JSON body for ``POST /auth/oauth/callback`` (legacy PKCE code exchange).\n\nBrowser PKCE completes via ``GET /auth/oauth/callback``. This POST body is\nretained for older clients and returns 501 under self-hosted Google OAuth.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    auth_code: Authorization ``code`` from the OAuth redirect query string.\n    code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.\n    redirect_to: Optional redirect URI that must match the authorize step.\n    display_name: Optional profile override when IdP metadata is incomplete.",
         "properties": {
           "auth_code": {
             "maxLength": 2048,
@@ -3306,7 +5126,7 @@
         "type": "object"
       },
       "OAuthStartResponse": {
-        "description": "Authorize URL and PKCE verifier from ``GET /auth/oauth/{provider}``.\n\nClients open ``url`` in a browser (or use ``follow=true`` for cookie-based\nPKCE). ``code_verifier`` must be sent back on ``POST /auth/oauth/callback``\nunless the browser cookie flow is used.\n\nAttributes:\n    provider: OAuth channel (``google`` or ``github`` only).\n    url: Supabase / IdP authorize URL including the PKCE challenge.\n    code_verifier: PKCE verifier the client must retain for code exchange.",
+        "description": "Authorize URL and PKCE verifier from ``GET /auth/oauth/{provider}``.\n\nClients open ``url`` in a browser (or use ``follow=true`` for cookie-based\nPKCE). ``code_verifier`` must be sent back on ``POST /auth/oauth/callback``\nunless the browser cookie flow is used.\n\nAttributes:\n    provider: OAuth channel (``google`` or ``github`` only).\n    url: Google / IdP authorize URL including the PKCE challenge.\n    code_verifier: PKCE verifier the client must retain for code exchange.",
         "properties": {
           "code_verifier": {
             "maxLength": 128,
@@ -3731,8 +5551,87 @@
         "title": "PlannedVsActualSummary",
         "type": "object"
       },
+      "PortfolioAccountProjectionItem": {
+        "description": "Account snapshot merged with any user-saved projection rate/term overrides.",
+        "properties": {
+          "account_kind": {
+            "title": "Account Kind",
+            "type": "string"
+          },
+          "balance": {
+            "title": "Balance",
+            "type": "number"
+          },
+          "config": {
+            "additionalProperties": true,
+            "title": "Config",
+            "type": "object"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "account_kind",
+          "currency",
+          "balance",
+          "group"
+        ],
+        "title": "PortfolioAccountProjectionItem",
+        "type": "object"
+      },
+      "PortfolioProjectionsResponse": {
+        "properties": {
+          "credit_cards": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioAccountProjectionItem"
+            },
+            "title": "Credit Cards",
+            "type": "array"
+          },
+          "debts": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioAccountProjectionItem"
+            },
+            "title": "Debts",
+            "type": "array"
+          },
+          "investments": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioAccountProjectionItem"
+            },
+            "title": "Investments",
+            "type": "array"
+          },
+          "real_estate": {
+            "items": {
+              "$ref": "#/components/schemas/PortfolioAccountProjectionItem"
+            },
+            "title": "Real Estate",
+            "type": "array"
+          }
+        },
+        "title": "PortfolioProjectionsResponse",
+        "type": "object"
+      },
       "ProviderType": {
-        "description": "Signup / identity channel for ``users.provider_type``.\n\n``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``\nare Supabase Auth OAuth providers; values match Supabase provider ids.",
+        "description": "Signup / identity channel for ``users.provider_type``.\n\n``EMAIL`` is password registration. ``GOOGLE`` and ``GITHUB`` are OAuth\nchannels (self-hosted Google PKCE is implemented; GitHub reserved).",
         "enum": [
           "email",
           "google",
@@ -3818,6 +5717,221 @@
           "ownership"
         ],
         "title": "RealEstateDetailsSchema",
+        "type": "object"
+      },
+      "RealEstateProjectionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "annual_appreciation_pct": {
+            "default": 8.0,
+            "maximum": 50.0,
+            "minimum": -30.0,
+            "title": "Annual Appreciation Pct",
+            "type": "number"
+          },
+          "annual_property_tax_pct": {
+            "default": 0.6,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Annual Property Tax Pct",
+            "type": "number"
+          },
+          "annual_rent_growth_pct": {
+            "default": 5.0,
+            "maximum": 30.0,
+            "minimum": -10.0,
+            "title": "Annual Rent Growth Pct",
+            "type": "number"
+          },
+          "currency": {
+            "default": "COP",
+            "maxLength": 3,
+            "minLength": 3,
+            "title": "Currency",
+            "type": "string"
+          },
+          "current_value": {
+            "exclusiveMinimum": 0.0,
+            "title": "Current Value",
+            "type": "number"
+          },
+          "horizon_years": {
+            "default": 10,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Horizon Years",
+            "type": "integer"
+          },
+          "monthly_hoa_and_maintenance": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Monthly Hoa And Maintenance",
+            "type": "number"
+          },
+          "monthly_rent_income": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Monthly Rent Income",
+            "type": "number"
+          },
+          "mortgage_annual_rate_pct": {
+            "default": 17.1,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Mortgage Annual Rate Pct",
+            "type": "number"
+          },
+          "mortgage_balance": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Mortgage Balance",
+            "type": "number"
+          },
+          "mortgage_monthly_insurance": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "title": "Mortgage Monthly Insurance",
+            "type": "number"
+          },
+          "mortgage_rate_convention": {
+            "default": "CO_EA",
+            "enum": [
+              "CO_EA",
+              "US_APR",
+              "US_APY",
+              "MONTHLY_MV"
+            ],
+            "title": "Mortgage Rate Convention",
+            "type": "string"
+          },
+          "mortgage_remaining_months": {
+            "default": 0,
+            "maximum": 480.0,
+            "minimum": 0.0,
+            "title": "Mortgage Remaining Months",
+            "type": "integer"
+          },
+          "occupancy_pct": {
+            "default": 85.0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Occupancy Pct",
+            "type": "number"
+          }
+        },
+        "required": [
+          "current_value"
+        ],
+        "title": "RealEstateProjectionRequest",
+        "type": "object"
+      },
+      "RealEstateProjectionResponse": {
+        "properties": {
+          "cap_rate_pct": {
+            "title": "Cap Rate Pct",
+            "type": "number"
+          },
+          "cumulative_net_cashflow": {
+            "title": "Cumulative Net Cashflow",
+            "type": "number"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "current_net_equity": {
+            "title": "Current Net Equity",
+            "type": "number"
+          },
+          "gross_rental_yield_pct": {
+            "title": "Gross Rental Yield Pct",
+            "type": "number"
+          },
+          "projected_mortgage_balance": {
+            "title": "Projected Mortgage Balance",
+            "type": "number"
+          },
+          "projected_net_equity": {
+            "title": "Projected Net Equity",
+            "type": "number"
+          },
+          "projected_property_value": {
+            "title": "Projected Property Value",
+            "type": "number"
+          },
+          "schedule": {
+            "items": {
+              "$ref": "#/components/schemas/RealEstateProjectionYear"
+            },
+            "title": "Schedule",
+            "type": "array"
+          }
+        },
+        "required": [
+          "currency",
+          "current_net_equity",
+          "projected_property_value",
+          "projected_mortgage_balance",
+          "projected_net_equity",
+          "cumulative_net_cashflow",
+          "gross_rental_yield_pct",
+          "cap_rate_pct",
+          "schedule"
+        ],
+        "title": "RealEstateProjectionResponse",
+        "type": "object"
+      },
+      "RealEstateProjectionYear": {
+        "properties": {
+          "annual_gross_rent": {
+            "title": "Annual Gross Rent",
+            "type": "number"
+          },
+          "annual_mortgage_service": {
+            "title": "Annual Mortgage Service",
+            "type": "number"
+          },
+          "annual_net_cashflow": {
+            "title": "Annual Net Cashflow",
+            "type": "number"
+          },
+          "annual_operating_costs": {
+            "title": "Annual Operating Costs",
+            "type": "number"
+          },
+          "cumulative_net_cashflow": {
+            "title": "Cumulative Net Cashflow",
+            "type": "number"
+          },
+          "mortgage_balance": {
+            "title": "Mortgage Balance",
+            "type": "number"
+          },
+          "net_equity": {
+            "title": "Net Equity",
+            "type": "number"
+          },
+          "property_value": {
+            "title": "Property Value",
+            "type": "number"
+          },
+          "year": {
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "year",
+          "property_value",
+          "mortgage_balance",
+          "net_equity",
+          "annual_gross_rent",
+          "annual_operating_costs",
+          "annual_mortgage_service",
+          "annual_net_cashflow",
+          "cumulative_net_cashflow"
+        ],
+        "title": "RealEstateProjectionYear",
         "type": "object"
       },
       "ReconciliationFlagItem": {
@@ -3962,7 +6076,7 @@
       },
       "RefreshRequest": {
         "additionalProperties": false,
-        "description": "JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).\n\nLocal Auth mode does not accept this body meaningfully (route returns 501).\n\nAttributes:\n    refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.",
+        "description": "JSON body for ``POST /auth/refresh`` (deferred under self-hosted HS256).\n\nSelf-hosted local mode returns 501 (no external refresh-token store).\n\nAttributes:\n    refresh_token: Opaque refresh token from a prior session (unused locally).",
         "properties": {
           "refresh_token": {
             "maxLength": 4096,
@@ -3979,7 +6093,7 @@
       },
       "RegisterRequest": {
         "additionalProperties": false,
-        "description": "JSON body for ``POST /auth/register``.\n\nCreates an Auth user (Supabase) or local password row, then provisions\n``papita_transactions.users``. Password signup is email-only; Google/GitHub\nmust use the OAuth/SSO routes.\n\nAttributes:\n    email: Contact email and canonical login identifier; 5–255 characters.\n    password: Plain-text password; 8–128 characters (never echoed back).\n    display_name: Optional human-readable name shown in the app.\n    phone: Optional E.164-style phone number.\n    provider: Password signup channel (``email`` only).\n    username: Optional handle override; when omitted, derived from email.",
+        "description": "JSON body for ``POST /auth/register``.\n\nCreates a local password row in ``papita_transactions.users``. Password\nsignup is email-only; Google must use the OAuth PKCE routes.\n\nAttributes:\n    email: Contact email and canonical login identifier; 5–255 characters.\n    password: Plain-text password; 8–128 characters (never echoed back).\n    display_name: Optional human-readable name shown in the app.\n    phone: Optional E.164-style phone number.\n    provider: Password signup channel (``email`` only).\n    username: Optional handle override; when omitted, derived from email.",
         "properties": {
           "display_name": {
             "anyOf": [
@@ -4048,13 +6162,13 @@
         "type": "object"
       },
       "RegisterResponse": {
-        "description": "Public register result with optional email-confirmation pending signal (PPT-068).\n\nWhen Supabase Confirm email is on and Admin auto-confirm is off, Auth may\ncreate the user without issuing a session. ``email_confirmation_required``\ntells the SPA to show check-email UX instead of prompting an immediate login.\nLocal Auth and Admin auto-confirm paths leave the flag ``False``.",
+        "description": "Public register result with optional email-confirmation pending signal (PPT-068).\n\nSelf-hosted local register always issues a usable account immediately, so\n``email_confirmation_required`` stays ``False``. The flag remains on the\nwire for older SPA clients.",
         "properties": {
           "auth_provider": {
-            "default": "supabase",
+            "default": "local",
             "enum": [
-              "supabase",
-              "local"
+              "local",
+              "supabase"
             ],
             "title": "Auth Provider",
             "type": "string"
@@ -4272,7 +6386,7 @@
       },
       "SsoSessionRequest": {
         "additionalProperties": false,
-        "description": "JSON body for ``POST /auth/sso`` after client-side Supabase OAuth tokens.\n\nUse when the SPA already obtained an Auth session (e.g. fragment/hash flow).\nPrefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the\nredirect yields a ``code``.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    access_token: Supabase access JWT from the OAuth session.\n    refresh_token: Supabase refresh token from the OAuth session.\n    display_name: Optional profile override when Auth metadata is incomplete.",
+        "description": "JSON body for ``POST /auth/sso`` (deprecated external SSO handoff).\n\nPrefer ``GET /auth/oauth/google?follow=true`` for direct Google OAuth PKCE.\nThis endpoint returns 501 under self-hosted auth.\n\nAttributes:\n    provider: OAuth provider (``google`` or ``github``).\n    access_token: External access JWT from a client-side OAuth session.\n    refresh_token: External refresh token from a client-side OAuth session.\n    display_name: Optional profile override when IdP metadata is incomplete.",
         "properties": {
           "access_token": {
             "maxLength": 8192,
@@ -4401,7 +6515,7 @@
         "type": "object"
       },
       "TokenResponse": {
-        "description": "OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.\n\nLocal login sets ``refresh_token`` to ``None``. Supabase paths populate both\naccess and refresh tokens when Auth issues a session.\n\nAttributes:\n    access_token: Bearer JWT for protected API routes.\n    token_type: Always ``bearer`` for clients that expect OAuth2 shape.\n    expires_in: Access-token lifetime in seconds (``>= 1``).\n    refresh_token: Optional Supabase refresh token for rotation/logout.",
+        "description": "OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.\n\nSelf-hosted HS256 login sets ``refresh_token`` to ``None`` (no external\nrefresh-token store).\n\nAttributes:\n    access_token: Bearer JWT for protected API routes.\n    token_type: Always ``bearer`` for clients that expect OAuth2 shape.\n    expires_in: Access-token lifetime in seconds (``>= 1``).\n    refresh_token: Optional refresh token (always ``None`` for self-hosted HS256).",
         "properties": {
           "access_token": {
             "title": "Access Token",
@@ -5800,14 +7914,194 @@
         "title": "UpcomingDuesResponse",
         "type": "object"
       },
+      "UserPreferencesSchema": {
+        "additionalProperties": false,
+        "description": "Structured per-user domain preferences stored in ``users.preferences``.",
+        "properties": {
+          "ai_config": {
+            "additionalProperties": true,
+            "title": "Ai Config",
+            "type": "object"
+          },
+          "auto_refresh_balances": {
+            "default": true,
+            "title": "Auto Refresh Balances",
+            "type": "boolean"
+          },
+          "base_currency": {
+            "default": "COP",
+            "enum": [
+              "COP",
+              "USD",
+              "EUR",
+              "GBP",
+              "MXN",
+              "CLP",
+              "PEN",
+              "BRL"
+            ],
+            "title": "Base Currency",
+            "type": "string"
+          },
+          "credit_card_cashflow_only": {
+            "default": true,
+            "title": "Credit Card Cashflow Only",
+            "type": "boolean"
+          },
+          "date_format": {
+            "default": "YYYY-MM-DD",
+            "enum": [
+              "YYYY-MM-DD",
+              "DD/MM/YYYY",
+              "MM/DD/YYYY"
+            ],
+            "title": "Date Format",
+            "type": "string"
+          },
+          "default_account_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Account Id"
+          },
+          "default_expense_category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Expense Category Id"
+          },
+          "default_income_category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Income Category Id"
+          },
+          "default_page_size": {
+            "default": 25,
+            "enum": [
+              10,
+              25,
+              50,
+              100
+            ],
+            "title": "Default Page Size",
+            "type": "integer"
+          },
+          "fiscal_month_start_day": {
+            "default": 1,
+            "maximum": 28.0,
+            "minimum": 1.0,
+            "title": "Fiscal Month Start Day",
+            "type": "integer"
+          },
+          "hide_balances_by_default": {
+            "default": false,
+            "title": "Hide Balances By Default",
+            "type": "boolean"
+          },
+          "high_utilization_pct_threshold": {
+            "default": 30,
+            "maximum": 100.0,
+            "minimum": 10.0,
+            "title": "High Utilization Pct Threshold",
+            "type": "integer"
+          },
+          "large_transaction_alert_amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Large Transaction Alert Amount"
+          },
+          "locale": {
+            "default": "es-CO",
+            "enum": [
+              "es-CO",
+              "en-US",
+              "es-ES",
+              "en-GB"
+            ],
+            "title": "Locale",
+            "type": "string"
+          },
+          "low_runway_months_threshold": {
+            "default": 3,
+            "maximum": 24.0,
+            "minimum": 1.0,
+            "title": "Low Runway Months Threshold",
+            "type": "integer"
+          },
+          "payment_due_reminder_days": {
+            "default": 5,
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Payment Due Reminder Days",
+            "type": "integer"
+          },
+          "projection_configs": {
+            "additionalProperties": true,
+            "title": "Projection Configs",
+            "type": "object"
+          },
+          "redact_card_numbers": {
+            "default": true,
+            "title": "Redact Card Numbers",
+            "type": "boolean"
+          },
+          "require_dkim_spf_for_email_ingestion": {
+            "default": true,
+            "title": "Require Dkim Spf For Email Ingestion",
+            "type": "boolean"
+          },
+          "session_idle_timeout_minutes": {
+            "default": 120,
+            "maximum": 1440.0,
+            "minimum": 15.0,
+            "title": "Session Idle Timeout Minutes",
+            "type": "integer"
+          },
+          "timezone": {
+            "default": "America/Bogota",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "title": "UserPreferencesSchema",
+        "type": "object"
+      },
       "UserResponse": {
-        "description": "Public user profile returned by register and ``GET /auth/me``.\n\nNever includes password or other secrets. ``provider`` is the signup channel\n(email/Google/GitHub); ``auth_provider`` is where credentials are stored\n(``supabase`` vs local tests).\n\nAttributes:\n    id: Tenant user id (Auth ``sub`` when ``auth_provider`` is ``supabase``).\n    username: Unique handle (often derived from email).\n    email: Canonical login email.\n    display_name: Optional human-readable name.\n    phone: Optional phone from Auth/profile.\n    provider: Signup / identity channel (``ProviderType``).\n    auth_provider: Credential store label (``supabase`` or ``local``).\n    created_at: Row creation timestamp (required on the DTO).",
+        "description": "Public user profile returned by register and ``GET /auth/me``.\n\nNever includes password or other secrets. ``provider`` is the signup channel\n(email/Google/GitHub); ``auth_provider`` is the credential store label\n(``local``, or legacy ``supabase``).\n\nAttributes:\n    id: Tenant user id (JWT ``sub``).\n    username: Unique handle (often derived from email).\n    email: Canonical login email.\n    display_name: Optional human-readable name.\n    phone: Optional phone from profile.\n    provider: Signup / identity channel (``ProviderType``).\n    auth_provider: Credential store label (``local`` or legacy ``supabase``).\n    created_at: Row creation timestamp (required on the DTO).",
         "properties": {
           "auth_provider": {
-            "default": "supabase",
+            "default": "local",
             "enum": [
-              "supabase",
-              "local"
+              "local",
+              "supabase"
             ],
             "title": "Auth Provider",
             "type": "string"
@@ -5864,6 +8158,122 @@
           "created_at"
         ],
         "title": "UserResponse",
+        "type": "object"
+      },
+      "UserSettingsResponse": {
+        "additionalProperties": false,
+        "description": "Complete read model for the User Settings Console (never exposes password/tokens).",
+        "properties": {
+          "auth_provider": {
+            "title": "Auth Provider",
+            "type": "string"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/UserPreferencesSchema"
+          },
+          "provider_type": {
+            "title": "Provider Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "email",
+          "auth_provider",
+          "provider_type",
+          "preferences"
+        ],
+        "title": "UserSettingsResponse",
+        "type": "object"
+      },
+      "UserSettingsUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Partial update payload for ``PATCH /api/v1/settings``.",
+        "properties": {
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserPreferencesSchema"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "UserSettingsUpdateRequest",
         "type": "object"
       },
       "ValidationError": {
@@ -6096,10 +8506,6 @@
       }
     },
     "securitySchemes": {
-      "HTTPBearer": {
-        "scheme": "bearer",
-        "type": "http"
-      },
       "OAuth2PasswordBearer": {
         "flows": {
           "password": {
@@ -6479,7 +8885,7 @@
     },
     "/api/v1/ai/chat": {
       "post": {
-        "description": "Forward a prompt (+ optional redacted financial snapshot) to the AI sidecar.",
+        "description": "Forward a guarded prompt (+ optional redacted snapshot & surface context) via AITransportGateway.",
         "operationId": "ai_chat_api_v1_ai_chat_post",
         "requestBody": {
           "content": {
@@ -6526,7 +8932,7 @@
     },
     "/api/v1/ai/chat/stream": {
       "post": {
-        "description": "Stream SSE response chunks from the self-hosted AI sidecar.",
+        "description": "Stream SSE response chunks transparently through the AI transport gateway.",
         "operationId": "ai_chat_stream_api_v1_ai_chat_stream_post",
         "requestBody": {
           "content": {
@@ -6569,9 +8975,128 @@
         ]
       }
     },
+    "/api/v1/ai/config": {
+      "get": {
+        "description": "Return owner's saved LLM/CLI/LAN configuration (API keys are never returned in plaintext).",
+        "operationId": "get_ai_config_api_v1_ai_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Ai Config",
+        "tags": [
+          "AI Agent"
+        ]
+      },
+      "put": {
+        "description": "Persist owner's AI provider, mode, permissions, exact model ID, and Fernet-encrypted key.",
+        "operationId": "update_ai_config_api_v1_ai_config_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIConfigResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Ai Config",
+        "tags": [
+          "AI Agent"
+        ]
+      }
+    },
+    "/api/v1/ai/models": {
+      "post": {
+        "description": "Connect to the chosen CLI, LAN/local model (incl. Qwen Financial LoRA), or cloud API and return model IDs.",
+        "operationId": "list_ai_models_api_v1_ai_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AIModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AIModelsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "List Ai Models",
+        "tags": [
+          "AI Agent"
+        ]
+      }
+    },
     "/api/v1/ai/status": {
       "get": {
-        "description": "Return whether the self-hosted AI sidecar is enabled and reachable for this owner.",
+        "description": "Return enabled and reachable AI connections across sidecar CLIs, LAN models, and direct APIs.",
         "operationId": "get_ai_status_api_v1_ai_status_get",
         "responses": {
           "200": {
@@ -6598,7 +9123,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "description": "OAuth2 password flow — Supabase Auth sign-in or local credential verify.\n\nClients must put the **email** in the OAuth2 ``username`` form field when\n``AUTH_PROVIDER=supabase``. Local mode still accepts email or derived username.\nSupabase login provisionally ensures a Papita row by Auth ``sub``; recent\norphan Auth users may be deleted if provision fails (not for inactive tenants).\n\nArgs:\n    form: OAuth2 password form (``username`` + ``password``).\n    _rate_limit: Per-IP login rate-limit dependency (side effect only).\n    settings: Selects Auth mode and JWT/session defaults.\n    users_service: Verifies credentials (local) or ensures Auth-linked user.\n    auth_manager: Issues HS256 access tokens in local mode only.\n\nReturns:\n    ``TokenResponse`` with access token; Supabase also returns ``refresh_token``.\n\nRaises:\n    HTTPException: 401 for bad credentials; 429 when Auth rate-limits; other\n        provision/Auth failures mapped from helpers.",
+        "description": "OAuth2 password flow — local credential verify and HS256 JWT issuance.",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -6640,38 +9165,13 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "description": "Revoke the Supabase Auth session when ``AUTH_PROVIDER=supabase``.",
+        "description": "Clear the access-token cookie and return deferred status for stateless JWTs.",
         "operationId": "logout_api_v1_auth_logout_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogoutRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "204": {
             "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "summary": "Logout",
         "tags": [
           "Authentication"
@@ -6680,7 +9180,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "description": "Return the authenticated user profile (protected route smoke test).\n\nUses ``get_current_owner``, which verifies the bearer JWT and may refresh\nAuth-linked profile fields under Supabase mode. When Redis is required,\nrevoked tokens are rejected (denylist fail-closed). Tenant API rate limits\napply (same Free/Pro/Enterprise quotas as other protected routers).\n\nArgs:\n    owner: Authenticated tenant user resolved from the bearer JWT.\n    _rate_limit: Tenant API rate-limit dependency (side effect only).\n\nReturns:\n    Public ``UserResponse`` for the current session user (never includes password).\n\nRaises:\n    HTTPException: 401 when credentials are missing/invalid/revoked; 429 when\n        the tenant API quota is exceeded; 503 when the Redis denylist is\n        required but unavailable.",
+        "description": "Return the authenticated user profile (protected route smoke test).\n\nUses ``get_current_owner``, which verifies the bearer JWT (header or\nHttpOnly cookie). Tenant API rate limits apply (same Free/Pro/Enterprise\nquotas as other protected routers).\n\nArgs:\n    owner: Authenticated tenant user resolved from the bearer JWT.\n    _rate_limit: Tenant API rate-limit dependency (side effect only).\n\nReturns:\n    Public ``UserResponse`` for the current session user (never includes password).\n\nRaises:\n    HTTPException: 401 when credentials are missing/invalid; 429 when the\n        tenant API quota is exceeded.",
         "operationId": "get_current_user_api_v1_auth_me_get",
         "responses": {
           "200": {
@@ -6707,7 +9207,7 @@
     },
     "/api/v1/auth/oauth/callback": {
       "get": {
-        "description": "Browser redirect target for Supabase OAuth (PKCE cookie + ``code``).\n\nUse with ``GET /auth/oauth/{provider}?follow=true`` so the PKCE verifier,\nprovider, and ``redirect_to`` are available from HTTP-only cookies. Clears\nthose cookies after a successful exchange.\n\nArgs:\n    request: Incoming redirect; cookies supply verifier/provider/redirect.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n    code: Authorization code query param from the IdP.\n    error: Optional IdP error code when authorize failed.\n    error_description: Optional human-readable IdP error text.\n\nReturns:\n    JSON body matching ``TokenResponse`` with PKCE cookies cleared.\n\nRaises:\n    HTTPException: 501 when not Supabase; 400 missing code/cookies; 401 on Auth errors.",
+        "description": "Browser redirect target for direct Google OAuth PKCE.",
         "operationId": "oauth_callback_get_api_v1_auth_oauth_callback_get",
         "parameters": [
           {
@@ -6724,6 +9224,22 @@
                 }
               ],
               "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
             }
           },
           {
@@ -6787,7 +9303,7 @@
         ]
       },
       "post": {
-        "description": "Complete Supabase OAuth with authorization ``code`` + PKCE verifier.\n\nCalls GoTrue ``exchange_code_for_session``, then provisions\n``papita_transactions.users`` by Auth ``sub``. Preferred completion path for\nAPI clients that can store the ``code_verifier`` from authorize start.\n\nArgs:\n    body: Provider, auth code, PKCE verifier, optional redirect and name.\n    request: Used to allowlist ``redirect_to`` against the API callback URL.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n\nReturns:\n    Supabase session tokens as ``TokenResponse``.\n\nRaises:\n    HTTPException: 501 when not Supabase; 400/401 on provider or exchange errors.",
+        "description": "Browser PKCE flow completes via ``GET /auth/oauth/callback``.",
         "operationId": "oauth_callback_post_api_v1_auth_oauth_callback_post",
         "requestBody": {
           "content": {
@@ -6829,7 +9345,7 @@
     },
     "/api/v1/auth/oauth/{provider}": {
       "get": {
-        "description": "Start Supabase OAuth (PKCE) via ``sign_in_with_oauth``.\n\nReturns the authorize ``url`` and ``code_verifier``. Clients must keep the\nverifier and send it with the authorization ``code`` to\n``POST /auth/oauth/callback``.\n\nWhen ``follow=true``, responds with ``302`` to the IdP and stores the PKCE\nverifier, provider, and ``redirect_to`` in HTTP-only cookies for\n``GET /auth/oauth/callback``. Cookie ``Secure`` follows settings\n(``AUTH_COOKIE_SECURE`` / non-debug default).\n\nArgs:\n    provider: Path segment (``google`` or ``github``).\n    request: Used to resolve the allowlisted redirect URI.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    redirect_to: Optional allowlisted redirect override.\n    follow: When ``True``, 302-redirect and set PKCE cookies.\n\nReturns:\n    ``OAuthStartResponse`` JSON, or ``RedirectResponse`` when ``follow=true``.\n\nRaises:\n    HTTPException: 501 when not Supabase; 404 unknown provider; 400 bad redirect;\n        502 when Supabase fails to start OAuth.",
+        "description": "Start direct local Google OAuth (PKCE).",
         "operationId": "start_oauth_api_v1_auth_oauth__provider__get",
         "parameters": [
           {
@@ -6866,6 +9382,16 @@
               "title": "Follow",
               "type": "boolean"
             }
+          },
+          {
+            "in": "query",
+            "name": "return_to",
+            "required": false,
+            "schema": {
+              "default": "/dashboard",
+              "title": "Return To",
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -6898,7 +9424,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "description": "Rotate Supabase Auth access/refresh tokens.\n\nWhen ``AUTH_PROVIDER=local``, returns HTTP 501 (no refresh-token store).\n\nArgs:\n    body: Current Supabase refresh token.\n    _rate_limit: Per-IP OAuth/refresh rate-limit dependency (side effect only).\n    settings: Application settings selecting Auth provider.\n\nReturns:\n    New access and refresh tokens from Supabase Auth, or a deferred JSON body\n    with status 501 in local mode.\n\nRaises:\n    HTTPException: 401 on invalid refresh token; 400 on malformed Auth response;\n        503 when Supabase URL/anon key are missing.",
+        "description": "Self-hosted HS256 JWTs do not use an external refresh-token store.",
         "operationId": "refresh_token_api_v1_auth_refresh_post",
         "requestBody": {
           "content": {
@@ -6940,7 +9466,7 @@
     },
     "/api/v1/auth/register": {
       "post": {
-        "description": "Register a new user via Supabase Auth (or local ``UsersService``).\n\nEmail is the canonical login identity. A schema ``username`` handle is\nderived from the email local-part when not supplied. Under Supabase, Auth\nsignup runs first; Papita provision is idempotent. Provision failure after a\nsuccessful Auth create triggers best-effort Admin orphan cleanup.\n\nArgs:\n    body: Registration payload (email, password, optional profile fields).\n    _rate_limit: Per-IP register rate-limit dependency (side effect only).\n    settings: Selects ``supabase`` vs ``local`` Auth mode.\n    users_service: Creates or links the tenant ``users`` row.\n\nReturns:\n    Public ``RegisterResponse`` for the new or already-linked tenant user,\n    including ``email_confirmation_required`` when Confirm email is on.\n\nRaises:\n    HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,\n        429 rate limit, 503 misconfigured Supabase, etc.).",
+        "description": "Register a new self-hosted user via ``UsersService``.",
         "operationId": "register_user_api_v1_auth_register_post",
         "requestBody": {
           "content": {
@@ -6982,7 +9508,7 @@
     },
     "/api/v1/auth/resend-confirmation": {
       "post": {
-        "description": "Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).\n\nAlways returns 204 on soft success (including unknown emails). Rate-limited\nwith the register bucket because both trigger Auth SMTP.",
+        "description": "Soft-success resend confirmation stub for self-hosted local auth.\n\nAlways returns 204 (including unknown emails). Rate-limited with the\nregister bucket for anti-enumeration parity with older clients.",
         "operationId": "resend_confirmation_api_v1_auth_resend_confirmation_post",
         "requestBody": {
           "content": {
@@ -7017,7 +9543,7 @@
     },
     "/api/v1/auth/sso": {
       "post": {
-        "description": "Complete OAuth when the client already holds Supabase session tokens.\n\nPrefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the\nredirect yields a ``code``. This endpoint remains for hash/fragment clients\nthat already called Supabase JS and hold access/refresh tokens.\n\nArgs:\n    body: Provider, access token, refresh token, optional display name.\n    _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).\n    settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.\n    users_service: Provisions or refreshes the tenant profile.\n\nReturns:\n    Validated session as ``TokenResponse`` (refresh falls back to the body).\n\nRaises:\n    HTTPException: 501 when not Supabase; 401 if session is rejected; 400 on\n        provision failures.",
+        "description": "Deprecated external SSO endpoint (use direct Google OAuth PKCE).",
         "operationId": "complete_sso_api_v1_auth_sso_post",
         "requestBody": {
           "content": {
@@ -7353,7 +9879,7 @@
     },
     "/api/v1/health": {
       "get": {
-        "description": "Return application status, version, database, Auth, and Redis connectivity.\n\nAlways returns HTTP 200 with ``status`` of ``healthy`` or ``degraded``. Use\n``/health/ready`` when orchestrators should fail traffic on dependency loss.\n\nArgs:\n    request: Incoming request (reads ``app.state.redis``).\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings supplying version and Auth/Redis configuration.\n    connector: Database connector class used for a lightweight readiness query.\n\nReturns:\n    Composite ``HealthResponse`` marked ``degraded`` when the database is down,\n    required Supabase Auth is unreachable, or required Redis is down.",
+        "description": "Return application status, version, database, Auth, and Redis connectivity.\n\nAlways returns HTTP 200 with ``status`` of ``healthy`` or ``degraded``. Use\n``/health/ready`` when orchestrators should fail traffic on dependency loss.\n\nArgs:\n    request: Incoming request (reads ``app.state.redis``).\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings supplying version and Auth/Redis configuration.\n    connector: Database connector class used for a lightweight readiness query.\n\nReturns:\n    Composite ``HealthResponse`` marked ``degraded`` when the database is down,\n    Auth is unreachable, or required Redis is down.",
         "operationId": "get_health_api_v1_health_get",
         "responses": {
           "200": {
@@ -7375,7 +9901,7 @@
     },
     "/api/v1/health/auth": {
       "get": {
-        "description": "Probe API↔Supabase Auth (GoTrue) communication health.\n\nCalls ``GET {SUPABASE_URL}/auth/v1/health`` when ``AUTH_PROVIDER=supabase``.\nLocal HS256 mode reports healthy with a skipped detail (no network call).\n\nArgs:\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings with Auth provider and Supabase credentials.\n\nReturns:\n    ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);\n    otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.",
+        "description": "Probe self-hosted Auth readiness.\n\nLocal HS256 mode reports healthy with a skipped detail (no network call).\n\nArgs:\n    response: FastAPI response used to set ``Cache-Control: no-store``.\n    settings: Application settings with Auth provider configuration.\n\nReturns:\n    ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);\n    otherwise a 503 ``JSONResponse`` with ``status=unhealthy``.",
         "operationId": "get_auth_health_api_v1_health_auth_get",
         "responses": {
           "200": {
@@ -7807,6 +10333,190 @@
         ]
       }
     },
+    "/api/v1/ingestion/email/test-parse": {
+      "post": {
+        "description": "Dry-run sample email against the user's configured parsing rules and built-in bank parsers.",
+        "operationId": "test_email_parse_api_v1_ingestion_email_test_parse_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailParseTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailParseTestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Test Email Parse",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/gmail/disconnect": {
+      "post": {
+        "description": "Revoke Gmail OAuth refresh token at Google, wipe encrypted DB token, and disable access.",
+        "operationId": "disconnect_gmail_api_v1_ingestion_gmail_disconnect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Disconnect Gmail",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/gmail/oauth/callback": {
+      "get": {
+        "description": "Complete per-user Gmail OAuth and store encrypted refresh token on ingestion_connections.",
+        "operationId": "gmail_oauth_callback_api_v1_ingestion_gmail_oauth_callback_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "error",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Gmail Oauth Callback",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
+    "/api/v1/ingestion/gmail/oauth/start": {
+      "get": {
+        "description": "Start per-user incremental Gmail OAuth flow (``gmail.modify`` scope).",
+        "operationId": "start_gmail_oauth_api_v1_ingestion_gmail_oauth_start_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Start Gmail Oauth",
+        "tags": [
+          "Ingestion"
+        ]
+      }
+    },
     "/api/v1/ingestion/ibkr/activity-statement": {
       "post": {
         "description": "Import an Interactive Brokers Activity Statement CSV idempotently (PPT-101 / #262).",
@@ -8076,6 +10786,282 @@
         "summary": "Get Client Contract",
         "tags": [
           "Meta"
+        ]
+      }
+    },
+    "/api/v1/projections/config/{account_id}": {
+      "put": {
+        "description": "Persist user-configured interest rates, conventions, and assumptions for an account.",
+        "operationId": "save_account_projection_config_api_v1_projections_config__account_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Account Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountProjectionConfigUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Save Account Projection Config Api V1 Projections Config  Account Id  Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Save Account Projection Config",
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/v1/projections/credit-card": {
+      "post": {
+        "description": "Calculate a credit card payoff schedule (Colombian EA cuotas/revolving or US APR).",
+        "operationId": "project_credit_card_api_v1_projections_credit_card_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreditCardProjectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditCardProjectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Project Credit Card",
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/v1/projections/investment": {
+      "post": {
+        "description": "Calculate compound investment projection net of fees, inflation, FX drift, and taxes.",
+        "operationId": "project_investment_api_v1_projections_investment_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvestmentProjectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvestmentProjectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Project Investment",
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/v1/projections/loan": {
+      "post": {
+        "description": "Calculate a full Colombian EA or US APR loan amortization schedule.",
+        "operationId": "project_loan_api_v1_projections_loan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoanAmortizationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoanAmortizationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Project Loan",
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/v1/projections/portfolio": {
+      "get": {
+        "description": "Return the owner's debts, credit cards, real estate, and investments with saved configs.",
+        "operationId": "get_projection_portfolio_api_v1_projections_portfolio_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PortfolioProjectionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Projection Portfolio",
+        "tags": [
+          "Projections"
+        ]
+      }
+    },
+    "/api/v1/projections/real-estate": {
+      "post": {
+        "description": "Calculate property appreciation, linked mortgage paydown, net equity, and rental cashflow.",
+        "operationId": "project_real_estate_api_v1_projections_real_estate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RealEstateProjectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealEstateProjectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Project Real Estate",
+        "tags": [
+          "Projections"
         ]
       }
     },
@@ -8970,6 +11956,203 @@
         "summary": "Get Trends Report",
         "tags": [
           "Reports"
+        ]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "description": "Search accounts, transactions, payment dues, categories, and projections in one query.\n\nSupports kind selectors (``acc``, ``txn``, ``due``, ``cat``, ``proj``), structured\nfilters (``date:>=2026-01-01``, ``amount:>=500000``, ``>100000``, ``currency:COP``,\n``deleted:true``), and exact UUID matching. All results stay strictly within the\nauthenticated owner's records.",
+        "operationId": "search_domain_api_v1_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kinds",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kinds"
+            }
+          },
+          {
+            "in": "query",
+            "name": "account_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Account Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSearchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Search Domain",
+        "tags": [
+          "Search"
+        ]
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "description": "Return the authenticated owner's profile and domain preferences.",
+        "operationId": "get_user_settings_api_v1_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get User Settings",
+        "tags": [
+          "settings"
+        ]
+      },
+      "patch": {
+        "description": "Update the authenticated owner's profile fields and/or domain preferences.",
+        "operationId": "update_user_settings_api_v1_settings_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSettingsUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update User Settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/v1/settings/reset": {
+      "post": {
+        "description": "Reset the authenticated owner's domain preferences back to secure defaults.",
+        "operationId": "reset_user_settings_api_v1_settings_reset_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Reset User Settings",
+        "tags": [
+          "settings"
         ]
       }
     },

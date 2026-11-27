@@ -32,6 +32,59 @@ logger = logging.getLogger(__name__)
 
 IngestOutcome = Literal["created", "updated", "reactivated"]
 
+_GENERIC_PARSER_TAGS = frozenset({"imported", "bancolombia", "nu", "global66", "nequi", "auto", "pse"})
+
+
+def match_template_for_payload(
+    *,
+    templates: list[Any],
+    description: str,
+    tags: list[str],
+    transaction_kind: TransactionKind,
+    amount: float,
+) -> Any | None:
+    """Match an ingested transaction to a payment-due template via parser markers.
+
+    Matches only outflows (EXPENSE) using:
+    1. Specific shared parser tags (e.g. ``rent``, ``aluna-hoa``, ``card_last4:3250``).
+    2. Template name contained in the transaction description.
+    Breaks ties by proximity to ``planned_amount``.
+    """
+    if transaction_kind != TransactionKind.EXPENSE or not templates:
+        return None
+
+    txn_markers = {str(t).strip().lower() for t in tags if str(t).strip().lower() not in _GENERIC_PARSER_TAGS}
+    desc_lower = (description or "").strip().lower()
+
+    best_template = None
+    best_score = 0
+    for tmpl in templates:
+        if not getattr(tmpl, "active", True):
+            continue
+        score = 0
+        tmpl_tags = {
+            str(t).strip().lower()
+            for t in (getattr(tmpl, "tags", None) or [])
+            if str(t).strip().lower() not in _GENERIC_PARSER_TAGS
+        }
+        shared_markers = txn_markers.intersection(tmpl_tags)
+        if shared_markers:
+            score += 4 * len(shared_markers)
+
+        tmpl_name = str(getattr(tmpl, "name", "") or "").strip().lower()
+        if tmpl_name and len(tmpl_name) >= 4 and tmpl_name in desc_lower:
+            score += 3
+
+        planned = float(getattr(tmpl, "planned_amount", 0) or 0)
+        if score > 0 and planned > 0 and abs(amount - planned) / planned <= 0.2:
+            score += 1
+
+        if score > best_score:
+            best_score = score
+            best_template = tmpl
+
+    return best_template if best_score >= 3 else None
+
 
 class IngestTransactionRequest(BaseModel):
     """Model-local ingest payload (not an API schema). Trusted caller supplies ``owner``."""
@@ -148,6 +201,10 @@ class IngestionBridgeService(BaseService):
             if isinstance(request, IngestTransactionRequest)
             else IngestTransactionRequest.model_validate(request)
         )
+        if payload.template_id is None and payload.transaction_kind == TransactionKind.EXPENSE:
+            matched_tmpl = self._find_matching_template(owner=owner, payload=payload)
+            if matched_tmpl is not None and getattr(matched_tmpl, "id", None) is not None:
+                payload = payload.model_copy(update={"template_id": matched_tmpl.id})
         source_ref = (payload.source_ref or "").strip() or None
         existing_prov = None
         if source_ref is not None:
@@ -198,6 +255,38 @@ class IngestionBridgeService(BaseService):
             source_ref=(source_ref or "").strip() or None,
         )
         return self._dead_letter_repository.upsert_record(dto, owner=owner, **kwargs) or dto
+
+    def _find_matching_template(self, *, owner: UsersDTO, payload: IngestTransactionRequest) -> Any | None:
+        """Best-effort auto-wire of an ingested expense to a payment-due template via parser markers."""
+        try:
+            tmpl_svc = TransactionTemplatesService.model_validate({"connector": self.connector})
+            df = tmpl_svc.get_records(owner=owner, skip=0, limit=100, include_category=False)
+            if df is None or df.empty:
+                return None
+            templates = [
+                type(
+                    "_Tmpl",
+                    (),
+                    {
+                        "id": row.get("id"),
+                        "name": row.get("name"),
+                        "tags": row.get("tags") or [],
+                        "planned_amount": row.get("planned_amount"),
+                        "active": bool(row.get("active", True)),
+                    },
+                )()
+                for _, row in df.iterrows()
+            ]
+            return match_template_for_payload(
+                templates=templates,
+                description=payload.description,
+                tags=payload.tags,
+                transaction_kind=payload.transaction_kind,
+                amount=payload.amount,
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.debug("Template auto-match skipped for owner_id=%s", owner.id, exc_info=True)
+            return None
 
     def _create_new(
         self,

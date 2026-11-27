@@ -8,6 +8,7 @@ from papita_ingestor_email.parsers.bancolombia import BancolombiaParser
 from papita_ingestor_email.parsers.fallback import FallbackEmailParser
 from papita_ingestor_email.parsers.global66 import Global66Parser
 from papita_ingestor_email.parsers.nequi import NequiParser
+from papita_ingestor_email.parsers.nu import NuParser
 from papita_txnsmodel.model.enums import IngestionSource
 
 
@@ -22,5 +23,6 @@ __all__ = [
     "FallbackEmailParser",
     "Global66Parser",
     "NequiParser",
+    "NuParser",
     "default_email_parsers",
 ]

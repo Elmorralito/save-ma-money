@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { ScopedAIPanel, ScopedAITrigger, useScopedAIToggle } from "@/components/ai/ScopedAICopilot";
 import { DebtSimulatorPanel } from "@/components/reports/DebtSimulatorPanel";
+import {
+  SortableTableHead,
+  sortItems,
+  toggleSort,
+  type SortState,
+} from "@/components/table/SortableTableHead";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -10,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { formatDate } from "@/lib/formatDate";
 import { formatMoney } from "@/lib/formatMoney";
 import { formatSlugLabel } from "@/lib/formatSlugLabel";
@@ -28,6 +37,9 @@ type DebtPaydownViewProps = {
   onSimulate: (request: DebtPaydownSimulationRequest) => void;
 };
 
+type LiabilitySortKey = "rank" | "name" | "balance" | "ea" | "drag" | "payment" | "payoff";
+type ScheduleSortKey = "month" | "baseline" | "accelerated" | "interest" | "extra";
+
 /** 2-column presentation-only Debt Interest-Drag & Backend Prepayment Simulator workspace. */
 export function DebtPaydownView({
   report,
@@ -36,14 +48,68 @@ export function DebtPaydownView({
   simulationError,
   onSimulate,
 }: DebtPaydownViewProps) {
+  const { locale } = useLocale();
+  const liabilitiesAi = useScopedAIToggle();
+  const scheduleAi = useScopedAIToggle();
   const [showAllMonths, setShowAllMonths] = useState(false);
+  const [liabilitySearch, setLiabilitySearch] = useState("");
+  const [liabilitySort, setLiabilitySort] = useState<SortState<LiabilitySortKey>>({
+    key: "rank",
+    direction: "asc",
+  });
+  const [scheduleSearch, setScheduleSearch] = useState("");
+  const [eventsOnly, setEventsOnly] = useState(false);
+  const [scheduleSort, setScheduleSort] = useState<SortState<ScheduleSortKey>>({
+    key: "month",
+    direction: "asc",
+  });
   const { summary, liquidity_context, excluded_liabilities, currency } = report;
-  const liabilities = report.liabilities ?? [];
+  const liabilities = useMemo(() => report.liabilities ?? [], [report.liabilities]);
   const excludedNames = excluded_liabilities?.account_names ?? [];
-  const simulationTrajectory = simulation?.monthly_trajectory ?? [];
-  const visibleTrajectory = showAllMonths
-    ? simulationTrajectory
-    : simulationTrajectory.slice(0, 24);
+  const simulationTrajectory = useMemo(
+    () => simulation?.monthly_trajectory ?? [],
+    [simulation?.monthly_trajectory],
+  );
+
+  const visibleLiabilities = useMemo(() => {
+    const q = liabilitySearch.trim().toLowerCase();
+    const filtered = q
+      ? liabilities.filter(
+          (item) =>
+            item.account_name.toLowerCase().includes(q) ||
+            formatSlugLabel(item.account_kind).toLowerCase().includes(q) ||
+            (item.linked_asset?.asset_name.toLowerCase().includes(q) ?? false),
+        )
+      : liabilities;
+    return sortItems(filtered, liabilitySort, {
+      rank: (r) => r.priority_rank,
+      name: (r) => r.account_name,
+      balance: (r) => r.balance,
+      ea: (r) => r.effective_annual_rate_pct,
+      drag: (r) => r.monthly_interest_drag,
+      payment: (r) => r.monthly_contractual_payment,
+      payoff: (r) => r.estimated_payoff_date ?? "",
+    });
+  }, [liabilities, liabilitySearch, liabilitySort]);
+
+  const filteredTrajectory = useMemo(() => {
+    const q = scheduleSearch.trim().toLowerCase();
+    const filtered = simulationTrajectory.filter((point) => {
+      if (eventsOnly && (point.events?.length ?? 0) === 0) return false;
+      if (!q) return true;
+      const evtMatch = (point.events ?? []).some((evt) => evt.toLowerCase().includes(q));
+      return String(point.month).toLowerCase().includes(q) || evtMatch;
+    });
+    return sortItems(filtered, scheduleSort, {
+      month: (r) => r.month,
+      baseline: (r) => r.baseline_total_debt,
+      accelerated: (r) => r.accelerated_total_debt,
+      interest: (r) => r.interest_paid,
+      extra: (r) => r.extra_applied,
+    });
+  }, [eventsOnly, scheduleSearch, scheduleSort, simulationTrajectory]);
+
+  const visibleTrajectory = showAllMonths ? filteredTrajectory : filteredTrajectory.slice(0, 24);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
@@ -89,28 +155,145 @@ export function DebtPaydownView({
         </div>
 
         <div className="rounded-lg border border-border bg-card">
-          <div className="border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
             <h3 className="text-sm font-semibold">Priority Liability Ranking (Highest EA First)</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              {liabilities.length > 0 ? (
+                <Input
+                  aria-label="Filter liabilities"
+                  placeholder="Filter liabilities…"
+                  className="h-8 w-44 text-xs"
+                  value={liabilitySearch}
+                  onChange={(event) => {
+                    setLiabilitySearch(event.target.value);
+                  }}
+                />
+              ) : null}
+              <ScopedAITrigger
+                open={liabilitiesAi.open}
+                panelId={liabilitiesAi.panelId}
+                onToggle={liabilitiesAi.toggle}
+              />
+            </div>
           </div>
+          <ScopedAIPanel
+            id={liabilitiesAi.panelId}
+            open={liabilitiesAi.open}
+            onClose={liabilitiesAi.close}
+            module="reports"
+            view="debt"
+            control="liability-ranking-table"
+            title="Priority Liability Ranking"
+            currency={currency}
+            className="m-3"
+            surfaceContext={{
+              currency,
+              total_debt: summary.total_debt,
+              total_monthly_interest_drag: summary.total_monthly_interest_drag,
+              weighted_average_ea_pct: summary.weighted_average_ea_pct,
+              search: liabilitySearch || null,
+              sort: liabilitySort,
+              liabilities: visibleLiabilities.map((l) => ({
+                rank: l.priority_rank,
+                name: l.account_name,
+                kind: l.account_kind,
+                balance: l.balance,
+                ea_pct: l.effective_annual_rate_pct,
+                monthly_drag: l.monthly_interest_drag,
+                monthly_payment: l.monthly_contractual_payment,
+                payoff_date: l.estimated_payoff_date,
+                negative_amortization: l.negative_amortization,
+              })),
+            }}
+            suggestedPrompts={
+              locale === "es-CO"
+                ? [
+                    "¿Qué obligación genera mayor costo en intereses y debo atacar primero?",
+                    "¿Alguna deuda presenta amortización negativa o tasa crítica?",
+                  ]
+                : [
+                    "Which liability causes the highest interest drag to attack first?",
+                    "Are any accounts in negative amortization or carrying risky EA rates?",
+                  ]
+            }
+          />
           {liabilities.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-muted-foreground">
               No active liabilities in {currency}.
+            </div>
+          ) : visibleLiabilities.length === 0 ? (
+            <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+              No liabilities match this filter.
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Liability</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead className="text-right">EA / Monthly</TableHead>
-                  <TableHead className="text-right">Interest Drag</TableHead>
-                  <TableHead className="text-right">Payment / Extras</TableHead>
-                  <TableHead className="text-right">Est. Payoff</TableHead>
+                  <SortableTableHead
+                    label="#"
+                    sortKey="rank"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "asc"));
+                    }}
+                  />
+                  <SortableTableHead
+                    label="Liability"
+                    sortKey="name"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "asc"));
+                    }}
+                  />
+                  <SortableTableHead
+                    label="Balance"
+                    sortKey="balance"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "desc"));
+                    }}
+                    align="right"
+                  />
+                  <SortableTableHead
+                    label="EA / Monthly"
+                    sortKey="ea"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "desc"));
+                    }}
+                    align="right"
+                  />
+                  <SortableTableHead
+                    label="Interest Drag"
+                    sortKey="drag"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "desc"));
+                    }}
+                    align="right"
+                  />
+                  <SortableTableHead
+                    label="Payment / Extras"
+                    sortKey="payment"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "desc"));
+                    }}
+                    align="right"
+                  />
+                  <SortableTableHead
+                    label="Est. Payoff"
+                    sortKey="payoff"
+                    sort={liabilitySort}
+                    onSort={(key) => {
+                      setLiabilitySort((prev) => toggleSort(prev, key, "asc"));
+                    }}
+                    align="right"
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {liabilities.map((item) => (
+                {visibleLiabilities.map((item) => (
                   <TableRow key={item.account_id}>
                     <TableCell className="font-semibold tabular-nums">
                       {String(item.priority_rank)}
@@ -184,64 +367,168 @@ export function DebtPaydownView({
             <div className="rounded-lg border border-border bg-card">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
                 <h3 className="text-sm font-semibold">Simulated Monthly Payoff Schedule</h3>
-                {simulationTrajectory.length > 24 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    aria-label="Filter payoff schedule"
+                    placeholder="Filter month or event…"
+                    className="h-8 w-44 text-xs"
+                    value={scheduleSearch}
+                    onChange={(event) => {
+                      setScheduleSearch(event.target.value);
+                    }}
+                  />
                   <Button
                     type="button"
                     size="sm"
-                    variant="ghost"
+                    variant={eventsOnly ? "default" : "outline"}
+                    aria-pressed={eventsOnly}
                     onClick={() => {
-                      setShowAllMonths((prev) => !prev);
+                      setEventsOnly((prev) => !prev);
                     }}
                   >
-                    {showAllMonths
-                      ? "Show first 24 months"
-                      : `Show all ${String(simulationTrajectory.length)} months`}
+                    Events only
                   </Button>
-                ) : null}
+                  {filteredTrajectory.length > 24 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setShowAllMonths((prev) => !prev);
+                      }}
+                    >
+                      {showAllMonths
+                        ? "Show first 24 months"
+                        : `Show all ${String(filteredTrajectory.length)} months`}
+                    </Button>
+                  ) : null}
+                  <ScopedAITrigger
+                    open={scheduleAi.open}
+                    panelId={scheduleAi.panelId}
+                    onToggle={scheduleAi.toggle}
+                  />
+                </div>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Month</TableHead>
-                    <TableHead className="text-right">Baseline Debt</TableHead>
-                    <TableHead className="text-right">Accelerated Debt</TableHead>
-                    <TableHead className="text-right">Interest Paid</TableHead>
-                    <TableHead className="text-right">Extra Applied</TableHead>
-                    <TableHead>Events</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleTrajectory.map((point) => (
-                    <TableRow key={point.month}>
-                      <TableCell className="font-medium">{point.month}</TableCell>
-                      <TableCell className="text-right tabular-nums text-muted-foreground">
-                        {formatMoney(point.baseline_total_debt, simulation.currency)}
-                      </TableCell>
-                      <TableCell className="text-right font-medium tabular-nums">
-                        {formatMoney(point.accelerated_total_debt, simulation.currency)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(point.interest_paid, simulation.currency)}
-                      </TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {formatMoney(point.extra_applied, simulation.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {(point.events ?? []).map((evt, idx) => (
-                            <span
-                              key={`${evt}-${String(idx)}`}
-                              className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
-                            >
-                              {evt}
-                            </span>
-                          ))}
-                        </div>
-                      </TableCell>
+              <ScopedAIPanel
+                id={scheduleAi.panelId}
+                open={scheduleAi.open}
+                onClose={scheduleAi.close}
+                module="reports"
+                view="debt"
+                control="payoff-schedule-table"
+                title="Simulated Monthly Payoff Schedule"
+                currency={simulation.currency}
+                className="m-3"
+                surfaceContext={{
+                  currency: simulation.currency,
+                  months_saved: simulation.months_saved,
+                  total_interest_saved: simulation.total_interest_saved,
+                  accelerated_payoff_date: simulation.accelerated_payoff_date ?? null,
+                  search: scheduleSearch || null,
+                  events_only: eventsOnly,
+                  sort: scheduleSort,
+                  sample_months: visibleTrajectory.slice(0, 10),
+                }}
+                suggestedPrompts={
+                  locale === "es-CO"
+                    ? [
+                        "Resume cuándo quedan saldadas las deudas y cuánto interés se ahorra.",
+                        "¿Qué hitos clave aparecen en este calendario simulado?",
+                      ]
+                    : [
+                        "Summarize payoff milestones and total interest saved under this schedule.",
+                        "Highlight the biggest inflection months in this accelerated plan.",
+                      ]
+                }
+              />
+              {visibleTrajectory.length === 0 ? (
+                <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                  No payoff months match this filter.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <SortableTableHead
+                        label="Month"
+                        sortKey="month"
+                        sort={scheduleSort}
+                        onSort={(key) => {
+                          setScheduleSort((prev) => toggleSort(prev, key, "asc"));
+                        }}
+                      />
+                      <SortableTableHead
+                        label="Baseline Debt"
+                        sortKey="baseline"
+                        sort={scheduleSort}
+                        onSort={(key) => {
+                          setScheduleSort((prev) => toggleSort(prev, key, "desc"));
+                        }}
+                        align="right"
+                      />
+                      <SortableTableHead
+                        label="Accelerated Debt"
+                        sortKey="accelerated"
+                        sort={scheduleSort}
+                        onSort={(key) => {
+                          setScheduleSort((prev) => toggleSort(prev, key, "desc"));
+                        }}
+                        align="right"
+                      />
+                      <SortableTableHead
+                        label="Interest Paid"
+                        sortKey="interest"
+                        sort={scheduleSort}
+                        onSort={(key) => {
+                          setScheduleSort((prev) => toggleSort(prev, key, "desc"));
+                        }}
+                        align="right"
+                      />
+                      <SortableTableHead
+                        label="Extra Applied"
+                        sortKey="extra"
+                        sort={scheduleSort}
+                        onSort={(key) => {
+                          setScheduleSort((prev) => toggleSort(prev, key, "desc"));
+                        }}
+                        align="right"
+                      />
+                      <TableHead>Events</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleTrajectory.map((point) => (
+                      <TableRow key={point.month}>
+                        <TableCell className="font-medium">{point.month}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">
+                          {formatMoney(point.baseline_total_debt, simulation.currency)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium tabular-nums">
+                          {formatMoney(point.accelerated_total_debt, simulation.currency)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatMoney(point.interest_paid, simulation.currency)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {formatMoney(point.extra_applied, simulation.currency)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {(point.events ?? []).map((evt, idx) => (
+                              <span
+                                key={`${evt}-${String(idx)}`}
+                                className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
+                              >
+                                {evt}
+                              </span>
+                            ))}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </div>
         ) : null}

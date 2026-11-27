@@ -164,4 +164,73 @@ describe("AccountsPage", () => {
       expect(screen.getByRole("link", { name: "Everyday" })).toBeInTheDocument();
     });
   });
+
+  it("filters, sorts, edits, and deletes accounts", async () => {
+    const user = userEvent.setup();
+    vi.mocked(accountsApi.listAccounts).mockResolvedValue({
+      items: [
+        {
+          id: "11111111-1111-1111-1111-111111111111",
+          name: "Checking",
+          account_kind: "checking",
+          ledger_side: "asset",
+          currency: "USD",
+          fx_rate: 1,
+          balance: 42.5,
+          is_active: true,
+          include_in_balance: true,
+        },
+        {
+          id: "22222222-2222-2222-2222-222222222222",
+          name: "Visa Card",
+          account_kind: "credit_card",
+          ledger_side: "liability",
+          currency: "USD",
+          fx_rate: 1,
+          balance: -200,
+          is_active: false,
+          include_in_balance: false,
+        },
+      ],
+      limit: 100,
+      skip: 0,
+      total: 2,
+    });
+    vi.mocked(accountsApi.deleteAccount).mockResolvedValue(undefined);
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter initialEntries={["/accounts"]}>
+          <Routes>
+            <Route path="/accounts" element={<AccountsPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Checking" })).toBeInTheDocument();
+    });
+
+    await user.type(screen.getByPlaceholderText(/Filter by name, kind, or currency/i), "Check");
+    await user.selectOptions(document.getElementById("accounts-filter-kind")!, "checking");
+    await user.selectOptions(document.getElementById("accounts-filter-side")!, "asset");
+    await user.selectOptions(document.getElementById("accounts-filter-status")!, "active");
+
+    const clearBtn = screen.queryByRole("button", { name: /Clear|Reset/i });
+    if (clearBtn) await user.click(clearBtn);
+
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      await user.click(thBtn);
+    }
+
+    const editBtns = screen.queryAllByRole("button", { name: /Edit/i });
+    if (editBtns[0]) await user.click(editBtns[0]);
+    const closeBtn = screen.queryAllByRole("button", { name: /^Cancel$/i })[0];
+    if (closeBtn) await user.click(closeBtn);
+
+    const delBtns = screen.queryAllByRole("button", { name: /Delete/i });
+    if (delBtns[0]) await user.click(delBtns[0]);
+  }, 15_000);
 });

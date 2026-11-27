@@ -364,6 +364,8 @@ class TestEnsureFromAuthSubject:
         assert written.display_name == "John Doe"
         assert written.phone == "+15551212"
         assert written.provider_type == ProviderType.GOOGLE
+        assert written.auth_provider == "local"
+        assert written.password is None
 
     @patch.object(UsersService, "create")
     def test_skips_provider_refresh_when_omitted(self, mock_create, users_service):

@@ -1,10 +1,12 @@
 import type { FormEvent } from "react";
 
 import type { SpendingGroupBy } from "@/api/reports";
+import { ScopedAIPanel, ScopedAITrigger, useScopedAIToggle } from "@/components/ai/ScopedAICopilot";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useLocale } from "@/i18n/LocaleProvider";
 import { presetReportWindowDates, type ReportWindowPreset } from "@/lib/reportWindow";
 
 export type ReportFilterValues = {
@@ -53,6 +55,17 @@ export function ReportFilters({
   windowError,
   isSubmitting = false,
 }: ReportFiltersProps) {
+  const { locale, messages } = useLocale();
+  const ft = messages.reports.filters;
+  const filtersAi = useScopedAIToggle();
+
+  const presetLabels: Record<ReportWindowPreset, string> = {
+    this_month: ft.thisMonth,
+    last_3_months: ft.last3Months,
+    ytd: ft.ytd,
+    last_12_months: ft.last12Months,
+  };
+
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     onSubmit();
@@ -67,20 +80,23 @@ export function ReportFilters({
 
   return (
     <form
-      className="space-y-4 rounded-lg border border-border bg-card p-4 text-card-foreground"
+      className="space-y-4 rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xs"
       onSubmit={handleSubmit}
       noValidate
     >
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold">Filters</h2>
+          <h2 className="text-sm font-semibold">{ft.title}</h2>
           <p className="text-xs text-muted-foreground">
-            Windows are validated against the API client-contract
-            {typeof maxDays === "number" ? ` (max ${String(maxDays)} days)` : ""}.
+            {ft.hintPrefix}
+            {typeof maxDays === "number"
+              ? ` (${ft.maxDaysPrefix} ${String(maxDays)} ${ft.maxDaysSuffix})`
+              : ""}
+            .
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1" role="group" aria-label="Quick date presets">
+          <div className="flex flex-wrap gap-1" role="group" aria-label={ft.presetsLabel}>
             {PRESETS.map((preset) => (
               <Button
                 key={preset.id}
@@ -91,19 +107,54 @@ export function ReportFilters({
                   applyPreset(preset.id);
                 }}
               >
-                {preset.label}
+                {presetLabels[preset.id] ?? preset.label}
               </Button>
             ))}
           </div>
           <Button type="submit" disabled={isSubmitting || windowError !== null}>
-            Run report
+            {ft.runReport}
           </Button>
+          <ScopedAITrigger
+            open={filtersAi.open}
+            panelId={filtersAi.panelId}
+            onToggle={filtersAi.toggle}
+          />
         </div>
       </div>
 
+      <ScopedAIPanel
+        id={filtersAi.panelId}
+        open={filtersAi.open}
+        onClose={filtersAi.close}
+        module="reports"
+        view="filters"
+        control="report-filters"
+        title={ft.title}
+        currency={value.currency || undefined}
+        surfaceContext={{
+          start_date: value.startDate,
+          end_date: value.endDate,
+          account_id: value.accountId || null,
+          currency: value.currency || null,
+          group_by: showGroupBy ? value.groupBy : null,
+          max_window_days: maxDays,
+        }}
+        suggestedPrompts={
+          locale === "es-CO"
+            ? [
+                "¿Qué período conviene analizar según mis datos actuales?",
+                "¿Cómo cambia el análisis al filtrar por moneda o cuenta específica?",
+              ]
+            : [
+                "Which date window makes the most sense for analyzing my current trends?",
+                "How does filtering by account or currency scope these metrics?",
+              ]
+        }
+      />
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1.5">
-          <Label htmlFor="report-start-date">Start date</Label>
+          <Label htmlFor="report-start-date">{ft.startDate}</Label>
           <Input
             id="report-start-date"
             type="date"
@@ -115,7 +166,7 @@ export function ReportFilters({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="report-end-date">End date</Label>
+          <Label htmlFor="report-end-date">{ft.endDate}</Label>
           <Input
             id="report-end-date"
             type="date"
@@ -127,7 +178,7 @@ export function ReportFilters({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="report-currency">Currency</Label>
+          <Label htmlFor="report-currency">{ft.currency}</Label>
           <NativeSelect
             id="report-currency"
             value={value.currency}
@@ -135,7 +186,7 @@ export function ReportFilters({
               onChange({ ...value, currency: event.target.value });
             }}
           >
-            <option value="">Auto (dominant)</option>
+            <option value="">{ft.autoDominant}</option>
             {availableCurrencies.map((code) => (
               <option key={code} value={code}>
                 {code}
@@ -144,7 +195,7 @@ export function ReportFilters({
           </NativeSelect>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="report-account">Account</Label>
+          <Label htmlFor="report-account">{ft.account}</Label>
           <NativeSelect
             id="report-account"
             value={value.accountId}
@@ -152,7 +203,7 @@ export function ReportFilters({
               onChange({ ...value, accountId: event.target.value });
             }}
           >
-            <option value="">All accounts</option>
+            <option value="">{ft.allAccounts}</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>
                 {account.name}
@@ -162,7 +213,7 @@ export function ReportFilters({
         </div>
         {showGroupBy ? (
           <div className="space-y-1.5">
-            <Label htmlFor="report-group-by">Group by</Label>
+            <Label htmlFor="report-group-by">{ft.groupBy}</Label>
             <NativeSelect
               id="report-group-by"
               value={value.groupBy}
@@ -171,8 +222,8 @@ export function ReportFilters({
                 onChange({ ...value, groupBy: next });
               }}
             >
-              <option value="category">Category</option>
-              <option value="account">Account</option>
+              <option value="category">{ft.groupByCategory}</option>
+              <option value="account">{ft.groupByAccount}</option>
             </NativeSelect>
           </div>
         ) : null}

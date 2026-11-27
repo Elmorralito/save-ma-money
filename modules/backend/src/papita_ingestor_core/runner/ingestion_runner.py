@@ -32,6 +32,30 @@ OwnerProvider: TypeAlias = UsersDTO | Callable[[], UsersDTO]
 _KNOWN_OUTCOMES = frozenset({"created", "updated", "reactivated"})
 _DOMAIN_RE = re.compile(r"@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})")
 _MAX_NON_EMAIL_DLQ_CHARS = 16_384
+_CONTROL_BIDI_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200e\u200f\u202a-\u202e\u2066-\u2069]")
+_PAN_RE = re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)")
+_TOKEN_RE = re.compile(
+    r"(?:Bearer\s+[A-Za-z0-9._~+/=-]{12,}|ya29\.[A-Za-z0-9._-]{16,}|1//[A-Za-z0-9._-]{16,})",
+    re.IGNORECASE,
+)
+
+
+def _redact_text(text: str, *, max_len: int = 500) -> str:
+    """Strip control/BiDi chars, mask card PANs and OAuth tokens, and bound length."""
+    if not text:
+        return ""
+    cleaned = _CONTROL_BIDI_RE.sub("", text)
+    cleaned = _TOKEN_RE.sub("[REDACTED_TOKEN]", cleaned)
+    cleaned = _PAN_RE.sub(
+        lambda m: (
+            f"****{re.sub(r'[^0-9]', '', m.group(0))[-4:]}"
+            if 13 <= len(re.sub(r"[^0-9]", "", m.group(0))) <= 19
+            else m.group(0)
+        ),
+        cleaned,
+    )
+    cleaned = " ".join(cleaned.split())
+    return cleaned[:max_len]
 
 
 def _safe_dlq_payload(record: RawRecord) -> str:
@@ -63,6 +87,7 @@ class IngestionRunner:
     _bridge: IngestionBridgeService | Any
     _parsers: list[BaseRecordParser] | None
     _settings: BaseIngestorSettings
+    _enricher: Callable[[UsersDTO, Any], Any] | None
 
     def __init__(
         self,
@@ -72,6 +97,7 @@ class IngestionRunner:
         bridge: IngestionBridgeService | Any,
         parsers: Iterable[BaseRecordParser] | None = None,
         settings: BaseIngestorSettings | None = None,
+        enricher: Callable[[UsersDTO, Any], Any] | None = None,
     ) -> None:
         if owner is None:
             raise ValueError("IngestionRunner requires an owner UsersDTO or zero-arg callable")
@@ -80,6 +106,11 @@ class IngestionRunner:
         self._bridge = bridge
         self._parsers = list(parsers) if parsers is not None else None
         self._settings = settings or BaseIngestorSettings()
+        self._enricher = enricher
+
+    def set_enricher(self, enricher: Callable[[UsersDTO, Any], Any] | None) -> None:
+        """Attach or replace an optional per-record FK enricher before bridge mapping."""
+        self._enricher = enricher
 
     @property
     def source_id(self) -> str:
@@ -158,8 +189,8 @@ class IngestionRunner:
 
         return result
 
-    def _parse_and_map(self, *, record: RawRecord, parsers: list[BaseRecordParser]) -> list[Any]:
-        """Select parser, parse/validate, and map to one or more bridge requests."""
+    def _parse_and_map(self, *, owner: UsersDTO, record: RawRecord, parsers: list[BaseRecordParser]) -> list[Any]:
+        """Select parser, parse/validate, optionally enrich FKs, and map to bridge requests."""
         if not (record.source_ref or "").strip():
             raise IngestorValidationError("RawRecord.source_ref is required for idempotent ingest")
 
@@ -175,12 +206,17 @@ class IngestionRunner:
             raise IngestorParseError(str(exc)) from exc
 
         if not validated:
-            raise IngestorParseError(f"Parser {parser.parser_id!r} produced no records")
+            # Intentional clean ignore (e.g. non-ledger security/statement/cashflow-excluded alert).
+            return []
 
         requests: list[Any] = []
         for parsed in validated:
             if not (parsed.source_ref or "").strip():
                 raise IngestorValidationError("ParsedRecord.source_ref is required for idempotent ingest")
+            if self._enricher is not None:
+                parsed = self._enricher(owner, parsed)
+            if parsed.description:
+                parsed = parsed.model_copy(update={"description": _redact_text(parsed.description, max_len=500)})
             requests.append(to_ingest_transaction_request(parsed))
         return requests
 
@@ -210,16 +246,17 @@ class IngestionRunner:
             result.reactivated += 1
 
     def _record_persist_failure(self, *, record: RawRecord, result: RunResult, exc: IngestorPersistError) -> None:
+        safe_msg = _redact_text(str(exc), max_len=500)
         result.failed += 1
         result.failures.append(
             RecordFailure(
                 source_ref=record.source_ref,
                 error_type=type(exc).__name__,
-                message=str(exc),
+                message=safe_msg,
                 dead_lettered=False,
             )
         )
-        logger.warning("Persist failed source_ref=%s: %s", record.source_ref, exc)
+        logger.warning("Persist failed source_ref=%s: %s", record.source_ref, safe_msg)
 
     def _process_record(
         self,
@@ -230,7 +267,7 @@ class IngestionRunner:
         parsers: list[BaseRecordParser],
     ) -> None:
         try:
-            requests = self._parse_and_map(record=record, parsers=parsers)
+            requests = self._parse_and_map(owner=owner, record=record, parsers=parsers)
             if self._settings.dry_run:
                 result.dry_run_skipped += len(requests)
                 return
@@ -264,7 +301,7 @@ class IngestionRunner:
                 RecordFailure(
                     source_ref=record.source_ref,
                     error_type="IngestorAckError",
-                    message=str(exc),
+                    message=_redact_text(str(exc), max_len=500),
                     dead_lettered=False,
                 )
             )
@@ -279,6 +316,7 @@ class IngestionRunner:
         exc: Exception,
     ) -> None:
         """Record a DLQ row; on success ack the poison message to stop redelivery."""
+        safe_msg = _redact_text(str(exc), max_len=500)
         if self._settings.dry_run:
             result.failed += 1
             result.dry_run_skipped += 1
@@ -286,7 +324,7 @@ class IngestionRunner:
                 RecordFailure(
                     source_ref=record.source_ref,
                     error_type=type(exc).__name__,
-                    message=str(exc),
+                    message=safe_msg,
                     dead_lettered=False,
                 )
             )
@@ -310,7 +348,7 @@ class IngestionRunner:
             RecordFailure(
                 source_ref=record.source_ref,
                 error_type=type(exc).__name__,
-                message=str(exc),
+                message=safe_msg,
                 dead_lettered=dead_lettered,
             )
         )

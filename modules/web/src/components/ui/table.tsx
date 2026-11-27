@@ -11,7 +11,12 @@ function Table({ className, ...props }: HTMLAttributes<HTMLTableElement>) {
 }
 
 function TableHeader({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
-  return <thead className={cn("[&_tr]:border-b", className)} {...props} />;
+  return (
+    <thead
+      className={cn("bg-muted/40 [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      {...props}
+    />
+  );
 }
 
 function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) {
@@ -43,7 +48,7 @@ function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
   return (
     <th
       className={cn(
-        "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        "h-10 px-4 text-left align-middle text-xs font-semibold uppercase tracking-wide text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -53,7 +58,10 @@ function TableHead({ className, ...props }: ThHTMLAttributes<HTMLTableCellElemen
 
 function TableCell({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("p-2 align-middle [&:has([role=checkbox])]:pr-0", className)} {...props} />
+    <td
+      className={cn("px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0", className)}
+      {...props}
+    />
   );
 }
 

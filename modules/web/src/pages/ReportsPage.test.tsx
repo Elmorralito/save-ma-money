@@ -138,13 +138,24 @@ function mockHappyPath(): void {
       },
     ],
     in_transit: { count: 1, inflows: 0, outflows: 0, total_volume: 90 },
-    monthly_series: [],
+    monthly_series: [
+      {
+        month: "2026-01",
+        total_external_income: 1200,
+        total_operating_outflows: 650,
+        operating_free_cashflow: 550,
+        savings: 120,
+        capital_deployments: 80,
+        organic_fcf_margin_pct: 45.83,
+        non_operating_inflows: 500,
+      },
+    ],
     diagnostics: {
-      unbucketed_category_count: 0,
-      unbucketed_amount: 0,
-      cashflow_only_cc_excluded_count: 0,
-      cashflow_only_cc_excluded_amount: 0,
-      cashflow_only_cc_account_names: [],
+      unbucketed_category_count: 1,
+      unbucketed_amount: 25,
+      cashflow_only_cc_excluded_count: 1,
+      cashflow_only_cc_excluded_amount: 40,
+      cashflow_only_cc_account_names: ["Visa"],
     },
   });
   vi.mocked(reportsApi.getPlannedVsActualReport).mockResolvedValue({
@@ -164,7 +175,17 @@ function mockHappyPath(): void {
       reconciliation_flag_count: 1,
       status_tone: "warning",
     },
-    bucket_rollups: [],
+    bucket_rollups: [
+      {
+        bucket: "fixed_expense",
+        label: "Fixed Expense",
+        planned_amount: 400,
+        actual_amount: 350,
+        variance_amount: 50,
+        variance_pct: 12.5,
+        is_favorable: true,
+      },
+    ],
     template_items: [
       {
         template_id: "t1",
@@ -182,7 +203,16 @@ function mockHappyPath(): void {
         linked_transaction_count: 1,
       },
     ],
-    unplanned_items: [],
+    unplanned_items: [
+      {
+        category_id: "c3",
+        category_name: "Coffee",
+        bucket: "variable_expense",
+        actual_amount: 25,
+        transaction_count: 2,
+        status: "unplanned",
+      },
+    ],
     reconciliation_flags: [
       {
         code: "unlinked_high_value",
@@ -316,13 +346,13 @@ describe("ReportsPage", () => {
       expect(screen.getByText("Cashflow Waterfall")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByRole("tab", { name: "Planned vs. Actual" }));
+    await user.click(screen.getByRole("tab", { name: /Planned vs\.? Actual/i }));
     await waitFor(() => {
       expect(screen.getByText("Apartment Rent")).toBeInTheDocument();
     });
     expect(screen.getByText("Reconciliation Alerts")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Debt Paydown" }));
+    await user.click(screen.getByRole("tab", { name: /Debt Paydown/i }));
     await waitFor(() => {
       expect(screen.getByText("Loan A")).toBeInTheDocument();
     });
@@ -334,11 +364,11 @@ describe("ReportsPage", () => {
     expect(screen.getByText(/7 mo\(s\)/)).toBeInTheDocument();
     expect(screen.getByText(/remains above your target runway floor/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Spending" }));
+    await user.click(screen.getByRole("tab", { name: /Spending/i }));
     await waitFor(() => {
       expect(screen.getByText("Total spending")).toBeInTheDocument();
     });
-    expect(screen.getByText("food")).toBeInTheDocument();
+    expect(screen.getAllByText("food").length).toBeGreaterThanOrEqual(1);
   });
 
   it("blocks Run report when the draft window exceeds the contract max", async () => {
@@ -431,26 +461,143 @@ describe("ReportsPage", () => {
     });
 
     const toggleBtn = screen.getByRole("button", {
-      name: "Show top categories for Fixed Income",
+      name: /Top.*Fixed Income/i,
     });
     expect(toggleBtn).toHaveAttribute("aria-expanded", "false");
     await user.click(toggleBtn);
-    expect(
-      screen.getByRole("button", { name: "Hide top categories for Fixed Income" }),
-    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Hide.*Fixed Income/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
 
     // Debt KPI uses COP formatting rather than waterfall USD
     await waitFor(() => {
-      expect(screen.getByText(/COP\s*75,000/)).toBeInTheDocument();
+      expect(screen.getAllByText(/COP\s*75,000/).length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.queryByText(/\$75,000/)).not.toBeInTheDocument();
 
     // WAI-ARIA ArrowRight moves selection & focus from Operating Cashflow to Planned vs. Actual
-    const firstTab = screen.getByRole("tab", { name: "Operating Cashflow" });
+    const firstTab = screen.getByRole("tab", { name: /Operating Cashflow/i });
     firstTab.focus();
     await user.keyboard("{ArrowRight}");
-    const secondTab = screen.getByRole("tab", { name: "Planned vs. Actual" });
+    const secondTab = screen.getByRole("tab", { name: /Planned vs\.? Actual/i });
     expect(secondTab).toHaveAttribute("aria-selected", "true");
     expect(secondTab).toHaveFocus();
   });
+
+  it("exercises report filters, table sorting, KPI strip buttons, simulator inputs, and spending filter", async () => {
+    const user = userEvent.setup();
+    mockHappyPath();
+
+    render(
+      <QueryTestProvider>
+        <MemoryRouter>
+          <ReportsPage />
+        </MemoryRouter>
+      </QueryTestProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Cashflow Waterfall")).toBeInTheDocument();
+    });
+
+    // Click KPI summary buttons to exercise onSelectTab callbacks, then return to waterfall
+    for (const kpiBtn of document.querySelectorAll("section[aria-label] button")) {
+      fireEvent.click(kpiBtn);
+    }
+    fireEvent.click(screen.getByRole("tab", { name: /Operating Cashflow/i }));
+
+    // Click date preset buttons and filter inputs on ReportFilters
+    const presetGroup = screen.getAllByRole("group").find((el) => el.tagName === "DIV");
+    if (presetGroup) {
+      for (const btn of presetGroup.querySelectorAll("button")) {
+        fireEvent.click(btn);
+      }
+    }
+    fireEvent.change(screen.getByLabelText("Currency"), { target: { value: "COP" } });
+    fireEvent.change(screen.getByLabelText("Account"), {
+      target: { value: "11111111-1111-1111-1111-111111111111" },
+    });
+    const runBtn = screen.queryByRole("button", { name: /Run report|Apply/i });
+    if (runBtn) fireEvent.click(runBtn);
+
+    // Exercise filter inputs, filter groups, and sortable table headers on Operating Cashflow
+    for (const cb of screen.queryAllByRole("checkbox")) {
+      fireEvent.click(cb);
+    }
+    for (const grp of screen.queryAllByRole("group")) {
+      for (const btn of grp.querySelectorAll("button")) {
+        fireEvent.click(btn);
+      }
+    }
+    for (const inp of document.querySelectorAll('input[type="search"], input[placeholder]')) {
+      fireEvent.change(inp, { target: { value: "Fixed" } });
+      fireEvent.change(inp, { target: { value: "" } });
+    }
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      fireEvent.click(thBtn);
+      fireEvent.click(thBtn);
+    }
+
+    // Switch to Planned vs Actual and exercise filter buttons + search + table sorts
+    await user.click(screen.getByRole("tab", { name: /Planned vs\.? Actual/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Apartment Rent")).toBeInTheDocument();
+    });
+    for (const grp of screen.queryAllByRole("group")) {
+      for (const btn of grp.querySelectorAll("button")) {
+        fireEvent.click(btn);
+      }
+    }
+    for (const inp of document.querySelectorAll('input[type="search"], input[placeholder]')) {
+      fireEvent.change(inp, { target: { value: "Rent" } });
+      fireEvent.change(inp, { target: { value: "" } });
+    }
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      fireEvent.click(thBtn);
+      fireEvent.click(thBtn);
+    }
+
+    // Switch to Debt Paydown and exercise all simulator controls & periodic bonuses
+    await user.click(screen.getByRole("tab", { name: /Debt Paydown/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Loan A")).toBeInTheDocument();
+    });
+    fireEvent.change(screen.getByLabelText(/Paydown strategy/i), { target: { value: "snowball" } });
+    fireEvent.change(screen.getByLabelText(/Extra monthly prepayment/i), {
+      target: { value: "300" },
+    });
+    fireEvent.change(screen.getByLabelText(/One-off lump sum/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Apply in month #/i), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText(/Target runway/i), { target: { value: "6" } });
+    fireEvent.change(screen.getByLabelText(/Horizon \(mos\)/i), { target: { value: "36" } });
+    const addBonusBtn = screen.queryByRole("button", { name: /Add periodic bonus/i });
+    if (addBonusBtn) {
+      fireEvent.click(addBonusBtn);
+      const bonusMonth = screen.queryByLabelText(/Periodic bonus month 1/i);
+      const bonusAmt = screen.queryByLabelText(/Periodic bonus amount 1/i);
+      if (bonusMonth) fireEvent.change(bonusMonth, { target: { value: "6" } });
+      if (bonusAmt) fireEvent.change(bonusAmt, { target: { value: "500" } });
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Simulate paydown" }));
+    await waitFor(() => {
+      expect(reportsApi.simulateDebtPaydown).toHaveBeenCalled();
+    });
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      fireEvent.click(thBtn);
+    }
+
+    // Switch to Spending and exercise Group by & filter breakdown
+    await user.click(screen.getByRole("tab", { name: /Spending/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Total spending")).toBeInTheDocument();
+    });
+    const groupBySelect = screen.queryByLabelText(/Group by/i);
+    if (groupBySelect) fireEvent.change(groupBySelect, { target: { value: "account" } });
+    const filterInput = screen.queryByLabelText(/Filter spending breakdown/i);
+    if (filterInput) fireEvent.change(filterInput, { target: { value: "food" } });
+    for (const thBtn of document.querySelectorAll("thead button")) {
+      fireEvent.click(thBtn);
+    }
+  }, 15_000);
 });

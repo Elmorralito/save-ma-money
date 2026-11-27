@@ -60,7 +60,7 @@ vi.mock("@/api/health", () => ({
     timestamp: "2026-07-29T00:00:00Z",
     database: "connected",
     auth: "skipped",
-    auth_detail: "auth provider is local — supabase probe skipped",
+    auth_detail: "local auth active",
     redis: "skipped",
     redis_detail: "redis disabled",
   })),
@@ -285,5 +285,14 @@ describe("AppLayout", () => {
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 1, name: "Login" })).toBeInTheDocument();
     });
+  });
+
+  it("does not render a global top-bar Ask AI chrome button", async () => {
+    renderShell();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("session-user-chip")).toHaveTextContent("tester");
+    });
+    expect(screen.queryByRole("button", { name: /Ask AI/i })).not.toBeInTheDocument();
   });
 });

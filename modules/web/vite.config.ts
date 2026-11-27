@@ -16,10 +16,10 @@ export default defineConfig({
     },
   },
   server: {
-    // Same-origin `/api` in local dev — avoids CORS against papita_txnsapi (:8000).
+    // Same-origin `/api` in local dev — avoids CORS against papita_txnsapi (:8000 or API_PORT).
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: process.env.VITE_API_PROXY_TARGET ?? "http://localhost:8000",
         changeOrigin: true,
       },
     },

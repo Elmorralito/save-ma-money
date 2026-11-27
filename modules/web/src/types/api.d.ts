@@ -165,7 +165,7 @@ export interface paths {
         put?: never;
         /**
          * Ai Chat
-         * @description Forward a prompt (+ optional redacted financial snapshot) to the AI sidecar.
+         * @description Forward a guarded prompt (+ optional redacted snapshot & surface context) via AITransportGateway.
          */
         post: operations["ai_chat_api_v1_ai_chat_post"];
         delete?: never;
@@ -185,9 +185,53 @@ export interface paths {
         put?: never;
         /**
          * Ai Chat Stream
-         * @description Stream SSE response chunks from the self-hosted AI sidecar.
+         * @description Stream SSE response chunks transparently through the AI transport gateway.
          */
         post: operations["ai_chat_stream_api_v1_ai_chat_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ai Config
+         * @description Return owner's saved LLM/CLI/LAN configuration (API keys are never returned in plaintext).
+         */
+        get: operations["get_ai_config_api_v1_ai_config_get"];
+        /**
+         * Update Ai Config
+         * @description Persist owner's AI provider, mode, permissions, exact model ID, and Fernet-encrypted key.
+         */
+        put: operations["update_ai_config_api_v1_ai_config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List Ai Models
+         * @description Connect to the chosen CLI, LAN/local model (incl. Qwen Financial LoRA), or cloud API and return model IDs.
+         */
+        post: operations["list_ai_models_api_v1_ai_models_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -203,7 +247,7 @@ export interface paths {
         };
         /**
          * Get Ai Status
-         * @description Return whether the self-hosted AI sidecar is enabled and reachable for this owner.
+         * @description Return enabled and reachable AI connections across sidecar CLIs, LAN models, and direct APIs.
          */
         get: operations["get_ai_status_api_v1_ai_status_get"];
         put?: never;
@@ -225,26 +269,7 @@ export interface paths {
         put?: never;
         /**
          * Login
-         * @description OAuth2 password flow — Supabase Auth sign-in or local credential verify.
-         *
-         *     Clients must put the **email** in the OAuth2 ``username`` form field when
-         *     ``AUTH_PROVIDER=supabase``. Local mode still accepts email or derived username.
-         *     Supabase login provisionally ensures a Papita row by Auth ``sub``; recent
-         *     orphan Auth users may be deleted if provision fails (not for inactive tenants).
-         *
-         *     Args:
-         *         form: OAuth2 password form (``username`` + ``password``).
-         *         _rate_limit: Per-IP login rate-limit dependency (side effect only).
-         *         settings: Selects Auth mode and JWT/session defaults.
-         *         users_service: Verifies credentials (local) or ensures Auth-linked user.
-         *         auth_manager: Issues HS256 access tokens in local mode only.
-         *
-         *     Returns:
-         *         ``TokenResponse`` with access token; Supabase also returns ``refresh_token``.
-         *
-         *     Raises:
-         *         HTTPException: 401 for bad credentials; 429 when Auth rate-limits; other
-         *             provision/Auth failures mapped from helpers.
+         * @description OAuth2 password flow — local credential verify and HS256 JWT issuance.
          */
         post: operations["login_api_v1_auth_login_post"];
         delete?: never;
@@ -264,7 +289,7 @@ export interface paths {
         put?: never;
         /**
          * Logout
-         * @description Revoke the Supabase Auth session when ``AUTH_PROVIDER=supabase``.
+         * @description Clear the access-token cookie and return deferred status for stateless JWTs.
          */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
@@ -284,10 +309,9 @@ export interface paths {
          * Get Current User
          * @description Return the authenticated user profile (protected route smoke test).
          *
-         *     Uses ``get_current_owner``, which verifies the bearer JWT and may refresh
-         *     Auth-linked profile fields under Supabase mode. When Redis is required,
-         *     revoked tokens are rejected (denylist fail-closed). Tenant API rate limits
-         *     apply (same Free/Pro/Enterprise quotas as other protected routers).
+         *     Uses ``get_current_owner``, which verifies the bearer JWT (header or
+         *     HttpOnly cookie). Tenant API rate limits apply (same Free/Pro/Enterprise
+         *     quotas as other protected routers).
          *
          *     Args:
          *         owner: Authenticated tenant user resolved from the bearer JWT.
@@ -297,9 +321,8 @@ export interface paths {
          *         Public ``UserResponse`` for the current session user (never includes password).
          *
          *     Raises:
-         *         HTTPException: 401 when credentials are missing/invalid/revoked; 429 when
-         *             the tenant API quota is exceeded; 503 when the Redis denylist is
-         *             required but unavailable.
+         *         HTTPException: 401 when credentials are missing/invalid; 429 when the
+         *             tenant API quota is exceeded.
          */
         get: operations["get_current_user_api_v1_auth_me_get"];
         put?: never;
@@ -319,49 +342,13 @@ export interface paths {
         };
         /**
          * Oauth Callback Get
-         * @description Browser redirect target for Supabase OAuth (PKCE cookie + ``code``).
-         *
-         *     Use with ``GET /auth/oauth/{provider}?follow=true`` so the PKCE verifier,
-         *     provider, and ``redirect_to`` are available from HTTP-only cookies. Clears
-         *     those cookies after a successful exchange.
-         *
-         *     Args:
-         *         request: Incoming redirect; cookies supply verifier/provider/redirect.
-         *         _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-         *         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-         *         users_service: Provisions or refreshes the tenant profile.
-         *         code: Authorization code query param from the IdP.
-         *         error: Optional IdP error code when authorize failed.
-         *         error_description: Optional human-readable IdP error text.
-         *
-         *     Returns:
-         *         JSON body matching ``TokenResponse`` with PKCE cookies cleared.
-         *
-         *     Raises:
-         *         HTTPException: 501 when not Supabase; 400 missing code/cookies; 401 on Auth errors.
+         * @description Browser redirect target for direct Google OAuth PKCE.
          */
         get: operations["oauth_callback_get_api_v1_auth_oauth_callback_get"];
         put?: never;
         /**
          * Oauth Callback Post
-         * @description Complete Supabase OAuth with authorization ``code`` + PKCE verifier.
-         *
-         *     Calls GoTrue ``exchange_code_for_session``, then provisions
-         *     ``papita_transactions.users`` by Auth ``sub``. Preferred completion path for
-         *     API clients that can store the ``code_verifier`` from authorize start.
-         *
-         *     Args:
-         *         body: Provider, auth code, PKCE verifier, optional redirect and name.
-         *         request: Used to allowlist ``redirect_to`` against the API callback URL.
-         *         _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-         *         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-         *         users_service: Provisions or refreshes the tenant profile.
-         *
-         *     Returns:
-         *         Supabase session tokens as ``TokenResponse``.
-         *
-         *     Raises:
-         *         HTTPException: 501 when not Supabase; 400/401 on provider or exchange errors.
+         * @description Browser PKCE flow completes via ``GET /auth/oauth/callback``.
          */
         post: operations["oauth_callback_post_api_v1_auth_oauth_callback_post"];
         delete?: never;
@@ -379,31 +366,7 @@ export interface paths {
         };
         /**
          * Start Oauth
-         * @description Start Supabase OAuth (PKCE) via ``sign_in_with_oauth``.
-         *
-         *     Returns the authorize ``url`` and ``code_verifier``. Clients must keep the
-         *     verifier and send it with the authorization ``code`` to
-         *     ``POST /auth/oauth/callback``.
-         *
-         *     When ``follow=true``, responds with ``302`` to the IdP and stores the PKCE
-         *     verifier, provider, and ``redirect_to`` in HTTP-only cookies for
-         *     ``GET /auth/oauth/callback``. Cookie ``Secure`` follows settings
-         *     (``AUTH_COOKIE_SECURE`` / non-debug default).
-         *
-         *     Args:
-         *         provider: Path segment (``google`` or ``github``).
-         *         request: Used to resolve the allowlisted redirect URI.
-         *         _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-         *         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-         *         redirect_to: Optional allowlisted redirect override.
-         *         follow: When ``True``, 302-redirect and set PKCE cookies.
-         *
-         *     Returns:
-         *         ``OAuthStartResponse`` JSON, or ``RedirectResponse`` when ``follow=true``.
-         *
-         *     Raises:
-         *         HTTPException: 501 when not Supabase; 404 unknown provider; 400 bad redirect;
-         *             502 when Supabase fails to start OAuth.
+         * @description Start direct local Google OAuth (PKCE).
          */
         get: operations["start_oauth_api_v1_auth_oauth__provider__get"];
         put?: never;
@@ -425,22 +388,7 @@ export interface paths {
         put?: never;
         /**
          * Refresh Token
-         * @description Rotate Supabase Auth access/refresh tokens.
-         *
-         *     When ``AUTH_PROVIDER=local``, returns HTTP 501 (no refresh-token store).
-         *
-         *     Args:
-         *         body: Current Supabase refresh token.
-         *         _rate_limit: Per-IP OAuth/refresh rate-limit dependency (side effect only).
-         *         settings: Application settings selecting Auth provider.
-         *
-         *     Returns:
-         *         New access and refresh tokens from Supabase Auth, or a deferred JSON body
-         *         with status 501 in local mode.
-         *
-         *     Raises:
-         *         HTTPException: 401 on invalid refresh token; 400 on malformed Auth response;
-         *             503 when Supabase URL/anon key are missing.
+         * @description Self-hosted HS256 JWTs do not use an external refresh-token store.
          */
         post: operations["refresh_token_api_v1_auth_refresh_post"];
         delete?: never;
@@ -460,26 +408,7 @@ export interface paths {
         put?: never;
         /**
          * Register User
-         * @description Register a new user via Supabase Auth (or local ``UsersService``).
-         *
-         *     Email is the canonical login identity. A schema ``username`` handle is
-         *     derived from the email local-part when not supplied. Under Supabase, Auth
-         *     signup runs first; Papita provision is idempotent. Provision failure after a
-         *     successful Auth create triggers best-effort Admin orphan cleanup.
-         *
-         *     Args:
-         *         body: Registration payload (email, password, optional profile fields).
-         *         _rate_limit: Per-IP register rate-limit dependency (side effect only).
-         *         settings: Selects ``supabase`` vs ``local`` Auth mode.
-         *         users_service: Creates or links the tenant ``users`` row.
-         *
-         *     Returns:
-         *         Public ``RegisterResponse`` for the new or already-linked tenant user,
-         *         including ``email_confirmation_required`` when Confirm email is on.
-         *
-         *     Raises:
-         *         HTTPException: Mapped Auth/provision errors (409 conflict, 401 inactive,
-         *             429 rate limit, 503 misconfigured Supabase, etc.).
+         * @description Register a new self-hosted user via ``UsersService``.
          */
         post: operations["register_user_api_v1_auth_register_post"];
         delete?: never;
@@ -499,10 +428,10 @@ export interface paths {
         put?: never;
         /**
          * Resend Confirmation
-         * @description Resend Supabase signup confirmation email (Bearer / smoke twin of BFF).
+         * @description Soft-success resend confirmation stub for self-hosted local auth.
          *
-         *     Always returns 204 on soft success (including unknown emails). Rate-limited
-         *     with the register bucket because both trigger Auth SMTP.
+         *     Always returns 204 (including unknown emails). Rate-limited with the
+         *     register bucket for anti-enumeration parity with older clients.
          */
         post: operations["resend_confirmation_api_v1_auth_resend_confirmation_post"];
         delete?: never;
@@ -522,24 +451,7 @@ export interface paths {
         put?: never;
         /**
          * Complete Sso
-         * @description Complete OAuth when the client already holds Supabase session tokens.
-         *
-         *     Prefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the
-         *     redirect yields a ``code``. This endpoint remains for hash/fragment clients
-         *     that already called Supabase JS and hold access/refresh tokens.
-         *
-         *     Args:
-         *         body: Provider, access token, refresh token, optional display name.
-         *         _rate_limit: Per-IP OAuth rate-limit dependency (side effect only).
-         *         settings: Must be ``AUTH_PROVIDER=supabase`` with URL and anon key.
-         *         users_service: Provisions or refreshes the tenant profile.
-         *
-         *     Returns:
-         *         Validated session as ``TokenResponse`` (refresh falls back to the body).
-         *
-         *     Raises:
-         *         HTTPException: 501 when not Supabase; 401 if session is rejected; 400 on
-         *             provision failures.
+         * @description Deprecated external SSO endpoint (use direct Google OAuth PKCE).
          */
         post: operations["complete_sso_api_v1_auth_sso_post"];
         delete?: never;
@@ -689,7 +601,7 @@ export interface paths {
          *
          *     Returns:
          *         Composite ``HealthResponse`` marked ``degraded`` when the database is down,
-         *         required Supabase Auth is unreachable, or required Redis is down.
+         *         Auth is unreachable, or required Redis is down.
          */
         get: operations["get_health_api_v1_health_get"];
         put?: never;
@@ -709,14 +621,13 @@ export interface paths {
         };
         /**
          * Get Auth Health
-         * @description Probe API↔Supabase Auth (GoTrue) communication health.
+         * @description Probe self-hosted Auth readiness.
          *
-         *     Calls ``GET {SUPABASE_URL}/auth/v1/health`` when ``AUTH_PROVIDER=supabase``.
          *     Local HS256 mode reports healthy with a skipped detail (no network call).
          *
          *     Args:
          *         response: FastAPI response used to set ``Cache-Control: no-store``.
-         *         settings: Application settings with Auth provider and Supabase credentials.
+         *         settings: Application settings with Auth provider configuration.
          *
          *     Returns:
          *         ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);
@@ -962,6 +873,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ingestion/email/test-parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Email Parse
+         * @description Dry-run sample email against the user's configured parsing rules and built-in bank parsers.
+         */
+        post: operations["test_email_parse_api_v1_ingestion_email_test_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/gmail/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Disconnect Gmail
+         * @description Revoke Gmail OAuth refresh token at Google, wipe encrypted DB token, and disable access.
+         */
+        post: operations["disconnect_gmail_api_v1_ingestion_gmail_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/gmail/oauth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gmail Oauth Callback
+         * @description Complete per-user Gmail OAuth and store encrypted refresh token on ingestion_connections.
+         */
+        get: operations["gmail_oauth_callback_api_v1_ingestion_gmail_oauth_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ingestion/gmail/oauth/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Start Gmail Oauth
+         * @description Start per-user incremental Gmail OAuth flow (``gmail.modify`` scope).
+         */
+        get: operations["start_gmail_oauth_api_v1_ingestion_gmail_oauth_start_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ingestion/ibkr/activity-statement": {
         parameters: {
             query?: never;
@@ -1083,6 +1074,126 @@ export interface paths {
         get: operations["get_client_contract_api_v1_meta_client_contract_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/config/{account_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Account Projection Config
+         * @description Persist user-configured interest rates, conventions, and assumptions for an account.
+         */
+        put: operations["save_account_projection_config_api_v1_projections_config__account_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/credit-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Project Credit Card
+         * @description Calculate a credit card payoff schedule (Colombian EA cuotas/revolving or US APR).
+         */
+        post: operations["project_credit_card_api_v1_projections_credit_card_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/investment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Project Investment
+         * @description Calculate compound investment projection net of fees, inflation, FX drift, and taxes.
+         */
+        post: operations["project_investment_api_v1_projections_investment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/loan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Project Loan
+         * @description Calculate a full Colombian EA or US APR loan amortization schedule.
+         */
+        post: operations["project_loan_api_v1_projections_loan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Projection Portfolio
+         * @description Return the owner's debts, credit cards, real estate, and investments with saved configs.
+         */
+        get: operations["get_projection_portfolio_api_v1_projections_portfolio_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projections/real-estate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Project Real Estate
+         * @description Calculate property appreciation, linked mortgage paydown, net equity, and rental cashflow.
+         */
+        post: operations["project_real_estate_api_v1_projections_real_estate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1344,6 +1455,75 @@ export interface paths {
         get: operations["get_trends_report_api_v1_reports_trends_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Domain
+         * @description Search accounts, transactions, payment dues, categories, and projections in one query.
+         *
+         *     Supports kind selectors (``acc``, ``txn``, ``due``, ``cat``, ``proj``), structured
+         *     filters (``date:>=2026-01-01``, ``amount:>=500000``, ``>100000``, ``currency:COP``,
+         *     ``deleted:true``), and exact UUID matching. All results stay strictly within the
+         *     authenticated owner's records.
+         */
+        get: operations["search_domain_api_v1_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get User Settings
+         * @description Return the authenticated owner's profile and domain preferences.
+         */
+        get: operations["get_user_settings_api_v1_settings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update User Settings
+         * @description Update the authenticated owner's profile fields and/or domain preferences.
+         */
+        patch: operations["update_user_settings_api_v1_settings_patch"];
+        trace?: never;
+    };
+    "/api/v1/settings/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset User Settings
+         * @description Reset the authenticated owner's domain preferences back to secure defaults.
+         */
+        post: operations["reset_user_settings_api_v1_settings_reset_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1621,6 +1801,8 @@ export interface components {
         AIChatRequest: {
             /** Connection */
             connection?: string | null;
+            /** Control */
+            control?: string | null;
             /** Currency */
             currency?: string | null;
             /**
@@ -1628,8 +1810,18 @@ export interface components {
              * @default true
              */
             include_financial_context: boolean;
+            /** Locale */
+            locale?: string | null;
+            /** Module */
+            module?: string | null;
             /** Prompt */
             prompt: string;
+            /** Surface Context */
+            surface_context?: {
+                [key: string]: unknown;
+            } | null;
+            /** View */
+            view?: string | null;
         };
         /**
          * AIChatResponse
@@ -1650,6 +1842,104 @@ export interface components {
             reply: string;
         };
         /**
+         * AIConfigResponse
+         * @description Owner-scoped AI/LLM configuration (secrets are never returned in plaintext).
+         */
+        AIConfigResponse: {
+            /** Api Key Hint */
+            api_key_hint?: string | null;
+            /**
+             * Api Permission Granted
+             * @default false
+             */
+            api_permission_granted: boolean;
+            /** Base Url */
+            base_url?: string | null;
+            /**
+             * Cli Permission Granted
+             * @default false
+             */
+            cli_permission_granted: boolean;
+            /**
+             * Default Connection
+             * @default cli:agy
+             */
+            default_connection: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /**
+             * Has Api Key
+             * @default false
+             */
+            has_api_key: boolean;
+            /**
+             * Include Financial Context By Default
+             * @default true
+             */
+            include_financial_context_by_default: boolean;
+            /**
+             * Lan Permission Granted
+             * @default false
+             */
+            lan_permission_granted: boolean;
+            /**
+             * Mode
+             * @default sidecar
+             * @enum {string}
+             */
+            mode: "sidecar" | "lan_local" | "api_key";
+            /** Model */
+            model?: string | null;
+            /**
+             * Payment Dues Ai Enabled
+             * @default true
+             */
+            payment_dues_ai_enabled: boolean;
+            /**
+             * Reports Ai Enabled
+             * @default true
+             */
+            reports_ai_enabled: boolean;
+        };
+        /**
+         * AIConfigUpdateRequest
+         * @description Update owner-scoped AI/LLM provider, CLI/LAN/API mode, model, or encrypted API key.
+         */
+        AIConfigUpdateRequest: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Api Permission Granted */
+            api_permission_granted?: boolean | null;
+            /** Base Url */
+            base_url?: string | null;
+            /**
+             * Clear Api Key
+             * @default false
+             */
+            clear_api_key: boolean;
+            /** Cli Permission Granted */
+            cli_permission_granted?: boolean | null;
+            /** Default Connection */
+            default_connection?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Include Financial Context By Default */
+            include_financial_context_by_default?: boolean | null;
+            /** Lan Permission Granted */
+            lan_permission_granted?: boolean | null;
+            /** Mode */
+            mode?: ("sidecar" | "lan_local" | "api_key") | null;
+            /** Model */
+            model?: string | null;
+            /** Payment Dues Ai Enabled */
+            payment_dues_ai_enabled?: boolean | null;
+            /** Reports Ai Enabled */
+            reports_ai_enabled?: boolean | null;
+        };
+        /**
          * AIConnectionStatus
          * @description Readiness and type metadata for one enabled AI connection (API or CLI).
          */
@@ -1667,6 +1957,59 @@ export interface components {
             provider: string;
             /** Ready */
             ready: boolean;
+        };
+        /**
+         * AIModelOption
+         * @description Selectable exact model ID and readable label.
+         */
+        AIModelOption: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * AIModelsRequest
+         * @description Discover exact model IDs for a CLI/sidecar, LAN/local model, or direct API provider.
+         */
+        AIModelsRequest: {
+            /** Api Key */
+            api_key?: string | null;
+            /** Base Url */
+            base_url?: string | null;
+            /** Connection */
+            connection: string;
+            /**
+             * Mode
+             * @default sidecar
+             * @enum {string}
+             */
+            mode: "sidecar" | "lan_local" | "api_key";
+        };
+        /**
+         * AIModelsResponse
+         * @description Available exact model IDs discovered for the requested provider connection.
+         */
+        AIModelsResponse: {
+            /** Connection */
+            connection: string;
+            /** Default Model */
+            default_model?: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "sidecar" | "lan_local" | "api_key";
+            /** Models */
+            models?: components["schemas"]["AIModelOption"][];
+            /** Ready */
+            ready: boolean;
+            /**
+             * Source
+             * @default live
+             * @enum {string}
+             */
+            source: "live" | "curated";
         };
         /**
          * AIStatusResponse
@@ -1742,6 +2085,51 @@ export interface components {
             name: string;
             real_estate_details?: components["schemas"]["RealEstateDetailsSchema"] | null;
             trading_details?: components["schemas"]["TradingDetailsSchema"] | null;
+        };
+        /** AccountProjectionConfigUpdate */
+        AccountProjectionConfigUpdate: {
+            /** Annual Appreciation Pct */
+            annual_appreciation_pct?: number | null;
+            /** Annual Fee Pct */
+            annual_fee_pct?: number | null;
+            /** Annual Fx Drift Pct */
+            annual_fx_drift_pct?: number | null;
+            /** Annual Inflation Pct */
+            annual_inflation_pct?: number | null;
+            /** Annual Property Tax Pct */
+            annual_property_tax_pct?: number | null;
+            /** Annual Rate Pct */
+            annual_rate_pct?: number | null;
+            /** Extra Monthly Payment */
+            extra_monthly_payment?: number | null;
+            /** Horizon Years */
+            horizon_years?: number | null;
+            /** Investment Type */
+            investment_type?: string | null;
+            /** Linked Mortgage Id */
+            linked_mortgage_id?: string | null;
+            /** Monthly Contribution */
+            monthly_contribution?: number | null;
+            /** Monthly Hoa And Maintenance */
+            monthly_hoa_and_maintenance?: number | null;
+            /** Monthly Insurance */
+            monthly_insurance?: number | null;
+            /** Monthly Payment */
+            monthly_payment?: number | null;
+            /** Monthly Rent Income */
+            monthly_rent_income?: number | null;
+            /** Occupancy Pct */
+            occupancy_pct?: number | null;
+            /** Pay In One Installment */
+            pay_in_one_installment?: boolean | null;
+            /** Rate Convention */
+            rate_convention?: string | null;
+            /** Remaining Months */
+            remaining_months?: number | null;
+            /** Tax On Gains Pct */
+            tax_on_gains_pct?: number | null;
+        } & {
+            [key: string]: unknown;
         };
         /**
          * AccountResponse
@@ -1852,11 +2240,11 @@ export interface components {
         };
         /**
          * AuthHealthResponse
-         * @description API↔Supabase Auth communication health for ``GET /health/auth``.
+         * @description Self-hosted Auth communication health for ``GET /health/auth``.
          *
          *     Attributes:
          *         status: ``healthy`` when Auth is up (or local skip); ``unhealthy`` otherwise.
-         *         provider: Active ``AUTH_PROVIDER`` value.
+         *         provider: Active ``AUTH_PROVIDER`` value (``local``).
          *         reachable: Whether the Auth probe succeeded (local skip counts as reachable).
          *         latency_ms: Round-trip Auth health latency when a network probe ran.
          *         checked_at: UTC time when the probe ran.
@@ -1873,9 +2261,9 @@ export interface components {
             latency_ms?: number | null;
             /**
              * Provider
-             * @enum {string}
+             * @constant
              */
-            provider: "local" | "supabase";
+            provider: "local";
             /** Reachable */
             reachable: boolean;
             /**
@@ -1887,19 +2275,9 @@ export interface components {
         /**
          * AuthProbeDetail
          * @description Allowlisted Auth probe detail strings returned to HTTP clients.
-         *
-         *     Members are stable wire labels for OpenAPI / operators — never raw exception
-         *     text. Values:
-         *
-         *     * ``HEALTHY`` — GoTrue health returned a success status.
-         *     * ``SKIPPED_LOCAL`` — ``AUTH_PROVIDER=local``; no network call.
-         *     * ``NOT_CONFIGURED`` — Supabase URL or anon key missing.
-         *     * ``UNREACHABLE`` — timeout or transport failure reaching Auth.
-         *     * ``PROBE_FAILED`` — unexpected error or Auth HTTP 4xx on the probe.
-         *     * ``UNHEALTHY_STATUS`` — Auth HTTP 5xx on the health endpoint.
          * @enum {string}
          */
-        AuthProbeDetail: "supabase auth healthy" | "auth provider is local — supabase probe skipped" | "supabase auth not configured" | "supabase auth unreachable" | "supabase auth probe failed" | "supabase auth reported unhealthy";
+        AuthProbeDetail: "local auth healthy" | "local auth active";
         /**
          * BalanceResponse
          * @description Response for ``GET /accounts/{account_id}/balance``.
@@ -2280,6 +2658,96 @@ export interface components {
             /** Credit Limit */
             credit_limit: number;
         };
+        /** CreditCardProjectionRequest */
+        CreditCardProjectionRequest: {
+            /**
+             * Annual Rate Pct
+             * @default 25
+             */
+            annual_rate_pct: number;
+            /** Balance */
+            balance: number;
+            /**
+             * Currency
+             * @default COP
+             */
+            currency: string;
+            /**
+             * Handling Fee
+             * @default 0
+             */
+            handling_fee: number;
+            /**
+             * Max Months
+             * @default 120
+             */
+            max_months: number;
+            /**
+             * Monthly New Spend
+             * @default 0
+             */
+            monthly_new_spend: number;
+            /** Monthly Payment */
+            monthly_payment: number;
+            /**
+             * Pay In One Installment
+             * @default false
+             */
+            pay_in_one_installment: boolean;
+            /**
+             * Rate Convention
+             * @default CO_EA
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /** Start Date */
+            start_date?: string | null;
+        };
+        /** CreditCardProjectionResponse */
+        CreditCardProjectionResponse: {
+            /** Currency */
+            currency: string;
+            /** Effective Annual Rate Pct */
+            effective_annual_rate_pct: number;
+            /** Monthly Rate Pct */
+            monthly_rate_pct: number;
+            /** Months To Payoff */
+            months_to_payoff: number | null;
+            /**
+             * Rate Convention
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /** Schedule */
+            schedule: components["schemas"]["CreditCardProjectionRow"][];
+            /** Total Fees */
+            total_fees: number;
+            /** Total Interest */
+            total_interest: number;
+            /** Total Paid */
+            total_paid: number;
+            /** Warning */
+            warning?: string | null;
+        };
+        /** CreditCardProjectionRow */
+        CreditCardProjectionRow: {
+            /** Closing Balance */
+            closing_balance: number;
+            /** Fee Charged */
+            fee_charged: number;
+            /** Interest Charged */
+            interest_charged: number;
+            /** Month */
+            month: number;
+            /** New Spend */
+            new_spend: number;
+            /** Opening Balance */
+            opening_balance: number;
+            /** Payment */
+            payment: number;
+            /** Payment Date */
+            payment_date: string;
+        };
         /**
          * DatabaseHealthResponse
          * @description API↔database communication health for ``GET /health/database``.
@@ -2594,6 +3062,105 @@ export interface components {
             priority_loan_balance: number;
         };
         /**
+         * EmailParseTestRequest
+         * @description Dry-run sample email payload for testing parsing rules.
+         */
+        EmailParseTestRequest: {
+            /** Body */
+            body: string;
+            /** Rules */
+            rules?: components["schemas"]["EmailParsingRuleSchema"][] | null;
+            /** Sender */
+            sender: string;
+            /**
+             * Subject
+             * @default
+             */
+            subject: string;
+        };
+        /**
+         * EmailParseTestResponse
+         * @description Dry-run parse preview result.
+         */
+        EmailParseTestResponse: {
+            /** Amount */
+            amount?: number | null;
+            /** Currency */
+            currency?: string | null;
+            /** Default Account Id */
+            default_account_id?: string | null;
+            /** Default Category Id */
+            default_category_id?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Error */
+            error?: string | null;
+            /** Matched */
+            matched: boolean;
+            /** Matched Rule Name */
+            matched_rule_name?: string | null;
+            /** Parser Used */
+            parser_used?: string | null;
+            /** Transaction Type */
+            transaction_type?: string | null;
+        };
+        /**
+         * EmailParsingRuleSchema
+         * @description Per-user structured email parsing rule and account/category target mapping.
+         */
+        EmailParsingRuleSchema: {
+            /**
+             * Amount Regex
+             * @default
+             */
+            amount_regex: string;
+            /**
+             * Currency
+             * @default COP
+             */
+            currency: string;
+            /** Default Account Id */
+            default_account_id?: string | null;
+            /** Default Category Id */
+            default_category_id?: string | null;
+            /**
+             * Description Template
+             * @default
+             */
+            description_template: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Id */
+            id?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Parser Mode
+             * @default auto
+             * @enum {string}
+             */
+            parser_mode: "auto" | "bancolombia-email" | "global66-email" | "nequi-email" | "nu-email" | "custom_regex";
+            /**
+             * Sender Match
+             * @default
+             */
+            sender_match: string;
+            /**
+             * Subject Match
+             * @default
+             */
+            subject_match: string;
+            /**
+             * Transaction Type
+             * @default auto
+             * @enum {string}
+             */
+            transaction_type: "auto" | "income" | "expense" | "transfer";
+        };
+        /**
          * ExcludedLiabilitiesSummary
          * @description Optional summary of paid-off or balance-excluded liabilities.
          */
@@ -2694,6 +3261,51 @@ export interface components {
              */
             total_monthly_interest_drag: number;
         };
+        /**
+         * GlobalSearchHitResponse
+         * @description One typed search hit; the client maps ``kind`` to a deep link or action.
+         */
+        GlobalSearchHitResponse: {
+            /** Account Id */
+            account_id?: string | null;
+            /** Amount */
+            amount?: number | null;
+            /** Currency */
+            currency?: string | null;
+            /** Flags */
+            flags?: string[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Occurred At */
+            occurred_at?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Subtitle */
+            subtitle: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * GlobalSearchResponse
+         * @description Interleaved owner-scoped hits plus the kinds actually searched.
+         */
+        GlobalSearchResponse: {
+            /** Account Id */
+            account_id?: string | null;
+            /** Items */
+            items?: components["schemas"]["GlobalSearchHitResponse"][];
+            /** Kinds */
+            kinds?: string[];
+            /** Limit */
+            limit: number;
+            /** Q */
+            q: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2709,7 +3321,7 @@ export interface components {
          *         timestamp: UTC time when the probe was evaluated.
          *         database: Database connectivity label (``connected`` or ``disconnected``).
          *         database_latency_ms: Round-trip probe latency in milliseconds when connected.
-         *         auth: Supabase Auth connectivity (``connected``, ``disconnected``, or ``skipped``).
+         *         auth: Auth connectivity (``connected``, ``disconnected``, or ``skipped``).
          *         auth_latency_ms: Auth probe latency when a live Auth check ran successfully.
          *         auth_detail: Allowlisted Auth probe detail.
          *         redis: Redis connectivity (``connected``, ``disconnected``, or ``skipped``).
@@ -2723,7 +3335,7 @@ export interface components {
              * @enum {string}
              */
             auth: "connected" | "disconnected" | "skipped";
-            /** @default auth provider is local — supabase probe skipped */
+            /** @default local auth active */
             auth_detail: components["schemas"]["AuthProbeDetail"];
             /** Auth Latency Ms */
             auth_latency_ms?: number | null;
@@ -2907,12 +3519,26 @@ export interface components {
             /** Flow Name */
             flow_name: string;
             /**
+             * Gmail Access Enabled
+             * @default false
+             */
+            gmail_access_enabled: boolean;
+            /**
+             * Gmail Connected
+             * @default false
+             */
+            gmail_connected: boolean;
+            /** Gmail Connected Email */
+            gmail_connected_email?: string | null;
+            /**
              * Id
              * Format: uuid
              */
             id: string;
             /** Lookback Hours */
             lookback_hours: number;
+            /** Parsing Rules */
+            parsing_rules?: components["schemas"]["EmailParsingRuleSchema"][];
             /** Provider */
             provider: string;
             /** Updated At */
@@ -2933,8 +3559,12 @@ export interface components {
             email_subjects?: string[] | null;
             /** Enabled */
             enabled?: boolean | null;
+            /** Gmail Access Enabled */
+            gmail_access_enabled?: boolean | null;
             /** Lookback Hours */
             lookback_hours?: number | null;
+            /** Parsing Rules */
+            parsing_rules?: components["schemas"]["EmailParsingRuleSchema"][] | null;
         };
         /**
          * IngestionConnectionUpsertRequest
@@ -2962,11 +3592,15 @@ export interface components {
              * @constant
              */
             flow_name: "papita-email-ingestion";
+            /** Gmail Access Enabled */
+            gmail_access_enabled?: boolean | null;
             /**
              * Lookback Hours
              * @default 24
              */
             lookback_hours: number;
+            /** Parsing Rules */
+            parsing_rules?: components["schemas"]["EmailParsingRuleSchema"][] | null;
             /**
              * Provider
              * @default email
@@ -3023,6 +3657,109 @@ export interface components {
             updated: number;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /** InvestmentProjectionRequest */
+        InvestmentProjectionRequest: {
+            /**
+             * Annual Fee Pct
+             * @default 0.1
+             */
+            annual_fee_pct: number;
+            /**
+             * Annual Fx Drift Pct
+             * @default 0
+             */
+            annual_fx_drift_pct: number;
+            /**
+             * Annual Inflation Pct
+             * @default 5
+             */
+            annual_inflation_pct: number;
+            /**
+             * Currency
+             * @default COP
+             */
+            currency: string;
+            /**
+             * Expected Annual Return Pct
+             * @default 8
+             */
+            expected_annual_return_pct: number;
+            /**
+             * Horizon Years
+             * @default 10
+             */
+            horizon_years: number;
+            /** Initial Amount */
+            initial_amount: number;
+            /**
+             * Investment Type
+             * @default us_equity_etf
+             * @enum {string}
+             */
+            investment_type: "hysa_co" | "fiduciary_co" | "cdt_co" | "voluntary_pension" | "us_equity_etf" | "crypto" | "private_equity" | "real_estate_fund";
+            /**
+             * Monthly Contribution
+             * @default 0
+             */
+            monthly_contribution: number;
+            /**
+             * Rate Convention
+             * @default US_APY
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /**
+             * Tax On Gains Pct
+             * @default 15
+             */
+            tax_on_gains_pct: number;
+        };
+        /** InvestmentProjectionResponse */
+        InvestmentProjectionResponse: {
+            /** Currency */
+            currency: string;
+            /** Effective Net Annual Pct */
+            effective_net_annual_pct: number;
+            /** Estimated Tax */
+            estimated_tax: number;
+            /** Final After Tax Value */
+            final_after_tax_value: number;
+            /** Final Gross Value */
+            final_gross_value: number;
+            /** Final Real Value */
+            final_real_value: number;
+            /**
+             * Investment Type
+             * @enum {string}
+             */
+            investment_type: "hysa_co" | "fiduciary_co" | "cdt_co" | "voluntary_pension" | "us_equity_etf" | "crypto" | "private_equity" | "real_estate_fund";
+            /**
+             * Rate Convention
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /** Schedule */
+            schedule: components["schemas"]["InvestmentProjectionYear"][];
+            /** Total Contributed */
+            total_contributed: number;
+            /** Total Net Gain */
+            total_net_gain: number;
+        };
+        /** InvestmentProjectionYear */
+        InvestmentProjectionYear: {
+            /** After Tax Value */
+            after_tax_value: number;
+            /** Contributed */
+            contributed: number;
+            /** Cumulative Gain */
+            cumulative_gain: number;
+            /** Gross Value */
+            gross_value: number;
+            /** Real Value */
+            real_value: number;
+            /** Year */
+            year: number;
         };
         /**
          * LiabilitySimulationImpact
@@ -3134,6 +3871,113 @@ export interface components {
              */
             alive: boolean;
         };
+        /** LoanAmortizationRequest */
+        LoanAmortizationRequest: {
+            /** Annual Rate Pct */
+            annual_rate_pct: number;
+            /**
+             * Currency
+             * @default COP
+             */
+            currency: string;
+            /**
+             * Extra Lump Sum
+             * @default 0
+             */
+            extra_lump_sum: number;
+            /**
+             * Extra Monthly Payment
+             * @default 0
+             */
+            extra_monthly_payment: number;
+            /**
+             * Lump Sum Month
+             * @default 1
+             */
+            lump_sum_month: number;
+            /**
+             * Method
+             * @default french_fixed
+             * @enum {string}
+             */
+            method: "french_fixed" | "german_constant_principal";
+            /**
+             * Monthly Insurance
+             * @default 0
+             */
+            monthly_insurance: number;
+            /** Principal */
+            principal: number;
+            /**
+             * Rate Convention
+             * @default CO_EA
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /** Remaining Months */
+            remaining_months: number;
+            /** Start Date */
+            start_date?: string | null;
+        };
+        /** LoanAmortizationResponse */
+        LoanAmortizationResponse: {
+            /** Annual Rate Pct */
+            annual_rate_pct: number;
+            /** Currency */
+            currency: string;
+            /** Effective Annual Rate Pct */
+            effective_annual_rate_pct: number;
+            /** Interest Saved Vs Baseline */
+            interest_saved_vs_baseline: number;
+            /** Monthly Rate Pct */
+            monthly_rate_pct: number;
+            /** Months Saved Vs Baseline */
+            months_saved_vs_baseline: number;
+            /** Payoff Months */
+            payoff_months: number;
+            /**
+             * Rate Convention
+             * @enum {string}
+             */
+            rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /** Schedule */
+            schedule: components["schemas"]["LoanAmortizationRow"][];
+            /** Scheduled Monthly Payment */
+            scheduled_monthly_payment: number;
+            /** Total Insurance */
+            total_insurance: number;
+            /** Total Interest */
+            total_interest: number;
+            /** Total Monthly Outflow */
+            total_monthly_outflow: number;
+            /** Total Paid */
+            total_paid: number;
+        };
+        /** LoanAmortizationRow */
+        LoanAmortizationRow: {
+            /** Closing Balance */
+            closing_balance: number;
+            /** Cumulative Interest */
+            cumulative_interest: number;
+            /** Extra Paid */
+            extra_paid: number;
+            /** Insurance Paid */
+            insurance_paid: number;
+            /** Interest Paid */
+            interest_paid: number;
+            /** Month */
+            month: number;
+            /** Opening Balance */
+            opening_balance: number;
+            /** Payment Date */
+            payment_date: string;
+            /** Principal Paid */
+            principal_paid: number;
+            /** Scheduled Payment */
+            scheduled_payment: number;
+            /** Total Outflow */
+            total_outflow: number;
+        };
         /**
          * LoanDetailsSchema
          * @description Loan extension fields.
@@ -3159,24 +4003,6 @@ export interface components {
              * @default false
              */
             is_paid_off: boolean;
-        };
-        /**
-         * LogoutRequest
-         * @description JSON body for ``POST /auth/logout`` (session revoke).
-         *
-         *     Under Supabase, ``refresh_token`` is required for GoTrue ``sign_out``.
-         *     ``access_token`` may also be supplied via ``Authorization: Bearer`` on the
-         *     route when omitted here. When Redis is enabled, the access JWT is denylisted.
-         *
-         *     Attributes:
-         *         refresh_token: Refresh token to invalidate at Supabase Auth.
-         *         access_token: Optional access JWT for precise session revoke / denylist.
-         */
-        LogoutRequest: {
-            /** Access Token */
-            access_token?: string | null;
-            /** Refresh Token */
-            refresh_token: string;
         };
         /**
          * MarkPaidRequest
@@ -3258,18 +4084,17 @@ export interface components {
         };
         /**
          * OAuthCodeExchangeRequest
-         * @description JSON body for ``POST /auth/oauth/callback`` (Supabase PKCE code exchange).
+         * @description JSON body for ``POST /auth/oauth/callback`` (legacy PKCE code exchange).
          *
-         *     Completes OAuth when the client holds the authorization ``code`` and the
-         *     PKCE verifier from the authorize step. Prefer this over ``SsoSessionRequest``
-         *     when the redirect yields a ``code``.
+         *     Browser PKCE completes via ``GET /auth/oauth/callback``. This POST body is
+         *     retained for older clients and returns 501 under self-hosted Google OAuth.
          *
          *     Attributes:
          *         provider: OAuth provider (``google`` or ``github``).
          *         auth_code: Authorization ``code`` from the OAuth redirect query string.
          *         code_verifier: PKCE verifier from ``GET /auth/oauth/{provider}``.
          *         redirect_to: Optional redirect URI that must match the authorize step.
-         *         display_name: Optional profile override when Auth metadata is incomplete.
+         *         display_name: Optional profile override when IdP metadata is incomplete.
          */
         OAuthCodeExchangeRequest: {
             /** Auth Code */
@@ -3293,7 +4118,7 @@ export interface components {
          *
          *     Attributes:
          *         provider: OAuth channel (``google`` or ``github`` only).
-         *         url: Supabase / IdP authorize URL including the PKCE challenge.
+         *         url: Google / IdP authorize URL including the PKCE challenge.
          *         code_verifier: PKCE verifier the client must retain for code exchange.
          */
         OAuthStartResponse: {
@@ -3485,11 +4310,47 @@ export interface components {
             status_tone: "positive" | "warning" | "negative";
         };
         /**
+         * PortfolioAccountProjectionItem
+         * @description Account snapshot merged with any user-saved projection rate/term overrides.
+         */
+        PortfolioAccountProjectionItem: {
+            /** Account Kind */
+            account_kind: string;
+            /** Balance */
+            balance: number;
+            /** Config */
+            config?: {
+                [key: string]: unknown;
+            };
+            /** Currency */
+            currency: string;
+            /** Group */
+            group: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** PortfolioProjectionsResponse */
+        PortfolioProjectionsResponse: {
+            /** Credit Cards */
+            credit_cards?: components["schemas"]["PortfolioAccountProjectionItem"][];
+            /** Debts */
+            debts?: components["schemas"]["PortfolioAccountProjectionItem"][];
+            /** Investments */
+            investments?: components["schemas"]["PortfolioAccountProjectionItem"][];
+            /** Real Estate */
+            real_estate?: components["schemas"]["PortfolioAccountProjectionItem"][];
+        };
+        /**
          * ProviderType
          * @description Signup / identity channel for ``users.provider_type``.
          *
-         *     ``EMAIL`` is password (or magic-link) registration. ``GOOGLE`` and ``GITHUB``
-         *     are Supabase Auth OAuth providers; values match Supabase provider ids.
+         *     ``EMAIL`` is password registration. ``GOOGLE`` and ``GITHUB`` are OAuth
+         *     channels (self-hosted Google PKCE is implemented; GitHub reserved).
          * @enum {string}
          */
         ProviderType: "email" | "google" | "github";
@@ -3540,6 +4401,119 @@ export interface components {
             participation: number;
             /** Total Area */
             total_area: number;
+        };
+        /** RealEstateProjectionRequest */
+        RealEstateProjectionRequest: {
+            /**
+             * Annual Appreciation Pct
+             * @default 8
+             */
+            annual_appreciation_pct: number;
+            /**
+             * Annual Property Tax Pct
+             * @default 0.6
+             */
+            annual_property_tax_pct: number;
+            /**
+             * Annual Rent Growth Pct
+             * @default 5
+             */
+            annual_rent_growth_pct: number;
+            /**
+             * Currency
+             * @default COP
+             */
+            currency: string;
+            /** Current Value */
+            current_value: number;
+            /**
+             * Horizon Years
+             * @default 10
+             */
+            horizon_years: number;
+            /**
+             * Monthly Hoa And Maintenance
+             * @default 0
+             */
+            monthly_hoa_and_maintenance: number;
+            /**
+             * Monthly Rent Income
+             * @default 0
+             */
+            monthly_rent_income: number;
+            /**
+             * Mortgage Annual Rate Pct
+             * @default 17.1
+             */
+            mortgage_annual_rate_pct: number;
+            /**
+             * Mortgage Balance
+             * @default 0
+             */
+            mortgage_balance: number;
+            /**
+             * Mortgage Monthly Insurance
+             * @default 0
+             */
+            mortgage_monthly_insurance: number;
+            /**
+             * Mortgage Rate Convention
+             * @default CO_EA
+             * @enum {string}
+             */
+            mortgage_rate_convention: "CO_EA" | "US_APR" | "US_APY" | "MONTHLY_MV";
+            /**
+             * Mortgage Remaining Months
+             * @default 0
+             */
+            mortgage_remaining_months: number;
+            /**
+             * Occupancy Pct
+             * @default 85
+             */
+            occupancy_pct: number;
+        };
+        /** RealEstateProjectionResponse */
+        RealEstateProjectionResponse: {
+            /** Cap Rate Pct */
+            cap_rate_pct: number;
+            /** Cumulative Net Cashflow */
+            cumulative_net_cashflow: number;
+            /** Currency */
+            currency: string;
+            /** Current Net Equity */
+            current_net_equity: number;
+            /** Gross Rental Yield Pct */
+            gross_rental_yield_pct: number;
+            /** Projected Mortgage Balance */
+            projected_mortgage_balance: number;
+            /** Projected Net Equity */
+            projected_net_equity: number;
+            /** Projected Property Value */
+            projected_property_value: number;
+            /** Schedule */
+            schedule: components["schemas"]["RealEstateProjectionYear"][];
+        };
+        /** RealEstateProjectionYear */
+        RealEstateProjectionYear: {
+            /** Annual Gross Rent */
+            annual_gross_rent: number;
+            /** Annual Mortgage Service */
+            annual_mortgage_service: number;
+            /** Annual Net Cashflow */
+            annual_net_cashflow: number;
+            /** Annual Operating Costs */
+            annual_operating_costs: number;
+            /** Cumulative Net Cashflow */
+            cumulative_net_cashflow: number;
+            /** Mortgage Balance */
+            mortgage_balance: number;
+            /** Net Equity */
+            net_equity: number;
+            /** Property Value */
+            property_value: number;
+            /** Year */
+            year: number;
         };
         /**
          * ReconciliationFlagItem
@@ -3609,12 +4583,12 @@ export interface components {
         RedisProbeDetail: "api-redis link healthy" | "redis disabled" | "redis client unavailable" | "probe failed";
         /**
          * RefreshRequest
-         * @description JSON body for ``POST /auth/refresh`` (Supabase Auth session rotation).
+         * @description JSON body for ``POST /auth/refresh`` (deferred under self-hosted HS256).
          *
-         *     Local Auth mode does not accept this body meaningfully (route returns 501).
+         *     Self-hosted local mode returns 501 (no external refresh-token store).
          *
          *     Attributes:
-         *         refresh_token: Opaque Supabase refresh token from login/OAuth/SSO.
+         *         refresh_token: Opaque refresh token from a prior session (unused locally).
          */
         RefreshRequest: {
             /** Refresh Token */
@@ -3624,9 +4598,8 @@ export interface components {
          * RegisterRequest
          * @description JSON body for ``POST /auth/register``.
          *
-         *     Creates an Auth user (Supabase) or local password row, then provisions
-         *     ``papita_transactions.users``. Password signup is email-only; Google/GitHub
-         *     must use the OAuth/SSO routes.
+         *     Creates a local password row in ``papita_transactions.users``. Password
+         *     signup is email-only; Google must use the OAuth PKCE routes.
          *
          *     Attributes:
          *         email: Contact email and canonical login identifier; 5–255 characters.
@@ -3658,18 +4631,17 @@ export interface components {
          * RegisterResponse
          * @description Public register result with optional email-confirmation pending signal (PPT-068).
          *
-         *     When Supabase Confirm email is on and Admin auto-confirm is off, Auth may
-         *     create the user without issuing a session. ``email_confirmation_required``
-         *     tells the SPA to show check-email UX instead of prompting an immediate login.
-         *     Local Auth and Admin auto-confirm paths leave the flag ``False``.
+         *     Self-hosted local register always issues a usable account immediately, so
+         *     ``email_confirmation_required`` stays ``False``. The flag remains on the
+         *     wire for older SPA clients.
          */
         RegisterResponse: {
             /**
              * Auth Provider
-             * @default supabase
+             * @default local
              * @enum {string}
              */
-            auth_provider: "supabase" | "local";
+            auth_provider: "local" | "supabase";
             /**
              * Created At
              * Format: date-time
@@ -3800,17 +4772,16 @@ export interface components {
         };
         /**
          * SsoSessionRequest
-         * @description JSON body for ``POST /auth/sso`` after client-side Supabase OAuth tokens.
+         * @description JSON body for ``POST /auth/sso`` (deprecated external SSO handoff).
          *
-         *     Use when the SPA already obtained an Auth session (e.g. fragment/hash flow).
-         *     Prefer ``POST /auth/oauth/callback`` (authorization code + PKCE) when the
-         *     redirect yields a ``code``.
+         *     Prefer ``GET /auth/oauth/google?follow=true`` for direct Google OAuth PKCE.
+         *     This endpoint returns 501 under self-hosted auth.
          *
          *     Attributes:
          *         provider: OAuth provider (``google`` or ``github``).
-         *         access_token: Supabase access JWT from the OAuth session.
-         *         refresh_token: Supabase refresh token from the OAuth session.
-         *         display_name: Optional profile override when Auth metadata is incomplete.
+         *         access_token: External access JWT from a client-side OAuth session.
+         *         refresh_token: External refresh token from a client-side OAuth session.
+         *         display_name: Optional profile override when IdP metadata is incomplete.
          */
         SsoSessionRequest: {
             /** Access Token */
@@ -3882,14 +4853,14 @@ export interface components {
          * TokenResponse
          * @description OAuth2-compatible access token payload for login, refresh, OAuth, and SSO.
          *
-         *     Local login sets ``refresh_token`` to ``None``. Supabase paths populate both
-         *     access and refresh tokens when Auth issues a session.
+         *     Self-hosted HS256 login sets ``refresh_token`` to ``None`` (no external
+         *     refresh-token store).
          *
          *     Attributes:
          *         access_token: Bearer JWT for protected API routes.
          *         token_type: Always ``bearer`` for clients that expect OAuth2 shape.
          *         expires_in: Access-token lifetime in seconds (``>= 1``).
-         *         refresh_token: Optional Supabase refresh token for rotation/logout.
+         *         refresh_token: Optional refresh token (always ``None`` for self-hosted HS256).
          */
         TokenResponse: {
             /** Access Token */
@@ -4352,30 +5323,131 @@ export interface components {
             window_days: number;
         };
         /**
+         * UserPreferencesSchema
+         * @description Structured per-user domain preferences stored in ``users.preferences``.
+         */
+        UserPreferencesSchema: {
+            /** Ai Config */
+            ai_config?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Auto Refresh Balances
+             * @default true
+             */
+            auto_refresh_balances: boolean;
+            /**
+             * Base Currency
+             * @default COP
+             * @enum {string}
+             */
+            base_currency: "COP" | "USD" | "EUR" | "GBP" | "MXN" | "CLP" | "PEN" | "BRL";
+            /**
+             * Credit Card Cashflow Only
+             * @default true
+             */
+            credit_card_cashflow_only: boolean;
+            /**
+             * Date Format
+             * @default YYYY-MM-DD
+             * @enum {string}
+             */
+            date_format: "YYYY-MM-DD" | "DD/MM/YYYY" | "MM/DD/YYYY";
+            /** Default Account Id */
+            default_account_id?: string | null;
+            /** Default Expense Category Id */
+            default_expense_category_id?: string | null;
+            /** Default Income Category Id */
+            default_income_category_id?: string | null;
+            /**
+             * Default Page Size
+             * @default 25
+             * @enum {integer}
+             */
+            default_page_size: 10 | 25 | 50 | 100;
+            /**
+             * Fiscal Month Start Day
+             * @default 1
+             */
+            fiscal_month_start_day: number;
+            /**
+             * Hide Balances By Default
+             * @default false
+             */
+            hide_balances_by_default: boolean;
+            /**
+             * High Utilization Pct Threshold
+             * @default 30
+             */
+            high_utilization_pct_threshold: number;
+            /** Large Transaction Alert Amount */
+            large_transaction_alert_amount?: number | null;
+            /**
+             * Locale
+             * @default es-CO
+             * @enum {string}
+             */
+            locale: "es-CO" | "en-US" | "es-ES" | "en-GB";
+            /**
+             * Low Runway Months Threshold
+             * @default 3
+             */
+            low_runway_months_threshold: number;
+            /**
+             * Payment Due Reminder Days
+             * @default 5
+             */
+            payment_due_reminder_days: number;
+            /** Projection Configs */
+            projection_configs?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Redact Card Numbers
+             * @default true
+             */
+            redact_card_numbers: boolean;
+            /**
+             * Require Dkim Spf For Email Ingestion
+             * @default true
+             */
+            require_dkim_spf_for_email_ingestion: boolean;
+            /**
+             * Session Idle Timeout Minutes
+             * @default 120
+             */
+            session_idle_timeout_minutes: number;
+            /**
+             * Timezone
+             * @default America/Bogota
+             */
+            timezone: string;
+        };
+        /**
          * UserResponse
          * @description Public user profile returned by register and ``GET /auth/me``.
          *
          *     Never includes password or other secrets. ``provider`` is the signup channel
-         *     (email/Google/GitHub); ``auth_provider`` is where credentials are stored
-         *     (``supabase`` vs local tests).
+         *     (email/Google/GitHub); ``auth_provider`` is the credential store label
+         *     (``local``, or legacy ``supabase``).
          *
          *     Attributes:
-         *         id: Tenant user id (Auth ``sub`` when ``auth_provider`` is ``supabase``).
+         *         id: Tenant user id (JWT ``sub``).
          *         username: Unique handle (often derived from email).
          *         email: Canonical login email.
          *         display_name: Optional human-readable name.
-         *         phone: Optional phone from Auth/profile.
+         *         phone: Optional phone from profile.
          *         provider: Signup / identity channel (``ProviderType``).
-         *         auth_provider: Credential store label (``supabase`` or ``local``).
+         *         auth_provider: Credential store label (``local`` or legacy ``supabase``).
          *         created_at: Row creation timestamp (required on the DTO).
          */
         UserResponse: {
             /**
              * Auth Provider
-             * @default supabase
+             * @default local
              * @enum {string}
              */
-            auth_provider: "supabase" | "local";
+            auth_provider: "local" | "supabase";
             /**
              * Created At
              * Format: date-time
@@ -4396,6 +5468,43 @@ export interface components {
             provider: components["schemas"]["ProviderType"];
             /** Username */
             username: string;
+        };
+        /**
+         * UserSettingsResponse
+         * @description Complete read model for the User Settings Console (never exposes password/tokens).
+         */
+        UserSettingsResponse: {
+            /** Auth Provider */
+            auth_provider: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phone */
+            phone?: string | null;
+            preferences: components["schemas"]["UserPreferencesSchema"];
+            /** Provider Type */
+            provider_type: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Username */
+            username: string;
+        };
+        /**
+         * UserSettingsUpdateRequest
+         * @description Partial update payload for ``PATCH /api/v1/settings``.
+         */
+        UserSettingsUpdateRequest: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Phone */
+            phone?: string | null;
+            preferences?: components["schemas"]["UserPreferencesSchema"] | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4841,6 +5950,92 @@ export interface operations {
             };
         };
     };
+    get_ai_config_api_v1_ai_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIConfigResponse"];
+                };
+            };
+        };
+    };
+    update_ai_config_api_v1_ai_config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AIConfigUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIConfigResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_ai_models_api_v1_ai_models_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AIModelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AIModelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_ai_status_api_v1_ai_status_get: {
         parameters: {
             query?: never;
@@ -4901,11 +6096,7 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogoutRequest"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             204: {
@@ -4913,15 +6104,6 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
             };
         };
     };
@@ -4949,6 +6131,7 @@ export interface operations {
         parameters: {
             query?: {
                 code?: string | null;
+                state?: string | null;
                 error?: string | null;
                 error_description?: string | null;
             };
@@ -5016,6 +6199,7 @@ export interface operations {
             query?: {
                 redirect_to?: string | null;
                 follow?: boolean;
+                return_to?: string;
             };
             header?: never;
             path: {
@@ -5655,6 +6839,112 @@ export interface operations {
             };
         };
     };
+    test_email_parse_api_v1_ingestion_email_test_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailParseTestRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmailParseTestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disconnect_gmail_api_v1_ingestion_gmail_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestionConnectionResponse"];
+                };
+            };
+        };
+    };
+    gmail_oauth_callback_api_v1_ingestion_gmail_oauth_callback_get: {
+        parameters: {
+            query?: {
+                code?: string | null;
+                state?: string | null;
+                error?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_gmail_oauth_api_v1_ingestion_gmail_oauth_start_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     import_ibkr_activity_statement_api_v1_ingestion_ibkr_activity_statement_post: {
         parameters: {
             query?: never;
@@ -5809,6 +7099,195 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    save_account_projection_config_api_v1_projections_config__account_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountProjectionConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_credit_card_api_v1_projections_credit_card_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditCardProjectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditCardProjectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_investment_api_v1_projections_investment_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvestmentProjectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvestmentProjectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_loan_api_v1_projections_loan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoanAmortizationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoanAmortizationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_projection_portfolio_api_v1_projections_portfolio_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioProjectionsResponse"];
+                };
+            };
+        };
+    };
+    project_real_estate_api_v1_projections_real_estate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RealEstateProjectionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RealEstateProjectionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -6154,6 +7633,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_domain_api_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                kinds?: string[] | null;
+                account_id?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_user_settings_api_v1_settings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingsResponse"];
+                };
+            };
+        };
+    };
+    update_user_settings_api_v1_settings_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UserSettingsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_user_settings_api_v1_settings_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettingsResponse"];
                 };
             };
         };

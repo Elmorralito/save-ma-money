@@ -151,7 +151,7 @@ def test_registry_parser_priority_and_source_scoping() -> None:
 
 
 def test_runner_supports_parse_many_and_public_resolve_owner() -> None:
-    owner = UsersDTO(id=uuid.uuid4(), username="owner01", email="owner@example.com")
+    owner = UsersDTO.model_construct(id=uuid.uuid4(), username="owner01", email="owner@example.com")
     record = RawRecord(
         source_id="dummy-source", source_ref="batch-1", content="payload", ingestion_source=IngestionSource.API
     )
@@ -305,7 +305,7 @@ def test_core_execute_with_run_status_handles_failures_and_errors() -> None:
     from papita_ingestor_core.run_status import execute_with_run_status
     from papita_txnsmodel.model.enums import IngestionRunStatus
 
-    owner = UsersDTO(id=uuid.uuid4(), username="owner01", email="owner@example.com")
+    owner = UsersDTO.model_construct(id=uuid.uuid4(), username="owner01", email="owner@example.com")
     source = _DummySource([])
     runner = IngestionRunner(source=source, owner=owner, bridge=_FakeBridge(), parsers=[_MultiRecordParser()])
     assert runner.source_id == "dummy-source"

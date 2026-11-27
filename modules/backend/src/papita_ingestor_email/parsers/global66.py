@@ -10,23 +10,28 @@ from papita_ingestor_core.parsers.base import BaseRecordParser
 from papita_ingestor_core.types.records import ParsedRecord, RawRecord
 from papita_ingestor_email.parsers.amounts import parse_spanish_datetime
 from papita_ingestor_email.parsers.mime import extract_email_text, sender_address, subject_line
+from papita_ingestor_email.parsers.nu import parse_colombian_cop_amount
 from papita_txnsmodel.model.enums import IngestionSource, SettlementStatus, TransactionKind, TransactionStatus
 
 _SENDER_DOMAIN_RE = re.compile(r"@([a-z0-9.-]*global66\.com)\b", re.IGNORECASE)
+_IN_PROCESS_IGNORE_RE = re.compile(r"est[aá]\s+en\s+proceso|procesando\s+env[ií]o", re.IGNORECASE)
 _CLAIM_MARKERS_RE = re.compile(
-    r"\b(transferencia|env[ií]o|wire\s+transfer|international\s+transfer|transacci[oó]n|transaction\s+no)\b",
+    r"\b(transferencia|env[ií]o|wire\s+transfer|international\s+transfer|transacci[oó]n|transaction\s+no"
+    r"|recarga|fondeo|abono\s+pse)\b",
     re.IGNORECASE,
 )
+_FUNDING_MARKERS_RE = re.compile(r"\b(recarga|fondeo|abono|pse)\b", re.IGNORECASE)
+_IBKR_MARKERS_RE = re.compile(r"\b(interactive\s+brokers|ibkr|umb\s+national|913010600302|U10600302)\b", re.IGNORECASE)
 _SETTLED_MARKERS_RE = re.compile(
     r"\b(acreditad[ao]|settled|arrived\s+and\s+settled|depositad[ao]\s+en\s+destino)\b",
     re.IGNORECASE,
 )
 _AMOUNT_SUFFIX_CUR_RE = re.compile(
-    r"(?:US\$|\$)?\s*([\d,]+(?:\.\d{1,2})?)\s*(USD|COP|EUR|GBP|MXN|CLP|PEN)\b",
+    r"(?:US\$|\$)?\s*([\d.,]+)\s*(USD|COP|EUR|GBP|MXN|CLP|PEN)\b",
     re.IGNORECASE,
 )
 _AMOUNT_PREFIX_CUR_RE = re.compile(
-    r"\b(USD|COP|EUR|GBP|MXN|CLP|PEN)\s*\$?\s*([\d,]+(?:\.\d{1,2})?)",
+    r"\b(USD|COP|EUR|GBP|MXN|CLP|PEN)\s*\$?\s*([\d.,]+)",
     re.IGNORECASE,
 )
 _REF_RE = re.compile(
@@ -46,19 +51,19 @@ _ISO_DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})(?:[T\s](\d{2}:\d{2}(?::\d{2})?
 
 
 def _parse_amount_and_currency(text: str) -> tuple[float, str] | None:
-    """Extract positive wire amount and 3-letter ISO currency code."""
+    """Extract positive wire/funding amount and 3-letter ISO currency code."""
     match = _AMOUNT_SUFFIX_CUR_RE.search(text)
     if match:
         raw_num, cur = match.group(1), match.group(2).upper()
-        val = float(raw_num.replace(",", ""))
-        if val > 0:
+        val = parse_colombian_cop_amount(raw_num)
+        if val is not None and val > 0:
             return val, cur
 
     match = _AMOUNT_PREFIX_CUR_RE.search(text)
     if match:
         cur, raw_num = match.group(1).upper(), match.group(2)
-        val = float(raw_num.replace(",", ""))
-        if val > 0:
+        val = parse_colombian_cop_amount(raw_num)
+        if val is not None and val > 0:
             return val, cur
 
     return None
@@ -116,6 +121,8 @@ class Global66Parser(BaseRecordParser):
         body = extract_email_text(record.content)
         subject = subject_line(record.metadata.get("subject"), record.content)
         haystack = f"{subject} {body}"
+        if _IN_PROCESS_IGNORE_RE.search(haystack):
+            return False
         return bool(_CLAIM_MARKERS_RE.search(haystack))
 
     def parse(self, record: RawRecord) -> ParsedRecord:
@@ -138,13 +145,21 @@ class Global66Parser(BaseRecordParser):
         destination = dest_match.group(1).strip(" .,;:") if dest_match else None
 
         is_settled = bool(_SETTLED_MARKERS_RE.search(haystack))
-        settlement = SettlementStatus.SETTLED if is_settled else SettlementStatus.IN_TRANSIT
+        is_funding = bool(_FUNDING_MARKERS_RE.search(haystack)) and currency == "COP"
+        is_ibkr = bool(_IBKR_MARKERS_RE.search(haystack))
+        settlement = SettlementStatus.SETTLED if (is_settled or is_funding) else SettlementStatus.IN_TRANSIT
 
-        tags = ["global66", "international_wire", "settled" if is_settled else "in_transit"]
+        tags = [
+            "global66",
+            "funding" if is_funding else "international_wire",
+            "settled" if (is_settled or is_funding) else "in_transit",
+        ]
+        if is_ibkr:
+            tags.append("ibkr-wire")
         if reference_number:
             tags.append(f"ref:{reference_number}")
 
-        description_parts = ["Global66 wire"]
+        description_parts = ["Global66 funding" if is_funding else "Global66 wire"]
         if destination:
             description_parts.append(destination)
         if reference_number:

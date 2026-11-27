@@ -7,14 +7,14 @@ accept client input that reaches SQL, Auth, or Redis URLs.
 Routes:
     ``GET /health`` — composite status with app version, database, Auth, Redis.
     ``GET /health/database`` — API↔database probe with latency (503 when down).
-    ``GET /health/auth`` — API↔Supabase Auth probe with latency (503 when down).
+    ``GET /health/auth`` — self-hosted Auth readiness probe (503 when down).
     ``GET /health/redis`` — API↔Redis probe with latency (503 when required and down).
     ``GET /health/ready`` — readiness; 503 when DB, required Auth, or required Redis down.
     ``GET /health/live`` — liveness; always 200 while the process is running.
 
 Service delegation:
     Database checks use :func:`~papita_txnsapi.core.db_health.probe_database`.
-    Auth checks use :func:`~papita_txnsapi.core.auth_health.probe_supabase_auth`.
+    Auth checks use :func:`~papita_txnsapi.core.auth_health.probe_local_auth`.
     Redis checks use :func:`~papita_txnsapi.core.redis.ping_redis`.
 
 Security:
@@ -32,7 +32,7 @@ from fastapi.responses import JSONResponse
 from redis import Redis
 
 from papita_txnsapi.config.settings import Settings, get_settings
-from papita_txnsapi.core.auth_health import AuthProbeDetail, AuthProbeResult, probe_supabase_auth
+from papita_txnsapi.core.auth_health import AuthProbeDetail, AuthProbeResult, probe_local_auth
 from papita_txnsapi.core.auth_provider import build_auth_provider
 from papita_txnsapi.core.db_health import probe_database
 from papita_txnsapi.core.redis import RedisProbeDetail, RedisProbeResult, get_redis_from_app, ping_redis
@@ -92,12 +92,12 @@ def _probe_auth(settings: Settings) -> AuthProbeResult:
     """Run the configured Auth probe via ``AuthProvider``.
 
     Args:
-        settings: App settings with ``AUTH_PROVIDER`` and optional Supabase keys.
+        settings: App settings with ``AUTH_PROVIDER`` (self-hosted ``local``).
 
     Returns:
         Allowlisted Auth connectivity result (local mode skips the network call).
     """
-    return build_auth_provider(settings).probe_health(probe_fn=probe_supabase_auth)
+    return build_auth_provider(settings).probe_health(probe_fn=probe_local_auth)
 
 
 def _probe_redis(request: Request, settings: Settings) -> RedisProbeResult:
@@ -145,7 +145,7 @@ def get_health(
 
     Returns:
         Composite ``HealthResponse`` marked ``degraded`` when the database is down,
-        required Supabase Auth is unreachable, or required Redis is down.
+        Auth is unreachable, or required Redis is down.
     """
     _apply_no_store(response)
     db_probe = probe_database(connector, timeout_ms=settings.HEALTH_PROBE_TIMEOUT_MS)
@@ -220,14 +220,13 @@ def get_auth_health(
     response: Response,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AuthHealthResponse | JSONResponse:
-    """Probe API↔Supabase Auth (GoTrue) communication health.
+    """Probe self-hosted Auth readiness.
 
-    Calls ``GET {SUPABASE_URL}/auth/v1/health`` when ``AUTH_PROVIDER=supabase``.
     Local HS256 mode reports healthy with a skipped detail (no network call).
 
     Args:
         response: FastAPI response used to set ``Cache-Control: no-store``.
-        settings: Application settings with Auth provider and Supabase credentials.
+        settings: Application settings with Auth provider configuration.
 
     Returns:
         ``AuthHealthResponse`` with ``status=healthy`` when Auth is up (or skipped);

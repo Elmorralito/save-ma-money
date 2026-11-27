@@ -57,6 +57,9 @@ class EmailFlowSettings(BaseIngestorSettings):
     email_subjects: Annotated[list[str], NoDecode] = Field(default_factory=list)
     email_source_label: str | None = None
     email_query: str | None = None
+    orchestrator_enabled: bool = False
+    orchestrator_email_ingest_cron: str = "0 * * * *"
+    orchestrator_worker_slots: int = Field(default=1, ge=1, le=8)
 
     @field_validator("email_senders", "email_subjects", mode="before")
     @classmethod
